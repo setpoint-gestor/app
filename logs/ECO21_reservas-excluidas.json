@@ -1,0 +1,19 @@
+[
+  {
+    "timestamp": "2026-07-15T21:59:52.479Z",
+    "dataLocal": "15/07/2026, 18:59:52",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "dia": 5,
+      "hora": 6,
+      "duracao": 1,
+      "organizador": "ADRIANO GOMES FEITOSA",
+      "jogadores": "Adriano Feitosa",
+      "jogadores_completo": "ADRIANO GOMES FEITOSA",
+      "dataCompleta": "2026-07-10"
+    }
+  }
+]
