@@ -15,5 +15,22 @@
       "jogadores_completo": "ADRIANO GOMES FEITOSA",
       "dataCompleta": "2026-07-10"
     }
+  },
+  {
+    "timestamp": "2026-07-15T22:03:20.595Z",
+    "dataLocal": "15/07/2026, 19:03:20",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "dia": 5,
+      "hora": 7,
+      "duracao": 2,
+      "organizador": "ANA FRANCISCA SANTOS",
+      "jogadores": "Ana Francisca, Alessandro Xavier",
+      "jogadores_completo": "ANA FRANCISCA SANTOS, ALESSANDRO ROMERO XAVIER",
+      "dataCompleta": "2026-07-10"
+    }
   }
 ]
