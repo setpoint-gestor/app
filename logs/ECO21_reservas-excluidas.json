@@ -32,5 +32,22 @@
       "jogadores_completo": "ANA FRANCISCA SANTOS, ALESSANDRO ROMERO XAVIER",
       "dataCompleta": "2026-07-10"
     }
+  },
+  {
+    "timestamp": "2026-07-16T11:15:16.813Z",
+    "dataLocal": "16/07/2026, 08:15:16",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "dia": 7,
+      "hora": 11,
+      "duracao": 2,
+      "organizador": "Ronaldo Taborda Costa",
+      "jogadores": "Ronaldo Taborda Costa, Alice Duck, Aline Mazzant",
+      "jogadores_completo": "Ronaldo Taborda Costa, ALICE DUCK, ALINE SILVA MAZZANT",
+      "dataCompleta": "2026-07-12"
+    }
   }
 ]
