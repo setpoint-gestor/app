@@ -83,5 +83,22 @@
       "jogadores_completo": "ANA JULIA MARTINS",
       "dataCompleta": "2026-07-18"
     }
+  },
+  {
+    "timestamp": "2026-07-16T18:47:43.772Z",
+    "dataLocal": "16/07/2026, 15:47:43",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "dia": 7,
+      "hora": 15,
+      "duracao": 2,
+      "organizador": "ANA JULIA MARTINS",
+      "jogadores": "Ana Julia, Aline Sato, Almir, Andreia Almeida",
+      "jogadores_completo": "ANA JULIA MARTINS, ALINE SATO, ALMIR ALVES DA CRUZ, ANDREIA ANSELMO DE ALMEIDA",
+      "dataCompleta": "2026-07-12"
+    }
   }
 ]
