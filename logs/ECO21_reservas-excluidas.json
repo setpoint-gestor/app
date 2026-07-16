@@ -66,5 +66,22 @@
       "jogadores_completo": "Ronaldo Taborda Costa, ALEXANDRE VOJCIECHOVSKI",
       "dataCompleta": "2026-07-12"
     }
+  },
+  {
+    "timestamp": "2026-07-16T18:13:24.439Z",
+    "dataLocal": "16/07/2026, 15:13:24",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "dia": 6,
+      "hora": 7,
+      "duracao": 1,
+      "organizador": "ANA JULIA MARTINS",
+      "jogadores": "Ana Julia",
+      "jogadores_completo": "ANA JULIA MARTINS",
+      "dataCompleta": "2026-07-18"
+    }
   }
 ]
