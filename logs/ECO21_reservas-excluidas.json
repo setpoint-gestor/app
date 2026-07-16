@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "timestamp": "2026-07-16T22:16:28.761Z",
+    "dataLocal": "16/07/2026, 19:16:28",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "slotsExcluidos": [
+        {
+          "dia": 4,
+          "hora": 18
+        }
+      ],
+      "organizador": "ANA JULIA MARTINS",
+      "jogadores": "Ana Julia",
+      "jogadores_completo": "ANA JULIA MARTINS",
+      "dataCompleta": "2026-07-16"
+    }
+  }
+]
