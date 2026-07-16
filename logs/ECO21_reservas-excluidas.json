@@ -121,5 +121,30 @@
       "jogadores_completo": "ANA JULIA MARTINS",
       "dataCompleta": "2026-07-19"
     }
+  },
+  {
+    "timestamp": "2026-07-16T18:53:30.153Z",
+    "dataLocal": "16/07/2026, 15:53:30",
+    "autor": "ANA JULIA MARTINS",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "slotsExcluidos": [
+        {
+          "dia": 7,
+          "hora": 15
+        },
+        {
+          "dia": 7,
+          "hora": 16
+        }
+      ],
+      "organizador": "ANA JULIA MARTINS",
+      "jogadores": "Ana Julia, Allana Barbosa, Andreia Almeida, Arnold",
+      "jogadores_completo": "ANA JULIA MARTINS, ALLANA BARBOSA, ANDREIA ANSELMO DE ALMEIDA, ARNOLD WINTER",
+      "dataCompleta": "2026-07-19"
+    }
   }
 ]
