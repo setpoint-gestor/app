@@ -168,5 +168,26 @@
       "jogadores_completo": "Limpeza Massiva de Histórico por Decurso de Prazo",
       "dataCompleta": "Anteriores a 15/07/2026"
     }
+  },
+  {
+    "timestamp": "2026-07-16T21:20:35.181Z",
+    "dataLocal": "16/07/2026, 18:20:35",
+    "autor": "ANA MARIA MARINHO GOMES",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "detalhesReserva": {
+      "slotsExcluidos": [
+        {
+          "dia": 5,
+          "hora": 7
+        }
+      ],
+      "organizador": "ANA MARIA MARINHO GOMES",
+      "jogadores": "Ana Maria Marinho, Maico, Jean Souza, Marcelo Silva",
+      "jogadores_completo": "ANA MARIA MARINHO GOMES, MAICO ALI ZEIN, JEAN CARLO DE SOUZA, MARCELO DA SILVA",
+      "dataCompleta": "2026-07-17"
+    }
   }
 ]
