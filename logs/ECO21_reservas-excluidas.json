@@ -100,5 +100,26 @@
       "jogadores_completo": "ANA JULIA MARTINS, ALINE SATO, ALMIR ALVES DA CRUZ, ANDREIA ANSELMO DE ALMEIDA",
       "dataCompleta": "2026-07-12"
     }
+  },
+  {
+    "timestamp": "2026-07-16T18:52:47.714Z",
+    "dataLocal": "16/07/2026, 15:52:47",
+    "autor": "ANA JULIA MARTINS",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "slotsExcluidos": [
+        {
+          "dia": 7,
+          "hora": 11
+        }
+      ],
+      "organizador": "ANA JULIA MARTINS",
+      "jogadores": "Ana Julia",
+      "jogadores_completo": "ANA JULIA MARTINS",
+      "dataCompleta": "2026-07-19"
+    }
   }
 ]
