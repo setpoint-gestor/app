@@ -49,5 +49,22 @@
       "jogadores_completo": "Ronaldo Taborda Costa, ALICE DUCK, ALINE SILVA MAZZANT",
       "dataCompleta": "2026-07-12"
     }
+  },
+  {
+    "timestamp": "2026-07-16T11:16:20.018Z",
+    "dataLocal": "16/07/2026, 08:16:20",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "detalhesReserva": {
+      "dia": 7,
+      "hora": 9,
+      "duracao": 2,
+      "organizador": "Ronaldo Taborda Costa",
+      "jogadores": "Ronaldo Taborda Costa, Alexandre Voj",
+      "jogadores_completo": "Ronaldo Taborda Costa, ALEXANDRE VOJCIECHOVSKI",
+      "dataCompleta": "2026-07-12"
+    }
   }
 ]
