@@ -662,5 +662,88 @@
         "hora": 22
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-17T22:20:13.194Z",
+    "dataLocal": "17/07/2026, 19:20:13",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (0d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "20:00 - 22:00",
+    "duracao": "2 Horas",
+    "data": "16-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Alice Pereira",
+    "jogadores_completo": "ANA JULIA MARTINS, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 20
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 21
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-17T22:20:13.194Z",
+    "dataLocal": "17/07/2026, 19:20:13",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (0d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "22:00 - 23:00",
+    "duracao": "1 Hora",
+    "data": "16-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia",
+    "jogadores_completo": "ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 22
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-17T22:20:13.194Z",
+    "dataLocal": "17/07/2026, 19:20:13",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (0d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "22:00 - 23:00",
+    "duracao": "1 Hora",
+    "data": "16-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "jogadores": "Adriano Feitosa",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 4,
+        "hora": 22
+      }
+    ]
   }
 ]
