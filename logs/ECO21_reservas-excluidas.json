@@ -19,5 +19,42 @@
       "jogadores_completo": "ANA JULIA MARTINS",
       "dataCompleta": "2026-07-16"
     }
+  },
+  {
+    "timestamp": "2026-07-17T12:00:12.722Z",
+    "dataLocal": "17/07/2026, 09:00:12",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (0d)",
+    "clube": "ECO21",
+    "quadra": "",
+    "detalhesReserva": {
+      "slotsExcluidos": [
+        {
+          "quadra": "Quadra - 1",
+          "dia": 4,
+          "hora": 20
+        },
+        {
+          "quadra": "Quadra - 1",
+          "dia": 4,
+          "hora": 21
+        },
+        {
+          "quadra": "Quadra - 1",
+          "dia": 4,
+          "hora": 22
+        },
+        {
+          "quadra": "Quadra - 3",
+          "dia": 4,
+          "hora": 22
+        }
+      ],
+      "organizador": "Rotina Automática de Sistema",
+      "jogadores": "Limpeza de Histórico",
+      "jogadores_completo": "Limpeza Massiva de Histórico por Decurso de Prazo",
+      "dataCompleta": "Anteriores a 17/07/2026"
+    }
   }
 ]
