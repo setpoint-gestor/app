@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "timestamp": "2026-07-19T21:53:35.977Z",
+    "dataLocal": "19/07/2026, 18:53:35",
+    "autor": "ANA JULIA MARTINS",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "15:00 - 16:00",
+    "duracao": "1 Hora",
+    "data": "19-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Alessandro Xavier, Alexandre Voj, Allana Barbosa",
+    "jogadores_completo": "ANA JULIA MARTINS, ALESSANDRO ROMERO XAVIER, ALEXANDRE VOJCIECHOVSKI, ALLANA BARBOSA",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 15
+      }
+    ]
+  }
+]
