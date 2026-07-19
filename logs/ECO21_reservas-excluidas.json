@@ -306,5 +306,34 @@
         "hora": 15
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-19T18:13:51.059Z",
+    "dataLocal": "19/07/2026, 15:13:51",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "15:00 - 17:00",
+    "duracao": "2 Horas",
+    "data": "19-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "jogadores": "Adriano Feitosa, Alessandro Xavier, Alexandre Voj, Andre Guzik",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALESSANDRO ROMERO XAVIER, ALEXANDRE VOJCIECHOVSKI, ANDRE GUZIK",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 15
+      },
+      {
+        "dia": 7,
+        "hora": 16
+      }
+    ]
   }
 ]
