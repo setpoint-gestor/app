@@ -73,5 +73,285 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.979Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Ronaldo Taborda Costa",
+    "confirmacoes": {
+      "Ronaldo Taborda Costa": true
+    },
+    "jogadores": "Ronaldo Taborda Costa, Alessandro Xavier",
+    "jogadores_completo": "Ronaldo Taborda Costa, ALESSANDRO ROMERO XAVIER",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "22:00 - 23:00",
+    "duracao": "1 Hora",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "confirmacoes": {
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Ana Maria Marinho",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 22
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA FRANCISCA SANTOS",
+    "confirmacoes": {
+      "Ana Francisca": true
+    },
+    "jogadores": "Ana Francisca, Alice Pereira, Allana Barbosa",
+    "jogadores_completo": "ANA FRANCISCA SANTOS, ALICE ALMEIDA PEREIRA, ALLANA BARBOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 7
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 09:00",
+    "duracao": "1 Hora",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA FRANCISCA SANTOS",
+    "confirmacoes": {
+      "Ana Francisca": true
+    },
+    "jogadores": "Ana Francisca",
+    "jogadores_completo": "ANA FRANCISCA SANTOS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 8
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA LICE DOURADO",
+    "confirmacoes": {
+      "An Alice": true
+    },
+    "jogadores": "An Alice, Almir",
+    "jogadores_completo": "ANA LICE DOURADO, ALMIR ALVES DA CRUZ",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 5,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 3",
+        "dia": 5,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "22:00 - 23:00",
+    "duracao": "1 Hora",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Arnold",
+    "jogadores_completo": "ANA JULIA MARTINS, ARNOLD WINTER",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 5,
+        "hora": 22
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "confirmacoes": {
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Ana Maria Marinho, Fernando Cavalheiro, Arnold, Heloisa Silva",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, FERNANDO LEONARDO CAVALHEIRO, ARNOLD WINTER, HELOISA VIEIRA DA SILVA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 5,
+        "hora": 6
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "confirmacoes": {
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Ana Maria Marinho, Gustavo Ferraz, Frank Fast, Joao Dario",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, GUSTAVO FERRAZ, FRANK FAST, JOAO DARIO DINIZ",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 5,
+        "hora": 7
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "08:00 - 09:00",
+    "duracao": "1 Hora",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA LICE DOURADO",
+    "confirmacoes": {
+      "An Alice": true
+    },
+    "jogadores": "An Alice",
+    "jogadores_completo": "ANA LICE DOURADO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 5,
+        "hora": 8
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-21T09:25:55.980Z",
+    "dataLocal": "21/07/2026, 06:25:55",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "09:00 - 11:00",
+    "duracao": "2 Horas",
+    "data": "17-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA LICE DOURADO",
+    "confirmacoes": {
+      "An Alice": true
+    },
+    "jogadores": "An Alice, Almir",
+    "jogadores_completo": "ANA LICE DOURADO, ALMIR ALVES DA CRUZ",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 5,
+        "hora": 9
+      },
+      {
+        "quadra": "Quadra - 3",
+        "dia": 5,
+        "hora": 10
+      }
+    ]
   }
 ]
