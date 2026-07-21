@@ -48,5 +48,30 @@
         "hora": 22
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-21T01:23:46.231Z",
+    "dataLocal": "20/07/2026, 22:23:46",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 09:00",
+    "duracao": "1 Hora",
+    "data": "22-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Ronaldo Taborda Costa",
+    "confirmacoes": {
+      "Ronaldo Taborda Costa": true
+    },
+    "jogadores": "Ronaldo Taborda Costa",
+    "jogadores_completo": "Ronaldo Taborda Costa",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 8
+      }
+    ]
   }
 ]
