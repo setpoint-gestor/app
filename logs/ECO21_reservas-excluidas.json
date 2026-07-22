@@ -415,5 +415,34 @@
         "hora": 20
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-22T16:34:42.593Z",
+    "dataLocal": "22/07/2026, 13:34:42",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "15:00 - 17:00",
+    "duracao": "2 Horas",
+    "data": "23-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "jogadores": "Adriano Feitosa",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 15
+      },
+      {
+        "dia": 4,
+        "hora": 16
+      }
+    ]
   }
 ]
