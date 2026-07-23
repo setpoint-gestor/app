@@ -444,5 +444,67 @@
         "hora": 16
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-23T10:43:12.634Z",
+    "dataLocal": "23/07/2026, 07:43:12",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "19-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "jogadores": "Adriano Feitosa, Alexandre Camargo",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEXANDRE CAMARGO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-23T10:43:12.635Z",
+    "dataLocal": "23/07/2026, 07:43:12",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "09:00 - 11:00",
+    "duracao": "2 Horas",
+    "data": "19-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "jogadores": "Adriano Feitosa, Alexandre Camargo",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEXANDRE CAMARGO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 9
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 10
+      }
+    ]
   }
 ]
