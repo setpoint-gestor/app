@@ -506,5 +506,30 @@
         "hora": 10
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-23T21:08:48.501Z",
+    "dataLocal": "23/07/2026, 18:08:48",
+    "autor": "ANA FRANCISCA SANTOS",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "22:00 - 23:00",
+    "duracao": "1 Hora",
+    "data": "23-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA FRANCISCA SANTOS",
+    "confirmacoes": {
+      "Ana Francisca": true
+    },
+    "jogadores": "Ana Francisca",
+    "jogadores_completo": "ANA FRANCISCA SANTOS",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 22
+      }
+    ]
   }
 ]
