@@ -743,5 +743,30 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ANA JULIA MARTINS",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Ana Julia": true
+    },
+    "data": "25-07-2026",
+    "dataLocal": "24/07/2026, 19:08:31",
+    "duracao": "1 Hora",
+    "horario": "07:00 - 08:00",
+    "jogadores": "Ana Julia",
+    "jogadores_completo": "ANA JULIA MARTINS",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 7
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-07-24T22:08:31.851Z"
   }
 ]
