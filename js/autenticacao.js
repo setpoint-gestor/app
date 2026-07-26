@@ -368,19 +368,28 @@ function trocarDeClubeJogador() {
 
 
 // ==========================================
-// 5. ROTEAMENTO DE NAVEGAÇÃO VINDO DO SITE
+// 5. ROTEAMENTO E TUTORIAL VINDO DO SITE
 // ==========================================
 function verificarDirecionamentoSite() {
     const urlParams = new URLSearchParams(window.location.search);
     const telaDesejada = urlParams.get('tela');
+    const origemPWA = urlParams.get('pwa');
 
-    // Se houver uma tela informada na URL (ex: tela-gestor-login ou tela-gestor-cadastro)
+    // 🍎 SE VIER DO CARD DO IPHONE NO SITE: Exibe o Pop-up de instalação
+    if (origemPWA === 'ios') {
+        setTimeout(() => {
+            if (typeof showToast === 'function') {
+                showToast('📱 No Safari, toque em "Compartilhar" e "Adicionar à Tela de Início"', 'info');
+            } else {
+                alert('📱 DICA DE INSTALAÇÃO NO IPHONE:\n\n1. Toque no ícone de Compartilhar (quadrado com seta no Safari).\n2. Selecione "Adicionar à Tela de Início".\n3. Abra pelo novo ícone criado!');
+            }
+        }, 1000);
+    }
+
+    // Redirecionamento de tela normal
     if (telaDesejada) {
-        // Aguarda 300ms para dar tempo do Auto-Login (Seção 1) verificar se o usuário já está logado
         setTimeout(() => {
             const estaLogado = isGestorLogado || localStorage.getItem('jogadorLogadoId');
-            
-            // Se NÃO houver usuário logado, redireciona para a tela específica solicitada pelo site
             if (!estaLogado && typeof navegarApp === 'function') {
                 navegarApp(telaDesejada);
             }
@@ -388,5 +397,25 @@ function verificarDirecionamentoSite() {
     }
 }
 
-// Executa a verificação assim que a página é totalmente carregada
 window.addEventListener('load', verificarDirecionamentoSite);
+
+
+
+// ==========================================
+// 6. OCULTA BOTÕES DE FECHAR NO PWA / WEB
+// ==========================================
+function aplicarRegrasInterfacePWA() {
+    const isAndroidNativo = (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function');
+
+    if (!isAndroidNativo) {
+        // Oculta botão de fechar na Tela de Boas-Vindas
+        const btnBoasVindas = document.getElementById('btn-fechar-app');
+        if (btnBoasVindas) btnBoasVindas.style.display = 'none';
+
+        // Oculta botão de fechar no cabeçalho da Visão das Quadras
+        const btnPlanilha = document.getElementById('btn-fechar-planilha');
+        if (btnPlanilha) btnPlanilha.style.display = 'none';
+    }
+}
+
+window.addEventListener('load', aplicarRegrasInterfacePWA);
