@@ -252,7 +252,8 @@
                 <i class="material-icons card-icone" style="color: #3DDC84;">android</i>
                 <h3>Android</h3>
                 <p>Baixe o SetPoint Gestor diretamente na Google Play Store. Rápido, leve e com notificações em tempo real.</p>
-                <a href="https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq" class="btn-loja destaque" target="_blank">
+                <!-- COMO FICARÁ O BOTÃO DO ANDROID: -->
+				<a href="https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq" class="btn-loja destaque" target="_blank" onclick="baixarApkAndroid(event)">
 					Baixar Aplicativo (APK)
 				</a>
             </div>
@@ -284,6 +285,21 @@
         &copy; 2026 SetPoint Gestor SaaS. Todos os direitos reservados. <br>
         Versão 1.0 (Build V16)
     </footer>
+	
+	<script>
+		function baixarApkAndroid(event) {
+			// Detecta se o dispositivo é um iPhone, iPad ou iPod
+			const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+			if (isIOS) {
+				// Cancela o download do arquivo no iPhone
+				event.preventDefault();
+				
+				// Exibe a orientação amigável
+				alert('📱 Você está navegando de um iPhone!\n\nArquivos APK são exclusivos para sistemas Android.\n\nPara o seu iPhone, utilize o botão "Acessar Web App (PWA)" no card do iOS logo ao lado!');
+			}
+		}
+	</script>
 
 </body>
 </html>
