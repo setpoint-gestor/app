@@ -1,0 +1,1045 @@
+/* ======================================================== */
+/* 1. MÓDULO PRINCIPAL: TELA CHEIA E CHASSI DO MODAL        */
+/* ======================================================== */
+
+.modal-regras-fullscreen {
+    width: 100vw !important;
+    height: 100dvh !important; /* dvh garante que a barra do celular não corte o rodapé */
+    max-width: 100vw !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important; 
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-site, #f4f6f8);
+}
+
+
+/* Cabeçalho Fixo Superior sob o Novo Padrão Global */
+.modal-regras-fullscreen .header-painel {
+    background: #ffffff !important;
+    padding: 15px 20px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03) !important;
+    flex-shrink: 0 !important;
+}
+
+.modal-regras-fullscreen .header-painel h2 { 
+    margin: 0 !important; 
+    color: #1e293b !important; 
+    border: none !important; 
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+}
+
+
+/* Área Central de Rolagem */
+.regras-content-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    padding-bottom: 90px; /* Evita que o footer fixo cubra o conteúdo */
+}
+
+
+/* ======================================================== */
+/* 2. EXPERIÊNCIA MOBILE: LAYOUT SANFONA (CELULAR)          */
+/* ======================================================== */
+
+@media (max-width: 768px) {
+    .sanfona-container {
+        max-width: 700px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .accordion-item {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        overflow: hidden;
+        transition: box-shadow 0.3s ease, border-color 0.3s;
+    }
+
+    .accordion-item.active {
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        border-color: #cbd5e1;
+    }
+
+    .accordion-header {
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        background: #ffffff;
+        transition: background 0.2s ease;
+    }
+    .accordion-header:active { background: #f8fafc; }
+    .accordion-header-left { display: flex; align-items: center; gap: 12px; }
+    
+    .icon-arrow { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); color: #94a3b8; }
+    .accordion-item.active .icon-arrow { transform: rotate(180deg); color: #2e7d32; }
+
+    .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #ffffff;
+    }
+    .accordion-content-inner {
+        padding: 0 20px 20px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px; 
+    }
+    
+    /* Configuração de Empilhamento das Descrições no Mobile */
+    .header-title-block {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        text-align: left;
+    }
+    .header-title-block .sidebar-title { 
+        font-weight: 700; 
+        font-size: 16px; 
+        color: #1e293b; 
+    }
+    .header-title-block .sidebar-desc { 
+        display: block !important; /* Força a exibição no Celular */
+        font-size: 12px; 
+        font-weight: 400;
+        color: #64748b; 
+    }
+}
+
+/* ======================================================== */
+/* 📱 CORREÇÕES MOBILE: SANFONA E ALINHAMENTO DA PÍLULA     */
+/* ======================================================== */
+@media (max-width: 768px) {
+
+    /* 1️⃣ CORREÇÃO DO CORTE: Libera a altura do acordeão pai quando aberto */
+    .accordion-item.active .accordion-content,
+    .accordion-item.mobile-opened .accordion-content {
+        max-height: 2000px !important; /* Permite expansão total sem cortar os itens do fundo */
+    }
+
+    /* 2️⃣ CORREÇÃO DO LAYOUT: Evita quebras absurdas de texto no título */
+    .card-agendar-box {
+        padding: 12px 14px !important;
+    }
+
+    .card-agendar-box .acordeao-trigger-row {
+        gap: 8px !important;
+    }
+
+    .card-agendar-box .coluna-acao-direita {
+        width: auto !important; /* Ajusta dinamicamente ao espaço do celular */
+        gap: 6px !important;
+    }
+
+    /* Ajuste de escala dos textos e da pílula para telas estreitas */
+    .card-agendar-box .ctrl-title {
+        font-size: 14px !important;
+    }
+
+    .card-agendar-box .ctrl-desc {
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+    }
+
+    .card-agendar-box .badge-contador {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+    }
+}
+
+
+/* ======================================================== */
+/* 3. EXPERIÊNCIA DESKTOP: LAYOUT MENU LATERAL (COMPUTADOR) */
+/* ======================================================== */
+
+@media (min-width: 769px) {
+    #modal-regras .sanfona-container {
+        display: grid;
+        grid-template-columns: 340px 1fr; /* Largura ideal para comportar os títulos em linha única */
+        gap: 24px;
+        align-items: start;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    /* display: contents entrega os filhos operacionais direto para o Grid */
+    #modal-regras .accordion-item {
+        display: contents;
+    }
+
+    /* Transforma os cabeçalhos das gavetas em botões do Menu Lateral */
+    #modal-regras .accordion-header {
+        grid-column: 1;
+        padding: 14px 18px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    #modal-regras .accordion-header:hover { background: #f8fafc; }
+    
+    #modal-regras .accordion-header-left { display: flex; align-items: center; gap: 14px; width: 100%; }
+
+    /* Caixa vertical para Título + Subtítulo dentro do botão */
+    .header-title-block {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        text-align: left;
+    }
+    .header-title-block .sidebar-title {
+        font-weight: 700;
+        font-size: 15px;
+        color: #1e293b;
+        white-space: nowrap; /* TRAVA DE LINHA ÚNICA */
+    }
+    .header-title-block .sidebar-desc {
+        font-size: 11px;
+        font-weight: 400;
+        color: #64748b;
+        white-space: nowrap; /* Impede quebras na descrição também */
+    }
+
+    /* Força o ordenamento rígido das linhas da Sidebar */
+    #modal-regras .accordion-item:nth-of-type(1) .accordion-header { grid-row: 1; }
+    #modal-regras .accordion-item:nth-of-type(2) .accordion-header { grid-row: 2; }
+    #modal-regras .accordion-item:nth-of-type(3) .accordion-header { grid-row: 3; }
+    #modal-regras .accordion-item:nth-of-type(4) .accordion-header { grid-row: 4; }
+    #modal-regras .accordion-item:nth-of-type(5) .accordion-header { grid-row: 5; }
+    #modal-regras .accordion-item:nth-of-type(6) .accordion-header { grid-row: 6; }
+
+    /* Estilo do botão de Menu Selecionado (Ativo) */
+    #modal-regras .accordion-item.active .accordion-header {
+        background: var(--cor-primaria, #2E8B57);
+        border-color: var(--cor-primaria, #2E8B57);
+        box-shadow: 0 4px 12px rgba(46, 139, 87, 0.15);
+    }
+    #modal-regras .accordion-item.active .accordion-header i { color: #ffffff !important; }
+    #modal-regras .accordion-item.active .sidebar-title { color: #ffffff !important; }
+    #modal-regras .accordion-item.active .sidebar-desc { color: #e2e8f0 !important; }
+
+    /* Oculta a seta lateral no computador */
+    #modal-regras .accordion-header .icon-arrow { display: none !important; }
+
+    /* Área de Trabalho da Direita */
+    #modal-regras .accordion-content {
+        display: none;
+        grid-column: 2;
+        grid-row: 1 / span 7;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        max-height: none !important;
+    }
+    #modal-regras .accordion-item.active .accordion-content {
+        display: block;
+    }
+    #modal-regras .accordion-content-inner {
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+}
+
+
+/* ======================================================== */
+/* 4. CONTROLES INTERNOS, ALINHAMENTOS E SWITCH (ESTILO iOS)*/
+/* ======================================================== */
+
+#modal-regras .accordion-content-inner .ctrl-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: left;
+}
+#modal-regras .accordion-content-inner .ctrl-row:last-child { border-bottom: none; }
+
+#modal-regras .accordion-content-inner .ctrl-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 15px;
+    flex: 1;
+    text-align: left;
+}
+
+#modal-regras .accordion-content-inner .ctrl-title { font-size: 15px; font-weight: 600; color: #334155; margin: 0; }
+#modal-regras .accordion-content-inner .ctrl-desc { font-size: 13px; color: #64748b; line-height: 1.4; margin: 0; }
+
+#modal-regras .accordion-content-inner .modern-select {
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #f8fafc;
+    outline: none;
+    text-align: center;
+    text-align-last: center;
+    color: #1e293b;
+    font-weight: 600;
+    cursor: pointer;
+    width: 130px;
+    flex-shrink: 0;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px top 50%;
+    background-size: 10px auto;
+}
+#modal-regras .accordion-content-inner .modern-select:focus { border-color: var(--cor-primaria); }
+
+#modal-regras .accordion-content-inner .modern-select:disabled {
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+    opacity: 0.8;
+}
+
+#modal-regras .btn-acao-mini {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s, background-color 0.2s;
+    flex-shrink: 0;
+}
+#modal-regras .btn-acao-mini:active { transform: scale(0.92); }
+#modal-regras .btn-novo-perfil { background-color: #eff6ff; color: #3b82f6; }
+#modal-regras .btn-editar-perfil { background-color: #fef3c7; color: #f59e0b; }
+
+#modal-regras .accordion-content-inner .switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 28px;
+    flex-shrink: 0;
+    margin: 0;
+}
+#modal-regras .accordion-content-inner .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+#modal-regras .accordion-content-inner .slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1; transition: .3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 28px;
+}
+#modal-regras .accordion-content-inner .slider:before {
+    position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px;
+    background-color: white; transition: .3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+#modal-regras .accordion-content-inner input:checked + .slider { background-color: var(--cor-primaria); }
+#modal-regras .accordion-content-inner input:checked + .slider:before { transform: translateX(20px); }
+
+.regras-footer {
+    position: fixed;
+    bottom: 0; left: 0; width: 100%;
+    background: #ffffff;
+    padding: 15px 20px;
+    box-sizing: border-box;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: center;
+    z-index: 200;
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.03);
+}
+.btn-regras-salvar {
+    background: #2E8B57;
+    color: #ffffff;
+    border: none;
+    padding: 15px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    width: 100%;
+    max-width: 600px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(46, 139, 87, 0.25);
+    transition: transform 0.1s, background-color 0.2s;
+}
+.btn-regras-salvar:active { transform: scale(0.98); }
+/* ======================================================== */
+/* CARD ENVELOPADO E BADGE (QUEM PODE AGENDAR)              */
+/* ======================================================== */
+.card-agendar-box {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    background: #f8fafc;
+    transition: all 0.25s ease;
+    margin-top: 15px;
+}
+
+.acordeao-trigger-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    width: 100%;
+}
+
+.coluna-acao-direita {
+    width: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.badge-contador {
+    background: rgba(46, 139, 87, 0.15);
+    color: var(--cor-primaria, #2E8B57);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.icon-seta-acordeao {
+    color: #64748b;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 24px;
+}
+
+.card-agendar-box.aberto .icon-seta-acordeao {
+    transform: rotate(180deg);
+    color: var(--cor-primaria, #2E8B57);
+}
+
+.card-agendar-box.aberto {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.sub-drawer-box {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin-top 0.3s ease;
+    width: 100%;
+}
+
+.card-agendar-box.aberto .sub-drawer-box {
+    max-height: 400px;
+    opacity: 1;
+    margin-top: 14px;
+}
+
+.sub-list-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.sub-list-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.sub-list-row:last-child { border-bottom: none; }
+
+.sub-item-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.sub-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.sub-item-desc {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.sub-list-row .switch {
+    position: relative; 
+    display: inline-block; 
+    width: 48px; 
+    height: 28px; 
+    flex-shrink: 0; 
+    margin: 0;
+}
+
+.sub-list-row .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+
+.sub-list-row .slider {
+    position: absolute; 
+    cursor: pointer; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1; 
+    transition: .3s cubic-bezier(0.4, 0, 0.2, 1); 
+    border-radius: 28px;
+}
+
+.sub-list-row .slider:before {
+    position: absolute; 
+    content: ""; 
+    height: 22px; 
+    width: 22px; 
+    left: 3px; 
+    bottom: 3px;
+    background-color: white; 
+    transition: .3s cubic-bezier(0.4, 0, 0.2, 1); 
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.sub-list-row input:checked + .slider { background-color: var(--cor-primaria, #28a745); }
+.sub-list-row input:checked + .slider:before { transform: translateX(20px); }
+
+/* 🖥️ COMPUTADOR: Alinhamento perfeito da pílula com o select acima */
+@media (min-width: 769px) {
+    .card-agendar-box .coluna-acao-direita {
+        width: 114px !important;
+    }
+}
+
+
+/* ======================================================== */
+/* 5. CORES DO MODO ESCURO (DARK MODE)                      */
+/* ======================================================== */
+
+body.dark-mode .modal-regras-fullscreen { background-color: #121212; }
+
+/* 🛡️ CABEÇALHO & BOTÃO VOLTAR (Contraste Máximo Restaurado) */
+body.dark-mode .modal-regras-fullscreen .header-painel { 
+    background: #1e1e1e !important; 
+    border-bottom-color: #333 !important; 
+}
+body.dark-mode .modal-regras-fullscreen .header-painel h2 { color: #f8fafc !important; }
+body.dark-mode .modal-regras-fullscreen .header-painel span { color: #94a3b8 !important; }
+body.dark-mode .modal-regras-fullscreen .header-painel button { color: #cbd5e1 !important; }
+
+/* Acordeão Geral (Mobile) */
+body.dark-mode .accordion-item { background: #1e1e1e; border-color: #333; }
+body.dark-mode .accordion-item.active { border-color: #555; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+body.dark-mode .accordion-header { background: #1e1e1e; color: #f8fafc; }
+body.dark-mode .accordion-header:active { background: #262626; }
+body.dark-mode .accordion-content { background: #1e1e1e; }
+body.dark-mode .icon-arrow { color: #64748b; }
+body.dark-mode .accordion-item.active .icon-arrow { color: #4ade80; }
+
+/* 🌟 TEXTOS DAS ABAS/ACORDEÃO (Unificado: Sem Duplicidade Mobile/Desktop) */
+body.dark-mode .sidebar-title { color: #f8fafc !important; }
+body.dark-mode .sidebar-desc { color: #94a3b8 !important; }
+
+/* 🖥️ AJUSTES DE CONTRASTE PARA DESKTOP (Computador) */
+@media (min-width: 769px) {
+    body.dark-mode #modal-regras .accordion-header { background: #1e1e1e; border-color: #333; }
+    body.dark-mode #modal-regras .accordion-header:hover { background: #262626; }
+    
+    /* Abas Ativas brilhantes e destacadas contra o fundo verde */
+    body.dark-mode #modal-regras .accordion-item.active .accordion-header { 
+        background: var(--cor-primaria, #2E8B57);
+        border-color: var(--cor-primaria, #2E8B57);
+    }
+    body.dark-mode #modal-regras .accordion-item.active .sidebar-title { color: #ffffff !important; }
+    body.dark-mode #modal-regras .accordion-item.active .sidebar-desc { color: #e2e8f0 !important; }
+
+    /* 🔮 PROFUNDIDADE 3D: Sombra do painel da direita otimizada para o escuro */
+    body.dark-mode #modal-regras .accordion-content { 
+        background: #1e1e1e; 
+        border-color: #333; 
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+    }
+}
+
+/* Controles Internos */
+body.dark-mode #modal-regras .accordion-content-inner .ctrl-row { border-bottom-color: #333; }
+body.dark-mode #modal-regras .accordion-content-inner .ctrl-title { color: #f8fafc; }
+body.dark-mode #modal-regras .accordion-content-inner .ctrl-desc { color: #94a3b8 !important; } /* 🌟 CORREÇÃO DO CONTRASTE DOS SUBTÍTULOS INTERNOS (STATUS DO APP, DIAS, ETC) */
+body.dark-mode #modal-regras .accordion-content-inner .modern-select { background: #262626; border-color: #444; color: #f8fafc; }
+body.dark-mode #modal-regras .accordion-content-inner .modern-select:disabled { background-color: #1a1a1a; color: #555; border-color: #333; }
+
+body.dark-mode #modal-regras .btn-novo-perfil { background-color: #1e3a8a; color: #60a5fa; }
+body.dark-mode #modal-regras .btn-editar-perfil { background-color: #78350f; color: #fbbf24; }
+
+body.dark-mode .regras-footer { background: #1e1e1e; border-top-color: #333; }
+
+/* 🌓 MODO ESCURO: CARD QUEM PODE AGENDAR */
+body.dark-mode .card-agendar-box {
+    background: #252525 !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode .sub-list-box {
+    background: #1e1e1e !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode .sub-list-row {
+    border-bottom-color: #333333 !important;
+}
+
+body.dark-mode .sub-item-title {
+    color: #f8fafc !important;
+}
+
+body.dark-mode .sub-item-desc {
+    color: #94a3b8 !important;
+}
+
+/* ======================================================== */
+/* 6. Correção: Setinha do Acordeão no Mobile               */
+/* ======================================================== */
+@media (max-width: 768px) {
+    /* No celular, a gaveta só abre DEPOIS que clica. 
+       Então, mesmo com a classe 'active' padrão, a seta começa para baixo. */
+    .accordion-item:not(.mobile-opened) .icon-arrow {
+        transform: rotate(0deg) !important; 
+    }
+    
+    /* Quando o usuário clica DE FATO, adicionamos a rotação */
+    .accordion-item.mobile-opened .icon-arrow {
+        transform: rotate(-180deg) !important;
+    }
+}
+
+
+/* ======================================================== */
+/* 7. MODAIS DE PERFIL E PERMISSÕES (PALETA E SWITCHES)     */
+/* ======================================================== */
+
+.modal-regras-perfil {
+    padding: 0 !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-site, #f4f6f8);
+}
+
+/* Grid da Paleta de Cores */
+.paleta-cores-grid { 
+    display: flex; 
+    gap: 12px; 
+    flex-wrap: wrap; 
+    margin-top: 8px;
+}
+
+.dot-cor { 
+    width: 38px; 
+    height: 38px; 
+    border-radius: 50%; 
+    cursor: pointer; 
+    border: 3px solid transparent; 
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+}
+
+.dot-cor:active { transform: scale(0.9); }
+.dot-cor:hover { transform: scale(1.15); }
+
+.dot-cor.ativa { 
+    border-color: #1e293b; 
+    transform: scale(1.1); 
+}
+
+.dot-cor.ativa::after {
+    content: '✓';
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Linha Mestra (Acesso Total Amarelo) */
+.sp-master-row { 
+    background: #fff3cd; 
+    border: 1px solid #ffeeba; 
+    padding: 15px 20px; 
+    border-radius: 8px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 20px; 
+}
+
+/* Lista Estilo iOS (Chaves de Permissão) */
+.ios-list-permissoes { 
+    background: #f8fafc; 
+    border-radius: 12px; 
+    overflow: hidden; 
+    border: 1px solid #e2e8f0; 
+}
+
+.ios-item-perm { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 15px 20px; 
+    border-bottom: 1px solid #e2e8f0; 
+    background: white; 
+}
+
+.ios-item-perm:last-child { 
+    border-bottom: none; 
+}
+
+.ios-item-text { 
+    font-size: 15px; 
+    font-weight: 500; 
+    color: #334155; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+}
+
+.ios-item-text i { 
+    color: #64748b; 
+    font-size: 20px; 
+}
+
+/* ======================================================== */
+/* 🌓 SUPORTE AO MODO ESCURO (DARK MODE)                    */
+/* ======================================================== */
+body.dark-mode .modal-regras-perfil { 
+    background-color: #1e1e1e !important; 
+}
+
+body.dark-mode .sp-master-row {
+    background: #332b00;
+    border-color: #665c00;
+}
+
+body.dark-mode .sp-master-row b,
+body.dark-mode .sp-master-row div {
+    color: #eab308 !important; /* Dourado legível no fundo escuro */
+}
+
+body.dark-mode .ios-list-permissoes {
+    background: #1e1e1e;
+    border-color: #333;
+}
+
+body.dark-mode .ios-item-perm {
+    background: #252525;
+    border-bottom-color: #333;
+}
+
+body.dark-mode .ios-item-text {
+    color: #f8fafc;
+}
+
+body.dark-mode .ios-item-text i {
+    color: #94a3b8;
+}
+
+body.dark-mode .dot-cor.ativa {
+    border-color: #f8fafc;
+}
+
+
+/* ======================================================== */
+/* 8. SWITCHES (ESTILO IOS) PARA O NOVO MODAL DE PERMISSÕES */
+/* ======================================================== */
+
+.sp-master-row .switch,
+.ios-item-perm .switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 28px;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.sp-master-row .switch input,
+.ios-item-perm .switch input { 
+    opacity: 0; 
+    width: 0; 
+    height: 0; 
+    position: absolute; 
+}
+
+.sp-master-row .slider,
+.ios-item-perm .slider {
+    position: absolute; 
+    cursor: pointer; 
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0;
+    background-color: #cbd5e1; 
+    transition: .3s cubic-bezier(0.4, 0, 0.2, 1); 
+    border-radius: 28px;
+}
+
+.sp-master-row .slider:before,
+.ios-item-perm .slider:before {
+    position: absolute; 
+    content: ""; 
+    height: 22px; 
+    width: 22px; 
+    left: 3px; 
+    bottom: 3px;
+    background-color: white; 
+    transition: .3s cubic-bezier(0.4, 0, 0.2, 1); 
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.sp-master-row input:checked + .slider,
+.ios-item-perm input:checked + .slider { 
+    background-color: var(--cor-primaria, #28a745); 
+}
+
+.sp-master-row input:checked + .slider:before,
+.ios-item-perm input:checked + .slider:before { 
+    transform: translateX(20px); 
+}
+
+/* Estado Desativado (Quando a Mestra está ligada, trava as de baixo) */
+.sp-master-row input:disabled + .slider,
+.ios-item-perm input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ======================================================== */
+/* 🌓 MODO ESCURO: MODAL CRIAR NOVO PERFIL                  */
+/* ======================================================== */
+body.dark-mode #modal-novo-perfil .modal-content {
+    background-color: #1e1e1e !important;
+    border: 1px solid #333333 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Cabeçalho, Corpo e Rodapé */
+body.dark-mode #modal-novo-perfil .modal-content > div {
+    background-color: #1e1e1e !important;
+    border-color: #333333 !important;
+}
+
+/* Título e Rótulos (Labels) */
+body.dark-mode #modal-novo-perfil h3 {
+    color: #f8fafc !important;
+}
+
+body.dark-mode #modal-novo-perfil label {
+    color: #94a3b8 !important;
+}
+
+/* Campos de Texto (Inputs) */
+body.dark-mode #modal-novo-perfil .input-app {
+    background-color: #262626 !important;
+    color: #f8fafc !important;
+    border-color: #444444 !important;
+}
+
+body.dark-mode #modal-novo-perfil .input-app::placeholder {
+    color: #64748b !important;
+}
+
+/* Botão Cancelar do Rodapé */
+body.dark-mode #modal-novo-perfil button[onclick*="fecharModalConfig"] {
+    background-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+/* ======================================================== */
+/* 🌓 MODO ESCURO: MODAL EDITAR PERMISSÕES                  */
+/* ======================================================== */
+body.dark-mode #modal-editar-permissoes .modal-form-content {
+    background-color: #1e1e1e !important;
+    border: 1px solid #333333 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Cabeçalho do Modal */
+body.dark-mode #modal-editar-permissoes .header-painel {
+    background: #1e1e1e !important;
+    border-bottom: 1px solid #333333 !important;
+}
+
+body.dark-mode #modal-editar-permissoes .header-painel h2 {
+    color: #f8fafc !important;
+}
+
+body.dark-mode #modal-editar-permissoes .header-painel span {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode #modal-editar-permissoes .header-painel button:not(#btn-excluir-perfil-saas) {
+    color: #cbd5e1 !important;
+}
+
+/* Corpo do Modal */
+body.dark-mode #modal-editar-permissoes .saas-body {
+    background: #1e1e1e !important;
+}
+
+
+/* ======================================================== */
+/* 9. COMPONENTE ACORDEÃO INFORMATIVO (PERMISSÕES)          */
+/* ======================================================== */
+
+.acordeao-container {
+    width: 130px; /* Iguala aos 135px exatos do .modern-select */
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: width 0.2s ease;
+}
+
+/* Quando aberto, expande suavemente para acomodar as pílulas */
+.acordeao-container.aberto { 
+    width: 130px;
+}
+
+.acordeao-header {
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+.acordeao-header:hover { background: #f1f5f9; border-color: #94a3b8; }
+
+/* Cabeçalho com Texto Centralizado */
+.acordeao-resumo-texto {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Centraliza o texto no meio da caixa */
+    flex: 1; /* Preenche todo o espaço para garantir a centralização */
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+.acordeao-seta {
+    color: #94a3b8;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 20px;
+}
+
+/* Bandeja Oculta Deslizante */
+.acordeao-drawer {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    background: #ffffff;
+    border: 1px solid transparent;
+    border-radius: 0 0 8px 8px;
+    margin-top: -1px;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.2s ease, 
+                padding 0.3s ease,
+                border-color 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+}
+
+/* Estado ABERTO */
+.acordeao-container.aberto .acordeao-header {
+    border-radius: 8px 8px 0 0;
+    border-color: #3b82f6;
+    background: #ffffff;
+}
+
+.acordeao-container.aberto .acordeao-seta {
+    transform: rotate(180deg);
+    color: #3b82f6;
+}
+
+/* Bandeja de Pílulas com Conteúdo Centralizado */
+.acordeao-container.aberto .acordeao-drawer {
+    max-height: 350px;
+    opacity: 1;
+    padding: 10px;
+    border-color: #3b82f6;
+    border-top: 1px dashed #e2e8f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: flex-start;
+    justify-content: center; /* Centraliza as pílulas de permissão */
+}
+
+/* Pílulas de Permissão */
+.tag-permissao {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.tag-admin { background: #fef08a; color: #854d0e; border: 1px solid #fde047; }
+.tag-comum { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.tag-vazia { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; font-weight: 500; }
+.tag-permissao i { font-size: 14px; }
+
+/* Dark Mode */
+body.dark-mode .acordeao-header { background: #262626; border-color: #444; }
+body.dark-mode .acordeao-resumo-texto { color: #f8fafc; }
+/* 🌓 MODO ESCURO: Dourado vivo para o "Acesso Total" */
+body.dark-mode #txt-resumo-permissao span {
+    color: #eab308 !important;
+}
+body.dark-mode .acordeao-drawer { background: #1e1e1e; }
+body.dark-mode .tag-vazia { background: #262626; color: #94a3b8; border-color: #444; }
+body.dark-mode .tag-comum { background: #075985; color: #e0f2fe; border-color: #0284c7; }

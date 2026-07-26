@@ -1,0 +1,1199 @@
+/* ======================================================== */
+/* 1. ESTRUTURA DA JANELA COM ALTURA E LARGURA FIXAS        */
+/* ======================================================== */
+.modal-config-janela {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+
+/* BLINDAGEM: Remove folgas e zera o espaço do rodapé quando ele estiver vazio no Hub inicial */
+.config-modal-footer:empty {
+    padding: 0 !important;
+    height: 0 !important;
+    border: none !important;
+}
+
+/* CONTAINER DAS ABAS MESTRAS */
+.config-tabs-escopo {
+    display: flex;
+    background-color: #f1f5f9;
+    padding: 4px;
+    border-radius: 10px;
+	margin: 16px 24px 16px 24px;
+}
+
+.tab-escopo-btn {
+    flex: 1;
+    padding: 10px 5px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.tab-escopo-btn.ativa {
+    background-color: #ffffff;
+    color: #1e293b;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); 
+}
+
+/* VISIBILIDADE DOS LABELS */
+.txt-desktop { display: inline; }
+.txt-mobile { display: none; }
+
+/* Restaura a elasticidade da tela no Celular (Impede o esmagamento do rodapé) */
+.modal-config-janela .chassi-workspace {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0; /* Trava de segurança contra vazamento vertical */
+    width: 100%;
+}
+
+/* CORPO INTERNO ROLÁVEL (BLINDADO CONTRA SHIFT DE ALTURA) */
+.config-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 24px;
+    box-sizing: border-box;
+}
+
+.area-sub-escopo {
+    display: none;
+    width: 100%;
+}
+
+.area-sub-escopo.ativa {
+    display: block;
+    animation: fadeInConfig 0.2s ease-out forwards;
+}
+
+/* Força o container interno de textos do cabeçalho a se alinhar à esquerda */
+.modal-config-janela .header-painel > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+}
+
+/* ======================================================== */
+/* 2. LAYOUT PADRÃO: COMPUTADOR (GRID SIMÉTRICO 2x2)        */
+/* ======================================================== */
+.bento-grid-config {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 16px;
+    padding: 4px 0;
+}
+
+.bento-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    cursor: pointer;
+    min-height: 145px; /* Força todos a virarem quadrados simétricos */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.01);
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.bento-card h4 {
+    margin: 12px 0 4px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.bento-card p {
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* CORES DOS EMBALAGENS DOS ÍCONES */
+.bento-icon-wrapper {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.bento-icon-wrapper .material-icons { font-size: 22px; }
+
+.ico-padrao { background-color: #f1f5f9; color: #475569; }
+.ico-especial { background-color: #fef3c7; color: #d97706; }
+.ico-aula { background-color: #fee2e2; color: #ef4444; }
+.ico-duplas { background-color: #e0f2fe; color: #0284c7; }
+.ico-convidados { background-color: #dcfce7; color: #16a34a; }
+.ico-torneios { background-color: #fef9c3; color: #ca8a04; }
+
+/* FEEDBACK TÁTIL FÍSICO (EFEITO AFUNDAMENTO) */
+.bento-card:active {
+    transform: scale(0.96);
+}
+
+.config-modal-footer {
+    padding: 16px 24px 24px 24px;
+    border-top: 1px solid #f1f5f9;
+}
+
+@keyframes fadeInConfig {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ======================================================== */
+/* 3. MUDANÇA DE LAYOUT: CELULAR (RETÂNGULOS EMPILHADOS)    */
+/* ======================================================== */
+@media (max-width: 767px) {
+    .modal-config-janela {
+        width: 100vw !important;
+        height: 100dvh !important; /* Liberta a tela cheia absoluta no celular */
+    }
+	
+	/* 🔒 TRAVA DE SEGURANÇA: Apaga o bloco do desktop no celular e exibe apenas o texto mobile */
+    .modal-config-janela .config-tabs-escopo .txt-desktop {
+        display: none !important;
+    }
+    .modal-config-janela .config-tabs-escopo .txt-mobile {
+        display: inline-block !important;
+    }
+
+    /* Ajuste dos Labels Rápidos */
+    .txt-desktop { display: none; }
+    .txt-mobile { display: inline; }
+
+    /* Desfaz a grade 2x2 e empilha em uma coluna */
+    .bento-grid-config {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* Transforma o quadrado em um retângulo horizontal gordinho */
+    .bento-card {
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 14px;
+        min-height: 85px !important; /* 🎛️ Aumente para 80px ou 85px se quiser ainda maior */
+        padding: 12px 14px;
+    }
+
+    .bento-text-block {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .bento-card h4 {
+        margin: 0 0 2px 0;
+        font-size: 15px;
+    }
+
+    .bento-card p {
+        font-size: 11px;
+    }
+}
+
+
+
+/* ======================================================== */
+/* 4. BLINDAGEM DO MODO ESCURO                              */
+/* ======================================================== */
+body.dark-mode .modal-config-janela { background-color: #1e1e1e !important; }
+
+/* Ajustes de Contraste do Cabeçalho do Hub Principal */
+body.dark-mode .modal-config-janela .header-painel { 
+    background-color: #1e1e1e !important; 
+    border-bottom: 1px solid #333333 !important; 
+}
+body.dark-mode .modal-config-janela .header-painel h2 { color: #f8fafc !important; }
+body.dark-mode .modal-config-janela .header-painel span { color: #94a3b8 !important; }
+body.dark-mode .modal-config-janela .header-painel .material-icons { color: #cbd5e1 !important; }
+
+/* Componentes de Navegação e Rodapé */
+body.dark-mode .config-tabs-escopo { background-color: #121212; }
+body.dark-mode .tab-escopo-btn.ativa { background-color: #2d2d2d; color: #ffffff; }
+body.dark-mode .config-modal-footer { border-top-color: #2d2d2d; }
+
+/* Bento Cards */
+body.dark-mode .bento-card { background-color: #262626; border-color: #333333; }
+body.dark-mode .bento-card h4 { color: #f8fafc; }
+body.dark-mode .bento-card p { color: #94a3b8; }
+
+/* Ícones dos Bento Cards */
+body.dark-mode .ico-padrao { background-color: #2d2d2d; color: #94a3b8; }
+body.dark-mode .ico-especial { background-color: #3f2d13; color: #fbbf24; }
+body.dark-mode .ico-aula { background-color: #451a1a; color: #f87171; }
+body.dark-mode .ico-duplas { background-color: #132f4c; color: #38bdf8; }
+body.dark-mode .ico-convidados { background-color: #14351f; color: #4ade80; }
+body.dark-mode .ico-torneios { background-color: #3a3410; color: #facc15; }
+
+/* ======================================================== */
+/* 5. ARQUITETURA DINÂMICA DA JANELA MESTRE                 */
+/* ======================================================== */
+
+
+/* EXPANSÃO INTERMEDIÁRIA (USADA NO HORÁRIO PADRÃO) */
+.modal-config-janela.modal-config-janela-ampla {
+    width: 680px !important;
+    max-width: 95% !important;
+    height: auto !important; 
+    max-height: 92vh !important; 
+    border-radius: 12px !important;
+    margin: auto !important;
+}
+
+/* EXPANSÃO TOTAL (USADA NA GRADE DE AULAS) */
+.modal-config-janela.modal-config-janela-fullscreen {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+}
+
+.visao-painel-config {
+    display: none;
+    width: 100%;
+}
+
+.visao-painel-config.ativa {
+    display: block;
+    animation: fadeConfigIn 0.18s ease-out forwards;
+}
+
+/* ARQUITETURA DA GRADE DE DIAS (100% VISÍVEL E ABERTA) */
+.tabela-config-scroll {
+    width: 100%;
+    overflow: hidden; /* Elimina de vez a barra de rolagem interna */
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 5px;
+}
+
+.tabela-premium-config {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+    table-layout: fixed; /* Divide as larguras de coluna milimetricamente */
+}
+
+/* CORREÇÃO DAS BORDAS COMPLETAS (GRID DE PLANILHA) */
+.tabela-premium-config th,
+.tabela-premium-config td {
+    padding: 12px 8px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 15px;
+    border: 1px solid #e2e8f0 !important; /* Cria as divisórias laterais, superiores e inferiores */
+}
+
+.tabela-premium-config th {
+    background-color: #f2f2f2 !important; 
+    font-weight: 700;
+    color: #475569 !important;
+}
+
+.tabela-premium-config td:first-child {
+    text-align: left;
+    font-weight: 600;
+    color: #1e293b;
+    padding-left: 20px;
+    white-space: nowrap;
+}
+
+/* CORREÇÃO DO ALINHAMENTO DA COLUNA DE HORÁRIOS ESQUERDA NA GRADE INTERATIVA */
+.tabela-grade-interativa td:first-child {
+    text-align: center !important;
+    padding-left: 8px !important;
+}
+
+/* COMPONENTES COMPACTOS E INTEGRADOS */
+.tabela-premium-config select {
+    width: 105px; /* Enxuto e ajustado ao label "Fechado" */
+    height: 34px;
+    padding: 0 4px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    background-color: #ffffff;
+    outline: none;
+    cursor: pointer;
+    text-align: center;
+    text-align-last: center;
+    box-sizing: border-box;
+}
+
+.tabela-premium-config input[type="time"] {
+    width: 105px;
+    height: 34px;
+    padding: 0 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    background-color: #ffffff;
+    box-sizing: border-box;
+    outline: none;
+    text-align: center;
+}
+
+.tabela-premium-config select:focus,
+.tabela-premium-config input[type="time"]:focus {
+    border-color: #28a745;
+}
+
+/* PINTURA PREMIUM MATTE PASTEL (DESATIVAÇÃO SUTIL) */
+.tabela-premium-config tr.linha-dia-fechada td {
+    background-color: #fff1f2 !important; /* Rose Pastel Suave */
+    color: #f43f5e !important;
+}
+
+.tabela-premium-config tr.linha-dia-fechada td:first-child {
+    color: #e11d48 !important;
+}
+
+.tabela-premium-config tr.linha-dia-fechada select {
+    border-color: #fca5a5;
+    color: #e11d48;
+    background-color: #fff1f2;
+}
+
+.tabela-premium-config tr.linha-dia-fechada input[type="time"] {
+    opacity: 0.35;
+    pointer-events: none;
+    background-color: #ffe4e6;
+    border-color: #fca5a5;
+    color: #f43f5e;
+}
+
+/* RODAPÉ DUPLO EXPANDIDO GESTOR */
+.config-modal-footer.layout-duplo {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 16px !important;
+    padding: 16px 20px !important;
+}
+
+.btn-config-fechar {
+    flex: 1 !important;
+    height: 44px !important;
+    background-color: #dc3545 !important; /* Vermelho Coral */
+    color: #ffffff !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-config-salvar {
+    flex: 1 !important;
+    height: 44px !important;
+    background-color: #28a745 !important; /* Verde Esmeralda */
+    color: #ffffff !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+}
+
+@keyframes fadeConfigIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* COMPATIBILIDADE INTEGRAL WITH O MODO ESCURO */
+body.dark-mode .tabela-config-scroll { border-color: #333333; }
+body.dark-mode .tabela-premium-config { background-color: #1e1e1e; }
+body.dark-mode .tabela-premium-config th { background-color: #252525 !important; color: #cbd5e1 !important; border-color: #333333 !important; }
+body.dark-mode .tabela-premium-config td { border-color: #333333 !important; color: #cbd5e1; } /* Bordas escuras unificadas */
+body.dark-mode .tabela-premium-config td:first-child { color: #f8fafc; }
+body.dark-mode .tabela-premium-config select,
+body.dark-mode .tabela-premium-config input[type="time"] {
+    background-color: #262626; border-color: #444444; color: #f8fafc;
+}
+body.dark-mode .tabela-premium-config tr.linha-dia-fechada td { background-color: #271416 !important; color: #f43f5e !important; }
+body.dark-mode .tabela-premium-config tr.linha-dia-fechada td:first-child { color: #f43f5e !important; }
+body.dark-mode .tabela-premium-config tr.linha-dia-fechada select { background-color: #271416; border-color: #63171b; color: #f43f5e; }
+body.dark-mode .tabela-premium-config tr.linha-dia-fechada input[type="time"] { background-color: #1a0b0c; border-color: #63171b; color: #f43f5e; }
+
+/* ======================================================== */
+/* 6. RESPONSIVIDADE PREMIUM: AJUSTES ANATÔMICOS MOBILE     */
+/* ======================================================== */
+@media (max-width: 767px) {
+    /* O modal intermediário abraça as 7 linhas no mobile */
+    .modal-config-janela.modal-config-janela-ampla {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important; 
+        max-height: 96vh !important;
+        border-radius: 12px !important;
+    }
+
+    .config-modal-body {
+        padding: 10px !important;
+    }
+
+    /* ISOLAMENTO CIRÚRGICO: Agora as larguras fixas só se aplicam à janela de Horário Padrão */
+    #arena-visao-horario-padrao .tabela-premium-config th:nth-child(1) { width: 18% !important; }
+    #arena-visao-horario-padrao .tabela-premium-config th:nth-child(2) { width: 32% !important; }
+    #arena-visao-horario-padrao .tabela-premium-config th:nth-child(3) { width: 25% !important; }
+    #arena-visao-horario-padrao .tabela-premium-config th:nth-child(4) { width: 25% !important; }
+
+    /* Redução de respiros internos das colunas */
+    .tabela-premium-config th,
+    .tabela-premium-config td {
+        padding: 10px 2px !important;
+        font-size: 13.5px !important;
+    }
+
+    .tabela-premium-config td:first-child {
+        padding-left: 4px !important; /* Cola o texto do dia mais à esquerda */
+    }
+
+    /* Dropdown de status ultra-enxuto */
+    .tabela-premium-config select {
+        width: 84px !important;
+        font-size: 13px !important;
+    }
+
+    /* Inputs de abertura e fechamento encolhidos para zerar a sobra branca */
+    .tabela-premium-config input[type="time"] {
+        width: 80px !important;
+        font-size: 13px !important;
+        padding: 0 2px !important;
+    }
+
+    .config-modal-footer.layout-duplo {
+        padding: 12px 14px !important;
+        background-color: #ffffff;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    body.dark-mode .config-modal-footer.layout-duplo {
+        background-color: #1e1e1e;
+        border-top-color: #262626;
+    }
+}
+
+
+
+/* ======================================================== */
+/* 7. MÓDULO: GRADES INTERATIVAS (AULAS, DUPLAS, ETC)       */
+/* ======================================================== */
+
+/* Oculta as abas no mobile e mostra a navegação premium (Aulas, Duplas e Convidados) */
+@media (max-width: 767px) {
+    #aulas-tabs-quadras-desktop, #duplas-tabs-quadras-desktop, #convidados-tabs-quadras-desktop { display: none !important; }
+    #aulas-tabs-quadras-mobile, #duplas-tabs-quadras-mobile, #convidados-tabs-quadras-mobile { display: flex !important; }
+}
+@media (min-width: 768px) {
+    #aulas-tabs-quadras-desktop, #duplas-tabs-quadras-desktop, #convidados-tabs-quadras-desktop { display: flex !important; }
+    #aulas-tabs-quadras-mobile, #duplas-tabs-quadras-mobile, #convidados-tabs-quadras-mobile { display: none !important; }
+}
+
+
+/* Abas das Quadras dentro do Modal (Estrutura Base) */
+.config-tabs-quadras {
+    display: flex;
+    gap: 8px;
+    padding: 0 0 12px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 12px;
+}
+.config-tabs-quadras::-webkit-scrollbar { display: none; }
+
+.quadra-pill {
+    padding: 8px 16px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+.quadra-pill.ativa {
+    background-color: #10b981; 
+    color: white;
+    border-color: #10b981;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+/* Painel de Controle (A Chave Mestra e Ações) */
+.painel-controle-grade {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #f8fafc;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.label-chave-mestra {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #1e293b;
+    cursor: pointer;
+}
+.label-chave-mestra input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #10b981;
+    cursor: pointer;
+}
+
+
+/* O Filtro Fantasma */
+.filtro-fantasma {
+    display: flex; 
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.filtro-fantasma select {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+}
+.filtro-fantasma .material-icons {
+    font-size: 16px;
+    color: #64748b;
+}
+
+.grupo-botoes-grade {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.btn-grade-acao {
+    padding: 8px 16px !important;
+    background-color: #3b82f6 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: 0.1s; 
+}
+.btn-grade-acao:active { transform: scale(0.95); }
+.btn-grade-acao.outline {
+    background-color: #f8fafc !important;
+    color: #64748b !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* ---------------------------------------------------- */
+/* A Tabela Interativa e Seus Estados (SSOT Visual)     */
+/* ---------------------------------------------------- */
+.tabela-grade-scroll {
+    flex: 1;
+    height: 100%;
+    min-height: 250px;
+    overflow-y: auto;
+}
+.tabela-grade-interativa td {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s;
+    font-weight: 600;
+    padding: 5px 8px !important; 
+    height: 35px !important; /* A TRAVA DE SEGURANÇA MÍNIMA: Daqui não passa! */
+    box-sizing: border-box !important;
+}
+.tabela-grade-interativa td.horario-celula {
+    cursor: default; 
+    background-color: #f2f2f2 !important; /* CORRIGIDO: Padronizado com a planilha */
+    color: #334155;
+    font-weight: normal; 
+    font-size: 14px;
+    padding: 5px 8px !important; 
+    height: 35px !important; /* A TRAVA DE SEGURANÇA MÍNIMA */
+    box-sizing: border-box !important;
+    text-align: center !important; 
+}
+
+/* ESTADO 0: Bloqueada pelo Horário Padrão */
+.tabela-grade-interativa .celula-bloqueada-padrao {
+    background-color: #f2f2f2 !important; /* CORRIGIDO: O MESMO CINZA UNIFICADO (#f2f2f2) PARA AS CELULAS BLOQUEADAS */
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+/* ESTADO 1: Livre (Branca) */
+.tabela-grade-interativa .celula-livre {
+    background-color: #ffffff;
+    color: transparent;
+}
+.tabela-grade-interativa .celula-livre:hover {
+    background-color: #f8fafc;
+}
+
+/* ESTADO 2: Selecionada no Lote (Vermelho/Coral Aula) */
+.tabela-grade-interativa .celula-selecionada-lote {
+    background-color: lightcoral !important; 
+    color: white !important; 
+    border-color: #e06666 !important; 
+}
+
+/* ESTADO 3: Atribuída/Salva (Vermelha) */
+.tabela-grade-interativa .celula-aula-atribuida {
+    background-color: lightcoral !important; 
+    color: #000000 !important; 
+    border-color: #e06666 !important; 
+    font-weight: normal !important; /* CORRIGIDO: Sem negrito no nome do professor */
+}
+
+/* ESTADO 4: Apagada pelo Filtro de Consulta */
+.tabela-grade-interativa .celula-apagada-filtro {
+    opacity: 0.3 !important;
+    filter: grayscale(100%) !important;
+}
+
+/* A Capa Cinza */
+.tabela-grade-desativada {
+    opacity: 0.5;
+    filter: grayscale(100%);
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------- */
+/* O Botão Flutuante (Atribuição em Lote - Redondo)     */
+/* ---------------------------------------------------- */
+.fab-atribuir-lote {
+    position: fixed;  /* Fixo na tela física por padrão */
+    bottom: 85px;     /* Altura calibrada base */
+    left: 20px; 
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #15803d; 
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(21, 128, 61, 0.4);
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease-out;
+}
+
+.fab-atribuir-lote:active {
+    transform: scale(0.92);
+}
+
+.fab-atribuir-lote span {
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+/* ---------------------------------------------------- */
+/* MODO ESCURO (Dark Mode Blindagem)                    */
+/* ---------------------------------------------------- */
+body.dark-mode .config-tabs-quadras { border-bottom-color: #333; }
+body.dark-mode .quadra-pill { background-color: #262626; border-color: #444; color: #94a3b8; }
+body.dark-mode .quadra-pill.ativa { background-color: #059669; border-color: #059669; color: white; }
+body.dark-mode .painel-controle-grade { background-color: #1e1e1e; border-color: #333; }
+body.dark-mode .label-chave-mestra { color: #f8fafc; }
+body.dark-mode .btn-grade-acao.outline { border-color: #444 !important; color: #cbd5e1 !important; background-color: transparent !important;}
+
+body.dark-mode .filtro-fantasma { background-color: #262626; border-color: #444; }
+body.dark-mode .filtro-fantasma select { background-color: #262626 !important; color: #f8fafc !important; }
+body.dark-mode .filtro-fantasma select option { background-color: #262626 !important; color: #f8fafc !important; }
+
+body.dark-mode .container-titulo-central h2 { color: #f8fafc !important; }
+body.dark-mode .container-titulo-central button { color: #cbd5e1 !important; }
+
+body.dark-mode .tabela-grade-interativa th {
+    background-color: #252525 !important; 
+    color: #cbd5e1 !important;            
+    border-color: #333333 !important;     
+}
+
+body.dark-mode .tabela-grade-interativa .celula-livre { background-color: #1e1e1e; }
+body.dark-mode .tabela-grade-interativa .celula-livre:hover { background-color: #262626; }
+body.dark-mode .tabela-grade-interativa .celula-bloqueada-padrao { background-color: #252525 !important; }
+body.dark-mode .tabela-grade-interativa td.horario-celula { background-color: #252525 !important; color: #ffffff !important; }
+body.dark-mode .tabela-grade-interativa .celula-selecionada-lote {
+    background-color: #cd5c5c !important; 
+    border-color: #a52a2a !important;
+    color: #ffffff !important;
+}
+body.dark-mode .tabela-grade-interativa .celula-aula-atribuida {
+    background-color: #cd5c5c !important;
+    color: #000000 !important;
+    border-color: #a52a2a !important;
+    font-weight: normal !important;
+}
+
+
+/* ======================================================== */
+/* 8. RESPONSIVIDADE MOBILE (Grades Interativas)            */
+/* ======================================================== */
+@media (max-width: 767px) {
+    /* 1. ASSASSINATO DAS PÍLULAS: Oculta as abas horizontais no celular (Blindado contra a Seção 10) */
+    .modal-config-janela-fullscreen .config-tabs-quadras,
+    .modal-config-janela-fullscreen #aulas-tabs-quadras-desktop,
+    .config-tabs-quadras,
+    #aulas-tabs-quadras-desktop {
+        display: none !important;  
+    }
+
+    /* 2. FEEDBACK TÁTIL: Transforma o título com a grade em um botão clicável */
+    .container-titulo-central,
+    #lbl-quadra-titulo-aulas {
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    .container-titulo-central:active {
+        opacity: 0.7;
+    }
+
+    /* 3. COLA OPERACIONAL NA BORDA DA TELA (MOBILE): Corrige a fuga dos 15px do HTML */
+    .modal-config-janela-fullscreen .painel-controle-grade {
+        margin: 0 0 10px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* ATIVAÇÃO CIRÚRGICA DA ARQUITETURA ELÁSTICA RESPONSIVA NO MOBILE */
+    .modal-config-janela-fullscreen .config-modal-body {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .modal-config-janela-fullscreen .area-sub-escopo.ativa {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 !important;
+        height: 100% !important;
+        position: relative !important; /* 🌟 ÂNCORA UNIVERSAL: Referência de chão elástica para o botão */
+    }
+
+    /* CONCENTRAÇÃO TOTAL DOS DOIS SCROLLS PARA DENTRO DA PLANILHA NO MOBILE */
+    .modal-config-janela-fullscreen .tabela-grade-scroll {
+        margin: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: auto !important;         /* Mantém o seu scroll horizontal original */
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 !important;                  /* Faz a tabela "sugar" o espaço restante na tela */
+        overflow-y: auto !important;         /* Puxa o scroll vertical para cá, isolando o modal externo! */
+    }
+
+    /* ANCORAGEM AUTOCALIBRÁVEL DO BOTÃO (+) EM QUALQUER CELULAR DO MUNDO */
+    .modal-config-janela-fullscreen .fab-atribuir-lote {
+        position: absolute !important; /* 🌟 MUDADO PARA ABSOLUTE: Indexado ao chão elástico da planilha, não à tela física */
+        bottom: 20px !important;       /* Distância perfeita e segura do fundo do contêiner */
+        left: 24px !important;         /* Mantém o alinhamento lateral esquerdo premium original */
+        z-index: 9000 !important;      /* Mantém a força e prioridade mestre do botão */
+    }
+
+    /* 4. MOTOR DE ROLAGEM HORIZONTAL E PADRONIZAÇÃO DAS CÉLULAS EM MOBILE */
+    .tabela-grade-interativa {
+        table-layout: auto !important; /* Permite estourar a tela para rolar livremente */
+        width: max-content !important; /* Faz a tabela ocupar seu tamanho real estendido */
+        min-width: 100% !important;
+    }
+
+    /* PADRONIZOU EM QUADRADINHOS: Define um tamanho fixo perfeito para todos os 7 dias */
+    .tabela-grade-interativa th:not(.horario-celula),
+    .tabela-grade-interativa td:not(.horario-celula) {
+        width: 65px !important; /* Um pouco menor que os 25% antigos, formato quadrado de grife */
+        min-width: 65px !important;
+        max-width: 65px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* Ajuste milimétrico das travas de horários para não esmagar no trilho horizontal */
+    .tabela-grade-interativa .horario-celula {
+        width: 55px !important;
+        min-width: 55px !important;
+        max-width: 55px !important;
+    }
+
+    /* 5. ANATOMIA SLIM DO ESPAÇO BRANCO: Centraliza milimetricamente e espreme a altura */
+    .modal-config-janela-fullscreen #quadras-visao-aula > div:first-child {
+        padding: 0 !important;
+        margin: 4px 0 8px 0 !important; /* Vão fino e elegante */
+        border-bottom: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    #aulas-tabs-quadras-mobile {
+        margin: 0 !important; 
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* PAINEL DE CONTROLE - Checkbox e Pesquisa lado a lado */
+    .painel-controle-grade {
+        padding: 8px 10px !important;
+        gap: 0 !important;
+    }
+    .label-chave-mestra {
+        width: auto !important;
+        margin: 0 0 10px 0 !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+	/* PAINEL DE CONTROLE - Checkbox e Pesquisa lado a lado */
+    .painel-controle-grade {
+        padding: 8px 10px !important;
+        gap: 0 !important;
+    }
+
+    /* INJEÇÃO PREMIUM: Transforma a barra de Convidados em Grade 2x2 perfeita */
+    #quadras-visao-convidados .painel-controle-grade {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important; /* Coluna 1 livre, Coluna 2 colada na direita */
+        grid-template-rows: auto auto !important;
+        gap: 12px 10px !important; /* Espaçamento simétrico entre as linhas e colunas */
+        align-items: center !important;
+    }
+
+    /* Liberta os botões internos de Convidados diretamente para as 4 pontas do Grid */
+    #quadras-visao-convidados .painel-controle-grade > div {
+        display: contents !important;
+    }
+    body.dark-mode .label-chave-mestra { border-bottom-color: transparent !important; }
+    
+    .filtro-fantasma {
+        margin: 0 0 10px auto !important;
+    }
+    
+    /* Quebra a linha e separa os botões de Salvar/Limpar */
+    .grupo-botoes-grade {
+        width: 100% !important;
+        justify-content: space-between;
+        border-top: 1px dashed #e2e8f0;
+        padding-top: 10px;
+    }
+    body.dark-mode .grupo-botoes-grade { border-top-color: #333; }
+    
+    .btn-grade-acao {
+        flex: 1;
+        text-align: center;
+    }
+
+    /* TABELA: Espremendo as Células Verticalmente */
+    .tabela-grade-interativa td {
+        height: 30px !important;
+        padding: 2px !important;
+        font-size: 11.5px !important;
+    }
+    
+    /* COLUNA HORÁRIOS: Fonte menor para caber empilhado */
+    .tabela-grade-interativa td.horario-celula {
+        height: 30px !important;
+        padding: 2px !important;
+        font-size: 10px !important; 
+    }
+
+    /* MÁGICA DO HORÁRIO: Some com o " - " e quebra a linha do 06:00 e 07:00 */
+    .time-sep { display: none !important; }
+    .time-part { display: block !important; line-height: 1.1; }
+}
+
+
+
+/* ======================================================== */
+/* 9. CABEÇALHO PREMIUM FULL-WIDTH (BARRA DE AULAS MATTE)   */ 
+/* ======================================================== */
+.modal-config-janela-fullscreen .header-painel {
+    background: linear-gradient(135deg, #e05c5c 0%, #f08080 100%) !important; 
+    border-bottom: 2px solid #e06666 !important; 
+    padding: 10px 24px !important; 
+}
+
+.modal-config-janela-fullscreen .header-painel h2 {
+    color: #ffffff !important; 
+    font-size: 19px !important; 
+    font-weight: 700 !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important; 
+    margin: 0 !important;
+    width: 100% !important;
+    text-align: center !important; 
+}
+
+/* Compatibilidade da barra em Modo Escuro */
+body.dark-mode .modal-config-janela-fullscreen .header-painel {
+    background: linear-gradient(135deg, #9b4444 0%, #cd5c5c 100%) !important; 
+    border-bottom-color: #a52a2a !important; 
+}
+
+
+
+/* ======================================================== */
+/* 10. CORREÇÃO CIRÚRGICA DE SIMETRIA E ELASTICIDADE (DESKTOP) */
+/* ======================================================== */
+
+/* Isolado rigorosamente via Media Query para nunca mais quebrar o mobile! */
+@media (min-width: 768px) {
+    /* Ativa o layout de duas colunas APENAS no menu principal */
+    .modal-config-janela:not(.modal-config-janela-fullscreen):not(.modal-config-janela-ampla) .chassi-workspace {
+        display: grid !important;
+        grid-template-columns: 340px 1fr !important;
+        gap: 24px !important;
+        align-items: start !important;
+        padding: 20px 24px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Quando abrir um submódulo, desliga o grid, estica 100% e TRAVA A FUGA DE TELA */
+    .modal-config-janela-fullscreen .chassi-workspace,
+    .modal-config-janela-ampla .chassi-workspace {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 !important;
+        padding: 0 !important;
+        overflow: hidden !important; /* 🟢 TRAVA VITAL: Devolve o scroll para a tabela e resgata o rodapé */
+    }
+    
+    /* Transforma a barra de abas horizontal em uma Sidebar vertical límpida */
+    .modal-config-janela .config-tabs-escopo {
+        flex-direction: column !important;
+        background-color: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        gap: 16px !important;
+    }
+
+    /* Estiliza os botões como os cards brancos da Sidebar de Regras */
+    .modal-config-janela .tab-escopo-btn {
+        padding: 14px 18px !important; /* Mesma folga que usamos em Regras */
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+        color: #1e293b !important;
+        text-align: left !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.01) !important;
+    }
+
+    /* Estado selecionado: Fundo verde sólido e texto branco puro */
+    .modal-config-janela .tab-escopo-btn.ativa {
+        background-color: var(--cor-primaria) !important;
+        border-color: var(--cor-primaria) !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(46, 139, 87, 0.15) !important;
+    }
+
+    /* Blindagem do Modo Escuro para os botões verticais */
+    body.dark-mode .modal-config-janela .tab-escopo-btn {
+        background-color: #262626 !important;
+        border-color: #333333 !important;
+        color: #f8fafc !important;
+    }
+    body.dark-mode .modal-config-janela .tab-escopo-btn.ativa {
+        background-color: var(--cor-primaria) !important;
+        border-color: var(--cor-primaria) !important;
+        color: #ffffff !important;
+    }
+    
+    /* A MÁGICA ELÁSTICA: Transforma a janela em um contêiner Flex dinâmico */
+    .modal-config-janela-fullscreen .config-modal-body {
+        padding: 0 5px !important; 
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .modal-config-janela-fullscreen .area-sub-escopo.ativa {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 !important;
+        height: 100% !important;
+    }
+
+    /* O BOTÃO FLUTUANTE DE LOTE NO MODO FULLSCREEN (Ancorado) */
+    .modal-config-janela-fullscreen .fab-atribuir-lote {
+        position: fixed !important; /* Trava na tela independente do scroll */
+        bottom: 15px !important; /* Flutua elegantemente logo acima do rodapé */
+        left: 24px !important; 
+    }
+
+    /* DEVOLVENDO FÔLEGO (PC): Ajuste milimétrico do vão entre a barra e os botões */
+    .modal-config-janela-fullscreen #quadras-visao-aula > div:first-child {
+        padding: 0 !important; 
+        margin-top: 12px !important; /* Empurra os botões das quadras dando respiro */
+        margin-bottom: 8px !important;
+        border-bottom: none !important; 
+    }
+
+    /* Força o carrossel de botões a se esparramar e elimina o buraco na direita */
+    .modal-config-janela-fullscreen .config-tabs-quadras,
+    .modal-config-janela-fullscreen #aulas-tabs-quadras-desktop {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        justify-content: flex-start !important;
+        margin: 0 0 8px 0 !important; 
+        padding: 0 0 4px 0 !important;
+        width: 100% !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Dá flexibilidade aos botões, replicando o ".tab-button" mestre */
+    .modal-config-janela-fullscreen .quadra-pill {
+        flex: 1 0 auto !important;
+        text-align: center !important; 
+    }
+
+    /* Aperta o painel de ferramentas e remove os excessos horizontais */
+    .modal-config-janela-fullscreen .painel-controle-grade {
+        margin: 0 0 8px 0 !important; 
+        padding: 8px 12px !important; 
+        width: 100% !important;
+        box-sizing: border-box !important;  
+    }
+
+    /* CONTAINER DA TABELA SUGA TODO O ESPAÇO RESTANTE */
+    .modal-config-janela-fullscreen .tabela-grade-scroll {
+        margin: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        flex: 1 !important; /* Expande para colar no rodapé */
+        overflow-y: auto !important;
+    }
+
+    /* A TABELA ESTICA E PREENCHE O RESTO DA TELA! */
+    .modal-config-janela-fullscreen #tabela-aulas-matriz {
+        width: 100% !important;
+        height: 100% !important; 
+    }
+    
+    /* Refatora os cartões Bento da direita para mimetizarem o comportamento da Sidebar esquerda */
+    .modal-config-janela .bento-card {
+        display: grid !important;
+        grid-template-columns: auto 1fr !important;
+        grid-template-rows: auto auto !important;
+        gap: 6px 12px !important;
+        align-items: center !important;
+        min-height: 95px !important; /* Achata o quadrado para virar um retângulo elegante */
+        padding: 14px 18px !important;
+    }
+
+    .modal-config-janela .bento-icon-wrapper {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .modal-config-janela .bento-text-block {
+        display: contents !important; /* Libera o h4 e o p diretamente para o Grid pai */
+    }
+
+    .modal-config-janela .bento-card h4 {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        margin: 0 !important;
+    }
+
+    .modal-config-janela .bento-card p {
+        grid-column: 1 / span 2 !important; /* Começa do extremo esquerdo, exatamente como na Sidebar */
+        grid-row: 2 !important;
+        margin: 0 !important;
+    }
+}
+
+
+/* ======================================================== */
+/* 11. REGULAGEM CIRÚRGICA DA UNIÃO DE RESERVAS 2H (MOBILE) */
+/* ======================================================== */
+@media (max-width: 767px) {
+    /* Célula de Cima: Controla o nome superior (Adriano) */
+    #tabelaCorpo td.reserva-2h-topo {
+        vertical-align: bottom !important;
+        /* 🎛️ AUMENTAR este número afasta o nome do centro (sobe ele) */
+        /* 🎛️ DIMINUIR este número aproxima o nome do centro (desce ele) */
+        padding-bottom: 5px !important; 
+    }
+
+    /* Célula de Baixo: Controla o nome inferior (Alessandro) */
+    #tabelaCorpo td.reserva-2h-baixo {
+        vertical-align: top !important;
+        /* 🎛️ AUMENTAR este número afasta o nome do centro (desce ele) */
+        /* 🎛️ DIMINUIR este número aproxima o nome do centro (sobe ele) */
+        padding-top: 5px !important; 
+    }
+}
+
+
+/* ======================================================== */
+/* 12. IDENTIDADE VISUAL: RÓTULO DA VERSÃO DO APP (BOTTOM)  */
+/* ======================================================== */
+#sheet-versao-app {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+    margin-top: 4px;
+    font-family: 'Roboto', sans-serif;
+    text-align: center; /* Garante a simetria centralizada abaixo do clube */
+}

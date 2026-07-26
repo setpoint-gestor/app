@@ -1,0 +1,581 @@
+/* ======================================================== */
+/* 1. NAVEGAÇÃO SUPERIOR (PÍLULAS RESPONSIVAS E CENTRALIZADAS) */
+/* ======================================================== */
+.pill-tabs { 
+    display: flex; 
+    gap: 10px; 
+    margin: 20px auto; /* Auto-centraliza perfeitamente no Mobile e no Desktop */
+    width: max-content; /* Abraça o tamanho exato somado dos botões enxutos */
+    max-width: 100%; 
+    padding: 0 15px; 
+    box-sizing: border-box; 
+    overflow-x: auto; 
+    -webkit-overflow-scrolling: touch; 
+    scrollbar-width: none; 
+}
+
+.pill-tabs::-webkit-scrollbar {
+    display: none; 
+}
+
+.pill-btn { 
+    flex-shrink: 0; /* Bloqueio absoluto contra achatamento de botões */
+    padding: 10px 20px; 
+    border-radius: 30px; 
+    border: none; 
+    background: #e0e6ed; 
+    color: #555; 
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 14px; 
+    white-space: nowrap; 
+    transition: 0.2s; 
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pill-btn.active { 
+    background: var(--cor-primaria); 
+    color: white; 
+    box-shadow: 0 4px 10px rgba(46,139,87,0.3); 
+}
+
+/* ======================================================== */
+/* 2. ÁREAS DE CONTEÚDO E CARDS                             */
+/* ======================================================== */
+.area-conteudo-jogadores { 
+    width: 100%; 
+    max-width: 600px; 
+    padding: 0 15px; 
+    box-sizing: border-box; 
+    margin: 0 auto; 
+    display: none; 
+}
+
+.area-conteudo-jogadores.ativa { 
+    display: block; 
+}
+
+.cards-grid { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+    margin-top: 15px; 
+}
+
+.player-card { 
+    background: white; 
+    padding: 15px; 
+    border-radius: 12px; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+    cursor: default; 
+    transition: transform 0.1s, box-shadow 0.1s; 
+    border: 1px solid #f0f0f0; 
+    position: relative; 
+}
+
+.player-avatar { 
+    width: 45px; 
+    height: 45px; 
+    border-radius: 50%; 
+    background: var(--cor-escura); 
+    color: white; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 18px; 
+    font-weight: bold; 
+    flex-shrink: 0; 
+}
+
+.player-info { 
+    flex: 1; 
+    text-align: left; 
+    overflow: hidden; 
+    padding-right: 25px; 
+}
+
+/* nome completo jogador */
+.player-name {      
+    font-size: 16px;    /* original: 16px */
+    font-weight: bold; 
+    color: #2c3e50; 
+    margin: 0 0 4px 0; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+.player-badges { 
+    display: flex; 
+    gap: 5px; 
+    flex-wrap: wrap; 
+    margin-top: 5px; 
+}
+
+.badge { 
+    font-size: 11px; 
+    padding: 3px 8px; 
+    border-radius: 12px; 
+    color: white; 
+    font-weight: bold; 
+}
+
+.jogador-inativo { 
+    opacity: 0.6; 
+} 
+
+.jogador-inativo .player-name { 
+    text-decoration: line-through; 
+    color: #dc3545; 
+}
+
+/* ======================================================== */
+/* 3. MENU DE 3 PONTINHOS (KEBAB)                           */
+/* ======================================================== */
+.kebab-container { 
+    position: absolute; 
+    right: 10px; 
+    top: 15px; 
+}
+
+.btn-kebab { 
+    background: none; 
+    border: none; 
+    color: #7f8c8d; 
+    cursor: pointer; 
+    padding: 5px; 
+    border-radius: 50%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    outline: none; 
+}
+
+.btn-kebab:active { 
+    background: #f0f0f0; 
+}
+
+.dropdown-kebab { 
+    display: none; 
+    position: absolute; 
+    right: 0; 
+    top: 32px; 
+    background: white; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+    border: 1px solid #eee; 
+    z-index: 1000; 
+    min-width: 160px; 
+    overflow: hidden; 
+}
+
+.dropdown-kebab.ativo { 
+    display: block; 
+}
+
+.dropdown-item { 
+    padding: 12px 15px; 
+    font-size: 14px; 
+    color: #333; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    cursor: pointer; 
+    text-align: left; 
+    background: white; 
+    border: none; 
+    width: 100%; 
+    box-sizing: border-box; 
+    font-weight: 500; 
+}
+
+.dropdown-item:active { 
+    background: #f4f6f8; 
+} 
+
+.dropdown-item .material-icons { 
+    font-size: 18px; 
+} 
+
+.item-excluir { 
+    color: #dc3545; 
+}
+
+/* ======================================================== */
+/* 4. FORMULÁRIO GAVETA (BOTTOM SHEET)                      */
+/* ======================================================== */
+.modal-form-overlay { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: rgba(0,0,0,0.6); 
+    backdrop-filter: blur(3px); 
+    z-index: 10000; 
+    display: none; 
+    justify-content: center; 
+    align-items: flex-end; 
+}
+
+.modal-form-content { 
+    background: white; 
+    width: 100%; 
+    max-width: 500px; 
+    border-radius: 20px 20px 0 0; 
+    padding: 25px; 
+    box-sizing: border-box; 
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+    max-height: 90vh; 
+    overflow-y: auto; 
+    text-align: left; 
+}
+
+@media (min-width: 600px) { 
+    .modal-form-overlay { 
+        align-items: center; 
+    } 
+    .modal-form-content { 
+        border-radius: 12px; 
+        animation: popIn 0.3s; 
+    } 
+}
+
+@keyframes slideUp { 
+    from { transform: translateY(100%); } 
+    to { transform: translateY(0); } 
+}
+
+@keyframes popIn { 
+    from { transform: scale(0.95); opacity: 0; } 
+    to { transform: scale(1); opacity: 1; } 
+}
+
+/* Faixa e Configurações do Form */
+.faixa-status { 
+    padding: 15px; 
+    color: white; 
+    text-align: center; 
+    font-size: 18px; 
+    font-weight: bold; 
+    border-radius: 12px 12px 0 0; 
+    margin: -25px -25px 20px -25px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    position: relative; 
+    transition: background-color 0.3s; 
+}
+
+.faixa-verde { 
+    background-color: #28a745; 
+} 
+
+.faixa-vermelha { 
+    background-color: #dc3545; 
+}
+
+.checkbox-status { 
+    position: absolute; 
+    right: 15px; 
+    width: 24px; 
+    height: 24px; 
+    cursor: pointer; 
+    -webkit-appearance: none; 
+    appearance: none; 
+    border: 2px solid white; 
+    border-radius: 4px; 
+    outline: none; 
+}
+
+.checkbox-status:checked { 
+    background-color: white; 
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2328a745' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E"); 
+    background-size: 14px; 
+    background-position: center; 
+    background-repeat: no-repeat; 
+}
+
+.input-group { 
+    margin-bottom: 15px; 
+} 
+
+.input-group label { 
+    display: block; 
+    font-size: 14px; 
+    font-weight: bold; 
+    color: #555; 
+    margin-bottom: 5px; 
+}
+
+.input-group input, 
+.input-group select { 
+    width: 100%; 
+    padding: 12px; 
+    border: 1px solid #ddd; 
+    border-radius: 8px; 
+    font-size: 15px; 
+    box-sizing: border-box; 
+    background: #f9f9f9; 
+    outline: none; 
+}
+
+.input-group input:focus, 
+.input-group select:focus { 
+    border-color: var(--cor-primaria); 
+    background: white; 
+}
+
+.roles-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 10px; 
+    background: #f4f6f8; 
+    padding: 12px; 
+    border-radius: 8px; 
+    border: 1px solid #eee; 
+}
+
+.roles-grid label { 
+    display: flex; 
+    align-items: center; 
+    font-size: 14px; 
+    font-weight: normal; 
+    margin: 0; 
+    cursor: pointer; 
+} 
+
+.roles-grid input { 
+    margin-right: 8px; 
+    width: 18px; 
+    height: 18px; 
+    accent-color: var(--cor-primaria); 
+}
+
+/* Lista de Aniversários */
+.niver-group { 
+    margin-top: 20px; 
+} 
+
+.niver-mes-titulo { 
+    font-size: 18px; 
+    color: var(--cor-primaria); 
+    border-bottom: 2px solid #eee; 
+    padding-bottom: 5px; 
+    margin-bottom: 10px; 
+    font-weight: bold; 
+}
+
+.niver-item { 
+    display: flex; 
+    padding: 10px; 
+    background: white; 
+    border-radius: 8px; 
+    margin-bottom: 8px; 
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05); 
+    align-items: center; 
+    border-left: 4px solid #3498db; 
+}
+
+.niver-hoje { 
+    border-left: 4px solid #e74c3c; 
+    background: #fff5f5; 
+} 
+
+.niver-dia { 
+    font-weight: 900; 
+    font-size: 18px; 
+    color: #333; 
+    margin-right: 15px; 
+    width: 30px; 
+    text-align: center; 
+}
+
+
+/* ======================================================== */
+/* 5. 🌓 COBERTURA DE MODO ESCURO: GERAL DE JOGADORES       */
+/* ======================================================== */
+
+/* Cabeçalho superior interno da tela de consulta */
+body.dark-mode #tela-sub-jogadores .header-painel {
+    background-color: #1e1e1e !important; /* Grafite unificado com o dashboard[cite: 2] */
+    border-bottom: 1px solid #333333 !important;
+}
+body.dark-mode #tela-sub-jogadores .header-painel h2 {
+    color: #f8fafc !important;
+}
+
+/* 💊 Abas de Navegação (Pill Tabs) estilo Matte/Vidro Suave */
+body.dark-mode .pill-btn {
+    background: rgba(255, 255, 255, 0.05) !important; /* Desperta um reflexo suave do fundo[cite: 6] */
+    color: #cbd5e1 !important;                         /* Texto prata fosco nítido[cite: 6] */
+}
+body.dark-mode .pill-btn.active {
+    background: var(--cor-primaria) !important;       /* Mantém o verde de foco ativo */
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(46, 139, 87, 0.4) !important;
+}
+
+/* 🔍 Barra de Pesquisa e Dropdown de Filtro de Status */
+body.dark-mode #tela-sub-jogadores .input-app {
+    background-color: #1e1e1e !important;              /* Caixa de entrada em grafite fosco[cite: 2] */
+    border: 2px solid #333333 !important;              /* Borda neutra escura */
+    color: #ffffff !important;
+}
+body.dark-mode #tela-sub-jogadores .input-app:focus {
+    border-color: var(--cor-primaria) !important;     /* Acende o verde SetPoint ao focar */
+    background-color: #1e1e1e !important;
+}
+
+/* ======================================================== */
+/* 🌓 COBERTURA DE MODO ESCURO: LISTAGEM DE CARDS (SÓCIOS)  */
+/* ======================================================== */
+
+/* Cartão do Jogador Elevado (Efeito Ilha Carbono) */
+body.dark-mode .player-card {
+    background: #1e1e1e !important;                    /* Elevação perfeita sobre o fundo #121212[cite: 2] */
+    border: 1px solid #333333 !important;              /* Elimina a linha clara antiga[cite: 7] */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Nome do Sócio em Destaque */
+body.dark-mode .player-name {
+    color: #f8fafc !important;                         /* Branco puro de leitura imediata */
+}
+
+/* Subtítulos secundários (Aka: Apelido do atleta) */
+body.dark-mode .player-info div {
+    color: #94a3b8 !important;                         /* Cinza ardósia suave para dados de apoio[cite: 2] */
+}
+
+/* Avatar de Iniciais (Círculo da Esquerda) */
+body.dark-mode .player-avatar {
+    background: #2d2d2d !important;                    /* Cinza chumbo fechado para dar contraste */
+    color: #ffffff !important;
+}
+
+/* Menu de Ações Rápida de 3 Pontinhos (Kebab) */
+body.dark-mode .btn-kebab {
+    color: #94a3b8 !important;                         /* Deixa os pontinhos cinzas legíveis[cite: 2] */
+}
+body.dark-mode .btn-kebab:active {
+    background: rgba(255, 255, 255, 0.1) !important;  /* Feedback de toque circular */
+}
+
+/* Caixa Suspensa do Menu (Dropdown) */
+body.dark-mode .dropdown-kebab {
+    background: #252525 !important;                    /* Fundo preto absoluto de sobreposição */
+    border: 1px solid #333333 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+body.dark-mode .dropdown-item {
+    background: #252525 !important;
+    color: #cbd5e1 !important;                         /* Itens de menu em prata suave[cite: 6] */
+}
+body.dark-mode .dropdown-item:active {
+    background: #333333 !important;                    /* Destaque ao clicar na opção[cite: 2] */
+}
+
+/* Tratamento estrito para o Sócio Inativo na listagem */
+body.dark-mode .jogador-inativo {
+    opacity: 0.45 !important;                          /* Esmaece o card de forma mais acentuada */
+}
+
+/* ======================================================== */
+/* 🌓 COBERTURA DE MODO ESCURO: MÓDULO DE ANIVERSARIANTES   */
+/* ======================================================== */
+body.dark-mode .niver-mes-titulo {
+    color: #4ade80 !important;                         /* Verde pastel elétrico para os meses */
+    border-bottom-color: #333333 !important;
+}
+body.dark-mode .niver-item {
+    background: #1e1e1e !important;                    /* Linha de aniversariante em grafite[cite: 2] */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+}
+body.dark-mode .niver-dia {
+    color: #ffffff !important;                         /* Número do dia em destaque máximo */
+}
+body.dark-mode .niver-hoje {
+    background: rgba(239, 68, 68, 0.08) !important;   /* Brilho avermelhado translúcido de festa */
+}
+
+
+/* ======================================================== */
+/* 6. 🌓 COBERTURA DE MODO ESCURO: MODAL FORMULÁRIO JOGADOR */
+/* ======================================================== */
+
+/* Transforma o fundo do chassi do formulário em Grafite Elevado */
+body.dark-mode .modal-form-content {
+    background-color: #1e1e1e !important; /* Tom idêntico aos botões do QG e cards */
+    color: #f8fafc !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important; /* Sombra densa para destacar o modal */
+}
+
+/* Rótulos dos Campos (Ex: Nome Completo *, Apelido *) */
+body.dark-mode .input-group label {
+    color: #cbd5e1 !important; /* Prata fosco de excelente leitura e contraste[cite: 2] */
+}
+
+/* Caixas de Texto (Inputs) e Menus de Seleção (Selects) */
+body.dark-mode .input-group input, 
+body.dark-mode .input-group select {
+    background-color: #252525 !important; /* Afunda o campo em tom chumbo neutro[cite: 2] */
+    border: 1px solid #333333 !important;   /* Borda escura fina e elegante[cite: 2] */
+    color: #ffffff !important;             /* Texto digitado em branco puro */
+}
+
+/* Estado de Foco: Acende a borda quando o gestor clica no campo para digitar */
+body.dark-mode .input-group input:focus, 
+body.dark-mode .input-group select:focus {
+    border-color: var(--cor-primaria) !important; /* Resgata o brilho do Verde SetPoint[cite: 2] */
+    background-color: #252525 !important;
+}
+
+/* Ajuste dos textos fantasmas (Placeholders de exemplo) */
+body.dark-mode .input-group input::placeholder {
+    color: #64748b !important; /* Cinza equilibrado para não sumir e nem confundir */
+}
+
+/* Caixa de Perfis & Permissões Especiais (Roles Grid) */
+body.dark-mode .roles-grid {
+    background-color: #121212 !important; /* Fundo em Preto Carbono simulando profundidade[cite: 2, 5] */
+    border: 1px solid #252525 !important;  /* Borda neutra casada com o miolo */
+}
+body.dark-mode .roles-grid label {
+    color: #cbd5e1 !important; /* Texto das opções (Admin, Professor) em prata[cite: 2, 3] */
+}
+body.dark-mode .roles-grid span {
+    color: #94a3b8 !important; /* Texto de loading do Firebase antes da carga[cite: 2, 3] */
+}
+
+/* Botão Cancelar na base do formulário */
+body.dark-mode .modal-form-content .btn-cinza {
+    background-color: #333333 !important; /* Cinza chumbo fosco unificado[cite: 2] */
+    color: #cbd5e1 !important;            /* Texto legível e elegante */
+}
+
+/* Ajuste de contraste para o Nome Completo do aniversariante */
+body.dark-mode .niver-item div div {
+    color: #f8fafc !important;                         /* Transforma o nome completo em branco gelo legível */
+}
+
+/* Garante que o apelido de baixo continue em um cinza suave para manter o contraste secundário */
+body.dark-mode .niver-item div div[style*="color"] {
+    color: #94a3b8 !important;                         /* Substitui o #888 antigo por um cinza de alta leitura */
+}
+
+
+/* ↖️ CONTRASTE DA SETA DE VOLTAR NO MODO ESCURO */
+body.dark-mode #tela-sub-jogadores .header-painel button.material-icons {
+    color: #cbd5e1 !important; /* Sobrepõe o estilo embutido e deixa a seta em prata claro nítido */
+}
+
+/* Efeito sutil de hover/toque para a setinha no celular */
+body.dark-mode #tela-sub-jogadores .header-painel button.material-icons:active {
+    color: #ffffff !important;
+    transform: scale(0.9) !important;
+}

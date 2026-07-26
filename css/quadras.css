@@ -1,0 +1,404 @@
+/* ======================================================== */
+/* SETPOINT GESTOR - QUADRAS.CSS (COMPLETO E ISOLADO)       */
+/* ESQUELETO VISUAL GÊMEO DO MÓDULO DE CADASTRO             */
+/* ======================================================== */
+
+/* 1. CONTAINER DA LISTAGEM DE QUADRAS */
+.cards-quadras-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+    width: 100%;
+    max-width: 500px;
+    padding: 0 15px;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+
+/* 2. O CARD PREMIUM (Gêmeo do .player-card) */
+.quadra-card-premium {
+    background: white;  
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: default;
+    transition: transform 0.1s, box-shadow 0.1s;
+    border: 1px solid #f0f0f0;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* Círculo de Status Esquerdo (Gêmeo do .player-avatar) */
+.quadra-avatar-status {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+/* Bloco Central de Textos (Gêmeo do .player-info) */
+.quadra-info-block {
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    padding-right: 25px;
+}
+
+/* Título Fixo Principal (Gêmeo do h4.player-name) */
+.quadra-titulo-fixo {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Nome Fantasia Intermediário (Gêmeo do div inline do apelido) */
+.quadra-sub-nome {
+    font-size: 13px;
+    color: #7f8c8d;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Varal de Crachás (Gêmeo do .player-badges) */
+.quadra-badges-container {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 5px;
+}
+
+/* As Pílulas Individuais (Gêmeo do .badge) */
+.quadra-badge-item {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    color: white;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Container do Menu 3 Pontinhos (Gêmeo do .kebab-container) */
+.quadra-kebab-container {
+    position: absolute;
+    right: 10px;
+    top: 15px;
+}
+
+/* O Botão de 3 Pontinhos (Gêmeo do .btn-kebab) */
+.quadra-btn-kebab {
+    background: none;
+    border: none;
+    color: #7f8c8d;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+}
+
+.quadra-btn-kebab:active {
+    background: #f0f0f0;
+}
+
+/* ======================================================== */
+/* 3. ESTRUTURA DE SUPORTE PARA O FORMULÁRIO / DROPDOWN     */
+/* ======================================================== */
+.modal-form-overlay.visivel {
+    display: flex !important;
+}
+
+.switch-premium {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.switch-premium input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider-premium {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .25s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 34px;
+}
+
+.slider-premium:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .25s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.switch-premium input:checked + .slider-premium {
+    background-color: #28a745;
+}
+
+.switch-premium input:checked + .slider-premium:before {
+    transform: translateX(22px);
+}
+
+.pilula-check-saas {
+    padding: 8px 14px;
+    border-radius: 20px;
+    background: #f4f6f8;
+    color: #555;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid #ddd;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pilula-check-saas:hover {
+    background: #e2e8f0;
+}
+
+.pilula-check-saas.ativa {
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+    font-weight: 700;
+    transform: scale(1.02);
+}
+
+.animacao-capacidade {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animacao-capacidade.visivel {
+    max-height: 80px !important;
+    opacity: 1 !important;
+    margin-top: 10px !important;
+}
+
+.dropdown-saas-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 32px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border: 1px solid #eee;
+    z-index: 10000;
+    min-width: 165px;
+    overflow: hidden;
+}
+
+.dropdown-saas-menu button {
+    padding: 12px 15px;
+    font-size: 14px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    text-align: left;
+    background: white;
+    border: none;
+    width: 100%;
+    box-sizing: border-box;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.dropdown-saas-menu button:active {
+    background: #f4f6f8;
+}
+
+.dropdown-saas-menu button .material-icons {
+    font-size: 18px;
+    color: #7f8c8d;
+}
+
+.item-excluir-saas {
+    color: #dc3545 !important;
+}
+
+.item-excluir-saas .material-icons {
+    color: #dc3545 !important;
+}
+
+.faixa-azul {
+    background-color: #007bff !important;
+}
+
+.faixa-laranja {
+    background-color: #f97316 !important;
+}
+
+.faixa-vermelha {
+    background-color: #dc3545 !important;
+}
+
+
+/* ======================================================== */
+/* 4. 🌓 COBERTURA DE MODO ESCURO: GERENCIADOR DE QUADRAS   */
+/* ======================================================== */
+
+/* Cabeçalho interno e indicador de quantidade de quadras */
+body.dark-mode #tela-gerenciador-quadras .header-painel {
+    background-color: #1e1e1e !important; /* Grafite unificado com o QG e Cadastro[cite: 2] */
+    border-bottom: 1px solid #333333 !important;
+}
+body.dark-mode #tela-gerenciador-quadras .header-painel h2 {
+    color: #f8fafc !important;
+}
+body.dark-mode #indicador-qtd-quadras {
+    color: #94a3b8 !important; /* Texto de contagem em cinza suave[cite: 2] */
+}
+body.dark-mode #link-reset-secreto {
+    color: #475569 !important; /* Muta o link secreto no escuro para ficar discreto[cite: 2] */
+}
+
+/* 🔍 Barra de Pesquisa de Quadras */
+body.dark-mode #busca-quadra {
+    background-color: #1e1e1e !important; /* Grafite fosco integrado[cite: 2] */
+    border: 1px solid #333333 !important;   /* Borda escura neutra */
+    color: #ffffff !important;
+}
+body.dark-mode #busca-quadra:focus {
+    border-color: var(--cor-primaria) !important; /* Acende o verde SetPoint ao focar[cite: 2] */
+}
+
+/* ======================================================== */
+/* 🎛️ BLINDAGEM DOS BOTÕES DE CONTROLE (INVERTER E FILTROS) */
+/* ======================================================== */
+
+/* Neutraliza o cinza claro (#e2e8f0) injetado pelo JS quando inativos */
+body.dark-mode #btn-inverter-ordem,
+body.dark-mode #btn-filtros-global-quadras {
+    background-color: rgba(255, 255, 255, 0.05) !important; /* Efeito Matte/Vidro */
+    color: #cbd5e1 !important;                               /* Ícone em prata claro[cite: 6] */
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Intercepta o estilo injetado pelo JS quando ativos e joga o Verde SetPoint */
+body.dark-mode #btn-inverter-ordem[style*="1e293b"],
+body.dark-mode #btn-inverter-ordem[style*="var"],
+body.dark-mode #btn-filtros-global-quadras[style*="1e293b"],
+body.dark-mode #btn-filtros-global-quadras[style*="var"] {
+    background-color: var(--cor-primaria) !important; /* Substitui o azul antigo pelo verde oficial[cite: 2] */
+    color: #ffffff !important;
+    border-color: var(--cor-primaria) !important;
+}
+
+/* 📂 Gaveta de Configuração de Exibição Global (Pílulas) */
+body.dark-mode #gaveta-filtros-global-quadras {
+    background: #1e1e1e !important;          /* Caixa em grafite fosco elevado[cite: 2] */
+    border: 1px solid #333333 !important;
+}
+body.dark-mode #gaveta-filtros-global-quadras h4 {
+    color: #f8fafc !important;
+}
+body.dark-mode #gaveta-filtros-global-quadras label {
+    color: #cbd5e1 !important;               /* Nomes dos filtros em prata claro[cite: 2] */
+}
+
+/* ======================================================== */
+/* 🏟️ COBERTURA DE MODO ESCURO: OS CARDS DAS QUADRAS        */
+/* ======================================================== */
+
+/* O Card Premium da Quadra (Efeito Ilha Carbono)[cite: 9] */
+body.dark-mode .quadra-card-premium {
+    background: #1e1e1e !important;          /* Elevação idêntica à dos sócios[cite: 2] */
+    border: 1px solid #333333 !important;    /* Elimina a linha clara do modo claro[cite: 9] */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Identificação Fixa (Ex: Quadra 1) */
+body.dark-mode .quadra-titulo-fixo {
+    color: #f8fafc !important;               /* Branco puro de alto contraste */
+}
+
+/* Nome Personalizado / Identificação (Ex: Quadra 1 - Coberta) */
+body.dark-mode .quadra-sub-nome,
+body.dark-mode .quadra-info-block div[style*="color"] {
+    color: #94a3b8 !important;               /* Substitui o cinza antigo por ardósia suave[cite: 2, 10] */
+}
+
+/* Círculo com o Número da Quadra (Avatar) quando não ativo */
+body.dark-mode .quadra-avatar-status {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Botão de 3 pontinhos do card */
+body.dark-mode .quadra-btn-kebab {
+    color: #94a3b8 !important;
+}
+body.dark-mode .quadra-btn-kebab:active {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 🏪 Menu Dropdown Flutuante de Ações da Quadra */
+body.dark-mode .dropdown-saas-menu {
+    background: #252525 !important;          /* Fundo chumbo isolado de primeiro plano[cite: 2] */
+    border: 1px solid #333333 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+body.dark-mode .dropdown-saas-menu button {
+    background: #252525 !important;
+    color: #cbd5e1 !important;               /* Opções textuais limpas em prata[cite: 6] */
+}
+body.dark-mode .dropdown-saas-menu button:active {
+    background: #333333 !important;          /* Destaque escuro ao pressionar a opção[cite: 2] */
+}
+body.dark-mode .dropdown-saas-menu button .material-icons {
+    color: #94a3b8 !important;               /* Ícones das opções em cinza nítido[cite: 2] */
+}
+body.dark-mode .dropdown-saas-menu .item-excluir-saas,
+body.dark-mode .dropdown-saas-menu .item-excluir-saas .material-icons {
+    color: #f87171 !important;               /* Vermelho pastel elétrico para exclusão destrutiva */
+}
+
+/* ↖️ CONTRASTE DA SETA DE VOLTAR NO MODO ESCURO */
+body.dark-mode #tela-gerenciador-quadras .header-painel button.material-icons {
+    color: #cbd5e1 !important; /* Destaca a seta em prata claro sobre o cabeçalho escuro */
+}
+
+/* Efeito tátil de clique para a setinha no celular */
+body.dark-mode #tela-gerenciador-quadras .header-painel button.material-icons:active {
+    color: #ffffff !important;
+    transform: scale(0.9) !important;
+}
