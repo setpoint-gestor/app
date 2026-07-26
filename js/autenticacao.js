@@ -370,20 +370,70 @@ function trocarDeClubeJogador() {
 // ==========================================
 // 5. ROTEAMENTO E TUTORIAL VINDO DO SITE
 // ==========================================
+
+// Criador do Banner Interativo do Safari
+function exibirAvisoInstalacaoIOS() {
+    // Evita duplicar o banner se ele já estiver visível
+    if (document.getElementById('banner-dica-ios')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'banner-dica-ios';
+    banner.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1e293b;
+        color: #ffffff;
+        padding: 14px 18px;
+        border-radius: 14px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+        z-index: 99999;
+        font-size: 13.5px;
+        line-height: 1.4;
+        font-weight: 500;
+        text-align: left;
+        max-width: 90%;
+        width: 360px;
+        cursor: pointer;
+        border: 1px solid #334155;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    `;
+
+    banner.innerHTML = `
+        <div>
+            📱 <b>Dica de Instalação no Safari:</b><br>
+            Toque em <b>"Compartilhar"</b> e selecione <b>"Adicionar à Tela de Início"</b>.
+        </div>
+        <span style="font-size: 14px; opacity: 0.7; font-weight: bold; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 20px;">✕</span>
+    `;
+
+    // ⏱️ Permanece na tela por 10 segundos
+    const timer = setTimeout(() => {
+        if (banner.parentNode) banner.remove();
+    }, 10000);
+
+    // 👈 Toque em qualquer lugar do aviso fecha imediatamente
+    banner.onclick = () => {
+        clearTimeout(timer);
+        banner.remove();
+    };
+
+    document.body.appendChild(banner);
+}
+
 function verificarDirecionamentoSite() {
     const urlParams = new URLSearchParams(window.location.search);
     const telaDesejada = urlParams.get('tela');
     const origemPWA = urlParams.get('pwa');
 
-    // 🍎 SE VIER DO CARD DO IPHONE NO SITE: Exibe o Pop-up de instalação
+    // 🍎 SE VIER DO CARD DO IPHONE NO SITE: Dispara o aviso estendido
     if (origemPWA === 'ios') {
-        setTimeout(() => {
-            if (typeof showToast === 'function') {
-                showToast('📱 No Safari, toque em "Compartilhar" e "Adicionar à Tela de Início"', 'info');
-            } else {
-                alert('📱 DICA DE INSTALAÇÃO NO IPHONE:\n\n1. Toque no ícone de Compartilhar (quadrado com seta no Safari).\n2. Selecione "Adicionar à Tela de Início".\n3. Abra pelo novo ícone criado!');
-            }
-        }, 1000);
+        setTimeout(exibirAvisoInstalacaoIOS, 800);
     }
 
     // Redirecionamento de tela normal
@@ -398,6 +448,7 @@ function verificarDirecionamentoSite() {
 }
 
 window.addEventListener('load', verificarDirecionamentoSite);
+
 
 
 
