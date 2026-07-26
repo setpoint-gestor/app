@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SetPoint - Gestão de Arenas</title>
+    
+    <!-- Fontes e Ícones -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <style>
+        :root {
+            --cor-primaria: #2E8B57;
+            --cor-escura: #1e293b;
+            --cor-fundo: #f8fafc;
+            --cor-texto: #334155;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--cor-fundo);
+            color: var(--cor-texto);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* CABEÇALHO */
+        header {
+            background: white;
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--cor-primaria);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-login {
+            background: var(--cor-escura);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-login:hover {
+            background: #0f172a;
+            transform: translateY(-2px);
+        }
+
+        /* HERO SECTION (Painel Principal) */
+        .hero {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 100px 5%;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 900;
+            margin: 0 0 20px 0;
+            line-height: 1.2;
+        }
+
+        .hero h1 span {
+            color: var(--cor-primaria);
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto 40px auto;
+            line-height: 1.6;
+        }
+
+        .btn-hero {
+            background: var(--cor-primaria);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-hero:hover {
+            filter: brightness(1.1);
+            transform: translateY(-3px);
+        }
+
+        /* SEÇÃO DE DOWNLOADS (App) */
+        .downloads {
+            padding: 80px 5%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 32px;
+            color: var(--cor-escura);
+            margin-bottom: 50px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            transition: 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+
+        .card-icone {
+            font-size: 60px;
+            color: var(--cor-primaria);
+            margin-bottom: 20px;
+        }
+
+        .card h3 {
+            font-size: 24px;
+            margin: 0 0 15px 0;
+            color: var(--cor-escura);
+        }
+
+        .card p {
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .btn-loja {
+            display: inline-block;
+            background: #f1f5f9;
+            color: var(--cor-escura);
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            width: 100%;
+            box-sizing: border-box;
+            transition: 0.2s;
+        }
+
+        .btn-loja.destaque {
+            background: var(--cor-escura);
+            color: white;
+        }
+
+        .btn-loja:hover {
+            background: #e2e8f0;
+        }
+        .btn-loja.destaque:hover {
+            background: #0f172a;
+        }
+
+        /* SEÇÃO GESTORES (B2B) */
+        .gestores {
+            background: white;
+            padding: 80px 5%;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .badge-b2b {
+            background: #dcfce7;
+            color: #166534;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        /* FOOTER */
+        footer {
+            background: var(--cor-escura);
+            color: #94a3b8;
+            text-align: center;
+            padding: 30px 5%;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 36px; }
+            .hero { padding: 60px 5%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="#" class="logo">
+            <i class="material-icons">sports_tennis</i> SetPoint
+        </a>
+        <!-- Este botão leva o usuário direto para o arquivo do sistema (index.html) -->
+        <a href="index.html" class="btn-login">Acessar Sistema</a>
+    </header>
+
+    <section class="hero">
+        <h1>O novo padrão em <span>Gestão de Arenas</span></h1>
+        <p>A plataforma definitiva para automatizar as reservas da sua quadra, conectar seus jogadores e acabar com a dor de cabeça do WhatsApp.</p>
+        <a href="index.html" class="btn-hero">
+            <i class="material-icons">rocket_launch</i> Começar Agora Grátis
+        </a>
+    </section>
+
+    <section class="downloads">
+        <h2 class="section-title">Baixe o App para Jogadores</h2>
+        
+        <div class="cards-grid">
+            <!-- Card Android -->
+            <div class="card">
+                <i class="material-icons card-icone" style="color: #3DDC84;">android</i>
+                <h3>Android</h3>
+                <p>Baixe o SetPoint Gestor diretamente na Google Play Store. Rápido, leve e com notificações em tempo real.</p>
+                <a href="#" class="btn-loja destaque" onclick="alert('Link da Google Play será inserido aqui quando o APK for publicado!')">
+                    Baixar na Google Play
+                </a>
+            </div>
+
+            <!-- Card iOS (iPhone) -->
+            <div class="card">
+                <i class="material-icons card-icone" style="color: #000000;">apple</i>
+                <h3>iPhone (iOS)</h3>
+                <p>Acesse o app pelo navegador Safari e clique em <b>"Adicionar à Tela de Início"</b> para instalar instantaneamente, sem ocupar memória!</p>
+                <a href="index.html" class="btn-loja destaque">
+                    Acessar Web App (PWA)
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="gestores">
+        <span class="badge-b2b">PARA DONOS DE ARENAS</span>
+        <h2 class="section-title" style="margin-bottom: 20px;">Transforme a gestão do seu Clube</h2>
+        <p style="color: #64748b; font-size: 18px; max-width: 600px; margin: 0 auto 40px auto; line-height: 1.6;">
+            Painel financeiro, grades de horários complexas, regras anti-monopólio e gestão de aulas. Tudo em um só lugar.
+        </p>
+        <a href="index.html" class="btn-login" style="padding: 16px 32px; font-size: 16px;">Criar Conta do Clube</a>
+    </section>
+
+    <footer>
+        &copy; 2026 SetPoint Gestor SaaS. Todos os direitos reservados. <br>
+        Versão 1.0 (Build V16)
+    </footer>
+
+</body>
+</html>
