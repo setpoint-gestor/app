@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SetPoint - Gestão de Arenas</title>
+    <title>SetPoint - Gestão Inteligente de Arenas</title>
     
     <!-- Fontes e Ícones -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -15,6 +15,11 @@
             --cor-escura: #1e293b;
             --cor-fundo: #f8fafc;
             --cor-texto: #334155;
+            --cor-borda: #e2e8f0;
+        }
+
+        html {
+            scroll-behavior: smooth;
         }
 
         body {
@@ -28,7 +33,7 @@
         /* CABEÇALHO */
         header {
             background: white;
-            padding: 20px 5%;
+            padding: 15px 5%;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -48,14 +53,30 @@
             text-decoration: none;
         }
 
+        nav.menu-topo {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        nav.menu-topo a {
+            text-decoration: none;
+            color: var(--cor-texto);
+            font-weight: 500;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        nav.menu-topo a:hover {
+            color: var(--cor-primaria);
+        }
+
         .btn-login {
             background: var(--cor-escura);
-            color: white;
-            padding: 10px 24px;
+            color: white !important;
+            padding: 10px 20px;
             border-radius: 8px;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 14px;
+            font-weight: 700 !important;
             transition: all 0.2s;
         }
 
@@ -64,16 +85,16 @@
             transform: translateY(-2px);
         }
 
-        /* HERO SECTION (Painel Principal) */
+        /* HERO SECTION */
         .hero {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             color: white;
-            padding: 100px 5%;
+            padding: 90px 5%;
             text-align: center;
         }
 
         .hero h1 {
-            font-size: 48px;
+            font-size: 46px;
             font-weight: 900;
             margin: 0 0 20px 0;
             line-height: 1.2;
@@ -86,8 +107,8 @@
         .hero p {
             font-size: 18px;
             color: #94a3b8;
-            max-width: 600px;
-            margin: 0 auto 40px auto;
+            max-width: 620px;
+            margin: 0 auto 35px auto;
             line-height: 1.6;
         }
 
@@ -97,14 +118,12 @@
             padding: 16px 32px;
             border-radius: 12px;
             text-decoration: none;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
             display: inline-flex;
             align-items: center;
             gap: 10px;
             transition: 0.2s;
-            border: none;
-            cursor: pointer;
         }
 
         .btn-hero:hover {
@@ -112,8 +131,8 @@
             transform: translateY(-3px);
         }
 
-        /* SEÇÃO DE DOWNLOADS (App) */
-        .downloads {
+        /* SEÇÃO DE RECURSOS (DESIGN LEVE RESTAURADO) */
+        .recursos {
             padding: 80px 5%;
             max-width: 1100px;
             margin: 0 auto;
@@ -123,52 +142,114 @@
             text-align: center;
             font-size: 32px;
             color: var(--cor-escura);
-            margin-bottom: 50px;
+            margin-bottom: 15px;
+            font-weight: 900;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: #64748b;
+            font-size: 16px;
+            max-width: 600px;
+            margin: 0 auto 50px auto;
+        }
+
+        .grid-recursos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .card-recurso {
+            background: white;
+            padding: 30px 25px;
+            border-radius: 16px;
+            border: 1px solid var(--cor-borda);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .card-recurso:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        /* Ícone limpo sem fundo */
+        .card-recurso .ico {
+            font-size: 38px;
+            color: var(--cor-primaria);
+            margin-bottom: 15px;
+        }
+
+        .card-recurso h3 {
+            font-size: 19px;
+            margin: 0 0 10px 0;
+            color: var(--cor-escura);
+            font-weight: 700;
+        }
+
+        .card-recurso p {
+            color: #64748b;
+            font-size: 14.5px;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* DOWNLOADS */
+        .downloads {
+            padding: 80px 5%;
+            background: #ffffff;
+            border-top: 1px solid var(--cor-borda);
+            border-bottom: 1px solid var(--cor-borda);
         }
 
         .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 30px;
+            max-width: 900px;
+            margin: 0 auto;
         }
 
         .card {
-            background: white;
+            background: var(--cor-fundo);
             padding: 40px 30px;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
             text-align: center;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--cor-borda);
             transition: 0.3s;
         }
 
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.08);
         }
 
         .card-icone {
-            font-size: 60px;
-            color: var(--cor-primaria);
-            margin-bottom: 20px;
+            font-size: 55px;
+            margin-bottom: 15px;
         }
 
         .card h3 {
-            font-size: 24px;
-            margin: 0 0 15px 0;
+            font-size: 22px;
+            margin: 0 0 12px 0;
             color: var(--cor-escura);
         }
 
         .card p {
             color: #64748b;
-            line-height: 1.6;
+            line-height: 1.5;
+            font-size: 14px;
             margin-bottom: 25px;
         }
 
         .btn-loja {
             display: inline-block;
-            background: #f1f5f9;
-            color: var(--cor-escura);
+            background: var(--cor-escura);
+            color: white;
             padding: 12px 24px;
             border-radius: 8px;
             text-decoration: none;
@@ -178,44 +259,127 @@
             transition: 0.2s;
         }
 
-        .btn-loja.destaque {
-            background: var(--cor-escura);
-            color: white;
-        }
-
         .btn-loja:hover {
-            background: #e2e8f0;
-        }
-        .btn-loja.destaque:hover {
             background: #0f172a;
         }
 
-        /* SEÇÃO GESTORES (B2B) */
+        /* GESTORES */
         .gestores {
-            background: white;
             padding: 80px 5%;
             text-align: center;
-            border-top: 1px solid #e2e8f0;
         }
 
         .badge-b2b {
             background: #dcfce7;
             color: #166534;
-            padding: 6px 12px;
+            padding: 6px 14px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             display: inline-block;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
         }
 
-        /* FOOTER */
+        /* SEÇÃO FAQ */
+        .faq {
+            padding: 80px 5%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            background: white;
+            border: 1px solid var(--cor-borda);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .faq-pergunta {
+            padding: 18px 22px;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--cor-escura);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .faq-resposta {
+            padding: 0 22px 18px 22px;
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.6;
+            display: none;
+        }
+
+        .faq-item.ativo .faq-resposta {
+            display: block;
+        }
+
+        .faq-item.ativo .faq-icone {
+            transform: rotate(180deg);
+        }
+
+        .faq-icone {
+            transition: transform 0.3s;
+            color: var(--cor-primaria);
+        }
+
+        /* RODAPÉ EXPANDIDO */
         footer {
             background: var(--cor-escura);
             color: #94a3b8;
-            text-align: center;
-            padding: 30px 5%;
+            padding: 60px 5% 30px 5%;
             font-size: 14px;
+        }
+
+        .footer-grid {
+            max-width: 1100px;
+            margin: 0 auto 50px auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            text-align: left;
+        }
+
+        .footer-col h4 {
+            color: white;
+            font-size: 16px;
+            margin: 0 0 20px 0;
+            font-weight: 700;
+        }
+
+        .footer-col ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .footer-col ul li {
+            margin-bottom: 10px;
+        }
+
+        .footer-col ul li a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-col ul li a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding-top: 25px;
+            border-top: 1px solid #334155;
+            text-align: center;
+            font-size: 13px;
         }
 
         /* BOTÃO FLUTUANTE WHATSAPP */
@@ -243,47 +407,94 @@
             box-shadow: 0 6px 22px rgba(37, 211, 102, 0.6);
         }
 
+        /* AJUSTES FINOS PARA CELULAR (MOBILE) */
         @media (max-width: 768px) {
-            .hero h1 { font-size: 36px; }
+            header { padding: 15px 4%; }
+            nav.menu-topo { display: none; }
+            .hero h1 { font-size: 34px; }
             .hero { padding: 60px 5%; }
-            .btn-whatsapp-flutuante {
-                bottom: 20px;
-                right: 20px;
-                width: 54px;
-                height: 54px;
+            
+            /* Ajusta os cards de recurso no mobile para não ficarem tão grandes */
+            .card-recurso {
+                padding: 25px 20px;
             }
+            .card-recurso h3 {
+                font-size: 17px;
+            }
+            .card-recurso p {
+                font-size: 14px;
+            }
+
+            .btn-whatsapp-flutuante { bottom: 20px; right: 20px; width: 54px; height: 54px; }
         }
     </style>
 </head>
 <body>
 
+    <!-- CABEÇALHO COM NAVEGAÇÃO -->
     <header>
         <a href="#" class="logo">
             <i class="material-icons">sports_tennis</i> SetPoint
         </a>
-        <!-- Redireciona direto para o Login do Gestor -->
-        <a href="index.html?tela=tela-gestor-login" class="btn-login">Acessar Sistema</a>
+        <nav class="menu-topo">
+            <a href="#recursos">Recursos</a>
+            <a href="#downloads">Baixar App</a>
+            <a href="#gestores">Para Arenas</a>
+            <a href="#faq">Dúvidas</a>
+            <a href="index.html?tela=tela-gestor-login" class="btn-login">Acessar Sistema</a>
+        </nav>
     </header>
 
+    <!-- HERO SECTION -->
     <section class="hero">
         <h1>O novo padrão em <span>Gestão de Arenas</span></h1>
         <p>A plataforma definitiva para automatizar as reservas da sua quadra, conectar seus jogadores e acabar com a dor de cabeça do WhatsApp.</p>
-        <!-- Redireciona direto para o Formulário de Cadastro do Clube -->
         <a href="index.html?tela=tela-gestor-cadastro" class="btn-hero">
             <i class="material-icons">rocket_launch</i> Começar Agora Grátis
         </a>
     </section>
 
-    <section class="downloads">
+    <!-- SEÇÃO DE RECURSOS (3 CARDS OPÇÃO 4) -->
+    <section id="recursos" class="recursos">
+        <h2 class="section-title">Tudo o que sua Arena precisa</h2>
+        <p class="section-subtitle">Desenvolvido sob medida para simplificar a rotina do dono de quadra e encantar os atletas.</p>
+
+        <div class="grid-recursos">
+            <!-- Card 1 -->
+            <div class="card-recurso">
+                <i class="material-icons ico">event_available</i>
+                <h3>Agendamento Automático 24/7</h3>
+                <p>Grade de horários dinâmica e transparente onde o sócio visualiza disponibilidades e reserva a quadra em poucos segundos.</p>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="card-recurso">
+                <i class="material-icons ico">shield</i>
+                <h3>Regras de Reserva Inteligentes</h3>
+                <p>Proteja a operação do seu clube com travas personalizáveis para horários nobres, limite de reservas ativas por sócio e bloqueios flexíveis.</p>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="card-recurso">
+                <i class="material-icons ico">groups</i>
+                <h3>Grade Dinâmica de Atividades</h3>
+                <p>Concilie facilmente agendas de professores, jogos normais, treinos de duplas e confirmação de convidados sem sobreposição.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO DE DOWNLOADS DO APP -->
+    <section id="downloads" class="downloads">
         <h2 class="section-title">Baixe o App para Jogadores</h2>
+        <p class="section-subtitle">Seus atletas acessam a grade das quadras em segundos de qualquer dispositivo.</p>
         
         <div class="cards-grid">
             <!-- Card Android -->
             <div class="card">
                 <i class="material-icons card-icone" style="color: #3DDC84;">android</i>
                 <h3>Android</h3>
-                <p>Baixe o SetPoint Gestor diretamente na Google Play Store. Rápido, leve e com notificações em tempo real.</p>
-                <a href="https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq" class="btn-loja destaque" target="_blank" onclick="baixarApkAndroid(event)">
+                <p>Baixe o aplicativo para Android em arquivo APK oficial com instalação rápida e direta.</p>
+                <a href="https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq" class="btn-loja" target="_blank" onclick="baixarApkAndroid(event)">
                     Baixar Aplicativo (APK)
                 </a>
             </div>
@@ -292,51 +503,151 @@
             <div class="card">
                 <i class="material-icons card-icone" style="color: #000000;">apple</i>
                 <h3>iPhone (iOS)</h3>
-                <p>Acesse o app pelo navegador Safari e clique em <b>"Adicionar à Tela de Início"</b> para instalar instantaneamente, sem ocupar memória!</p>
-                <!-- Redireciona para a recepção do Web App PWA -->
-                <a href="index.html?tela=tela-boas-vindas&pwa=ios" class="btn-loja destaque">
+                <p>Acesse o app pelo Safari e selecione <b>"Adicionar à Tela de Início"</b> para instalar como PWA leve.</p>
+                <a href="index.html?tela=tela-boas-vindas&pwa=ios" class="btn-loja">
                     Acessar Web App (PWA)
                 </a>
             </div>
         </div>
     </section>
 
-    <section class="gestores">
+    <!-- SEÇÃO GESTORES (B2B) -->
+    <section id="gestores" class="gestores">
         <span class="badge-b2b">PARA DONOS DE ARENAS</span>
-        <h2 class="section-title" style="margin-bottom: 20px;">Transforme a gestão do seu Clube</h2>
-        <p style="color: #64748b; font-size: 18px; max-width: 600px; margin: 0 auto 40px auto; line-height: 1.6;">
-            Painel financeiro, grades de horários complexas, regras anti-monopólio e gestão de aulas. Tudo em um só lugar.
+        <h2 class="section-title" style="margin-bottom: 15px;">Transforme a gestão do seu Clube</h2>
+        <p style="color: #64748b; font-size: 17px; max-width: 600px; margin: 0 auto 35px auto; line-height: 1.6;">
+            Painel financeiro, grades de horários complexas, controle de perfis e histórico de jogos. Tudo em um só lugar.
         </p>
-        <!-- Redireciona direto para o Cadastro de Novo Clube -->
-        <a href="index.html?tela=tela-gestor-cadastro" class="btn-login" style="padding: 16px 32px; font-size: 16px;">Criar Conta do Clube</a>
+        <a href="index.html?tela=tela-gestor-cadastro" class="btn-login" style="padding: 16px 32px; font-size: 16px; text-decoration: none;">Criar Conta da Arena</a>
     </section>
 
+    <!-- SEÇÃO PERGUNTAS FREQUENTES (FAQ) -->
+    <section id="faq" class="faq">
+        <h2 class="section-title">Perguntas Frequentes</h2>
+        <p class="section-subtitle">Tire suas dúvidas sobre o funcionamento do SetPoint.</p>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-pergunta">
+                <span>Como funciona a instalação no iPhone (iOS)?</span>
+                <i class="material-icons faq-icone">expand_more</i>
+            </div>
+            <div class="faq-resposta">
+                No iPhone, o SetPoint utiliza a tecnologia PWA (Progressive Web App). Basta abrir o link do aplicativo no Safari, tocar no ícone de "Compartilhar" e selecionar "Adicionar à Tela de Início". O ícone ficará na sua tela inicial exatamente como um app da App Store!
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-pergunta">
+                <span>Preciso pagar para cadastrar minha arena?</span>
+                <i class="material-icons faq-icone">expand_more</i>
+            </div>
+            <div class="faq-resposta">
+                Você pode criar a conta da sua arena gratuitamente para testar todos os recursos do painel administrativo e configurar suas quadras sem compromisso.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-pergunta">
+                <span>Como os sócios da minha arena entram no app?</span>
+                <i class="material-icons faq-icone">expand_more</i>
+            </div>
+            <div class="faq-resposta">
+                O gestor cria um código exclusivo do clube (Exemplo: OLIMPICO10). Os jogadores digitam esse código na primeira vez que abrem o app e entram com a senha cadastrada pela secretaria.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-pergunta">
+                <span>O sistema evita que um sócio prenda vários horários?</span>
+                <i class="material-icons faq-icone">expand_more</i>
+            </div>
+            <div class="faq-resposta">
+                Sim! O SetPoint possui regras Anti-Monopólio. Você pode configurar quantas reservas ativas cada sócio pode ter simultaneamente e proibir partidas longas em horários de pico.
+            </div>
+        </div>
+    </section>
+
+    <!-- RODAPÉ EXPANDIDO -->
     <footer>
-        &copy; 2026 SetPoint Gestor SaaS. Todos os direitos reservados. <br>
-        Versão 1.0 (Build V16)
+        <div class="footer-grid">
+            <div class="footer-col">
+                <a href="#" class="logo" style="color: white; margin-bottom: 15px;">
+                    <i class="material-icons">sports_tennis</i> SetPoint
+                </a>
+                <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
+                    O novo padrão em automação e gestão de quadras esportivas.
+                </p>
+            </div>
+
+            <div class="footer-col">
+                <h4>Navegação</h4>
+                <ul>
+                    <li><a href="#">Início</a></li>
+                    <li><a href="#recursos">Recursos</a></li>
+                    <li><a href="#downloads">Baixar App</a></li>
+                    <li><a href="#faq">Perguntas Frequentes</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Documentação</h4>
+                <ul>
+                    <li><a href="#" onclick="alert('PDF de Apresentação será anexado em breve!')">Apresentação (PDF)</a></li>
+                    <li><a href="#" onclick="alert('Manual do Gestor em breve!')">Manual do Gestor</a></li>
+                    <li><a href="#" onclick="alert('Termos de Uso em breve!')">Termos de Uso</a></li>
+                    <li><a href="#" onclick="alert('Política de Privacidade LGPD em breve!')">Privacidade (LGPD)</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Contato & Suporte</h4>
+                <ul>
+                    <li><a href="https://wa.me/5541999176972" target="_blank">💬 WhatsApp Direto</a></li>
+                    <li><a href="mailto:suporte@setpointgestor.com.br">✉️ E-mail Suporte</a></li>
+                    <li><span style="color: #64748b; font-size: 13px;">Curitiba - PR</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            &copy; 2026 SetPoint Gestor SaaS. Todos os direitos reservados. <br>
+            <span style="color: #64748b; font-size: 11px;">Versão 1.0 (Build V16)</span>
+        </div>
     </footer>
 
     <!-- BOTÃO FLUTUANTE DO WHATSAPP -->
     <a href="https://wa.me/5541999176972?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20SetPoint%20e%20gostaria%20de%20saber%20mais%20sobre%20o%20sistema." 
-	   class="btn-whatsapp-flutuante" 
-	   target="_blank" 
-	   title="Falar com o Desenvolvedor">
-		<svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-			<path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.105 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-		</svg>
-	</a>
+       class="btn-whatsapp-flutuante" 
+       target="_blank" 
+       title="Falar com o Desenvolvedor">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.105 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+        </svg>
+    </a>
 
+    <!-- SCRIPTS DE INTERATIVIDADE -->
     <script>
+        // Trava de APK no iPhone
         function baixarApkAndroid(event) {
-            // Detecta se o dispositivo é um iPhone, iPad ou iPod
             const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
             if (isIOS) {
-                // Cancela o download do arquivo no iPhone
                 event.preventDefault();
-                
-                // Exibe a orientação amigável
-                alert('📱 Você está navegando de um iPhone!\n\nArquivos APK são exclusivos para sistemas Android.\n\nPara o seu iPhone, utilize o botão "Acessar Web App (PWA)" no card do iOS logo ao lado!');
+                alert('📱 Você está navegando de um iPhone!\n\nArquivos APK são exclusivos para sistemas Android.\n\nPara o seu iPhone, utilize o botão "Acessar Web App (PWA)" no card do iOS!');
+            }
+        }
+
+        // Sanfona do FAQ
+        function toggleFaq(elemento) {
+            const jaAtivo = elemento.classList.contains('ativo');
+            
+            // Fecha todos os outros
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('ativo');
+            });
+
+            // Se não estava ativo, abre o clicado
+            if (!jaAtivo) {
+                elemento.classList.add('ativo');
             }
         }
     </script>
