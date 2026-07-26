@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SetPoint Gestor - SaaS</title>
+	
+	<!-- PWA: Conexão com o Manifest e Configurações para iOS -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SetPoint">
+    <link rel="apple-touch-icon" href="img/icone-192.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    <script src="capacitor.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+	
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/cadastro.css">
+    <link rel="stylesheet" href="css/quadras.css">
+    <link rel="stylesheet" href="css/planilha.css">
+	<link rel="stylesheet" href="css/config.css"> 
+	<link rel="stylesheet" href="css/regras.css">
+</head>
+<body>
+
+    <div id="tela-loading" class="tela-app ativa">
+        <div class="container-central">
+            <h2 style="color: var(--cor-primaria);">SetPoint</h2>
+            <p style="color: #888;">Identificando ambiente...</p>
+        </div>
+    </div>
+
+    <div id="tela-boas-vindas" class="tela-app"> 
+        <div class="container-central">
+            <h1>SetPoint Gestor</h1>
+            <p style="color: #666; margin-bottom: 30px;">O novo padrão em gestão de arenas.</p>
+			<button class="btn-app btn-jogador" onclick="abrirTelaBuscaClube()">Sou Jogador</button>
+            <button class="btn-app btn-gestor" onclick="navegarApp('tela-gestor-login')">Sou Gestor / Dono</button>
+            <button class="btn-app btn-link" style="color: #94a3b8; margin-top: 15px; font-size: 14px; font-weight: 500; text-decoration: none;" onclick="fecharAplicativoSaaS()">
+                Fechar Aplicativo
+            </button>
+        </div>
+    </div>
+	
+	<div id="tela-manutencao" class="tela-app">
+        <div class="container-central">
+            <div style="font-size: 60px; margin-bottom: 20px; user-select: none;">🚧</div>
+            <h2 style="color: #1e293b; font-size: 24px; font-weight: 700; margin-bottom: 12px;">Arena em Manutenção</h2>
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6; max-width: 320px; margin: 0 auto 30px auto;">
+                Nossa grade de agendamentos está temporariamente suspensa pela administração para ajustes operacionais. Voltamos em breve!
+            </p>
+            <button class="btn-app btn-cinza" style="margin: 0; width: 100%; max-width: 240px;" onclick="navegarApp('tela-boas-vindas')">
+                Voltar ao Início
+            </button>
+        </div>
+    </div>
+
+    <div id="tela-jogador-codigo" class="tela-app">
+        <div class="container-central">
+            <h2>Acessar Clube</h2>
+            <p style="color: #666; font-size: 14px;">Digite o código fornecido pelo clube.</p>
+            <input type="text" id="input-codigo-clube" class="input-app" placeholder="Ex: OLIMPICO10" style="text-transform: uppercase; text-align: center;" autocomplete="off" autocorrect="off" spellcheck="false">
+            <button class="btn-app btn-jogador" onclick="verificarCodigoClube()">Procurar Clube</button>
+            <button class="btn-app btn-link" onclick="navegarApp('tela-boas-vindas')">Voltar</button>
+        </div>
+    </div>
+
+    <div id="tela-jogador-login" class="tela-app"> 
+        <div class="container-central">
+            <h2 id="nome-clube-encontrado">Carregando Clube...</h2>
+            <p style="color: #666; font-size: 14px;">Selecione seu nome e digite a senha.</p>
+            <select id="jogadorSelect" class="input-app">
+                <option value="">Selecione seu nome...</option>
+            </select>
+            <input type="password" id="acesso_user" class="input-app" placeholder="Digite sua senha" style="text-align: center;" autocomplete="new-password">
+			<button class="btn-app btn-jogador" onclick="fazerLoginJogador()">Entrar</button>
+            <button class="btn-app btn-link" style="color: #888;" onclick="trocarDeClubeJogador()">Trocar de Clube</button>
+        </div>
+    </div>
+
+    <div id="tela-gestor-login" class="tela-app">
+        <div class="container-central">
+            <h2>Painel do Gestor</h2>
+            <input type="email" id="login-email" class="input-app" placeholder="E-mail profissional">
+            <input type="password" id="login-senha" class="input-app" placeholder="Senha">
+            <button class="btn-app btn-gestor" onclick="loginGestorAuth()">Acessar com E-mail</button>
+            <button class="btn-app btn-link" style="margin-top: 0; padding-top: 5px;" onclick="recuperarSenhaGestor()">Esqueci minha senha</button>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 14px; color: #666; margin-bottom: 5px;">Primeiro acesso?</p>
+            <button class="btn-app btn-link" style="font-size: 15px; font-weight: bold; margin-top: 0;" onclick="navegarApp('tela-gestor-cadastro')">Criar Conta e Cadastrar Clube</button>
+            <button class="btn-app btn-link" style="color: #888; margin-top: 15px;" onclick="navegarApp('tela-boas-vindas')">Voltar</button>
+        </div>
+    </div>
+
+    <div id="tela-gestor-cadastro" class="tela-app">
+        <div class="container-central">
+            <h2>Novo Clube</h2>
+            <input type="text" id="cad-nome-clube" class="input-app" placeholder="Nome do Clube (Ex: Arena Olímpica)">
+            <input type="text" id="cad-codigo-clube" class="input-app" placeholder="Crie um Código (Ex: OLIMPICO10)" style="text-transform: uppercase;">
+            <input type="email" id="cad-email" class="input-app" placeholder="Seu E-mail (Admin)">
+            <input type="password" id="cad-senha" class="input-app" placeholder="Crie uma Senha (mín. 6 caracteres)">
+            <button class="btn-app btn-gestor" onclick="cadastrarNovoClube()">Finalizar Cadastro</button>
+            <button class="btn-app btn-link" onclick="navegarApp('tela-gestor-login')">Já tenho conta</button>
+        </div>
+    </div>
+
+    <div id="tela-gestor-dashboard" class="tela-app" style="justify-content: flex-start;">
+        <div class="header-painel">
+            <div>
+                <h2 id="txt-nome-clube">Carregando...</h2>
+                <span style="font-size: 13px; color: #888; display: inline-flex; align-items: center; gap: 6px;">
+                    Painel de Controle do Gestor 
+                    <span id="txt-versao-gestor" style="font-size: 11px; color: #64748b; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;"></span>
+                </span>
+            </div>
+			
+            <div style="display: flex; align-items: center;">
+			    <!-- 👥 CONTADOR DE USUÁRIOS ONLINE SAAS (PAINEL DASHBOARD) -->
+                <div id="saas-online-container-dash" class="notificacao-container" style="display: none; margin-right: 10px;" onclick="abrirJanelaOnlineSaaS()" title="Usuários Online"> 
+                    <i class="material-icons">people</i>
+                    <span id="saas-online-badge-dash" class="badge-SaaS-online" style="display: none;">0</span>
+                </div>
+                <!-- 🌓 BOTÃO MINIMALISTA DE TEMA DO GESTOR -->
+                <button id="btn-tema-gestor" class="material-icons" style="background:none; border:none; cursor:pointer; color: var(--cor-escura, #1e293b); font-size: 26px; margin-right: 5px; display: flex; align-items: center;" title="Alternar Tema">dark_mode</button>
+                
+                <button class="material-icons" style="background:none; border:none; cursor:pointer; color:#e74c3c; font-size: 28px;" onclick="fazerLogout()" title="Sair do Sistema">logout</button>
+            </div> 
+        </div> 
+
+        <div class="grid-dashboard">
+            <div class="card-menu" onclick="abrirModuloJogadores()">
+                <i class="material-icons c-jogadores">people</i>
+                <span class="label-card">Cadastro</span>
+            </div>
+            <div class="card-menu" onclick="abrirGerenciadorQuadras()">
+                <i class="material-icons c-quadras">layers</i>
+                <span class="label-card">Gerenciador Quadras</span>
+            </div>
+            <div class="card-menu" onclick="abrirModalConfig('modal-horarios')">
+                <i class="material-icons c-horarios">schedule</i>
+                <span class="label-card">Horários & Grades</span>
+            </div>
+            <div class="card-menu" onclick="abrirModalConfig('modal-regras')">
+                <i class="material-icons c-regras">settings</i>
+                <span class="label-card">Regras de Reserva</span>
+            </div>
+            <div class="card-menu" onclick="showToast('Módulo de Torneios (Fase 3) em breve!', 'info')">
+                <i class="material-icons" style="color: #f1c40f;">emoji_events</i>
+                <span class="label-card">Torneios</span>
+            </div>
+            <div class="card-menu" onclick="showToast('Módulo de Histórico e Logs em breve!', 'info')">
+                <i class="material-icons" style="color: #888;">history</i>
+                <span class="label-card">Histórico e Logs</span>
+            </div>
+            <div class="card-menu card-largo" onclick="abrirVisaoQuadras()" style="grid-column: span 2; background: linear-gradient(135deg, var(--cor-primaria) 0%, #216a3e 100%); color: white;">
+                <i class="material-icons" style="color: white !important;">sports_tennis</i>
+                <span class="label-card" style="color: white !important;">Visão das Quadras</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="tela-sub-jogadores" class="tela-app" style="justify-content: flex-start;">
+        <div class="header-painel">
+            <div>
+                <h2 id="titulo-qg-jogadores" title="Gerenciamento de Atletas">👥 Jogadores</h2>
+                <span style="font-size: 13px; color: #888;" id="txt-qtd-jogadores">Buscando cadastros...</span>
+            </div>
+            <button class="material-icons" style="background:none; border:none; cursor:pointer; color:var(--cor-escura); font-size: 28px;" onclick="voltarAoQG()" title="Voltar">arrow_back</button>
+        </div>
+
+        <div class="pill-tabs">
+            <button id="btn-aba-consulta" class="pill-btn active" onclick="mudarAbaJogadores('consulta')">🔍 Consulta</button>
+            <button id="btn-aba-novo" class="pill-btn" onclick="abrirFormularioNovoJogador()">➕ Novo Cadastro</button>
+            <button id="btn-aba-aniversarios" class="pill-btn" onclick="mudarAbaJogadores('aniversarios')">🎂 Aniversários</button>
+        </div>
+
+        <div id="conteudo-consulta" class="area-conteudo-jogadores ativa">
+            <input type="text" id="busca-jogador" class="input-app" placeholder="Pesquisar por nome ou apelido..." oninput="filtrarCardsJogadores()" style="margin-top: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: none;">
+            
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <select id="filtro-status" class="input-app" style="padding: 10px; font-size: 14px;" onchange="filtrarCardsJogadores()">
+                    <option value="todos">Status: Todos</option>
+                    <option value="ativos" selected>Status: Ativos</option>
+                    <option value="inativos">Status: Inativos</option>
+                </select>
+            </div>
+
+            <div id="cards-jogadores" class="cards-grid">
+                <p style="color: #888; text-align: center; margin-top: 20px;">Carregando...</p>
+            </div>
+        </div>
+
+        <div id="conteudo-aniversarios" class="area-conteudo-jogadores">
+            <select id="filtro-mes-niver" class="input-app" style="padding: 10px; font-size: 14px;" onchange="renderizarAniversarios()">
+                <option value="0">Todos os meses</option>
+                <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+                <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+                <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+                <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+            <div id="lista-aniversarios" style="margin-top: 15px; text-align: left;"></div>
+        </div>
+    </div>
+
+    <div id="modal-form-jogador" class="modal-form-overlay">
+        <div class="modal-form-content">
+            <div id="faixa-status-jog" class="faixa-status faixa-verde">
+                <span id="titulo-form-jog">Novo Cadastro</span>
+                <input type="checkbox" id="check-ativo-jog" class="checkbox-status" title="Desmarque para inativar o jogador" checked onchange="atualizarFaixaStatus()">
+            </div>
+            <input type="hidden" id="chave-edicao-jog" value="">
+            <div class="input-group">
+                <label>Nome Completo *</label>
+                <input type="text" id="inp-nome-jog" placeholder="Ex: Ronaldo Taborda" required>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Apelido *</label>
+                    <input type="text" id="inp-apelido-jog" placeholder="Ex: Rone" required>
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Nascimento (Data)</label>
+                    <input type="text" id="inp-niver-jog" placeholder="DD/MM/AAAA" maxlength="10">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>WhatsApp / Celular *</label>
+                    <input type="text" id="inp-whats-jog" placeholder="(XX) XXXXX-XXXX" maxlength="15" required>
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>E-mail (Opcional)</label>
+                    <input type="email" id="inp-email-jog" placeholder="Ex: jogador@email.com">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 2;">
+                    <label>Vínculo</label>
+                    <select id="inp-socio-jog">
+                        <option value="titular">Titular</option>
+                        <option value="dependente">Dependente</option>
+                        <option value="visitante">Staff</option>
+                    </select>
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Classe</label>
+                    <select id="inp-classe-jog">
+                        <option value="">Nenhuma</option>
+                        <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group" style="margin-top: 15px;">
+                <label>Perfis & Permissões Especiais</label>
+                <div id="roles-grid-container" class="roles-grid">
+                    <span style="font-size:12px; color:#888;">Carregando perfis do banco...</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn-app btn-cinza" style="margin: 0; padding: 12px;" onclick="fecharFormularioJogador()">Cancelar</button>
+                <button type="button" class="btn-app btn-jogador" style="margin: 0; padding: 12px; background-color: #28a745;" onclick="salvarJogador()">Salvar Jogador</button>
+            </div>
+        </div>
+    </div>
+	
+	
+	<div id="tela-onboarding-quadras" class="tela-app" style="justify-content: center; align-items: center; background: #f8fafc; padding: 20px; box-sizing: border-box;">
+        
+        <div style="background: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); width: 100%; max-width: 440px; text-align: center; border: 1px solid #e2e8f0; box-sizing: border-box;">
+            
+            <div style="font-size: 50px; margin-bottom: 20px; -webkit-user-select: none; user-select: none;">🏟️</div>
+            
+            <h2 style="color: #1e293b; font-size: 22px; font-weight: 700; margin-bottom: 10px; font-family: 'Roboto', sans-serif;">Bem-vindo ao SetPoint!</h2>
+            
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-bottom: 30px; font-family: 'Roboto', sans-serif;">
+                Vamos preparar a sua arena para os jogos. Para começar, informe a quantidade total de quadras que o seu clube possui:
+            </p>
+            
+            <div id="onboarding-etapa-input">
+                
+                <div style="display: flex; justify-content: center; margin-bottom: 30px;">
+                    <input type="number" id="input-onboarding-qtd" class="input-app" min="1" max="50" value="1" 
+                           style="text-align: center; width: 130px; height: 50px; font-size: 22px; font-weight: bold; margin: 0; border-radius: 12px; border: 2px solid #cbd5e1;">
+                </div>
+                
+                <button type="button" class="btn-app btn-gestor" 
+                        style="margin: 0; width: 100%; height: 48px; font-size: 15px; font-weight: bold; border-radius: 12px; cursor: pointer;" 
+                        onclick="avancarPreviewOnboardingSaaS()">
+                    Continuar
+                </button>
+                
+            </div>
+            
+            <div id="onboarding-etapa-preview" style="display: none;">
+                
+                <div id="onboarding-texto-preview" 
+                     style="background: #f1f5f9; padding: 18px; border-radius: 14px; font-size: 13px; color: #334155; text-align: left; line-height: 1.6; margin-bottom: 30px; border-left: 4px solid #28a745; font-family: 'Roboto', sans-serif;">
+                    </div>
+                
+                <div style="display: flex; gap: 12px; width: 100%;">
+                    
+                    <button type="button" class="btn-app btn-cinza" 
+                            style="margin: 0; flex: 1; height: 46px; font-size: 14px; font-weight: bold; border-radius: 12px; cursor: pointer;" 
+                            onclick="voltarEtapaInputOnboardingSaaS()">
+                        Corrigir
+                    </button>
+                    
+                    <button type="button" class="btn-app btn-gestor" 
+                            style="margin: 0; flex: 1; height: 46px; font-size: 14px; font-weight: bold; border-radius: 12px; background-color: #28a745; cursor: pointer;" 
+                            onclick="confirmarECriarArenaSaaS()">
+                        Criar Arena!
+                    </button>
+                    
+                </div> 
+                
+            </div>
+            
+            <div style="margin-top: 25px;">
+                <span onclick="fazerLogout()" style="color: #94a3b8; font-size: 13px; cursor: pointer; text-decoration: underline; font-family: 'Roboto', sans-serif;">Sair da conta e voltar ao início</span>
+            </div>
+            
+        </div>
+        
+    </div>
+    
+
+    <div id="tela-gerenciador-quadras" class="tela-app" style="justify-content: flex-start; background: #f4f6f8;">
+        
+        <div class="header-painel">
+            <div>
+ 				<h2>🚀 Gerenciador de Quadras <span id="link-reset-secreto" style="font-size: 11px; color: #cbd5e1; font-weight: normal; cursor: pointer; margin-left: 8px;" onclick="solicitarResetDeFabricaSaaS()">reset</span></h2>
+                <span id="indicador-qtd-quadras" style="font-size: 13px; color: #888; font-weight: 500;">Carregando quadras...</span>
+            </div>
+            <button class="material-icons" style="background:none; border:none; cursor:pointer; color:var(--cor-escura); font-size: 28px;" onclick="voltarAoQG()">arrow_back</button>
+        </div>
+
+        <div class="controles-gerenciador-saas" style="width: 100%; max-width: 500px; margin: 15px auto 5px auto; display: flex; flex-direction: column; gap: 12px; padding: 0 15px; box-sizing: border-box;">
+            
+            <button class="btn-app btn-gestor" style="margin: 0; width: 100%; height: 46px; font-size: 15px; font-weight: bold; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--cor-primaria, #007bff); color: white; border: none; cursor: pointer;" onclick="abrirModalCadastroQuadraSaaS(false)">
+                <i class="material-icons" style="font-size: 20px;">add_circle</i> Adicionar Nova Quadra
+            </button>
+            
+            <div style="display: flex; gap: 10px; width: 100%; align-items: center; box-sizing: border-box;">
+                <div style="position: relative; flex: 1;">
+                    <i class="material-icons" style="position: absolute; left: 12px; top: 11px; color: #94a3b8; font-size: 20px;">search</i>
+                    <input type="text" id="busca-quadra" class="input-app" placeholder="Pesquisar quadra por nome..." style="padding-left: 40px; margin: 0; width: 100%; height: 42px; border-radius: 10px; border: 1px solid #cbd5e1; background: white; box-sizing: border-box; font-size: 14px;" oninput="filtrarQuadrasPorNomeSaaS(this.value)">
+                </div>
+                
+                <button id="btn-inverter-ordem" style="margin: 0; background: #e2e8f0; color: #475569; width: 42px; height: 42px; border: none; display: flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; transition: all 0.2s; flex-shrink: 0;" onclick="alternarInversaoOrdemSaaS()" title="Inverter Ordem">
+                    <i class="material-icons" style="font-size: 22px;">swap_vert</i>
+                </button>
+
+                <button id="btn-filtros-global-quadras" style="margin: 0; background: #e2e8f0; color: #475569; width: 42px; height: 42px; border: none; display: flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; transition: all 0.2s; flex-shrink: 0;" onclick="toggleGavetaFiltrosGlobalSaaS()" title="Configurar Exibição de Pílulas">
+                    <i class="material-icons" style="font-size: 22px;">tune</i>
+                </button>
+            </div>
+
+            <div id="gaveta-filtros-global-quadras" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; box-sizing: border-box; width: 100%;">
+                <h4 style="margin: 0 0 10px 0; color: var(--cor-escura); font-size: 13px; font-weight: 700;">Exibir no Cartão Informativo (Válido para todas as quadras)</h4>
+                <div class="roles-grid" style="margin: 0;">
+                    <label><input type="checkbox" id="vis-global-piso" checked onchange="salvarFiltrosGlobalSaaS()"> Tipo de Piso</label>
+                    <label><input type="checkbox" id="vis-global-vip" checked onchange="salvarFiltrosGlobalSaaS()"> Selo VIP</label>
+                    <label><input type="checkbox" id="vis-global-luz" checked onchange="salvarFiltrosGlobalSaaS()"> Refletores</label>
+                    <label><input type="checkbox" id="vis-global-arqui" checked onchange="salvarFiltrosGlobalSaaS()"> Arquibancada</label>
+                </div>
+            </div>
+        </div>
+
+        <div id="container-cards-quadras" class="cards-quadras-lista"></div>
+    </div>
+
+    <div id="modal-form-quadra" class="modal-form-overlay">
+        <div class="modal-form-content">
+            
+            <div id="faixa-status-quadra" class="faixa-status faixa-verde">
+                <span id="titulo-form-quadra">Nova Quadra</span>
+            </div>
+            
+            <input type="hidden" id="chave-edicao-quadra" value="">
+
+            <div class="input-group">
+                <label>Nome da Quadra / Identificação *</label>
+                <input type="text" id="inp-nome-quadra" placeholder="Ex: Quadra Central, Beach 1..." required>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Tipo de Piso</label>
+                    <select id="inp-piso-quadra">
+                        <option value="Saibro">Saibro</option>
+                        <option value="Quadra Rápida">Quadra Rápida</option>
+                        <option value="Areia">Areia</option>
+                        <option value="Grama Sintética">Grama Sintética</option>
+                    </select>
+                </div>
+                <div class="input-group" style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start;">
+                    <label style="margin-bottom: 8px;">Quadra VIP / Especial?</label>
+                    <label class="switch-premium" style="margin-top: 5px;">
+                        <input type="checkbox" id="check-vip-quadra">
+                        <span class="slider-premium"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label style="margin-bottom: 8px;">Modalidades / Esportes Permitidos</label>
+                <div id="esportes-grid-quadra" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+                    <span class="pilula-check-saas" onclick="toggleSelecaoEsporteSaaS(this, 'tenis')">Tênis</span>
+                    <span class="pilula-check-saas" onclick="toggleSelecaoEsporteSaaS(this, 'beach')">Beach Tennis</span>
+                    <span class="pilula-check-saas" onclick="toggleSelecaoEsporteSaaS(this, 'padel')">Padel</span>
+                    <span class="pilula-check-saas" onclick="toggleSelecaoEsporteSaaS(this, 'volei')">Vôlei de Praia</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 1; display: flex; flex-direction: column;">
+                    <label style="margin-bottom: 8px;">Possui Refletores?</label>
+                    <label class="switch-premium" style="margin-top: 5px;">
+                        <input type="checkbox" id="check-luz-quadra">
+                        <span class="slider-premium"></span>
+                    </label>
+                </div>
+                <div class="input-group" style="flex: 1; display: flex; flex-direction: column;">
+                    <label style="margin-bottom: 8px;">Possui Arquibancada?</label>
+                    <label class="switch-premium" style="margin-top: 5px;">
+                        <input type="checkbox" id="check-arquibancada-quadra" onchange="toggleCampoCapacidadeSaaS(this.checked)">
+                        <span class="slider-premium"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="grupo-capacidade-arquibancada" class="input-group animacao-capacidade">
+                <label>Capacidade da Arquibancada (Nº de pessoas)</label>
+                <input type="number" id="inp-capacidade-quadra" placeholder="Ex: 50" min="0">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn-app btn-cinza" style="margin: 0; padding: 12px; flex: 1;" onclick="fecharModalCadastroQuadraSaaS()">Cancelar</button>
+                <button type="button" class="btn-app" style="margin: 0; padding: 12px; flex: 1; background-color: #28a745; color: white; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;" onclick="salvarConfiguracaoRichQuadraSaaS()">Salvar Quadra</button>
+            </div>
+        </div>
+    </div>
+	
+
+    <div id="tela-visao-quadras" class="tela-app" style="justify-content: flex-start; padding-bottom: 60px; background: #f4f6f8;">
+        <header id="app-header">
+            <div class="header-left" onclick="abrirSheetPerfil()" style="cursor: pointer;">
+				<div class="header-avatar"><i class="material-icons">account_circle</i></div>
+				<span class="header-user" id="header-nome">Olá, Sócio</span>
+			</div>
+            <div class="header-right">
+			    <!-- 🎯 ADICIONADO: CONTADOR DE USUÁRIOS ONLINE SAAS (EXCLUSIVO GESTOR/ADMIN) -->
+                <div id="saas-online-container" class="notificacao-container" style="display: none;" onclick="abrirJanelaOnlineSaaS()" title="Usuários Online">
+                    <i class="material-icons">people</i>
+                    <span id="saas-online-badge" class="badge-SaaS-online" style="display: none;">0</span>
+                </div>
+                <div class="notificacao-container">
+                    <i class="material-icons">notifications</i>
+                    <span id="notificacao-badge" class="badge-vermelho">1</span>
+                </div>
+                <button class="header-logout" onclick="sairDaVisaoQuadras()" title="Voltar ao QG">
+                    <i class="material-icons">logout</i>
+                </button>
+            </div>
+        </header>
+
+        <div class="tab-container"></div>
+
+        <div class="header-legenda-container">
+            <div class="header-legenda-linha">
+                <div id="agenda-trigger" class="agenda-trigger" onclick="toggleAgendaVisual()">
+                    📅 <span id="agenda-icone">▼</span>
+                </div>
+                <div class="container-titulo-central">
+                    <button id="btn-trigger-mapa-mobile" onclick="abrirMapaQuadrasMobile()">
+                        <i class="material-icons" style="font-size: 24px;">grid_view</i>
+                    </button>
+                    <h2 id="lbl-quadra-titulo">Carregando...</h2>
+                </div>
+                <div id="legenda-trigger" class="legenda-trigger" onclick="toggleLegendaVisual()">
+                    <span class="texto-legenda">Legenda:</span> <span id="legenda-icone">▼</span>
+                </div>
+            </div>
+            <div id="agenda-conteudo" class="agenda-conteudo"></div>
+            <div id="legenda-bloco" class="legenda-conteudo">
+                <div class="legenda-itens-linha-unica">
+                    <!-- 🟢 Marcador 1 Hora Padronizado -->
+                    <div class="legenda-item">
+                        <span class="legenda-icone-cor" style="background-color: lightgreen; border: 1px solid #2e7d32; box-sizing: border-box;"></span>
+                        <span class="legenda-texto">1 Hora</span>
+                    </div>
+                    
+                    <!-- 🔵 Marcador 2 Horas Padronizado -->
+                    <div class="legenda-item">
+                        <span class="legenda-icone-cor" style="background-color: lightblue; border: 1px solid #0284c7; box-sizing: border-box;"></span>
+                        <span class="legenda-texto">2 Horas</span>
+                    </div>
+                    
+                    <!-- 🔴 Marcador Aula Padronizado -->
+                    <div class="legenda-item">
+                        <span class="legenda-icone-cor" style="background-color: lightcoral; border: 1px solid #dc3545; box-sizing: border-box;"></span>
+                        <span class="legenda-texto">Aula</span> 
+                    </div>
+                    
+                    <!-- ⚪ Marcador Dupla Mestre -->
+                    <div class="legenda-item">
+                        <span class="legenda-icone-cor" style="background-color: #cbd5e1; border: 1px solid #94a3b8; box-sizing: border-box;"></span>
+                        <span class="legenda-texto">Dupla</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabela-container"> 
+            <table id="tabelaQuadra"> 
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="horario-celula">Horários</th>
+                        <th>Segunda</th><th>Terça</th><th>Quarta</th><th>Quinta</th><th>Sexta</th><th>Sábado</th><th>Domingo</th>
+                        <th rowspan="2" class="horario-celula">Horários</th>
+                    </tr>
+                    <tr id="linha-datas-tabela">
+                        <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+                    </tr>
+                </thead>
+                <tbody id="tabelaCorpo"></tbody>
+            </table>
+        </div> 
+		
+		<button id="fab-nova-reserva" class="fab-btn fab-left" title="Nova Reserva">
+            <i class="material-icons">add</i>
+        </button>
+        <button id="fab-toggle-tema" class="fab-btn fab-right" title="Alternar Tema">
+            <i class="material-icons">dark_mode</i>
+        </button>
+    </div>
+
+    <div id="modal-regras" class="modal-overlay">
+        <div class="modal-content modal-regras-fullscreen">
+            
+            <!-- Cabeçalho Unificado sob o Padrão Global do Sistema -->
+            <div class="header-painel">
+                <div>
+                    <h2>⚙️ Regras de Reserva</h2>
+                    <span style="font-size: 13px; color: #888;">Parâmetros operacionais e controle de uso da arena.</span>
+                </div>
+                <button class="material-icons" style="background:none; border:none; cursor:pointer; color:var(--cor-escura); font-size: 28px;" onclick="fecharModalRegrasSaaS()" title="Voltar ao QG">arrow_back</button>
+            </div> 
+
+            <div class="regras-content-scroll"> 
+                <div class="sanfona-container">
+                    
+                    <!-- GAVETA 1: Sistema & Manutenção -->
+                    <div class="accordion-item active" onclick="toggleGavetaRegras(this)">
+                        <div class="accordion-header">
+                            <div class="accordion-header-left">
+                                <i class="material-icons" style="color: #64748b;">build</i>
+                                <div class="header-title-block">
+                                    <span class="sidebar-title">Sistema & Manutenção</span>
+                                    <span class="sidebar-desc">Status do app, mural e logs do sistema.</span>
+                                </div>
+                            </div>
+                            <i class="material-icons icon-arrow">expand_more</i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Status do Sistema (ON/OFF)</span>
+                                        <span class="ctrl-desc">Ativa ou desativa o app para os sócios.</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="regra-sistema-onoff" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Limpeza do Mural</span>
+                                        <span class="ctrl-desc">Tempo para apagar mensagens publicadas.</span>
+                                    </div>
+                                    <select class="modern-select" id="regra-limpeza-mural">
+                                        <option value="1">1 dia</option>
+                                        <option value="2">2 dias</option>
+                                        <option value="3">3 dias</option>
+                                        <option value="7" selected>1 semana</option>
+                                        <option value="30">1 mês</option>
+                                    </select>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Limpeza de Logs</span>
+                                        <span class="ctrl-desc">Histórico de reservas excluídas.</span>
+                                    </div>
+                                    <select class="modern-select" id="regra-limpeza-logs">
+                                        <option value="0">Desativada</option>
+                                        <option value="7">7 dias</option>
+                                        <option value="15" selected>15 dias</option>
+                                        <option value="30">1 mês</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GAVETA 2: Regras Essenciais de Agendamento -->
+                    <div class="accordion-item" onclick="toggleGavetaRegras(this)">
+                        <div class="accordion-header">
+                            <div class="accordion-header-left">
+                                <i class="material-icons" style="color: #10b981;">tune</i>
+                                <div class="header-title-block">
+                                    <span class="sidebar-title">Regras Essenciais de Agendamento</span>
+                                    <span class="sidebar-desc">Antecedência, duração e travas de horários.</span>
+                                </div>
+                            </div>
+                            <i class="material-icons icon-arrow">expand_more</i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Antecedência Máxima</span>
+                                        <span class="ctrl-desc">Dias à frente que a grade fica visível.</span>
+                                    </div>
+                                    <select class="modern-select" id="regra-antecedencia">
+										<option value="6">Apenas Hoje</option>
+										<option value="5">Até 1 dia</option>
+										<option value="4">Até 2 dias</option>
+										<option value="3" selected>Até 3 dias</option>
+										<option value="2">Até 4 dias</option>
+										<option value="1">Até 5 dias</option>
+									</select>
+                                </div>
+								
+								<!-- 🔥 NOVO CAMPO INJETADO: Dias para Exibir --> 
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Dias para Exibir</span>
+										<span class="ctrl-desc">Histórico de dias passados visível apenas para  leitura.</span>
+									</div>
+									<select class="modern-select" id="regra-exibicao">
+										<!-- Populado dinamicamente via regras.js para evitar colisão espacial -->
+									</select>
+								</div>
+								
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Duração Permitida</span>
+                                        <span class="ctrl-desc">Duração que o usuário pode escolher ao reservar a quadra.</span>
+                                    </div>
+                                    <select class="modern-select" id="regra-duracao">
+                                        <option value="1_2" selected>1 ou 2 Horas</option>
+                                        <option value="1">1 Hora</option> 
+									</select>
+                                </div>
+								
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title" style="white-space: nowrap;">Quórum Mínimo <span style="font-size: 13px; color: #64748b; font-weight: normal;">(max: 4)</span></span>
+										<span class="ctrl-desc">Mínimo de jogadores para manter a reserva ativa.</span>
+									</div>
+									<div style="display: flex; flex-direction: column; gap: 8px; width: 130px; flex-shrink: 0;">
+										<div style="display: flex; align-items: center; justify-content: space-between;">
+											<span style="font-size: 13px; color: #64748b; font-weight: 600;">1 Hr</span>
+											<select class="modern-select" id="regra-quorum-1h" style="padding: 4px 8px; width: 85px; min-width: 85px; margin: 0;">
+												<option value="1">Mín 1</option>
+												<option value="2" selected>Mín 2</option>
+											</select>
+										</div>
+										<div style="display: flex; align-items: center; justify-content: space-between;">
+											<span style="font-size: 13px; color: #64748b; font-weight: 600;">2 Hrs</span>
+											<select class="modern-select" id="regra-quorum-2h" style="padding: 4px 8px; width: 85px; min-width: 85px; margin: 0;">
+												<option value="1">Mín 1</option>
+												<option value="2" selected>Mín 2</option>
+											</select>
+										</div>
+									</div>
+								</div>
+
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Edição pelo Organizador</span>
+                                        <span class="ctrl-desc">Permite alterar jogadores da reserva pendente.</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="regra-edicao-organizador" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+							</div>
+                        </div>
+                    </div>
+
+                    <!-- GAVETA 3: Perfis & Permissões -->
+                    <div class="accordion-item" onclick="toggleGavetaRegras(this)">
+                        <div class="accordion-header">
+                            <div class="accordion-header-left">
+                                <i class="material-icons" style="color: #8b5cf6;">admin_panel_settings</i>
+                                <div class="header-title-block">
+                                    <span class="sidebar-title">Perfis & Permissões</span>
+                                    <span class="sidebar-desc">Cargos, cores de tags e níveis de acesso.</span>
+                                </div>
+                            </div>
+                            <i class="material-icons icon-arrow">expand_more</i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Perfil de Usuário</span>
+                                        <span class="ctrl-desc">Regras de acesso.</span>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <select class="modern-select" id="regra-perfil-select" onchange="atualizarAcordeaoPermissoesSaaS()">
+											<option value="Admin">Admin</option>
+											<option value="Visitante">Visitante</option>
+										</select>
+                                        <button class="btn-acao-mini btn-novo-perfil" title="Novo Perfil" onclick="abrirModalNovoPerfilSaaS()">
+											<i class="material-icons">add</i>
+										</button>
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Nível de Permissão</span>
+										<span class="ctrl-desc">Acessos liberados do Perfil.</span>
+									</div>
+									<div style="display: flex; gap: 8px; align-items: center;">
+										
+										<!-- COMPONENTE ACORDEÃO (FALSO DROPDOWN) -->
+										<div class="acordeao-container" id="acordeao-permissao">
+											
+											<!-- Cabeçalho Fixo (Resumo Visual) -->
+											<div class="acordeao-header" onclick="toggleGavetaAcordeao()">
+												<span class="acordeao-resumo-texto" id="txt-resumo-permissao">
+													Carregando permissões...
+												</span>
+												<i class="material-icons acordeao-seta">expand_more</i>
+											</div>
+
+											<!-- Bandeja Oculta (Pílulas) -->
+											<div class="acordeao-drawer" id="gaveta-pilulas">
+												<!-- Pílulas injetadas dinamicamente via JS -->
+											</div>
+
+										</div>
+										
+										<!-- Botão Editar Fixo -->
+										<button class="btn-acao-mini btn-editar-perfil" title="Editar Permissões" onclick="abrirModalEditarPermissoesSaaS()">
+											<i class="material-icons">edit</i>
+										</button>
+									</div>
+								</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GAVETA 4: Dinâmica & Confirmações -->
+                    <div class="accordion-item" onclick="toggleGavetaRegras(this)">
+                        <div class="accordion-header">
+                            <div class="accordion-header-left">
+                                <i class="material-icons" style="color: #f97316;">groups</i>
+                                <div class="header-title-block">
+                                    <span class="sidebar-title">Dinâmica & Confirmações</span>
+                                    <span class="sidebar-desc">Prazos de aceite, fila de espera e privacidade.</span>
+                                </div>
+                            </div>
+                            <i class="material-icons icon-arrow">expand_more</i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Confirmação Obrigatória</span>
+                                        <span class="ctrl-desc">Exige aceite dos outros jogadores da quadra.</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="regra-confirmacao-obrig" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Prazo para Confirmação</span>
+                                        <span class="ctrl-desc">Tempo até a reserva cair se ignorarem.</span>
+                                    </div>
+                                    <select class="modern-select" id="regra-tempo-expirar">
+                                        <option value="1">1 hora</option>
+                                        <option value="2" selected>2 horas</option>
+                                        <option value="4">4 horas</option>
+                                        <option value="12">12 horas</option>
+                                    </select>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Fila de Espera (Waitlist)</span>
+                                        <span class="ctrl-desc">Permite fila em horários lotados.</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="regra-fila-espera" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Partidas Abertas</span>
+                                        <span class="ctrl-desc">Permite jogos buscando parceiros.</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="regra-partidas-abertas" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Privacidade (LGPD)</span>
+                                        <span class="ctrl-desc">Oculta nomes na grade para quem está fora.</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="regra-privacidade-lgpd">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GAVETA 5: Controle de Uso / Anti-Monopólio -->
+					<div class="accordion-item" onclick="toggleGavetaRegras(this)">
+						<div class="accordion-header">
+							<div class="accordion-header-left">
+								<i class="material-icons" style="color: #3b82f6;">security</i>
+								<div class="header-title-block">
+									<span class="sidebar-title">Controle de Uso (Anti-Monopólio)</span>
+									<span class="sidebar-desc">Limites por sócio e restrições de pico.</span>
+								</div>
+							</div>
+							<i class="material-icons icon-arrow">expand_more</i>
+						</div>
+						<div class="accordion-content">
+							<div class="accordion-content-inner">
+								
+								<!-- 1. Limite de Reservas Ativas -->
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Limite de Reservas Ativas</span>
+										<span class="ctrl-desc">Máximo de agendamentos pendentes por Sócio.</span>
+									</div>
+									<select class="modern-select" id="regra-limite-reservas">
+										<option value="0">Sem limite</option>
+										<option value="1">1 reserva</option>
+										<option value="2">2 reservas</option>
+										<option value="3" selected>3 reservas</option>
+									</select>
+								</div>
+
+								<!-- 2. Quem pode agendar (Card Envelopado Recolhível) -->
+								<div class="card-agendar-box" id="box-quem-pode-agendar">
+									<div class="acordeao-trigger-row" onclick="event.stopPropagation(); toggleGavetaQuemPodeAgendar();">
+										<div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+											<i class="material-icons" style="color: var(--cor-primaria); font-size: 22px;">how_to_reg</i>
+											<div class="ctrl-text">
+												<span class="ctrl-title">Quem pode agendar</span>
+												<span class="ctrl-desc">Habilite quem pode agendar pelo app</span>
+											</div>
+										</div>
+										<div class="coluna-acao-direita">
+											<span class="badge-contador" id="lbl-badge-contador-agendar">2 liberados</span>
+											<i class="material-icons icon-seta-acordeao">expand_more</i>
+										</div>
+									</div>
+
+									<div class="sub-drawer-box">
+										<div class="sub-list-box">
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Sócios Titulares</span>
+													<span class="sub-item-desc">Titulares da conta do clube</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-agendar-titular" class="chk-agendar-item" checked onchange="atualizarBadgeQuemPodeAgendar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Dependentes</span>
+													<span class="sub-item-desc">Familiares vinculados</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-agendar-dependente" class="chk-agendar-item" onchange="atualizarBadgeQuemPodeAgendar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Professores</span>
+													<span class="sub-item-desc">Instrutores de aulas</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-agendar-professor" class="chk-agendar-item" checked onchange="atualizarBadgeQuemPodeAgendar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Staff / Manutenção</span>
+													<span class="sub-item-desc">Equipe interna da arena</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-agendar-staff" class="chk-agendar-item" onchange="atualizarBadgeQuemPodeAgendar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Convidados / Avulsos</span>
+													<span class="sub-item-desc">Jogadores sem plano mensal</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-agendar-convidado" class="chk-agendar-item" onchange="atualizarBadgeQuemPodeAgendar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<!-- 3. Restrição de Horário Nobre -->
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Restrição de Horário Nobre</span> 
+										<span class="ctrl-desc">Proíbe jogos de 2h no pico (ex: 18h às 21h).</span>
+									</div>
+									<label class="switch">
+										<input type="checkbox" id="regra-horario-nobre" checked>
+										<span class="slider"></span>
+									</label>
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+                    <!-- GAVETA 6: Políticas de Cancelamento -->
+                    <div class="accordion-item" onclick="toggleGavetaRegras(this)">
+                        <div class="accordion-header">
+                            <div class="accordion-header-left">
+                                <i class="material-icons" style="color: #ef4444;">event_busy</i>
+                                <div class="header-title-block">
+                                    <span class="sidebar-title">Políticas de Cancelamento</span>
+                                    <span class="sidebar-desc">Deadlines de desistência e regras de no-show.</span>
+                                </div>
+                            </div>
+                            <i class="material-icons icon-arrow">expand_more</i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Prazo de Cancelamento</span>
+                                        <span class="ctrl-desc">Até quando o sócio pode desistir no app.</span>
+                                    </div>
+                                    <select class="modern-select" id="regra-prazo-cancelamento">
+                                        <option value="2">Até 2h antes</option>
+                                        <option value="6">Até 6h antes</option>
+                                        <option value="12" selected>Até 12h antes</option>
+                                        <option value="24">Até 24h antes</option>
+                                        <option value="0">Não permite</option>
+                                    </select>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-text">
+                                        <span class="ctrl-title">Tolerância de Atraso (No-Show)</span>
+                                        <span class="ctrl-desc">Tempo de espera antes de liberar a quadra.</span>
+                                    </div>
+                                    <select class="modern-select" id="regra-tolerancia-atraso">
+                                        <option value="0">Sem tolerância</option>
+                                        <option value="10">10 minutos</option>
+                                        <option value="15" selected>15 minutos</option>
+                                        <option value="30">30 minutos</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="regras-footer">
+                <button class="btn-regras-salvar" onclick="salvarRegrasDeReserva()">Salvar Regras</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modal-horarios" class="modal-overlay">
+		<div class="modal-content modal-config-janela">
+			<!-- Cabeçalho Unificado sob o Padrão Global do Sistema -->
+			<div class="header-painel">
+				<div>
+					<h2>⏱️ Horários & Grades</h2>
+					<span style="font-size: 13px; color: #888;">Definição de expedientes e grades de quadras.</span>
+				</div>
+				<button class="material-icons" style="background:none; border:none; cursor:pointer; color:var(--cor-escura); font-size: 28px;" onclick="fecharModalConfig('modal-horarios')" title="Fechar Janela">arrow_back</button>
+			</div>
+
+			<!-- 🟢 LINHA INJETADA: Abre o Chassi Workspace embrulhando as abas e o corpo -->
+			<div class="chassi-workspace">
+
+				<div class="config-tabs-escopo">
+					<button id="btn-escopo-arena" class="tab-escopo-btn ativa" onclick="mudarEscopoConfig('arena')">
+						<span class="txt-desktop" style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
+							<!-- 💻 Alinha o emoji e o texto perfeitamente na mesma linha horizontal -->
+							<span style="font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;">🏢 Arena (Geral)</span>
+							<span style="font-size: 11px; font-weight: 400; opacity: 0.8;">Gestão de expediente geral.</span>
+						</span>
+						<span class="txt-mobile">Arena</span>
+					</button>
+
+					<button id="btn-escopo-quadras" class="tab-escopo-btn" onclick="mudarEscopoConfig('quadras')">
+						<span class="txt-desktop" style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
+							<!-- 💻 Alinha o emoji e o texto perfeitamente na mesma linha horizontal -->
+							<span style="font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;">🎾 Quadras (Individual)</span>
+							<span style="font-size: 11px; font-weight: 400; opacity: 0.8;">Gestão individual de horários e regras.</span>
+						</span>
+						<span class="txt-mobile">Quadras</span>
+					</button>
+				</div>
+
+				<div class="config-modal-body">
+					<div id="escopo-conteudo-arena" class="area-sub-escopo ativa">
+						<div id="arena-visao-menu" class="visao-painel-config ativa">
+							<div class="bento-grid-config">
+								<div class="bento-card" onclick="abrirSubModulo('horario-padrao')">
+									<div class="bento-icon-wrapper ico-padrao">
+										<span class="material-icons">schedule</span>
+									</div>
+									<div class="bento-text-block">
+										<h4>Horário Padrão</h4>
+										<p>Funcionamento da arena inteira na semana.</p>
+									</div>
+								</div>
+								<div class="bento-card" onclick="abrirSubModulo('datas-especiais')">
+									<div class="bento-icon-wrapper ico-especial">
+										<span class="material-icons">holiday_village</span>
+									</div>
+									<div class="bento-text-block">
+										<h4>Datas Especiais</h4>
+										<p>Feriados, recessos e bloqueios de datas.</p>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div id="arena-visao-horario-padrao" class="visao-painel-config">
+							<div class="tabela-config-scroll">
+								<table class="tabela-premium-config">
+									<thead>
+										<tr>
+											<th style="width: 28%;">Dia</th>
+											<th style="width: 22%;">Status</th>
+											<th style="width: 25%;">Abertura</th>
+											<th style="width: 25%;">Fechamento</th>
+										</tr>
+									</thead>
+									<tbody id="tbodyHorarioPadraoSaas">
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					
+					<div id="escopo-conteudo-quadras" class="area-sub-escopo">
+						<div id="quadras-visao-menu" class="visao-painel-config ativa">
+							<div class="bento-grid-config">
+								<div class="bento-card" onclick="abrirSubModulo('aula')">
+									<div class="bento-icon-wrapper ico-aula">
+										<span class="material-icons">sports_tennis</span>
+									</div>
+									<div class="bento-text-block">
+										<h4>Grade de Aulas</h4>
+										<p>Bloqueios fixos de professores e turmas.</p>
+									</div>
+								</div>
+								<div class="card-menu bento-card" onclick="abrirSubModulo('duplas')">
+									<div class="bento-icon-wrapper ico-duplas">
+										<span class="material-icons">people</span>
+									</div>
+									<div class="bento-text-block">
+										<h4>Treino Duplas</h4>
+										<p>Restrições para jogos de 4 sócios.</p>
+									</div>
+								</div>
+								<div class="bento-card" onclick="abrirSubModulo('convidados')">
+									<div class="bento-icon-wrapper ico-convidados">
+										<span class="material-icons">payments</span>
+									</div>
+									<div class="bento-text-block">
+										<h4>Convidados</h4>
+										<p>Regras, taxas e chaves PIX.</p>
+									</div>
+								</div>
+								<div class="bento-card" onclick="abrirSubModulo('torneios')">
+									<div class="bento-icon-wrapper ico-torneios">
+										<span class="material-icons">emoji_events</span>
+									</div>
+									<div class="bento-text-block">
+										<h4>Torneios</h4>
+										<p>Gestão de rankings, chaves e fases da pirâmide.</p>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div id="quadras-visao-aula" class="visao-painel-config" style="position: relative; height: 100%; display: none; flex-direction: column;">
+							
+							<div style="border-bottom: 1px solid #e2e8f0; padding: 10px 0; margin-bottom: 10px;">
+								<div id="aulas-tabs-quadras-desktop" class="config-tabs-quadras" style="border:none; margin:0; padding:0 15px;"></div>
+								
+								<div class="container-titulo-central" style="padding: 0 15px; display: flex; align-items: center; gap: 8px;">
+									<button style="background:none; border:none; color: #1e293b; padding:0; cursor:pointer;" onclick="abrirMapaUniversal('aula')">
+										<i class="material-icons" style="font-size: 24px;">grid_view</i>
+									</button>
+									<h2 id="lbl-quadra-titulo-aulas" style="margin:0; font-size: 18px; color:#333;">Quadra 1</h2>
+								</div>
+							</div>
+
+							<div class="painel-controle-grade" style="margin: 0 15px 12px 15px;">
+								<label class="label-chave-mestra">
+									<input type="checkbox" id="chk-aulas-ativas" onchange="toggleChaveMestraAulas(this.checked)">
+									<span id="txt-chave-mestra-aulas">Ativar Aulas</span>
+								</label>
+								
+								<div id="container-filtro-professores" class="filtro-fantasma">
+									<span class="material-icons">filter_list</span>
+									<select id="filtro-professores-aulas" onchange="aplicarFiltroProfessoresAulas(this.value)">
+										<option value="todos">Todos</option>
+									</select>
+								</div>
+
+								<div class="grupo-botoes-grade">
+									<button class="btn-grade-acao" onclick="selecionarTudoAulas()">Selecionar Tudo</button>
+									<button class="btn-grade-acao outline" onclick="limparTudoAulas()">Limpar Tudo</button>
+								</div>
+							</div>
+
+							<div class="tabela-config-scroll tabela-grade-scroll" style="margin: 0 15px;">
+								<table class="tabela-premium-config tabela-grade-interativa" id="tabela-aulas-matriz">
+									<thead>
+										<tr>
+											<th class="horario-celula">Horário</th>
+											<th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th><th>Dom</th>
+											<th class="horario-celula">Horário</th>
+										</tr>
+									</thead>
+									<tbody id="tbodyGradeAulas">
+									</tbody>
+								</table>
+							</div>
+
+							<button id="fab-atribuir-professor" class="fab-atribuir-lote" style="display: none;" onclick="abrirModalAtribuicaoProfessor()">
+								<span id="fab-qtd-selecionada">+0</span>
+							</button>
+						</div>  
+
+						<div id="quadras-visao-duplas" class="visao-painel-config" style="position: relative; height: 100%; display: none; flex-direction: column;">
+							
+							<div style="border-bottom: 1px solid #e2e8f0; padding: 10px 0; margin-bottom: 10px;">
+								<div id="duplas-tabs-quadras-desktop" class="config-tabs-quadras" style="border:none; margin:0; padding:0 15px;"></div>
+								
+								<div class="container-titulo-central" style="padding: 0 15px;">
+									<button style="background:none; border:none; color: #1e293b; padding:0; cursor:pointer;" onclick="abrirMapaUniversal('duplas')">
+										<i class="material-icons" style="font-size: 24px;">grid_view</i>
+									</button>
+									<h2 id="lbl-quadra-titulo-duplas" style="margin:0; font-size: 18px; color:#333;">Quadra 1</h2>
+								</div>
+							</div>
+
+							<div class="painel-controle-grade" style="margin: 0 15px 12px 15px;">
+								<label class="label-chave-mestra">
+									<input type="checkbox" id="chk-duplas-ativas" onchange="toggleChaveMestraDuplas(this.checked)">
+									<span id="txt-chave-mestra-duplas">Ativar Duplas</span>
+								</label>
+								
+								<div class="grupo-botoes-grade">
+									<button class="btn-grade-acao" onclick="selecionarTudoDuplas()">Selecionar Tudo</button>
+									<button class="btn-grade-acao outline" onclick="limparTudoDuplas()">Limpar Tudo</button>
+								</div>
+							</div>
+
+							<div class="tabela-config-scroll tabela-grade-scroll" style="margin: 0 15px;">
+								<table class="tabela-premium-config tabela-grade-interativa" id="tabela-duplas-matriz">
+									<thead>
+										<tr>
+											<th class="horario-celula">Horário</th>
+											<th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th><th>Dom</th>
+											<th class="horario-celula">Horário</th>
+										</tr>
+									</thead>
+									<tbody id="tbodyGradeDuplas">
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						<div id="quadras-visao-convidados" class="visao-painel-config" style="position: relative; height: 100%; display: none; flex-direction: column;">
+							<div style="border-bottom: 1px solid #e2e8f0; padding: 10px 0; margin-bottom: 10px;">
+								<div id="convidados-tabs-quadras-desktop" class="config-tabs-quadras" style="border:none; margin:0; padding:0 15px;"></div>
+								
+								<div class="container-titulo-central" style="padding: 0 15px;">
+									<button style="background:none; border:none; color: #1e293b; padding:0; cursor:pointer;" onclick="abrirMapaUniversal('convidados')">
+										<i class="material-icons" style="font-size: 24px;">grid_view</i>
+									</button>
+									<h2 id="lbl-quadra-titulo-convidados" style="margin:0; font-size: 18px; color:#333;">Quadra 1</h2>
+								</div>
+							</div>
+
+							<div class="painel-controle-grade" style="margin: 0 15px 12px 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+								<div style="display: flex; align-items: center; gap: 12px;">
+									<label class="label-chave-mestra" style="margin: 0;">
+										<input type="checkbox" id="chk-convidados-ativos" onchange="toggleChaveMestraConvidados(this.checked)">
+										<span id="txt-chave-mestra-convidados">
+											<span class="txt-desktop">Liberar Convidados</span>
+											<span class="txt-mobile">Liberar</span>
+										</span> 
+									</label>
+									<button class="btn-grade-acao" id="btn-toggle-taxas" style="background-color: var(--cor-primaria); color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="toggleGavetaTaxasConvidados()">
+										<span class="material-icons" style="font-size: 16px;">payments</span>
+										<span class="txt-desktop">Configurar Taxas (R$)</span>
+										<span class="txt-mobile">Configurar Taxas</span>
+									</button>
+								</div> 
+								<div class="grupo-botoes-grade" style="margin: 0;">
+									<button class="btn-grade-acao" onclick="selecionarTudoConvidados()">Selecionar Tudo</button>
+									<button class="btn-grade-acao outline" onclick="limparTudoConvidados()">Limpar Tudo</button>
+								</div>
+							</div>
+
+							<div id="gaveta-taxas-convidados" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin: 0 15px 12px 15px; box-sizing: border-box;">
+								<h4 style="margin: 0 0 12px 0; color: var(--cor-escura); display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700;">
+									<span class="material-icons" style="font-size: 18px; color: var(--cor-primaria);">currency_exchange</span> Parâmetros Financeiros & Automação PIX
+								</h4>
+								<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+									<div style="display: flex; flex-direction: column; gap: 4px;">
+										<label style="font-size: 12px; font-weight: bold; color: #64748b;">Taxa por Convidado (R$)</label>
+										<input type="text" id="txt-taxa-convidado" class="input-app" placeholder="0,00" style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none;" oninput="mascaraMoedaRealSaaS(this)">
+									</div>
+									<div style="display: flex; flex-direction: column; gap: 4px;">
+										<label style="font-size: 12px; font-weight: bold; color: #64748b;">Recebedor Oficial</label>
+										<select id="select-recebedor-convidado" class="input-app" style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; background: white; height: 40px;">
+											<option value="Arena">Secretaria / Arena</option>
+										</select>
+									</div>
+									<div style="display: flex; flex-direction: column; gap: 4px;">
+										<label style="font-size: 12px; font-weight: bold; color: #64748b;">Chave PIX da Arena</label>
+										<input type="text" id="txt-chave-pix-convidado" class="input-app" placeholder="CNPJ, E-mail, Celular..." style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none;">
+									</div>
+									<div style="display: flex; flex-direction: column; gap: 4px;">
+										<label style="font-size: 12px; font-weight: bold; color: #64748b;">WhatsApp Comprovantes</label>
+										<input type="tel" id="txt-whatsapp-convidado" class="input-app" placeholder="(00) 00000-0000" maxlength="15" style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none;" oninput="mascaraTelefoneSaaS(this)">
+									</div>
+								</div>
+							</div>
+
+							<div class="tabela-config-scroll tabela-grade-scroll" style="margin: 0 15px;">
+								<table class="tabela-premium-config tabela-grade-interativa" id="tabela-convidados-matriz">
+									<thead>
+										<tr>
+											<th class="horario-celula">Horário</th>
+											<th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th><th>Dom</th>
+											<th class="horario-celula">Horário</th>
+										</tr>
+									</thead>
+									<tbody id="tbodyGradeConvidados">
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+					</div>
+				</div>
+
+			<!-- 🔴 LINHA INJETADA: Fecha o Chassi Workspace antes do Footer -->
+			</div>
+
+			<div class="config-modal-footer"></div>
+		</div>
+	</div> 
+	
+	<div id="sheet-perfil-jogador" class="bottom-sheet-overlay" onclick="fecharSheetPerfil(event)">
+        <div class="bottom-sheet-content">
+            <div class="sheet-drag-handle"></div>
+            <div class="sheet-perfil-header">
+                <div class="sheet-avatar-grande"><i class="material-icons">person</i></div>
+                <h3 id="sheet-nome-jogador">Carregando...</h3>
+                <p id="sheet-clube-jogador">Clube</p>
+            </div>
+            <div class="sheet-opcoes">
+                <button class="btn-app btn-link" style="color: #ef4444; border: 1px solid #fee2e2; background: #fef2f2; font-weight: 600;" onclick="deslogarJogadorSaaS()">
+                    <i class="material-icons" style="vertical-align: middle; margin-right: 5px;">logout</i> Sair da Conta
+                </button>
+                <button class="btn-app btn-link" style="color: #94a3b8; margin-top: 10px;" onclick="fecharSheetPerfil()">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+ 
+    <div id="quadra-pill-toast" class="quadra-pill-toast"></div>
+    <div id="toastContainer" class="toast-container"></div>
+    <div id="modalPrompt" class="modal-prompt-overlay">
+        <div class="modal-prompt-content">
+            <h3 id="promptTitle" style="margin: 0;">Título</h3>
+            <p id="promptMessage" style="color: #555; margin: 10px 0 20px 0; font-size: 15px; line-height: 1.5;"></p>
+            <div class="modal-prompt-buttons">
+                <button id="btnPromptCancel" class="btn-prompt btn-prompt-cancel">Cancelar</button>
+                <button id="btnPromptConfirm" class="btn-prompt btn-prompt-confirm">Confirmar</button>
+            </div>
+        </div>
+    </div> 
+
+    <div id="modalAtribuirProfessor" class="modal-prompt-overlay" style="z-index: 20000;">
+        <div class="modal-prompt-content">
+            <h3 style="margin-top:0; color: #1e293b;">Atribuir Professor</h3>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">Selecione o responsible por estes horários.</p>
+            <select id="select-atribuir-professor" class="input-app" style="margin-bottom: 20px; text-align: center; font-weight: bold;">
+                <option value="">Carregando professores...</option>
+            </select>
+            <div class="modal-prompt-buttons">
+                <button class="btn-prompt btn-prompt-cancel" onclick="fecharModalAtribuicao()">Cancelar</button>
+                <button class="btn-prompt" style="background-color: #ef4444; color: white;" onclick="confirmarAtribuicaoProfessor()">Aplicar Aulas</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modal-mapa-quadras" class="modal-overlay">
+		<div class="modal-content" style="max-width: 90%; width: 340px; padding: 20px; border-radius: 16px;">
+			<h3 style="margin-top: 0; margin-bottom: 5px;">🎯 Selecionar Quadra</h3>
+			<p style="color: #666; font-size: 13px; margin-bottom: 20px;">Clique no número para alternar a planilha</p>
+			
+			<div class="view-toggle-container">
+				<div class="view-toggle">
+					<div class="toggle-btn active" id="btn-toggle-grade">Grade</div>
+					<div class="toggle-btn" id="btn-toggle-lista">Lista</div>
+				</div>
+			</div>
+
+			<div class="busca-mapa-wrapper">
+				<span class="material-icons busca-mapa-icone">search</span>
+				<input 
+					type="text" 
+					id="input-busca-mapa-quadras" 
+					placeholder="Buscar por saibro, coberta, padel..." 
+					autocomplete="off"
+				>
+			</div>
+
+			<div class="modal-scroll-wrapper">
+				<div id="grid-numerico-quadras" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;"></div>
+			</div>
+			
+			<button class="btn-app" style="background-color: #e2e8f0; color: #334155; margin: 0;" onclick="fecharModalConfig('modal-mapa-quadras')">Cancelar</button>
+		</div>
+	</div>
+	
+	
+	
+	<div id="modal-agendamento" class="modal-form-overlay">
+        <div class="modal-form-content">
+
+            <div class="saas-header">
+                <h3>Novo Agendamento</h3>
+                <button class="btn-voltar-saas" onclick="fecharModalConfig('modal-agendamento')" title="Voltar">
+                    <span class="material-icons">arrow_back</span>
+                </button>
+            </div>
+
+            <div class="saas-body">
+                <form id="form-SaaS-reserva" onsubmit="event.preventDefault();">
+
+                    <div class="saas-row">
+                        <label for="saas-quadra">Quadra:</label>
+                        <select id="saas-quadra" class="saas-field" onchange="atualizarOpcoesHorarioSaaS()">
+                        </select>
+                    </div>
+
+                    <div class="saas-row">
+                        <label for="saas-dia">Dia:</label>
+                        <select id="saas-dia" class="saas-field" onchange="atualizarOpcoesHorarioSaaS()">
+                        </select>
+                    </div>
+
+                    <div class="saas-row">
+                        <label for="saas-duracao">Duração:</label>
+                        <select id="saas-duracao" class="saas-field" onchange="atualizarOpcoesHorarioSaaS()">
+                            <option value="1">1 hora</option>
+                            <option value="2">2 horas</option>
+                        </select>
+                    </div>
+
+                    <div class="saas-row">
+                        <label for="saas-hora">Horários:</label>
+                        <select id="saas-hora" class="saas-field">
+                        </select>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px dashed #cbd5e1; margin: 15px 0 10px 0; width: 100%;">
+
+                    <div class="saas-row">
+                        <label>Jogadores:</label>
+                        
+                        <div class="bloco-jogadores-saas" id="jogadoresContainerSaaS" style="border:none; background:transparent; padding:0; height:auto; flex:1;">
+
+                            <div class="saas-row" style="margin:0; width:100%;">
+								<select id="saas-jogador1" class="saas-field" disabled style="background-color: #e2e8f0 !important; cursor: not-allowed; opacity: 0.8;">
+								</select>
+								<span class="add-atleta" id="btn-add-atleta-SaaS" onclick="adicionarJogadorSaaS()">+</span>
+							</div>
+
+                        </div>
+                    </div> 
+
+                    <button id="btn-saas-confirmar-agendamento" type="button" class="saas-btn-submit" onclick="validarEAgendarPartidaSaas()">
+                        Confirmar Agendamento 
+                    </button>
+
+                </form>
+            </div>
+        </div>
+    </div>
+	
+	<!-- ======================================================== -->
+	<!-- 🎯 NOVO COMPONENTE: GAVETA/MODAL DE AÇÕES DA RESERVA     -->
+	<!-- ======================================================== -->
+	<div id="modal-acoes-reserva" class="modal-form-overlay" onclick="fecharMenuAcoesReservaSaaS(event)">
+        <div class="modal-acoes-content">
+            <!-- Barra de arrastar elástica para o mobile -->
+            <div class="sheet-drag-handle"></div>
+            
+            <!-- Cabeçalho Informativo Sem Ícones -->
+            <div class="acoes-header-text">
+                <h3 id="txt-acoes-titulo">Opções da Reserva</h3>
+                <p id="txt-acoes-detalhes">Quadra • Horário</p>
+            </div>
+
+            <!-- Corpo das Ações Premium (Soft Tactile Depth) -->
+            <div class="saas-grid-body">
+                <button id="btn-saas-ver-detalhes" class="btn-universal btn-view">Ver Detalhes</button>
+                <button id="btn-saas-editar-reserva" class="btn-universal btn-edit">Editar Reserva</button> 
+                <button id="btn-saas-excluir-reserva" class="btn-universal btn-delete">Excluir Reserva</button>
+                
+                <hr class="divisor-SaaS-linha">
+                
+                <!-- Fechamento em formato de texto limpo -->
+                <button id="btn-saas-cancelar" type="button" class="btn-saas-label-cancel" onclick="fecharMenuAcoesReservaSaaS()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+	
+	<!-- ======================================================== -->
+    <!-- 🎯 NOVO COMPONENTE: GAVETA MATTE DE ATLETAS CONECTADOS   -->
+    <!-- ======================================================== -->
+    <div id="modal-online-SaaS" class="sheet-SaaS-overlay" onclick="fecharJanelaOnlineSaaS(event)">
+        <div class="sheet-SaaS-content">
+            <div class="drag-handle-SaaS"></div>
+            
+            <div class="sheet-header-box">
+                <h3 class="sheet-SaaS-title">Atletas Conectados</h3>
+                <p id="txt-saas-online-contador" class="sheet-SaaS-subtitle">0 usuários online agora</p>
+            </div>
+            
+            <!-- LISTA DE ALTA DENSIDADE SEM CÍRCULOS (Injetada via JS) -->
+            <div id="lista-online-SaaS" class="lista-online-SaaS"></div>
+            
+            <!-- TRAÇO SÓLIDO E TEXTO DE FECHAMENTO CONTEXTUAL -->
+            <hr class="divisor-SaaS-linha">
+            <div class="btn-saas-label-cancel" onclick="fecharJanelaOnlineSaaS()">Fechar</div>
+            
+        </div>
+    </div>
+	
+	
+	<!-- ======================================================== -->
+    <!-- 🛡️ MODAL: CRIAR NOVO PERFIL (Cores e Identidade)         -->
+    <!-- ======================================================== -->
+    <div id="modal-novo-perfil" class="modal-form-overlay">
+        <div class="modal-content" style="max-width: 400px; padding: 0; overflow: hidden; border-radius: 12px; background: #ffffff;">
+            
+            <!-- Cabeçalho Branco Fixo -->
+            <div style="padding: 20px; text-align: center; border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+                <h3 style="margin: 0; color: #1e293b; font-size: 18px;">Criar Novo Perfil</h3>
+            </div>
+            
+            <!-- Corpo com Fundo Cinza Claro -->
+            <div style="padding: 20px; background: #f8fafc; text-align: left;">
+                
+                <!-- Barra de Progresso (Passo 1 de 2) -->
+                <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+                    <div style="height: 4px; background: #28a745; flex: 1; border-radius: 2px;"></div>
+                    <div style="height: 4px; background: #cbd5e1; flex: 1; border-radius: 2px;"></div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 6px;">Nome do Cargo</label>
+                    <input type="text" id="inp-novo-perfil-nome" class="input-app" placeholder="Zelador" style="margin: 0; padding: 10px 12px; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; background: #ffffff; font-size: 15px; color: #1e293b;">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 6px;">Abreviação (Tag)</label>
+                    <input type="text" id="inp-novo-perfil-tag" class="input-app" placeholder="Zel" maxlength="8" style="margin: 0; padding: 10px 12px; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; background: #ffffff; font-size: 15px; color: #1e293b;">
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 8px;">Cor de Identificação</label>
+                    <div class="paleta-cores-grid" id="grid-cores-novo-perfil" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <!-- Paleta exata do Mockup -->
+                        <div class="dot-cor" style="background-color: #dc3545;" onclick="selecionarCorPerfilUI(this, '#dc3545')"></div>
+                        <div class="dot-cor" style="background-color: #fd7e14;" onclick="selecionarCorPerfilUI(this, '#fd7e14')"></div>
+                        <div class="dot-cor ativa" style="background-color: #007bff;" onclick="selecionarCorPerfilUI(this, '#007bff')"></div>
+                        <div class="dot-cor" style="background-color: #6f42c1;" onclick="selecionarCorPerfilUI(this, '#6f42c1')"></div>
+                        <div class="dot-cor" style="background-color: #343a40;" onclick="selecionarCorPerfilUI(this, '#343a40')"></div>
+                    </div>
+                    <input type="hidden" id="inp-novo-perfil-cor" value="#007bff">
+                </div>
+            </div>
+
+            <!-- Rodapé Branco com Botões -->
+            <div style="padding: 20px; background: #ffffff; display: flex; gap: 12px; border-top: 1px solid #e2e8f0;">
+                <button type="button" style="flex: 1; padding: 12px; background: #94a3b8; color: #ffffff; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; cursor: pointer;" onclick="fecharModalConfig('modal-novo-perfil')">Cancelar</button>
+                <button type="button" style="flex: 1; padding: 12px; background: #28a745; color: #ffffff; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; cursor: pointer;" onclick="avancarModalNovoPerfilSaaS()">Avançar ➔</button>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ======================================================== --> 
+    <!-- 🛡️ MODAL: EDITAR PERMISSÕES (SWITCHES IOS)               -->
+    <!-- ======================================================== -->
+    <div id="modal-editar-permissoes" class="modal-form-overlay">
+        <div class="modal-form-content" style="max-width: 450px; padding: 0;">
+            
+            <div class="header-painel" style="border-radius: 12px 12px 0 0; padding: 20px;">
+                <div>
+                    <h2 id="txt-nome-perfil-edicao" style="font-size: 20px; margin: 0; color: #1e293b;">Carregando...</h2>
+                    <span style="font-size: 13px; color: #888;">Gerencie as permissões deste Perfil.</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button id="btn-excluir-perfil-saas" class="material-icons" style="background:none; border:none; cursor:pointer; color:#ef4444; font-size: 26px;" title="Excluir Cargo" onclick="excluirPerfilSaaS()">delete</button>
+                    <button class="material-icons" style="background:none; border:none; cursor:pointer; color:var(--cor-escura); font-size: 28px;" onclick="fecharModalConfig('modal-editar-permissoes')" title="Voltar">arrow_back</button>
+                </div>
+            </div>
+            
+            <div class="saas-body" style="padding: 20px; background: var(--bg-site, #f4f6f8);">
+                
+                <!-- Chave Mestra (Acesso Total) -->
+                <div class="sp-master-row" id="linha-mestra-admin">
+                    <div style="text-align: left; padding-right: 15px;">
+                        <b style="color: #856404; font-size: 15px; display: flex; align-items: center; gap: 6px; margin: 0;">
+                            <i class="material-icons" style="font-size: 20px;">admin_panel_settings</i> Acesso Operacional
+                        </b>
+                        <div style="font-size: 12px; color: #856404; margin-top: 4px; line-height: 1.4;">Libera todas as travas de gestão simultaneamente.</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-perm-master" onchange="gerenciarSwitchesPermissoesSaaS('MASTER')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- Lista de Poderes Individuais -->
+                <div class="ios-list-permissoes">
+                    <div class="ios-item-perm">
+                        <div class="ios-item-text"><i class="material-icons">people</i> Gestão de Jogadores</div>
+                        <label class="switch"><input type="checkbox" id="chk-perm-jogadores" class="chk-perm-filho" onchange="gerenciarSwitchesPermissoesSaaS('CHILD')"><span class="slider"></span></label>
+                    </div>
+                    <div class="ios-item-perm">
+                        <div class="ios-item-text"><i class="material-icons">event_note</i> Gerir Reservas</div>
+                        <label class="switch"><input type="checkbox" id="chk-perm-reservas" class="chk-perm-filho" onchange="gerenciarSwitchesPermissoesSaaS('CHILD')"><span class="slider"></span></label>
+                    </div>
+                    <div class="ios-item-perm">
+                        <div class="ios-item-text"><i class="material-icons">sports_tennis</i> Gestor de Aulas</div>
+                        <label class="switch"><input type="checkbox" id="chk-perm-aulas" class="chk-perm-filho" onchange="gerenciarSwitchesPermissoesSaaS('CHILD')"><span class="slider"></span></label>
+                    </div>
+                    <div class="ios-item-perm">
+                        <div class="ios-item-text"><i class="material-icons">emoji_events</i> Gestor de Torneios</div>
+                        <label class="switch"><input type="checkbox" id="chk-perm-torneios" class="chk-perm-filho" onchange="gerenciarSwitchesPermissoesSaaS('CHILD')"><span class="slider"></span></label>
+                    </div>
+                    <div class="ios-item-perm">
+                        <div class="ios-item-text"><i class="material-icons">build</i> Controle de Quadras</div>
+                        <label class="switch"><input type="checkbox" id="chk-perm-quadras" class="chk-perm-filho" onchange="gerenciarSwitchesPermissoesSaaS('CHILD')"><span class="slider"></span></label>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button type="button" class="btn-app" style="margin: 0; padding: 14px; width: 100%; background-color: var(--cor-primaria, #28a745); color: white; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;" onclick="salvarPermissoesSaaS()">Aplicar Permissões</button>
+                </div>
+            </div>
+        </div>
+    </div>
+	
+	<!-- ======================================================== -->
+	<!-- 🎯 NOVO COMPONENTE: MODAL VER DETALHES DA RESERVA         -->
+	<!-- ======================================================== -->
+	<div id="modal-ver-detalhes" class="modal-form-overlay">
+        <div class="modal-card-detalhes">
+            <!-- Cabeçalho Dinâmico com Gradiente (1h / 2h) -->
+            <div id="detalhes-header" class="card-header-detalhes header-1h">
+                <div>
+                    <h3 id="detalhes-txt-quadra" class="court-title-detalhes">Quadra 1</h3>
+                    <div id="detalhes-txt-horario" class="time-badge-detalhes">
+                        <i id="detalhes-icone-horario" class="material-icons" style="font-size: 15px;">event</i>
+                        <span id="detalhes-texto-data-hora">Carregando...</span>
+                    </div>
+                </div>
+                <!-- Botão Voltar Padrão -->
+                <button class="btn-back-detalhes" onclick="fecharModalVerDetalhesSaaS()" title="Voltar">
+                    <i class="material-icons" style="font-size: 24px;">arrow_back</i>
+                </button>
+            </div>
+
+            <div class="body-detalhes"> 
+                <!-- Bloco do Organizador -->
+                <div class="info-box-detalhes">
+                    <div id="detalhes-txt-org-nome" class="org-name-detalhes">Carregando...</div>
+                    <div id="detalhes-txt-org-sub" class="org-sub-detalhes">Organizador</div>
+                </div>
+
+                <!-- Lista de Jogadores -->
+                <div style="font-size: 11.5px; font-weight: 700; color: #64748b; margin-bottom: 6px; letter-spacing: 0.5px;">JOGADORES</div>
+                <div id="detalhes-lista-jogadores">
+                    <!-- Linhas injetadas dinamicamente via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+	
+	<!-- ======================================================== -->
+	<!-- 🎯 NOVO COMPONENTE: GAVETA DE CONVITES PENDENTES         -->
+	<!-- ======================================================== -->
+    <div id="modal-convites-entrada" class="modal-form-overlay">
+        <div class="bottom-sheet-mock">
+            <div class="sheet-drag-handle"></div>
+            
+            <div class="acoes-header-text">
+                <h3 id="titulo-qtd-convites">Carregando convites...</h3>
+            </div>
+
+            <!-- Onde as caixinhas de jogos serão injetadas via JS -->
+            <div id="lista-convites-container">
+            </div>
+
+            <button class="btn-label-cancel" onclick="fecharModalConvitesEntradaSaaS()">Responder Depois</button>
+        </div>
+    </div>
+
+    <script src="js/core.js"></script> 
+    <script src="js/autenticacao.js"></script>  
+    <script src="js/cadastro.js"></script>
+    <script src="js/quadras.js"></script>
+    <script src="js/planilha.js"></script>
+	<script src="js/config.js"></script>
+	<script src="js/regras.js"></script>
+	
+	<!-- PWA: Registro do Motor Offline (Service Worker) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('✅ PWA: Service Worker ativado!', reg.scope))
+                    .catch(err => console.error('❌ PWA: Erro no Service Worker:', err));
+            });
+        }
+    </script>
+</body> 
+</html>
