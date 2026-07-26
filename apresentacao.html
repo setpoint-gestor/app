@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SetPoint - Apresentação Técnica do Sistema</title>
+    
+    <!-- Fontes e Ícones -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <style>
+        :root {
+            --cor-primaria: #2E8B57;
+            --cor-primaria-suave: #e8f5e9;
+            --cor-escura: #1e293b;
+            --cor-fundo: #f8fafc;
+            --cor-card: #ffffff;
+            --cor-texto: #334155;
+            --cor-subtexto: #64748b;
+            --cor-borda: #e2e8f0;
+            --cor-vermelha: #ef4444;
+            --cor-cinza-matte: #64748b;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--cor-fundo);
+            color: var(--cor-texto);
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.6;
+        }
+
+        /* CABEÇALHO TÉCNICO */
+        header {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid var(--cor-borda);
+            padding: 15px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--cor-primaria);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .doc-tag {
+            background: #f1f5f9;
+            color: var(--cor-escura);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid var(--cor-borda);
+        }
+
+        .btn-voltar {
+            color: var(--cor-subtexto);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.2s;
+        }
+
+        .btn-voltar:hover {
+            color: var(--cor-escura);
+        }
+
+        /* ESTRUTURA DOS SLIDES */
+        main {
+            max-width: 960px;
+            margin: 40px auto;
+            padding: 0 20px 80px 20px;
+        }
+
+        .slide-card {
+            background: var(--cor-card);
+            border: 1px solid var(--cor-borda);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 35px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide-numero {
+            position: absolute;
+            top: 25px;
+            right: 30px;
+            font-size: 13px;
+            font-weight: 900;
+            color: #cbd5e1;
+            letter-spacing: 1px;
+        }
+
+        .slide-categoria {
+            color: var(--cor-primaria);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .slide-titulo {
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--cor-escura);
+            margin: 0 0 20px 0;
+            line-height: 1.3;
+        }
+
+        .slide-descricao {
+            color: var(--cor-subtexto);
+            font-size: 15.5px;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        /* COMPONENTES DE CONTEÚDO */
+        .grid-detalhes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .box-detalhe {
+            background: #f8fafc;
+            border: 1px solid var(--cor-borda);
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .box-detalhe h4 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            color: var(--cor-escura);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .box-detalhe h4 i {
+            color: var(--cor-primaria);
+            font-size: 20px;
+        }
+
+        .box-detalhe p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--cor-subtexto);
+            line-height: 1.5;
+        }
+
+        /* DESTAQUES TÉCNICOS */
+        .badge-regra {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .badge-vermelha { background: #fee2e2; color: #991b1b; }
+        .badge-cinza { background: #f1f5f9; color: #334155; }
+        .badge-verde { background: #dcfce7; color: #166534; }
+
+        .lista-recursos {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .lista-recursos li {
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14.5px;
+            color: var(--cor-texto);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .lista-recursos li:last-child {
+            border-bottom: none;
+        }
+
+        .lista-recursos li i {
+            color: var(--cor-primaria);
+            font-size: 18px;
+            margin-top: 2px;
+        }
+
+        /* RODAPÉ INSTITUCIONAL */
+        footer {
+            text-align: center;
+            padding: 30px 5%;
+            color: var(--cor-subtexto);
+            font-size: 13px;
+            border-top: 1px solid var(--cor-borda);
+            background: white;
+        }
+
+        @media (max-width: 768px) {
+            main { padding: 0 15px 40px 15px; margin: 20px auto; }
+            .slide-card { padding: 25px 20px; }
+            .slide-titulo { font-size: 22px; }
+            .slide-numero { top: 20px; right: 20px; }
+            .doc-tag { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CABEÇALHO -->
+    <header>
+        <a href="site.html" class="logo">
+            <i class="material-icons">sports_tennis</i> SetPoint
+        </a>
+        <span class="doc-tag">Documentação de Apresentação</span>
+        <a href="site.html" class="btn-voltar">
+            <i class="material-icons">arrow_back</i> Voltar ao Portal
+        </a>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main>
+
+        <!-- SLIDE 1 -->
+        <article class="slide-card">
+            <span class="slide-numero">SLIDE 01 / 07</span>
+            <span class="slide-categoria">Visão Geral & Arquitetura</span>
+            <h2 class="slide-titulo">O Ecossistema SetPoint Gestor</h2>
+            <p class="slide-descricao">
+                O SetPoint é uma plataforma especialista desenvolvida exclusivamente para a gestão operacional e automação de agendamentos de quadras esportivas de raquete (Tênis, Beach Tennis, Padel e Pickleball).
+            </p>
+
+            <div class="grid-detalhes">
+                <div class="box-detalhe">
+                    <h4><i class="material-icons">lan</i> Arquitetura Multi-Tenant</h4>
+                    <p>Cada arena opera em sua própria bolha isolada de banco de dados, garantindo total privacidade e segurança nos cadastros e histórico.</p>
+                </div>
+                <div class="box-detalhe">
+                    <h4><i class="material-icons">target</i> Foco no Core Business</h4>
+                    <p>Foco 100% na grade de horários, regras de convivência e autoatendimento, eliminando a complexidade desnecessária de ERPs genéricos.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- SLIDE 2 -->
+        <article class="slide-card">
+            <span class="slide-numero">SLIDE 02 / 07</span>
+            <span class="slide-categoria">Administração da Arena</span>
+            <h2 class="slide-titulo">O Painel do Gestor</h2>
+            <p class="slide-descricao">
+                O módulo administrativo entrega controle absoluto ao dono da arena ou secretaria do clube sobre a estrutura física e permissões de uso.
+            </p>
+
+            <ul class="lista-recursos">
+                <li>
+                    <i class="material-icons">check_circle</i>
+                    <span><b>Hardware & Propriedades da Quadra:</b> Cadastro individualizado especificando tipo de piso, cobertura (coberta/descoberta), iluminação de LED e status de manutenção.</span>
+                </li>
+                <li>
+                    <i class="material-icons">check_circle</i>
+                    <span><b>Hub de Configurações Operacionais:</b> Definição do horário geral de funcionamento do clube, parâmetros de horários nobres e janelas de antecedência para abertura de turmas.</span>
+                </li>
+                <li>
+                    <i class="material-icons">check_circle</i>
+                    <span><b>Gestão de Sócios & Níveis de Acesso:</b> Base central de jogadores cadastrados, controle de adimplência, consulta de CPF e árvore de permissões por perfil.</span>
+                </li>
+            </ul>
+        </article>
+
+        <!-- SLIDE 3 -->
+        <article class="slide-card">
+            <span class="slide-numero">SLIDE 03 / 07</span>
+            <span class="slide-categoria">Motor de Reservas</span>
+            <h2 class="slide-titulo">A Planilha Matricial Inteligente</h2>
+            <p class="slide-descricao">
+                O cérebro do sistema é uma grade visual interativa que reflete a disponibilidade das quadras em tempo real para gestores e atletas simultaneamente.
+            </p>
+
+            <div class="grid-detalhes">
+                <div class="box-detalhe">
+                    <h4><i class="material-icons">sync</i> Sincronização em Tempo Real</h4>
+                    <p>Qualquer partida confirmada, cancelada ou bloqueada é atualizada instantaneamente nas telas de todos os usuários conectados.</p>
+                </div>
+                <div class="box-detalhe">
+                    <h4><i class="material-icons">lock</i> Tecnologia Smart Lock</h4>
+                    <p>Sensores visuais travam o horário durante o preenchimento da reserva, impedindo que dois sócios agendem a mesma quadra ao mesmo tempo.</p>
+                </div>
+                <div class="box-detalhe">
+                    <h4><i class="material-icons">view_week</i> Blocos Flexíveis (1h / 2h)</h4>
+                    <p>Suporte e renderização de partidas simples de 1 hora e partidas longas de 2 horas em efeito visual camaleão continuo.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- SLIDE 4 -->
+        <article class="slide-card">
+            <span class="slide-numero">SLIDE 04 / 07</span>
+            <span class="slide-categoria">Regras de Negócio (SSOT)</span>
+            <h2 class="slide-titulo">Motores de Proteção e Bloqueios</h2>
+            <p class="slide-descricao">
+                Trancas automatizadas que aplicam as políticas do clube diretamente na planilha, prevenindo conflitos operacionais e garantindo o uso justo das quadras.
+            </p>
+
+            <div class="grid-detalhes">
+                <div class="box-detalhe">
+                    <span class="badge-regra badge-vermelha"><i class="material-icons">school</i> ESCUDO VERMELHO</span>
+                    <h4>Grade de Aulas</h4>
+                    <p>Bloqueios fixos prioritários para professores e turmas de treinamento, impedindo agendamentos avulsos sobre o horário das aulas.</p>
+                </div>
+
+                <div class="box-detalhe">
+                    <span class="badge-regra badge-cinza"><i class="material-icons">groups</i> ESCUDO CINZA MATTE</span>
+                    <h4>Treinos de Duplas</h4>
+                    <p>Modo de reserva exclusivo para jogos em duplas, onde o sistema exige obrigatoriamente a confirmação e nomeação dos 4 atletas em quadra.</p>
+                </div>
+
+                <div class="box-detalhe">
+                    <span class="badge-regra badge-verde"><i class="material-icons">verified_user</i> POLÍTICA ANTI-MONOPÓLIO</span>
+                    <h4>Controle por CPF</h4>
+                    <p>Parametrização de limites diários e semanais de reservas ativas por jogador, evitando que poucas pessoas dominem os horários nobres.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- SLIDE 5 -->
+        <article class="slide-card">
+            <span class="slide-numero">SLIDE 05 / 07</span>
+            <span class="slide-categoria">Interface do Atleta</span>
+            <h2 class="slide-titulo">A Experiência do Jogador</h2>
+            <p class="slide-descricao">
+                Fluxo de autoatendimento desenvolvido para garantir que o atleta encontre e confirme uma partida em segundos, sem necessitar de intermediação humana.
+            </p>
+
+            <ul class="lista-recursos">
+                <li>
+                    <i class="material-icons">login</i>
+                    <span><b>Portaria do Clube Simplificada:</b> Acesso seguro informando apenas o Código da Arena e seleção do nome com validação pessoal.</span>
+                </li>
+                <li>
+                    <i class="material-icons">touch_app</i>
+                    <span><b>Reserva em 3 Passos:</b> O atleta escolhe o horário disponível, seleciona os parceiros de jogo no dropdown local e confirma a partida.</span>
+                </li>
+                <li>
+                    <i class="material-icons">remember_me</i>
+                    <span><b>Sessão Persistente:</b> O sistema gera uma credencial segura no dispositivo do jogador, mantendo-o conectado sem exigir digitação de senhas a cada acesso.</span>
+                </li>
+            </ul>
+        </article>
+
+        <!-- SLIDE 6 -->
+        <article class="slide-card">
+            <span class="slide-numero">SLIDE 06 / 07</span>
+            <span class="slide-categoria">Algoritmos Automáticos</span>
+            <h2 class="slide-titulo">Inteligência de Quórum e Sobrevivência</h2>
+            <p class="slide-descricao">
+                Mecanismos automáticos que monitoram a saúde das partidas agendadas e limpam a grade em caso de desistências.
+            </p>
+
+            <div class="grid-detalhes">
+                <div class="box-detalhe">
+                    <h4><i class="material-icons">fact_check</i> Alfândega do Quórum</h4>
+                    <p>O agendamento é validado na origem. O sistema só autoriza a criação da reserva se o quórum mínimo exigido para aquela duração for atingido.</p>
+                </div>
+                <div class="box-detalhe">
+                    <h4><i class="material-icons">cleaning_services</i> Motor Caça-Fantasmas</h4>
+                    <p>Se parceiros recusarem os convites e o quórum da partida cair abaixo do limite, o sistema purga a reserva e devolve a quadra livre para a grade.</p>
+                </div>
+                <div class="box-detalhe">
+                    <h4><i class="material-icons">bolt</i> Auto-Confirmação Instantânea</h4>
+                    <p>Reservas efetuadas para uso no próprio dia contornam pendências e nascem imediatamente com status "Confirmada".</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- SLIDE 7 -->
+        <article class="slide-card">
+            <span class="slide-numero">SLIDE 07 / 07</span>
+            <span class="slide-categoria">Tecnologia & Acessibilidade</span>
+            <h2 class="slide-titulo">Infraestrutura Multiplataforma</h2>
+            <p class="slide-descricao">
+                Arquitetura moderna projetada para rodar em qualquer dispositivo com velocidade e sem exigir instalações complexas.
+            </p>
+
+            <ul class="lista-recursos">
+                <li>
+                    <i class="material-icons">apple</i>
+                    <span><b>iOS (iPhone e iPad):</b> Funcionamento via tecnologia PWA (Progressive Web App) rodando em tela cheia direto do Safari, sem ocupar espaço no armazenamento do celular.</span>
+                </li>
+                <li>
+                    <i class="material-icons">android</i>
+                    <span><b>Android:</b> Aplicativo leve e otimizado com carregamento ultrarrápido dos recursos visuais.</span>
+                </li>
+                <li>
+                    <i class="material-icons">cloud_done</i>
+                    <span><b>Persistência Cloud (Firebase):</b> Banco de dados em tempo real com barreira contra perda de conexão e sincronização constante de logs de auditoria.</span>
+                </li>
+            </ul>
+        </article>
+
+    </main>
+
+    <!-- RODAPÉ -->
+    <footer>
+        SetPoint Gestor SaaS &bull; Documento de Apresentação Técnica do Sistema <br>
+        <small style="color: #94a3b8;">Versão 1.0 (Build V16)</small>
+    </footer>
+
+</body>
+</html>
