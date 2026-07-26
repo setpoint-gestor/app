@@ -88,8 +88,15 @@ auth.onAuthStateChanged((user) => {
             carregarDropdownLoginsSocio();
             navegarApp('tela-jogador-login');
         } else {
-            // Primeiro acesso real
-            navegarApp('tela-boas-vindas');
+            // Primeiro acesso real ou vindo diretamente do site
+            const urlParams = new URLSearchParams(window.location.search);
+            const telaDesejada = urlParams.get('tela');
+
+            if (telaDesejada && typeof navegarApp === 'function') {
+                navegarApp(telaDesejada); // Abre direto na tela pedida pelo site (sem piscar!)
+            } else {
+                navegarApp('tela-boas-vindas');
+            }
         }
     }
 });
@@ -428,22 +435,11 @@ function exibirAvisoInstalacaoIOS() {
 
 function verificarDirecionamentoSite() {
     const urlParams = new URLSearchParams(window.location.search);
-    const telaDesejada = urlParams.get('tela');
     const origemPWA = urlParams.get('pwa');
 
     // 🍎 SE VIER DO CARD DO IPHONE NO SITE: Dispara o aviso estendido
     if (origemPWA === 'ios') {
         setTimeout(exibirAvisoInstalacaoIOS, 800);
-    }
-
-    // Redirecionamento de tela normal
-    if (telaDesejada) {
-        setTimeout(() => {
-            const estaLogado = isGestorLogado || localStorage.getItem('jogadorLogadoId');
-            if (!estaLogado && typeof navegarApp === 'function') {
-                navegarApp(telaDesejada);
-            }
-        }, 300);
     }
 }
 
