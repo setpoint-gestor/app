@@ -338,7 +338,7 @@ function fazerLoginJogador() {
             btnEntrar.textContent = txtOriginal;
             btnEntrar.disabled = false;
         }
-        showToast('Erro ao validar senha.', 'error');
+        showToast('Erro ao validar senha.', 'error'); 
         console.error(err);
     });
 }
@@ -355,7 +355,7 @@ function fazerLogout() {
         isGestorLogado = false;
         localStorage.removeItem('jogadorLogadoId'); 
         localStorage.removeItem('jogadorLogadoNome');
-        location.reload(); 
+        location.reload();  
     }); 
 }
 
@@ -365,3 +365,28 @@ function trocarDeClubeJogador() {
     localStorage.removeItem('jogadorLogadoNome');
     location.reload(); 
 }
+
+
+// ==========================================
+// 5. ROTEAMENTO DE NAVEGAÇÃO VINDO DO SITE
+// ==========================================
+function verificarDirecionamentoSite() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const telaDesejada = urlParams.get('tela');
+
+    // Se houver uma tela informada na URL (ex: tela-gestor-login ou tela-gestor-cadastro)
+    if (telaDesejada) {
+        // Aguarda 300ms para dar tempo do Auto-Login (Seção 1) verificar se o usuário já está logado
+        setTimeout(() => {
+            const estaLogado = isGestorLogado || localStorage.getItem('jogadorLogadoId');
+            
+            // Se NÃO houver usuário logado, redireciona para a tela específica solicitada pelo site
+            if (!estaLogado && typeof navegarApp === 'function') {
+                navegarApp(telaDesejada);
+            }
+        }, 300);
+    }
+}
+
+// Executa a verificação assim que a página é totalmente carregada
+window.addEventListener('load', verificarDirecionamentoSite);
