@@ -44,9 +44,9 @@
             <p style="color: #666; margin-bottom: 30px;">O novo padrão em gestão de arenas.</p>
 			<button class="btn-app btn-jogador" onclick="abrirTelaBuscaClube()">Sou Jogador</button>
             <button class="btn-app btn-gestor" onclick="navegarApp('tela-gestor-login')">Sou Gestor / Dono</button>
-            <button class="btn-app btn-link" style="color: #94a3b8; margin-top: 15px; font-size: 14px; font-weight: 500; text-decoration: none;" onclick="fecharAplicativoSaaS()">
-                Fechar Aplicativo
-            </button>
+            <button id="btn-fechar-app" class="btn-app btn-link" style="color: #94a3b8; margin-top: 15px; font-size: 14px; font-weight: 500; text-decoration: none;" onclick="fecharAplicativoSaaS()">
+				Fechar Aplicativo
+			</button>
         </div>
     </div>
 	
@@ -466,9 +466,9 @@
                     <i class="material-icons">notifications</i>
                     <span id="notificacao-badge" class="badge-vermelho">1</span>
                 </div>
-                <button class="header-logout" onclick="sairDaVisaoQuadras()" title="Voltar ao QG">
-                    <i class="material-icons">logout</i>
-                </button>
+                <button id="btn-fechar-planilha" class="header-logout" onclick="sairDaVisaoQuadras()" title="Voltar ao QG">
+					<i class="material-icons">logout</i>
+				</button>
             </div>
         </header>
 
@@ -1668,7 +1668,7 @@
     <script src="js/quadras.js"></script>
     <script src="js/planilha.js"></script>
 	<script src="js/config.js"></script>
-	<script src="js/regras.js"></script>
+	<script src="js/regras.js"></script> 
 	
 	<!-- PWA: Registro do Motor Offline (Service Worker) -->
     <script>
