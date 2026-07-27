@@ -333,6 +333,8 @@ function dispararFumacaSaaS() {
  * Alterna entre as telas principais do sistema SPA.
  */
 function navegarApp(idDestino) {
+    console.log(`🧭 [Navegação Passo 1] Solicitada troca para a tela: ${idDestino}`);
+    
     // 🛡️ INTERCEPTOR CENTRAL DE PORTARIA (LOCKDOWN SAAS)
     const config = configRegrasGlobal || {};
     const sistemaAberto = config.Abrir !== false;
@@ -347,6 +349,7 @@ function navegarApp(idDestino) {
         const ehAdmin = dadosAtleta.perfis && dadosAtleta.perfis['Admin'] === true;
 
         if (!ehAdmin && idDestino !== 'tela-manutencao' && idDestino !== 'tela-boas-vindas' && idDestino !== 'tela-gestor-login' && idDestino !== 'tela-gestor-cadastro') {
+            console.log("⛔ [Navegação] Sistema fechado e usuário não é admin. Redirecionando para manutenção.");
             idDestino = 'tela-manutencao';
         }
     }
@@ -359,14 +362,29 @@ function navegarApp(idDestino) {
     const telaDestino = document.getElementById(idDestino);
     if (telaDestino) {
         telaDestino.classList.add('ativa');
+        console.log(`🧭 [Navegação Passo 2] Tela ${idDestino} ativada no DOM.`);
     }
     
     const btnBack = document.getElementById('btn-floating-back-qg');
     if (btnBack) {
         btnBack.style.display = (idDestino === 'tela-sub-jogadores' || idDestino === 'tela-visao-quadras') ? 'flex' : 'none';
     }
-}
 
+    // 🎯 O NOVO GATILHO INICIAL: Se a tela destino for a planilha, acorda o Radar!
+    if (idDestino === 'tela-visao-quadras') {
+        console.log("🧭 [Navegação Passo 3] A tela destino é a planilha! Preparando disparo do Radar de Convites...");
+        
+        // Atraso de 300ms para garantir que o navegador terminou de pintar a planilha antes de exibir o modal
+        setTimeout(() => {
+            console.log("🚀 [Navegação Passo 4] Tela estabilizada! Chamando iniciarRadarDeConvitesSaaS()...");
+            if (typeof iniciarRadarDeConvitesSaaS === 'function') {
+                iniciarRadarDeConvitesSaaS(true);
+            } else {
+                console.error("❌ [Erro] Função iniciarRadarDeConvitesSaaS não encontrada na memória.");
+            }
+        }, 300);
+    }
+}
 
 
 // Atalhos Globais de Navegação
@@ -858,55 +876,66 @@ function removerPresencaOnlineSaaS() {
 function iniciarMonitorOciosidadeSaaS() {
     if (window.monitorOciosidadeAtivo) return;
     window.monitorOciosidadeAtivo = true;
+    console.log("🛡️ [Ociosidade] Monitor de atividade (Foco e Presença) iniciado.");
 
     const resetarCronometro = () => {
-        // Se o usuário estava sumido e voltou a interagir, reativa a presença online na hora
+        // Se o usuário estava sumido e voltou a interagir
         if (usuarioEstaOciosoSaaS) {
             usuarioEstaOciosoSaaS = false;
             console.log("⏰ [Ociosidade] Atividade detectada! Reativando presença online...");
             sincronizarPresencaOnlineSaaS();
+            
+            // 👉 O NOVO GATILHO DE RETORNO (Foco)
+            console.log("👀 [Ociosidade] Usuário voltou ao app! Disparando Radar de Convites...");
+            if (typeof iniciarRadarDeConvitesSaaS === 'function') {
+                iniciarRadarDeConvitesSaaS(true);
+            }
         }
 
         clearTimeout(temporizadorOciosidadeSaaS);
         temporizadorOciosidadeSaaS = setTimeout(() => {
             usuarioEstaOciosoSaaS = true;
+            console.log("💤 [Ociosidade] Tempo limite atingido. Usuário marcado como ausente.");
             removerPresencaOnlineSaaS();
         }, TEMPO_OCIOSIDADE_MS);
     };
 
-    // 🖱️ Sensores de movimento e cliques físicos no PC/Celular
+    // Sensores físicos
     window.addEventListener('mousemove', resetarCronometro);
     window.addEventListener('keydown', resetarCronometro);
     window.addEventListener('click', resetarCronometro);
     window.addEventListener('touchstart', resetarCronometro);
 
-    // 🖥️ Sensores de Foco de Janela (Cura definitiva para o Firefox/Safari)
+    // Sensores de Foco (Saiu do app / Voltou pro app)
     window.addEventListener('blur', () => {
-        // No segundo em que mudar de janela ou clicar fora do navegador, recolhe a presença
+        console.log("🙈 [Ociosidade] Janela perdeu o foco (Blur). Usuário foi para outro app/aba.");
         usuarioEstaOciosoSaaS = true;
         clearTimeout(temporizadorOciosidadeSaaS); 
         removerPresencaOnlineSaaS(); 
     });
 
     window.addEventListener('focus', () => {
-        // No instante em que clicar de volta na janela do sistema, acorda a presença
+        console.log("🪟 [Ociosidade] Janela ganhou o foco (Focus). Usuário retornou.");
         resetarCronometro();
     });
 
-    // 📑 Sentinela de Abas (Visibility API): Mantido para garantir o comportamento do Chrome
+    // Sensor de visibilidade (Tela bloqueada/desbloqueada)
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
+            console.log("🙈 [Ociosidade] Aba oculta (Visibility Hidden).");
             usuarioEstaOciosoSaaS = true;
             clearTimeout(temporizadorOciosidadeSaaS);
             removerPresencaOnlineSaaS();
         } else {
+            console.log("🪟 [Ociosidade] Aba visível novamente (Visibility Visible).");
             resetarCronometro();
         }
     });
 
-    // Inicia a primeira contagem regressiva protetora
+    // Inicia a primeira contagem regressiva
     resetarCronometro();
 }
+
 
 
 // ==========================================
@@ -915,23 +944,32 @@ function iniciarMonitorOciosidadeSaaS() {
 let radarConvitesAtivoId = null;
 
 function iniciarRadarDeConvitesSaaS(forcar = false) {
-    if (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao === false) return;
+    console.log(`📡 [Radar] Iniciando busca... (Modo Forçar: ${forcar})`);
+
+    if (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao === false) {
+        console.log("⚠️ [Radar] Abortado: Regra de confirmação está OFF no banco.");
+        return;
+    }
 
     const nomeLogado = localStorage.getItem('jogadorLogadoNome');
     const idLogado = localStorage.getItem('jogadorLogadoId');
 
-    if (!nomeLogado || !idLogado || isGestorLogado) return;
+    console.log(`👤 [Radar] Usuário na memória: ${nomeLogado} (ID: ${idLogado})`);
+
+    if (!nomeLogado || !idLogado || isGestorLogado) {
+        console.log("⚠️ [Radar] Abortado: Falta credenciais ou é painel de Gestor.");
+        return;
+    }
 
     if (!forcar && radarConvitesAtivoId === idLogado) return;
 
-    if (radarConvitesAtivoId !== null) {
+    if (radarConvitesAtivoId !== null && radarConvitesAtivoId !== idLogado) {
         database.ref(`${raizBanco}/reservas`).off('value');
     }
 
     radarConvitesAtivoId = idLogado;
-
-    // Helper de limpeza de texto
-    const clean = (str) => (str || "")
+    
+    const norm = (txt) => (txt || "")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-zA-Z0-9 ]/g, "")
@@ -939,30 +977,14 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
         .trim()
         .toUpperCase();
 
-    // Comparador tolerante a diferenças de acento, pontuação e erros de digitação
-    const saosNomesEquivalentes = (nomeA, nomeB) => {
-        if (!nomeA || !nomeB) return false;
-        const nA = clean(nomeA);
-        const nB = clean(nomeB);
+    const normNomeLogado = norm(nomeLogado);            
+    const primeiroNome = normNomeLogado.split(' ')[0];    
+    const ultimoNome = normNomeLogado.split(' ').pop();     
 
-        if (nA === nB || nA.includes(nB) || nB.includes(nA)) return true;
-
-        const pA = nA.split(' ');
-        const pB = nB.split(' ');
-
-        if (pA[0] === pB[0]) {
-            if (pA.length > 1 && pB.length > 1 && pA[pA.length - 1] === pB[pB.length - 1]) return true;
-            if (pA.length === 1 || pB.length === 1) return true;
-        }
-        return false;
-    };
-
-    let apelidoBusca = nomeLogado;
-    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) {
-        apelidoBusca = jogadoresGlobal[idLogado].apelido || nomeLogado;
-    }
+    console.log(`📡 [Radar] Escutando Firebase para: ${normNomeLogado}`);
 
     database.ref(`${raizBanco}/reservas`).on('value', snap => {
+        console.log("📦 [Radar] Pacote de reservas recebido do Firebase!");
         const todasAsReservas = snap.val() || {};
         const meusConvites = [];
         const agora = Date.now();
@@ -981,25 +1003,48 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
                 const confs = r.confirmacoes || {};
                 let souEuPendente = false;
 
-                Object.keys(confs).forEach(nomeChave => {
-                    if (confs[nomeChave] === false) {
-                        const bateComNome = saosNomesEquivalentes(nomeChave, nomeLogado);
-                        const bateComApelido = saosNomesEquivalentes(nomeChave, apelidoBusca);
-                        
-                        if (bateComNome || bateComApelido) {
-                            souEuPendente = true;
-                        }
+                const listCompleto = (r.jogadores_completo || "").split(',').map(s => norm(s));
+                const listApelidos = (r.jogadores || "").split(',').map(s => norm(s));
+
+                let idxMatch = listCompleto.findIndex(n => n === normNomeLogado || (n.length >= 3 && normNomeLogado.includes(n)));
+                if (idxMatch === -1) {
+                    idxMatch = listApelidos.findIndex(a => a.length >= 2 && (normNomeLogado.includes(a) || a.startsWith(primeiroNome)));
+                }
+
+                if (idxMatch !== -1) {
+                    const chavesConfs = Object.keys(confs);
+                    const chaveCorrespondente = chavesConfs[idxMatch] || chavesConfs.find(k => norm(k) === listApelidos[idxMatch]);
+                    if (chaveCorrespondente && confs[chaveCorrespondente] === false) {
+                        souEuPendente = true;
                     }
-                });
+                }
+
+                if (!souEuPendente) {
+                    Object.keys(confs).forEach(nomeChave => {
+                        if (confs[nomeChave] === false) {
+                            const normChave = norm(nomeChave);
+                            if (normChave === normNomeLogado || 
+                                normNomeLogado.includes(normChave) || 
+                                normChave.includes(primeiroNome) ||
+                                (normChave.startsWith(primeiroNome.substring(0, 2)) && normChave.includes(ultimoNome))) {
+                                souEuPendente = true;
+                            }
+                        }
+                    });
+                }
 
                 if (souEuPendente) {
+                    console.log(`🎯 [Radar Match!] Achou convite -> Quadra: ${quadraKey} | Slot: ${slotKey}`);
                     meusConvites.push({ quadra: quadraKey, slotKey: slotKey, dados: r });
                 }
             });
         });
 
+        console.log(`📊 [Radar] Varredura concluída. Encontrados: ${meusConvites.length}`);
+
         if (meusConvites.length > 0) {
             if (typeof renderizarGavetaConvitesSaaS === 'function') {
+                console.log("🎨 [Radar] Mandando desenhar o modal na tela...");
                 renderizarGavetaConvitesSaaS(meusConvites);
             }
         } else {

@@ -37,33 +37,45 @@ window.saasSnapshotInicialRecebido = false;
  */
 function verificarLiberacaoTelaLoadingSaaS() {
     const telaLoading = document.getElementById('tela-loading');
+    const isTelaAtiva = telaLoading ? telaLoading.classList.contains('ativa') : false;
     
-    if (primeiraCargaQuadra && window.saasSnapshotInicialRecebido && window.saasFaxinaPronta && telaLoading && telaLoading.classList.contains('ativa')) {
-        primeiraCargaQuadra = false; // Trava o gatilho para não rodar duas vezes
-        setTimeout(() => {
-            navegarApp('tela-visao-quadras');
-            
-            // 📡 RADAR DE CONVITES: Dispara com a tela principal já 100% visível na frente do usuário!
-            if (typeof iniciarRadarDeConvitesSaaS === "function") {
-                iniciarRadarDeConvitesSaaS(true); // Força a verificação imediata
-            }
-        }, 150);
+    console.log("🚦 [Portaria Loading] Verificando travas:", {
+        primeiraCarga: primeiraCargaQuadra,
+        snapshotRecebido: window.saasSnapshotInicialRecebido,
+        faxinaPronta: window.saasFaxinaPronta,
+        telaLoadingAtiva: isTelaAtiva
+    });
+
+    if (primeiraCargaQuadra && window.saasSnapshotInicialRecebido && window.saasFaxinaPronta && telaLoading && isTelaAtiva) {
+        console.log("✅ [Portaria Loading] Tudo liberado! Desenhando planilha...");
+        primeiraCargaQuadra = false; 
+        
+        navegarApp('tela-visao-quadras');
+        
+        // ✂️ O gatilho do Radar de Convites foi removido daqui!
+        console.log("🛑 [Portaria Loading] Abertura do convite suspensa aqui. Ele será acionado pelo Sensor de Foco.");
+        
+    } else {
+        console.warn("⏳ [Portaria Loading] Aguardando... Algo ainda está pendente.");
     }
 }
 
 
 function abrirVisaoQuadras() {
+    console.log("🗺️ [Planilha Passo 1] abrirVisaoQuadras() chamada! Preparando o terreno...");
 	
     // 🌟 REFINAMENTO UX: Reseta as travas de sincronismo e força a faxina rodar sob demanda na entrada da tela
     window.saasSnapshotInicialRecebido = false; 
 	
     // 💉 LIGA A ANTENA: Garante que o app do jogador escute as regras e o ON/OFF do Firebase
     if (typeof iniciarOuvinteMestreSaaS === "function") {
+        console.log("🗺️ [Planilha Passo 2] Acordando o Ouvinte Mestre...");
         iniciarOuvinteMestreSaaS();
     }
     
     // 1. SEGURA A TELA: Chama o loading global e avisa o usuário
     navegarApp('tela-loading');
+    console.log("🗺️ [Planilha Passo 3] Tela de loading ativada.");
     
     const txtLoading = document.querySelector('#tela-loading p');
     if (txtLoading) {
@@ -149,10 +161,15 @@ function abrirVisaoQuadras() {
     }
     
     const tabContainer = document.querySelector('.tab-container');
-    if (!tabContainer) return;
+    if (!tabContainer) {
+        console.error("❌ [Planilha] ERRO: Elemento .tab-container não encontrado no HTML!");
+        return;
+    }
 
     // LEITURA ÚNICA DA INFRAESTRUTURA NO FIREBASE (COM O GUARDIÃO CORRIGIDO)
+    console.log(`🗺️ [Planilha Passo 4] Solicitando quadras no Firebase em: ${raizBanco}/config/Quadras`);
     database.ref(`${raizBanco}/config/Quadras`).once('value').then((snapshot) => {
+        console.log("🗺️ [Planilha Passo 5] Retorno das quadras recebido com sucesso do Firebase.");
         
         const configQuadras = snapshot.val() || {};
         const qtdSalva = configQuadras.quantidade;
@@ -160,6 +177,7 @@ function abrirVisaoQuadras() {
 
         // 🛡️ INTERCEPTAÇÃO DE PRIMEIRO BOOT (BANDO ZERADO)
         if (!qtdSalva || parseInt(qtdSalva) < 1) {
+            console.warn("⚠️ [Planilha] Nenhuma quadra encontrada no banco.");
             
             if (isGestorLogado) {
                 console.log("🚀 [SaaS] Banco limpo! Direcionando para o Onboarding...");
@@ -183,6 +201,8 @@ function abrirVisaoQuadras() {
         // SE O BANCO JÁ TIVER QUADRAS, SEGUE O FLUXO ORIGINAL DO SISTEMA:
         tabContainer.innerHTML = ''; 
         let primeiraQuadra = "";
+
+        console.log(`🗺️ [Planilha Passo 6] Desenhando abas para ${qtdSalva} quadra(s)...`);
 
         // 🚀 PASSO 2.1: LAÇO DE ABAS ATUALIZADO (PRESERVA A ESTRUTURA E SOMA OS ALERTAS VISUAIS)
         for (let i = 1; i <= qtdSalva; i++) {
@@ -224,6 +244,8 @@ function abrirVisaoQuadras() {
 
         atualizarCabecalhoDias();
         montarEsqueletoPlanilha();
+        
+        console.log(`🗺️ [Planilha Passo 7] Estrutura montada. Acionando a quadra: ${quadraSelecionadaSaaS}`);
         selecionarQuadraSaaS(quadraSelecionadaSaaS);
 
         const btnTriggerMobile = document.getElementById('btn-trigger-mapa-mobile');
@@ -244,7 +266,7 @@ function abrirVisaoQuadras() {
         }
         
     }).catch(err => {
-        console.error("Erro ao carregar abas no chassi:", err);
+        console.error("❌ [Planilha] Erro grave ao carregar abas no chassi:", err);
     });
     
 }
