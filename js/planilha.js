@@ -2995,19 +2995,15 @@ function renderizarGavetaConvitesSaaS(convites) {
     
     if (!modal || !container || !titulo) return;
 
-    // Atualiza o Título
     titulo.textContent = convites.length === 1 ? '1 Convite Pendente' : `${convites.length} Convites Pendentes`;
     container.innerHTML = '';
 
-    // 📅 Dicionário para dias da semana curtos (Padrão Mockup)
     const diasCurto = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-    // Desenha os cartões
     convites.forEach(item => {
         const r = item.dados;
         const duracao = parseInt(r.duracao) || 1;
         
-        // --- 1. MÁGICA DA DATA (Ex: Sáb • 07:00 - 08:00) ---
         let dataFormatada = "";
         if (r.dataCompleta) {
             const partesData = r.dataCompleta.split('-');
@@ -3019,7 +3015,6 @@ function renderizarGavetaConvitesSaaS(convites) {
         const hFim = String(r.hora + duracao).padStart(2, '0') + ":00";
         const horarioFormatado = `${hInicio} - ${hFim}`;
         
-        // --- 2. MÁGICA DO APELIDO DO ORGANIZADOR ---
         let nomeOrg = r.organizador || "Não Informado";
         if (typeof jogadoresGlobal !== 'undefined') {
             for (let id in jogadoresGlobal) {
@@ -3030,12 +3025,10 @@ function renderizarGavetaConvitesSaaS(convites) {
             }
         }
         
-        // Formatação Title Case por segurança (ex: ADRIANO G FEITOSA -> Adriano G Feitosa)
         if (nomeOrg === nomeOrg.toUpperCase()) {
             nomeOrg = nomeOrg.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
         }
         
-        // Traduz "Quadra - 1" para "Quadra 1 - Coberta" (Friendly Name)
         let nomeQuadraAmigavel = item.quadra;
         const numQuadra = item.quadra.match(/\d+/);
         if (numQuadra && configQuadrasGlobal && configQuadrasGlobal.nomes) {
@@ -3066,12 +3059,11 @@ function renderizarGavetaConvitesSaaS(convites) {
         container.innerHTML += htmlCard;
     });
 
-    // Exibe o Bottom Sheet
     modal.style.display = 'flex';
-    setTimeout(() => modal.classList.add('ativa'), 10);
-
+    setTimeout(() => modal.classList.add('ativa'), 20);
     iniciarRelogioConvitesSaaS();
 }
+
 
 
 function iniciarRelogioConvitesSaaS() {

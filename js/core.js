@@ -912,40 +912,56 @@ function iniciarMonitorOciosidadeSaaS() {
 // ==========================================
 // 9. RADAR DE CONVITES PENDENTES (SAAS)
 // ==========================================
-let radarConvitesAtivoId = null; // Guarda o ID do jogador ativo no radar
+let radarConvitesAtivoId = null;
 
 function iniciarRadarDeConvitesSaaS(forcar = false) {
-    // 1. Aborta se a regra de Confirmação Obrigatória estiver desligada no sistema
     if (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao === false) return;
 
-    // 2. Identifica quem é o usuário logado (Gestor não recebe convites)
     const nomeLogado = localStorage.getItem('jogadorLogadoNome');
     const idLogado = localStorage.getItem('jogadorLogadoId');
+
     if (!nomeLogado || !idLogado || isGestorLogado) return;
 
-    // 🛡️ TRAVA INTELIGENTE: Se o radar já está rodando PARA ESTE MESMO JOGADOR e não for forçado, ignora
     if (!forcar && radarConvitesAtivoId === idLogado) return;
 
-    // Se trocou de conta ou solicitou recarga forçada na abertura de tela, desliga o ouvinte anterior
     if (radarConvitesAtivoId !== null) {
         database.ref(`${raizBanco}/reservas`).off('value');
     }
 
     radarConvitesAtivoId = idLogado;
-    console.log(`📡 [Core] Radar de Convites ativado em tempo real para: ${nomeLogado} (${idLogado})...`);
 
-    // Função de normalização para ignorar acentos e caixa alta/baixa
-    const normalizar = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+    // Helper de limpeza de texto
+    const clean = (str) => (str || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+
+    // Comparador tolerante a diferenças de acento, pontuação e erros de digitação
+    const saosNomesEquivalentes = (nomeA, nomeB) => {
+        if (!nomeA || !nomeB) return false;
+        const nA = clean(nomeA);
+        const nB = clean(nomeB);
+
+        if (nA === nB || nA.includes(nB) || nB.includes(nA)) return true;
+
+        const pA = nA.split(' ');
+        const pB = nB.split(' ');
+
+        if (pA[0] === pB[0]) {
+            if (pA.length > 1 && pB.length > 1 && pA[pA.length - 1] === pB[pB.length - 1]) return true;
+            if (pA.length === 1 || pB.length === 1) return true;
+        }
+        return false;
+    };
 
     let apelidoBusca = nomeLogado;
     if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) {
         apelidoBusca = jogadoresGlobal[idLogado].apelido || nomeLogado;
     }
 
-    const normNomeLogado = normalizar(nomeLogado);
-    const normApelidoBusca = normalizar(apelidoBusca);
-
-    // 3. A Escuta Ativa em Tempo Real (.on)
     database.ref(`${raizBanco}/reservas`).on('value', snap => {
         const todasAsReservas = snap.val() || {};
         const meusConvites = [];
@@ -958,35 +974,30 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
             Object.keys(slots).forEach(slotKey => {
                 const r = slots[slotKey];
                 
-                // Filtros de descarte rápido
                 if (!r || r.status !== 'pendente' || !r.expiraEm) return;
                 if (r.borda === undefined && r.duracao === 2) return;
                 if (r.expiraEm < agora) return;
 
-                // Busca o atleta na lista de confirmações como "false"
                 const confs = r.confirmacoes || {};
                 let souEuPendente = false;
 
-                Object.keys(confs).forEach(nomeAtleta => {
-                    if (confs[nomeAtleta] === false) {
-                        const normAtleta = normalizar(nomeAtleta);
-                        if (normAtleta === normApelidoBusca || normAtleta === normNomeLogado) {
+                Object.keys(confs).forEach(nomeChave => {
+                    if (confs[nomeChave] === false) {
+                        const bateComNome = saosNomesEquivalentes(nomeChave, nomeLogado);
+                        const bateComApelido = saosNomesEquivalentes(nomeChave, apelidoBusca);
+                        
+                        if (bateComNome || bateComApelido) {
                             souEuPendente = true;
                         }
                     }
                 });
 
                 if (souEuPendente) {
-                    meusConvites.push({
-                        quadra: quadraKey,
-                        slotKey: slotKey,
-                        dados: r
-                    });
+                    meusConvites.push({ quadra: quadraKey, slotKey: slotKey, dados: r });
                 }
             });
         });
 
-        // 4. Comunica com a UI (que mora no planilha.js)
         if (meusConvites.length > 0) {
             if (typeof renderizarGavetaConvitesSaaS === 'function') {
                 renderizarGavetaConvitesSaaS(meusConvites);

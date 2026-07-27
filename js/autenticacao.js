@@ -321,7 +321,7 @@ function fazerLoginJogador() {
             }
 
             if (senhaDigitada === parseInt(senhaCorreta).toString() || senhaDigitada === senhaCorreta) {
-                // PERSISTÊNCIA COMPLETA (SSOT): Guarda os dados e o ecossistema de permissões do atleta
+                // PERSISTÊNCIA COMPLETA (SSOT): Guarda os dados e permissões do atleta
                 localStorage.setItem('jogadorLogadoId', idJogador);
                 localStorage.setItem('jogadorLogadoNome', dados.nomeCompleto);
                 localStorage.setItem('jogadorLogadoSocio', dados.socio || 'titular');
@@ -331,7 +331,12 @@ function fazerLoginJogador() {
                 if (typeof sincronizarPresencaOnlineSaaS === 'function') {
                     sincronizarPresencaOnlineSaaS();
                 }
-                
+
+                // 📡 DISPARO IMEDIATO DO RADAR DE CONVITES NO LOGIN
+                if (typeof iniciarRadarDeConvitesSaaS === 'function') {
+                    iniciarRadarDeConvitesSaaS(true);
+                }
+
                 showToast(`Bem-vindo, ${dados.apelido || dados.nomeCompleto}!`, 'success');
                 if(typeof abrirVisaoQuadras === 'function') abrirVisaoQuadras();
             } else {
@@ -349,6 +354,7 @@ function fazerLoginJogador() {
         console.error(err);
     });
 }
+
 
 
 
