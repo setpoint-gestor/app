@@ -908,12 +908,13 @@ function iniciarMonitorOciosidadeSaaS() {
     resetarCronometro();
 }
 
+
 // ==========================================
 // 9. RADAR DE CONVITES PENDENTES (SAAS)
 // ==========================================
-let radarConvitesAtivo = false; // Trava para não criar ouvintes duplicados na RAM
+let radarConvitesAtivoId = null; // Guarda o ID do jogador ativo no radar
 
-function iniciarRadarDeConvitesSaaS() {
+function iniciarRadarDeConvitesSaaS(forcar = false) {
     // 1. Aborta se a regra de Confirmação Obrigatória estiver desligada no sistema
     if (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao === false) return;
 
@@ -921,19 +922,30 @@ function iniciarRadarDeConvitesSaaS() {
     const nomeLogado = localStorage.getItem('jogadorLogadoNome');
     const idLogado = localStorage.getItem('jogadorLogadoId');
     if (!nomeLogado || !idLogado || isGestorLogado) return;
-    
+
+    // 🛡️ TRAVA INTELIGENTE: Se o radar já está rodando PARA ESTE MESMO JOGADOR e não for forçado, ignora
+    if (!forcar && radarConvitesAtivoId === idLogado) return;
+
+    // Se trocou de conta ou solicitou recarga forçada na abertura de tela, desliga o ouvinte anterior
+    if (radarConvitesAtivoId !== null) {
+        database.ref(`${raizBanco}/reservas`).off('value');
+    }
+
+    radarConvitesAtivoId = idLogado;
+    console.log(`📡 [Core] Radar de Convites ativado em tempo real para: ${nomeLogado} (${idLogado})...`);
+
+    // Função de normalização para ignorar acentos e caixa alta/baixa
+    const normalizar = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+
     let apelidoBusca = nomeLogado;
     if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) {
         apelidoBusca = jogadoresGlobal[idLogado].apelido || nomeLogado;
     }
 
-    // 3. Impede duplicação de ouvintes
-    if (radarConvitesAtivo) return;
-    radarConvitesAtivo = true;
+    const normNomeLogado = normalizar(nomeLogado);
+    const normApelidoBusca = normalizar(apelidoBusca);
 
-    console.log("📡 [Core] Radar de Convites ativado em tempo real...");
-
-    // 4. A Escuta Ativa (.on)
+    // 3. A Escuta Ativa em Tempo Real (.on)
     database.ref(`${raizBanco}/reservas`).on('value', snap => {
         const todasAsReservas = snap.val() || {};
         const meusConvites = [];
@@ -941,6 +953,8 @@ function iniciarRadarDeConvitesSaaS() {
 
         Object.keys(todasAsReservas).forEach(quadraKey => {
             const slots = todasAsReservas[quadraKey];
+            if (!slots) return;
+
             Object.keys(slots).forEach(slotKey => {
                 const r = slots[slotKey];
                 
@@ -955,8 +969,8 @@ function iniciarRadarDeConvitesSaaS() {
 
                 Object.keys(confs).forEach(nomeAtleta => {
                     if (confs[nomeAtleta] === false) {
-                        if (nomeAtleta.toUpperCase() === apelidoBusca.toUpperCase() || 
-                            nomeAtleta.toUpperCase() === nomeLogado.toUpperCase()) {
+                        const normAtleta = normalizar(nomeAtleta);
+                        if (normAtleta === normApelidoBusca || normAtleta === normNomeLogado) {
                             souEuPendente = true;
                         }
                     }
@@ -972,7 +986,7 @@ function iniciarRadarDeConvitesSaaS() {
             });
         });
 
-        // 5. Comunica com a UI (que mora no planilha.js)
+        // 4. Comunica com a UI (que mora no planilha.js)
         if (meusConvites.length > 0) {
             if (typeof renderizarGavetaConvitesSaaS === 'function') {
                 renderizarGavetaConvitesSaaS(meusConvites);

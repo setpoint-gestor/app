@@ -42,7 +42,11 @@ function verificarLiberacaoTelaLoadingSaaS() {
         primeiraCargaQuadra = false; // Trava o gatilho para não rodar duas vezes
         setTimeout(() => {
             navegarApp('tela-visao-quadras');
-            // O gatilho de convites foi promovido a Radar Global e agora mora no core.js!
+            
+            // 📡 RADAR DE CONVITES: Dispara com a tela principal já 100% visível na frente do usuário!
+            if (typeof iniciarRadarDeConvitesSaaS === "function") {
+                iniciarRadarDeConvitesSaaS(true); // Força a verificação imediata
+            }
         }, 150);
     }
 }
@@ -50,17 +54,16 @@ function verificarLiberacaoTelaLoadingSaaS() {
 
 function abrirVisaoQuadras() {
 	
-	// 🌟 REFINAMENTO UX: Reseta as travas de sincronismo e força a faxina rodar sob demanda na entrada da tela
+    // 🌟 REFINAMENTO UX: Reseta as travas de sincronismo e força a faxina rodar sob demanda na entrada da tela
     window.saasSnapshotInicialRecebido = false; 
 	
-    
     // 💉 LIGA A ANTENA: Garante que o app do jogador escute as regras e o ON/OFF do Firebase
     if (typeof iniciarOuvinteMestreSaaS === "function") {
         iniciarOuvinteMestreSaaS();
     }
     
     // 1. SEGURA A TELA: Chama o loading global e avisa o usuário
-    navegarApp('tela-loading');  
+    navegarApp('tela-loading');
     
     const txtLoading = document.querySelector('#tela-loading p');
     if (txtLoading) {
@@ -3199,7 +3202,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                             configDuplasGlobal[quadraIndex].Grade[slotKey] === true;
 
         // 2. Identifica a Duração e a Regra de Quórum
-        const duracao = parseInt(reserva.duracao) || 1;
+        const duracao = parseInt(reserva.duracao) || 1; 
         let quorumExigido = 1; // Padrão de segurança
         
         if (isDuplaSlot) {
