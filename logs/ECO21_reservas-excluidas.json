@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "timestamp": "2026-07-27T03:43:06.406Z",
+    "dataLocal": "27/07/2026, 00:43:06",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "27-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "An Alice": true
+    },
+    "jogadores": "Adriano Feitosa, An Alice",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ANA LICE DOURADO",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 7
+      }
+    ]
+  }
+]
