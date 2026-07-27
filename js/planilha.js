@@ -38,63 +38,36 @@ window.saasSnapshotInicialRecebido = false;
 function verificarLiberacaoTelaLoadingSaaS() {
     const telaLoading = document.getElementById('tela-loading');
     const isTelaAtiva = telaLoading ? telaLoading.classList.contains('ativa') : false;
-    
-    console.log("🚦 [Portaria Loading] Verificando travas:", {
-        primeiraCarga: primeiraCargaQuadra,
-        snapshotRecebido: window.saasSnapshotInicialRecebido,
-        faxinaPronta: window.saasFaxinaPronta,
-        telaLoadingAtiva: isTelaAtiva
-    });
 
     if (primeiraCargaQuadra && window.saasSnapshotInicialRecebido && window.saasFaxinaPronta && telaLoading && isTelaAtiva) {
-        console.log("✅ [Portaria Loading] Tudo liberado! Desenhando planilha...");
         primeiraCargaQuadra = false; 
-        
         navegarApp('tela-visao-quadras');
-        
-        // ✂️ O gatilho do Radar de Convites foi removido daqui!
-        console.log("🛑 [Portaria Loading] Abertura do convite suspensa aqui. Ele será acionado pelo Sensor de Foco.");
-        
-    } else {
-        console.warn("⏳ [Portaria Loading] Aguardando... Algo ainda está pendente.");
     }
 }
 
 
 function abrirVisaoQuadras() {
-    console.log("🗺️ [Planilha Passo 1] abrirVisaoQuadras() chamada! Preparando o terreno...");
-	
-    // 🌟 REFINAMENTO UX: Reseta as travas de sincronismo e força a faxina rodar sob demanda na entrada da tela
     window.saasSnapshotInicialRecebido = false; 
 	
-    // 💉 LIGA A ANTENA: Garante que o app do jogador escute as regras e o ON/OFF do Firebase
     if (typeof iniciarOuvinteMestreSaaS === "function") {
-        console.log("🗺️ [Planilha Passo 2] Acordando o Ouvinte Mestre...");
         iniciarOuvinteMestreSaaS();
     }
     
-    // 1. SEGURA A TELA: Chama o loading global e avisa o usuário
     navegarApp('tela-loading');
-    console.log("🗺️ [Planilha Passo 3] Tela de loading ativada.");
     
     const txtLoading = document.querySelector('#tela-loading p');
     if (txtLoading) {
         txtLoading.textContent = "Carregando planilha... aguarde";
     }
 	
-    // Reseta a trava de segurança toda vez que a tela for solicitada
     primeiraCargaQuadra = true;  
 	
     let apelidoMobile = "";
     let socio = "";
-    
     const elNome = document.getElementById('header-nome');
     
     if (elNome) {
-        
-        // --- BIFURCAÇÃO DE IDENTIDADE: GESTOR VS JOGADOR ---
         if (isGestorLogado) {
-            // ROTA GESTOR: Ignora o cache do jogador e assume a identidade administrativa
             const badgesHtml = `<span class="badge" style="background-color: #dc3545; margin-left: 6px; font-size: 10px; padding: 2px 6px;">Admin</span><span class="badge badge-SaaS-off" style="background-color: #dc3545; margin-left: 4px; font-size: 10px; padding: 2px 6px; display: none;">OFF</span>`;
             elNome.innerHTML = `
                 <div class="header-user-wrapper">
@@ -105,7 +78,6 @@ function abrirVisaoQuadras() {
                 </div>
             `;
         } else {
-            // ROTA JOGADOR: Lê o cache local e renderiza o nome e permissões dinâmicas
             const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "Sócio";
             const nomePC = nomeLogado.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
             apelidoMobile = nomePC.split(' ')[0];
@@ -118,9 +90,7 @@ function abrirVisaoQuadras() {
                         apelidoMobile = dadosJogadores[nomeLogado].apelido;
                     }
                 }
-            } catch (e) { 
-                console.warn("Erro ao ler apelido do cache."); 
-            }
+            } catch (e) {}
 
             socio = localStorage.getItem('jogadorLogadoSocio') || 'titular'; 
             let perfis = {};
@@ -146,7 +116,6 @@ function abrirVisaoQuadras() {
                 }
             }); 
 			
-			// 🚨 ADICIONADO: Garante a pílula OFF oculta para a rota de jogadores também
             badgesHtml += `<span class="badge badge-SaaS-off" style="background-color: #dc3545; margin-left: 4px; font-size: 10px; padding: 2px 6px; display: none;">OFF</span>`;
 
             elNome.innerHTML = `
@@ -161,29 +130,17 @@ function abrirVisaoQuadras() {
     }
     
     const tabContainer = document.querySelector('.tab-container');
-    if (!tabContainer) {
-        console.error("❌ [Planilha] ERRO: Elemento .tab-container não encontrado no HTML!");
-        return;
-    }
+    if (!tabContainer) return;
 
-    // LEITURA ÚNICA DA INFRAESTRUTURA NO FIREBASE (COM O GUARDIÃO CORRIGIDO)
-    console.log(`🗺️ [Planilha Passo 4] Solicitando quadras no Firebase em: ${raizBanco}/config/Quadras`);
     database.ref(`${raizBanco}/config/Quadras`).once('value').then((snapshot) => {
-        console.log("🗺️ [Planilha Passo 5] Retorno das quadras recebido com sucesso do Firebase.");
-        
         const configQuadras = snapshot.val() || {};
         const qtdSalva = configQuadras.quantidade;
         const nomesSalvos = configQuadras.nomes || {};
 
-        // 🛡️ INTERCEPTAÇÃO DE PRIMEIRO BOOT (BANDO ZERADO)
         if (!qtdSalva || parseInt(qtdSalva) < 1) {
-            console.warn("⚠️ [Planilha] Nenhuma quadra encontrada no banco.");
-            
             if (isGestorLogado) {
-                console.log("🚀 [SaaS] Banco limpo! Direcionando para o Onboarding...");
                 abrirOnboardingPrimeiroAcessoSaaS();
             } else {
-                console.log("🏟️ [SaaS] Atleta impedido: arena em configuração.");
                 navegarApp('tela-loading'); 
                 if (txtLoading) {
                     txtLoading.innerHTML = `
@@ -194,33 +151,24 @@ function abrirVisaoQuadras() {
                     `;
                 }
             }
-            
-            return; // Bloqueia o desenho da planilha vazia
+            return;
         }
 
-        // SE O BANCO JÁ TIVER QUADRAS, SEGUE O FLUXO ORIGINAL DO SISTEMA:
         tabContainer.innerHTML = ''; 
         let primeiraQuadra = "";
 
-        console.log(`🗺️ [Planilha Passo 6] Desenhando abas para ${qtdSalva} quadra(s)...`);
-
-        // 🚀 PASSO 2.1: LAÇO DE ABAS ATUALIZADO (PRESERVA A ESTRUTURA E SOMA OS ALERTAS VISUAIS)
         for (let i = 1; i <= qtdSalva; i++) {
             const nomeQuadra = typeof nomesSalvos[i] === 'object' ? (nomesSalvos[i].nome || `Quadra ${i}`) : (nomesSalvos[i] || `Quadra ${i}`);
-            if (i === 1) {
-                primeiraQuadra = nomeQuadra;
-            }
+            if (i === 1) primeiraQuadra = nomeQuadra;
 
             const btn = document.createElement('button'); 
             btn.className = 'tab-button';
             btn.textContent = `Quadra ${i}`;
             btn.dataset.nomeReal = nomeQuadra;
             
-            // 🧠 Captura reativa de status vinda direto do core
             const statusBanco = (configQuadrasGlobal.nomes && configQuadrasGlobal.nomes['status_' + i]) || 'liberada';
-            btn.dataset.statusSaas = statusBanco; // Guarda metadado na tag
+            btn.dataset.statusSaas = statusBanco; 
 
-            // Adiciona as cores de aviso sem tocar em nenhum outro estilo estrutural
             if (statusBanco === 'interditada' || statusBanco === 'interdita') {
                 btn.classList.add('status-saas-interditada');
             } else if (statusBanco === 'bloqueada') {
@@ -244,31 +192,21 @@ function abrirVisaoQuadras() {
 
         atualizarCabecalhoDias();
         montarEsqueletoPlanilha();
-        
-        console.log(`🗺️ [Planilha Passo 7] Estrutura montada. Acionando a quadra: ${quadraSelecionadaSaaS}`);
         selecionarQuadraSaaS(quadraSelecionadaSaaS);
 
         const btnTriggerMobile = document.getElementById('btn-trigger-mapa-mobile');
         if (qtdSalva === 1) {
             tabContainer.style.setProperty('display', 'none', 'important');
-            if (btnTriggerMobile) {
-                btnTriggerMobile.style.setProperty('display', 'none', 'important');
-            }
+            if (btnTriggerMobile) btnTriggerMobile.style.setProperty('display', 'none', 'important');
         } else {
             if (window.innerWidth <= 767) {
                 tabContainer.style.setProperty('display', 'none', 'important');
             } else {
                 tabContainer.style.removeProperty('display');
             }
-            if (btnTriggerMobile) {
-                btnTriggerMobile.style.setProperty('display', 'inline-flex', 'important');
-            }
+            if (btnTriggerMobile) btnTriggerMobile.style.setProperty('display', 'inline-flex', 'important');
         }
-        
-    }).catch(err => {
-        console.error("❌ [Planilha] Erro grave ao carregar abas no chassi:", err);
     });
-    
 }
 
 

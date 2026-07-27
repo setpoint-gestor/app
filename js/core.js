@@ -333,15 +333,11 @@ function dispararFumacaSaaS() {
  * Alterna entre as telas principais do sistema SPA.
  */
 function navegarApp(idDestino) {
-    console.log(`🧭 [Navegação Passo 1] Solicitada troca para a tela: ${idDestino}`);
-    
-    // 🛡️ INTERCEPTOR CENTRAL DE PORTARIA (LOCKDOWN SAAS)
     const config = configRegrasGlobal || {};
     const sistemaAberto = config.Abrir !== false;
 
     if (!sistemaAberto && !isGestorLogado) {
         const nomeAtletaLogado = localStorage.getItem('jogadorLogadoNome') || "";
-        
         const idAtleta = Object.keys(jogadoresGlobal).find(key => 
             jogadoresGlobal[key].nomeCompleto === nomeAtletaLogado
         );
@@ -349,12 +345,10 @@ function navegarApp(idDestino) {
         const ehAdmin = dadosAtleta.perfis && dadosAtleta.perfis['Admin'] === true;
 
         if (!ehAdmin && idDestino !== 'tela-manutencao' && idDestino !== 'tela-boas-vindas' && idDestino !== 'tela-gestor-login' && idDestino !== 'tela-gestor-cadastro') {
-            console.log("⛔ [Navegação] Sistema fechado e usuário não é admin. Redirecionando para manutenção.");
             idDestino = 'tela-manutencao';
         }
     }
 
-    // --- FLUXO ORIGINAL DE PINTURA DE TELA ---
     document.querySelectorAll('.tela-app').forEach(tela => {
         tela.classList.remove('ativa');
     });
@@ -362,7 +356,6 @@ function navegarApp(idDestino) {
     const telaDestino = document.getElementById(idDestino);
     if (telaDestino) {
         telaDestino.classList.add('ativa');
-        console.log(`🧭 [Navegação Passo 2] Tela ${idDestino} ativada no DOM.`);
     }
     
     const btnBack = document.getElementById('btn-floating-back-qg');
@@ -370,21 +363,15 @@ function navegarApp(idDestino) {
         btnBack.style.display = (idDestino === 'tela-sub-jogadores' || idDestino === 'tela-visao-quadras') ? 'flex' : 'none';
     }
 
-    // 🎯 O NOVO GATILHO INICIAL: Se a tela destino for a planilha, acorda o Radar!
     if (idDestino === 'tela-visao-quadras') {
-        console.log("🧭 [Navegação Passo 3] A tela destino é a planilha! Preparando disparo do Radar de Convites...");
-        
-        // Atraso de 300ms para garantir que o navegador terminou de pintar a planilha antes de exibir o modal
         setTimeout(() => {
-            console.log("🚀 [Navegação Passo 4] Tela estabilizada! Chamando iniciarRadarDeConvitesSaaS()...");
             if (typeof iniciarRadarDeConvitesSaaS === 'function') {
                 iniciarRadarDeConvitesSaaS(true);
-            } else {
-                console.error("❌ [Erro] Função iniciarRadarDeConvitesSaaS não encontrada na memória.");
             }
         }, 300);
     }
 }
+
 
 
 // Atalhos Globais de Navegação
@@ -876,17 +863,12 @@ function removerPresencaOnlineSaaS() {
 function iniciarMonitorOciosidadeSaaS() {
     if (window.monitorOciosidadeAtivo) return;
     window.monitorOciosidadeAtivo = true;
-    console.log("🛡️ [Ociosidade] Monitor de atividade (Foco e Presença) iniciado.");
 
     const resetarCronometro = () => {
-        // Se o usuário estava sumido e voltou a interagir
         if (usuarioEstaOciosoSaaS) {
             usuarioEstaOciosoSaaS = false;
-            console.log("⏰ [Ociosidade] Atividade detectada! Reativando presença online...");
             sincronizarPresencaOnlineSaaS();
             
-            // 👉 O NOVO GATILHO DE RETORNO (Foco)
-            console.log("👀 [Ociosidade] Usuário voltou ao app! Disparando Radar de Convites...");
             if (typeof iniciarRadarDeConvitesSaaS === 'function') {
                 iniciarRadarDeConvitesSaaS(true);
             }
@@ -895,44 +877,33 @@ function iniciarMonitorOciosidadeSaaS() {
         clearTimeout(temporizadorOciosidadeSaaS);
         temporizadorOciosidadeSaaS = setTimeout(() => {
             usuarioEstaOciosoSaaS = true;
-            console.log("💤 [Ociosidade] Tempo limite atingido. Usuário marcado como ausente.");
             removerPresencaOnlineSaaS();
         }, TEMPO_OCIOSIDADE_MS);
     };
 
-    // Sensores físicos
     window.addEventListener('mousemove', resetarCronometro);
     window.addEventListener('keydown', resetarCronometro);
     window.addEventListener('click', resetarCronometro);
     window.addEventListener('touchstart', resetarCronometro);
 
-    // Sensores de Foco (Saiu do app / Voltou pro app)
     window.addEventListener('blur', () => {
-        console.log("🙈 [Ociosidade] Janela perdeu o foco (Blur). Usuário foi para outro app/aba.");
         usuarioEstaOciosoSaaS = true;
         clearTimeout(temporizadorOciosidadeSaaS); 
         removerPresencaOnlineSaaS(); 
     });
 
-    window.addEventListener('focus', () => {
-        console.log("🪟 [Ociosidade] Janela ganhou o foco (Focus). Usuário retornou.");
-        resetarCronometro();
-    });
+    window.addEventListener('focus', resetarCronometro);
 
-    // Sensor de visibilidade (Tela bloqueada/desbloqueada)
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
-            console.log("🙈 [Ociosidade] Aba oculta (Visibility Hidden).");
             usuarioEstaOciosoSaaS = true;
             clearTimeout(temporizadorOciosidadeSaaS);
             removerPresencaOnlineSaaS();
         } else {
-            console.log("🪟 [Ociosidade] Aba visível novamente (Visibility Visible).");
             resetarCronometro();
         }
     });
 
-    // Inicia a primeira contagem regressiva
     resetarCronometro();
 }
 
