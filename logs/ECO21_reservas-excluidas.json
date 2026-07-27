@@ -165,5 +165,32 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-27T10:41:51.344Z",
+    "dataLocal": "27/07/2026, 07:41:51",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Prazo de confirmação atingido sem quórum)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "29-07-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Ana Julia": false
+    },
+    "jogadores": "Adriano Feitosa, Ana Julia",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 6
+      }
+    ]
   }
 ]
