@@ -592,5 +592,32 @@
         "hora": 12
       }
     ]
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "An Alice": false,
+      "Ana Julia": true
+    },
+    "data": "30-07-2026",
+    "dataLocal": "28/07/2026, 15:56:14",
+    "duracao": "1 Hora",
+    "horario": "12:00 - 13:00",
+    "jogadores": "Ana Julia, An Alice",
+    "jogadores_completo": "ANA JULIA MARTINS, ANA LICE DOURADO",
+    "motivo": "Convite expirado (Prazo de confirmação atingido sem quórum)",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 12,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-07-28T18:56:14.843Z"
   }
 ]
