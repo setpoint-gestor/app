@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "timestamp": "2026-07-28T22:51:11.449Z",
+    "dataLocal": "28/07/2026, 19:51:11",
+    "autor": "ANA FRANCISCA SANTOS",
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "motivo": "Convite recusado por Ana Francisca. Reserva cancelada por falta de quórum mínimo.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "11:00 - 13:00",
+    "duracao": "2 Horas",
+    "data": "30-07-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Ana Francisca": false,
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Ana Francisca",
+    "jogadores_completo": "ANA JULIA MARTINS, ANA FRANCISCA SANTOS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 11
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 12
+      }
+    ]
+  }
+]
