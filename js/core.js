@@ -867,10 +867,19 @@ function iniciarMonitorOciosidadeSaaS() {
     const resetarCronometro = () => {
         if (usuarioEstaOciosoSaaS) {
             usuarioEstaOciosoSaaS = false;
-            sincronizarPresencaOnlineSaaS();
+            sincronizarPresencaOnlineSaaS(); 
             
+            // 🧹 1. O FAXINEIRO AGE PRIMEIRO: Limpa o banco de dados em silêncio
+            if (typeof executarFaxinaAutomaticaSaaS === 'function') {
+                executarFaxinaAutomaticaSaaS();
+            }
+
+            // 📡 2. O RADAR VAI DEPOIS: Com um pequeno atraso de meio segundo para 
+            // garantir que o Faxineiro terminou de varrer o banco antes do Radar ler.
             if (typeof iniciarRadarDeConvitesSaaS === 'function') {
-                iniciarRadarDeConvitesSaaS(true);
+                setTimeout(() => {
+                    iniciarRadarDeConvitesSaaS(true);
+                }, 500); 
             }
         }
 
@@ -934,7 +943,9 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
 
     if (!forcar && radarConvitesAtivoId === idLogado) return;
 
-    if (radarConvitesAtivoId !== null && radarConvitesAtivoId !== idLogado) {
+    // 🔥 SOLUÇÃO 1: Mata o ouvinte anterior sem perguntar o nome do usuário.
+    // Isso evita o engarrafamento de memória que trava a notificação na tela.
+    if (radarConvitesAtivoId !== null) {
         database.ref(`${raizBanco}/reservas`).off('value');
     }
 
@@ -949,8 +960,6 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
         .toUpperCase();
 
     const normNomeLogado = norm(nomeLogado);            
-    const primeiroNome = normNomeLogado.split(' ')[0];    
-    const ultimoNome = normNomeLogado.split(' ').pop();     
 
     console.log(`📡 [Radar] Escutando Firebase para: ${normNomeLogado}`);
 
@@ -977,31 +986,31 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
                 const listCompleto = (r.jogadores_completo || "").split(',').map(s => norm(s));
                 const listApelidos = (r.jogadores || "").split(',').map(s => norm(s));
 
-                let idxMatch = listCompleto.findIndex(n => n === normNomeLogado || (n.length >= 3 && normNomeLogado.includes(n)));
+                // 1. Busca Exata e Segura (Prioridade Máxima)
+                let idxMatch = listCompleto.findIndex(n => n === normNomeLogado);
                 if (idxMatch === -1) {
-                    idxMatch = listApelidos.findIndex(a => a.length >= 2 && (normNomeLogado.includes(a) || a.startsWith(primeiroNome)));
+                    idxMatch = listApelidos.findIndex(a => a === normNomeLogado);
                 }
 
+                // 2. Busca Flexível de Contenção (Apenas para nomes longos e seguros)
+                if (idxMatch === -1) {
+                    idxMatch = listCompleto.findIndex(n => n.length >= 5 && (normNomeLogado.includes(n) || n.includes(normNomeLogado)));
+                }
+
+                // 3. Verifica no Objeto de Confirmações se o status é pendente (false)
                 if (idxMatch !== -1) {
-                    const chavesConfs = Object.keys(confs);
-                    const chaveCorrespondente = chavesConfs[idxMatch] || chavesConfs.find(k => norm(k) === listApelidos[idxMatch]);
-                    if (chaveCorrespondente && confs[chaveCorrespondente] === false) {
+                    const nomeOriginalNoBanco = (r.jogadores || "").split(',')[idxMatch].trim();
+                    
+                    if (confs[nomeOriginalNoBanco] === false) {
                         souEuPendente = true;
-                    }
-                }
-
-                if (!souEuPendente) {
-                    Object.keys(confs).forEach(nomeChave => {
-                        if (confs[nomeChave] === false) {
-                            const normChave = norm(nomeChave);
-                            if (normChave === normNomeLogado || 
-                                normNomeLogado.includes(normChave) || 
-                                normChave.includes(primeiroNome) ||
-                                (normChave.startsWith(primeiroNome.substring(0, 2)) && normChave.includes(ultimoNome))) {
-                                souEuPendente = true;
-                            }
+                    } else {
+                        // Tenta buscar ignorando maiúsculas e minúsculas
+                        const chavesConfs = Object.keys(confs);
+                        const chaveCorrespondente = chavesConfs.find(k => norm(k) === norm(nomeOriginalNoBanco));
+                        if (chaveCorrespondente && confs[chaveCorrespondente] === false) {
+                            souEuPendente = true;
                         }
-                    });
+                    }
                 }
 
                 if (souEuPendente) {
