@@ -1,20 +1,20 @@
-const CACHE_NAME = 'setpoint-gestor-v2'; // 🔄 Mudamos para a V2
+const CACHE_NAME = 'setpoint-gestor-v3'; // 🔄 Mudamos para a V3 para forçar a limpeza
 const urlsToCache = [
   './',
   './index.html',
-  './css/global.css?v=2',
-  './css/cadastro.css?v=2',
-  './css/quadras.css?v=2',
-  './css/planilha.css?v=2',
-  './css/config.css?v=2',
-  './css/regras.css?v=2',
-  './js/core.js?v=2',
-  './js/autenticacao.js?v=2',
-  './js/cadastro.js?v=2',
-  './js/quadras.js?v=2',
-  './js/planilha.js?v=2',
-  './js/config.js?v=2',
-  './js/regras.js?v=2'
+  './css/global.css?v=3',
+  './css/cadastro.css?v=3',
+  './css/quadras.css?v=3',
+  './css/planilha.css?v=3',
+  './css/config.css?v=3',
+  './css/regras.css?v=3',
+  './js/core.js?v=3',
+  './js/autenticacao.js?v=3',
+  './js/cadastro.js?v=3',
+  './js/quadras.js?v=3',
+  './js/planilha.js?v=3',
+  './js/config.js?v=3',
+  './js/regras.js?v=3'
 ];
 
 self.addEventListener('install', event => {
@@ -26,7 +26,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// 🧹 O LIXEIRO: Quando a V2 assumir, apaga a V1 para liberar memória e tirar o código velho
+// 🧹 O LIXEIRO: Quando a V3 assumir, apaga as versões anteriores para liberar memória
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -42,10 +42,19 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Responde com o cache atualizado ou busca na rede
+// 🔥 ESTRATÉGIA NETWORK-FIRST (Rede Primeiro para Lógica e Estilo)
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
-  );
+  const url = event.request.url;
+
+  // Se for arquivo de Lógica (.js) ou Estilo (.css), a prioridade absoluta é a REDE (Servidor)
+  if (url.endsWith('.js') || url.endsWith('.css')) {
+      event.respondWith(
+          fetch(event.request).catch(() => caches.match(event.request))
+      );
+  } else {
+      // Para o resto (HTML, Imagens, Ícones), usa o Cache Primeiro para ser rápido
+      event.respondWith(
+          caches.match(event.request).then(response => response || fetch(event.request))
+      );
+  }
 });
