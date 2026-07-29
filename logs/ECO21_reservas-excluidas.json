@@ -231,5 +231,71 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-29T16:30:13.252Z",
+    "dataLocal": "29/07/2026, 13:30:13",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 4, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "15:00 - 17:00",
+    "duracao": "2 Horas",
+    "data": "30-07-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA LICE DOURADO",
+    "confirmacoes": {
+      "Alice Duck": false,
+      "Alice Pereira": false,
+      "An Alice": true,
+      "Ana Julia": false
+    },
+    "jogadores": "An Alice, Ana Julia, Alice Pereira, Alice Duck",
+    "jogadores_completo": "ANA LICE DOURADO, ANA JULIA MARTINS, ALICE ALMEIDA PEREIRA, ALICE DUCK",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 4,
+        "hora": 15
+      },
+      {
+        "quadra": "Quadra - 3",
+        "dia": 4,
+        "hora": 16
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-29T16:30:13.252Z",
+    "dataLocal": "29/07/2026, 13:30:13",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "30-07-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA FRANCISCA SANTOS",
+    "confirmacoes": {
+      "Ana Francisca": true,
+      "Ana Julia": false
+    },
+    "jogadores": "Ana Francisca, Ana Julia",
+    "jogadores_completo": "ANA FRANCISCA SANTOS, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 4,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 3",
+        "dia": 4,
+        "hora": 7
+      }
+    ]
   }
 ]
