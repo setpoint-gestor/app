@@ -841,5 +841,33 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-30T19:01:56.849Z",
+    "dataLocal": "30/07/2026, 16:01:56",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 17:00",
+    "duracao": "1 Hora",
+    "data": "30-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Ronaldo Taborda Costa",
+    "confirmacoes": {
+      "Alessandro Xavier": true,
+      "Alexandre Camargo": true,
+      "Aline Sato": true,
+      "Ronaldo Taborda Costa": true
+    },
+    "jogadores": "Ronaldo Taborda Costa, Aline Sato, Alexandre Camargo, Alessandro Xavier",
+    "jogadores_completo": "Ronaldo Taborda Costa, ALINE SATO, ALEXANDRE CAMARGO, ALESSANDRO ROMERO XAVIER",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 16
+      }
+    ]
   }
 ]
