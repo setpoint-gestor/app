@@ -815,5 +815,31 @@
         "hora": 11
       }
     ]
+  },
+  {
+    "timestamp": "2026-07-30T18:33:01.000Z",
+    "dataLocal": "30/07/2026, 15:33:01",
+    "autor": "ANA JULIA MARTINS",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 8",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "31-07-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Ana Julia": true,
+      "Joao Dario": true
+    },
+    "jogadores": "Ana Julia, Joao Dario",
+    "jogadores_completo": "ANA JULIA MARTINS, JOAO DARIO DINIZ",
+    "slotsExcluidos": [
+      {
+        "dia": 5,
+        "hora": 6
+      }
+    ]
   }
 ]
