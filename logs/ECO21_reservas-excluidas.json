@@ -726,5 +726,30 @@
     "jogadores": "Ana Maria Marinho",
     "jogadores_completo": "ANA MARIA MARINHO GOMES",
     "slotsExcluidos": []
+  },
+  {
+    "timestamp": "2026-07-30T12:50:47.954Z",
+    "dataLocal": "30/07/2026, 09:50:47",
+    "autor": "ANA MARIA MARINHO GOMES",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "01-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "confirmacoes": {
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Ana Maria Marinho",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 7
+      }
+    ]
   }
 ]
