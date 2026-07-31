@@ -53,6 +53,21 @@
             text-decoration: none;
         }
 
+        /* BOTÃO MENU MOBILE (Escondido no PC) */
+        .btn-menu-mobile {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--cor-escura);
+            cursor: pointer;
+            padding: 5px;
+            transition: 0.2s;
+        }
+
+        .btn-menu-mobile .material-icons {
+            font-size: 32px;
+        }
+
         nav.menu-topo {
             display: flex;
             gap: 25px;
@@ -131,7 +146,7 @@
             transform: translateY(-3px);
         }
 
-        /* SEÇÃO DE RECURSOS (DESIGN LEVE RESTAURADO) */
+        /* SEÇÃO DE RECURSOS */
         .recursos {
             padding: 80px 5%;
             max-width: 1100px;
@@ -177,7 +192,6 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.08);
         }
 
-        /* Ícone limpo sem fundo */
         .card-recurso .ico {
             font-size: 38px;
             color: var(--cor-primaria);
@@ -407,24 +421,69 @@
             box-shadow: 0 6px 22px rgba(37, 211, 102, 0.6);
         }
 
-        /* AJUSTES FINOS PARA CELULAR (MOBILE) */
+        /* ==========================================
+           AJUSTES PARA CELULAR (MOBILE & MENU HAMBÚRGUER)
+           ========================================== */
         @media (max-width: 768px) {
-            header { padding: 15px 4%; }
-            nav.menu-topo { display: none; }
-            .hero h1 { font-size: 34px; }
-            .hero { padding: 60px 5%; }
+            header { 
+                padding: 15px 5%; 
+                flex-wrap: wrap; /* Permite que o menu quebre para a linha de baixo */
+            }
             
-            /* Ajusta os cards de recurso no mobile para não ficarem tão grandes */
-            .card-recurso {
-                padding: 25px 20px;
+            /* Mostra o botão do Menu */
+            .btn-menu-mobile { 
+                display: block; 
             }
-            .card-recurso h3 {
-                font-size: 17px;
+            
+            /* Transformação da navegação em gaveta */
+            nav.menu-topo { 
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                background: white;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+                overflow: hidden;
+                
+                /* Animação de gaveta suave */
+                max-height: 0;
+                opacity: 0;
+                transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+                gap: 0;
             }
-            .card-recurso p {
-                font-size: 14px;
+            
+            nav.menu-topo.aberto {
+                max-height: 400px;
+                opacity: 1;
             }
 
+            /* Estilo dos links no mobile */
+            nav.menu-topo a {
+                padding: 16px 5%;
+                border-bottom: 1px solid var(--cor-borda);
+                font-size: 16px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            nav.menu-topo a:last-child {
+                border-bottom: none; /* Remove a linha do último item */
+            }
+
+            nav.menu-topo a.btn-login {
+                margin: 15px 5%;
+                width: 90%;
+                text-align: center;
+            }
+
+            /* Ajustes gerais de espaçamento para Mobile */
+            .hero h1 { font-size: 34px; }
+            .hero { padding: 60px 5%; }
+            .card-recurso { padding: 25px 20px; }
+            .card-recurso h3 { font-size: 17px; }
+            .card-recurso p { font-size: 14px; }
             .btn-whatsapp-flutuante { bottom: 20px; right: 20px; width: 54px; height: 54px; }
         }
     </style>
@@ -436,7 +495,13 @@
         <a href="#" class="logo">
             <i class="material-icons">sports_tennis</i> SetPoint
         </a>
-        <nav class="menu-topo">
+        
+        <!-- Botão Menu Hambúrguer (Mobile) -->
+        <button id="btn-menu-mobile" class="btn-menu-mobile">
+            <i class="material-icons">menu</i>
+        </button>
+
+        <nav class="menu-topo" id="menu-topo">
             <a href="#recursos">Recursos</a>
             <a href="#downloads">Baixar App</a>
             <a href="#gestores">Para Arenas</a>
@@ -454,27 +519,24 @@
         </a>
     </section>
 
-    <!-- SEÇÃO DE RECURSOS (3 CARDS OPÇÃO 4) -->
+    <!-- SEÇÃO DE RECURSOS -->
     <section id="recursos" class="recursos">
         <h2 class="section-title">Tudo o que sua Arena precisa</h2>
         <p class="section-subtitle">Desenvolvido sob medida para simplificar a rotina do dono de quadra e encantar os atletas.</p>
 
         <div class="grid-recursos">
-            <!-- Card 1 -->
             <div class="card-recurso">
                 <i class="material-icons ico">event_available</i>
                 <h3>Agendamento Automático 24/7</h3>
                 <p>Grade de horários dinâmica e transparente onde o sócio visualiza disponibilidades e reserva a quadra em poucos segundos.</p>
             </div>
 
-            <!-- Card 2 -->
             <div class="card-recurso">
                 <i class="material-icons ico">security</i>
                 <h3>Regras de Reserva Inteligentes</h3>
                 <p>Proteja a operação do seu clube com travas personalizáveis para horários nobres, limite de reservas ativas por sócio e bloqueios flexíveis.</p>
             </div>
 
-            <!-- Card 3 -->
             <div class="card-recurso">
                 <i class="material-icons ico">groups</i>
                 <h3>Grade Dinâmica de Atividades</h3>
@@ -489,7 +551,6 @@
         <p class="section-subtitle">Seus atletas acessam a grade das quadras em segundos de qualquer dispositivo.</p>
         
         <div class="cards-grid">
-            <!-- Card Android -->
             <div class="card">
                 <i class="material-icons card-icone" style="color: #3DDC84;">android</i>
                 <h3>Android</h3>
@@ -499,7 +560,6 @@
                 </a>
             </div>
 
-            <!-- Card iOS (iPhone) -->
             <div class="card">
                 <i class="material-icons card-icone" style="color: #000000;">apple</i>
                 <h3>iPhone (iOS)</h3>
@@ -631,6 +691,25 @@
 
     <!-- SCRIPTS DE INTERATIVIDADE -->
     <script>
+        // Lógica do Menu Hambúrguer (Mobile)
+        const btnMenu = document.getElementById('btn-menu-mobile');
+        const menuTopo = document.getElementById('menu-topo');
+        const iconeMenu = btnMenu.querySelector('.material-icons');
+
+        btnMenu.addEventListener('click', () => {
+            menuTopo.classList.toggle('aberto');
+            iconeMenu.textContent = menuTopo.classList.contains('aberto') ? 'close' : 'menu';
+        });
+
+        // Fecha o menu suavemente quando qualquer link é clicado
+        menuTopo.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                menuTopo.classList.remove('aberto');
+                iconeMenu.textContent = 'menu';
+            });
+        });
+
+
         // Trava de APK no iPhone
         function baixarApkAndroid(event) {
             const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
