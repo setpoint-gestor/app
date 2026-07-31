@@ -862,5 +862,38 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-07-31T20:51:49.511Z",
+    "dataLocal": "31/07/2026, 17:51:49",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "motivo": "Convite recusado por Adriano Feitosa. Reserva cancelada por falta de quórum mínimo.",
+    "clube": "ECO21",
+    "quadra": "Quadra 6 - Nokak Djokovic",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "01-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA LICE DOURADO",
+    "confirmacoes": {
+      "Adriano Feitosa": false,
+      "An Alice": true
+    },
+    "jogadores": "An Alice, Adriano Feitosa",
+    "jogadores_completo": "ANA LICE DOURADO, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 6",
+        "dia": 6,
+        "hora": 7
+      },
+      {
+        "quadra": "Quadra - 6",
+        "dia": 6,
+        "hora": 8
+      }
+    ]
   }
 ]
