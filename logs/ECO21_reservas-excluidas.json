@@ -974,5 +974,38 @@
         "hora": 17
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-07-31T22:49:02.598Z",
+    "dataLocal": "31/07/2026, 19:49:02",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "motivo": "Convite recusado por Ana Julia. Reserva cancelada por falta de quórum mínimo.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 10:00",
+    "duracao": "2 Horas",
+    "data": "01-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "MARCELO ZOTI",
+    "confirmacoes": {
+      "Ana Julia": false,
+      "Zoti": true
+    },
+    "jogadores": "Zoti, Ana Julia",
+    "jogadores_completo": "MARCELO ZOTI, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 6,
+        "hora": 8
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 6,
+        "hora": 9
+      }
+    ]
   }
 ]
