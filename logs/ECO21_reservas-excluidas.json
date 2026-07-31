@@ -916,5 +916,36 @@
     "quadra": "Quadra 6 - Nokak Djokovic",
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-07-31T20:52:18.201Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-07-31T20:53:27.579Z",
+    "dataLocal": "31/07/2026, 17:53:27",
+    "autor": "ANA LICE DOURADO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 6 - Nokak Djokovic",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "01-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA LICE DOURADO",
+    "confirmacoes": {
+      "An Alice": true,
+      "Ana Julia": true
+    },
+    "jogadores": "An Alice, Ana Julia",
+    "jogadores_completo": "ANA LICE DOURADO, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 7
+      },
+      {
+        "dia": 6,
+        "hora": 8
+      }
+    ]
   }
 ]
