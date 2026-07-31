@@ -30,13 +30,19 @@ auth.onAuthStateChanged((user) => {
                 if (typeof iniciarOuvinteMestreSaaS === 'function') iniciarOuvinteMestreSaaS();
                 
                 document.getElementById('txt-nome-clube').textContent = nomeClubeReal;
-				// 📱 INJEÇÃO DA VERSÃO REAL DO APK (Buscada do Android Studio)
+				// 📱 INJEÇÃO DA VERSÃO REAL DO APK + GATILHO DE ATUALIZAÇÃO GLOBAL
                 const elVersaoGestor = document.getElementById('txt-versao-gestor');
                 if (elVersaoGestor) {
                     if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
-                        elVersaoGestor.textContent = "v" + window.AndroidBridge.getAppVersion();
+                        const versaoAndroidNativa = window.AndroidBridge.getAppVersion();
+                        elVersaoGestor.textContent = "v" + versaoAndroidNativa;
+                        
+                        // 🤖 MÁGICA: O Gestor (APK) avisa o Firebase qual é a versão atual!
+                        database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa);
+                        
                     } else {
-                        elVersaoGestor.textContent = "v1.0.0 (dsv)";
+                        // Se não for APK (Web/PC), mostra a versão que o Firebase enviou
+                        elVersaoGestor.textContent = "v" + versaoWebGlobal;
                     }
                 }
                 
@@ -115,7 +121,7 @@ function loginGestorAuth() {
             let codigoClubeEncontrado = null;
             let nomeClubeReal = "Clube";
             snapshot.forEach((childSnapshot) => {
-                const dados = childSnapshot.val();
+                const dados = childSnapshot.val(); 
                 if (dados.info_clube && dados.info_clube.gestor_uid === user.uid) {
                     codigoClubeEncontrado = childSnapshot.key;
                     nomeClubeReal = dados.info_clube.nome || codigoClubeEncontrado;
@@ -125,13 +131,19 @@ function loginGestorAuth() {
                 clubeAtivoId = codigoClubeEncontrado;
                 raizBanco = `Clubes/${codigoClubeEncontrado}/sistemas`;
                 document.getElementById('txt-nome-clube').textContent = nomeClubeReal;
-				// 📱 INJEÇÃO DA VERSÃO REAL DO APK (Buscada do Android Studio)
+				// 📱 INJEÇÃO DA VERSÃO REAL DO APK + GATILHO DE ATUALIZAÇÃO GLOBAL
                 const elVersaoGestor = document.getElementById('txt-versao-gestor');
                 if (elVersaoGestor) {
                     if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
-                        elVersaoGestor.textContent = "v" + window.AndroidBridge.getAppVersion();
+                        const versaoAndroidNativa = window.AndroidBridge.getAppVersion();
+                        elVersaoGestor.textContent = "v" + versaoAndroidNativa;
+                        
+                        // 🤖 MÁGICA: O Gestor (APK) avisa o Firebase qual é a versão atual!
+                        database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa);
+                        
                     } else {
-                        elVersaoGestor.textContent = "v1.0.0 (dsv)";
+                        // Se não for APK (Web/PC), mostra a versão que o Firebase enviou
+                        elVersaoGestor.textContent = "v" + versaoWebGlobal;
                     }
                 }
                 isGestorLogado = true;

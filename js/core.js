@@ -28,6 +28,7 @@ const auth = firebase.auth();
 // 1. ESTADO GLOBAL DA APLICAÇÃO (Memória RAM do Sistema)
 // ==========================================
 let clubeAtivoId = "";          // Identificador único da arena para isolamento multi-inquilino (SaaS)
+let versaoWebGlobal = "1.105";  // Versão mestre lida do Firebase para Web/iOS
 let raizBanco = "";             // Caminho mestre dinâmico no Firebase Realtime Database
 let carregamentoInicial = true; // Trava de segurança para rotinas que só devem rodar no primeiro boot
 let isGestorLogado = false;     // Flag de portaria: define se quem está navegando é o administrador
@@ -1042,3 +1043,14 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
         }
     });
 }
+
+
+// ====================================================================
+// 10. OUVINTE GLOBAL: SINCRONIZA A VERSÃO DA WEB/IOS COM O FIREBASE
+// ====================================================================
+database.ref('Clubes/SaaS_Config/versao_web').on('value', (snapshot) => {
+    if (snapshot.exists()) {
+        versaoWebGlobal = snapshot.val();
+        console.log("📱 [SaaS Version] Versão Web/iOS sincronizada: v" + versaoWebGlobal);
+    }
+});

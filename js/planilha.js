@@ -2270,11 +2270,12 @@ function abrirSheetPerfil() {
             elClube.parentNode.insertBefore(elVersao, elClube.nextSibling);
         }
 
-        // 🧠 LEITURA INTELIGENTE DA PONTE DO CAPACITOR
+        // 🧠 LEITURA INTELIGENTE DA PONTE DO CAPACITOR OU DO FIREBASE (SAAS)
         if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
             elVersao.textContent = "Versão " + window.AndroidBridge.getAppVersion();
         } else {
-            elVersao.textContent = "Versão 1.0.0 (Desenvolvimento)"; 
+            // Se for PWA, iPhone ou Computador, lê a versão sincronizada do Firebase!
+            elVersao.textContent = "Versão " + versaoWebGlobal; 
         }
     }
 
@@ -3355,7 +3356,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
 
         const partes = slotKey.split('_');
         const dia = parseInt(partes[0]);
-        const hora = parseInt(partes[1]);
+        const hora = parseInt(partes[1]); 
 
         // ====================================================
         // CENÁRIO 1: A RESERVA FOI CANCELADA (FALTA DE QUÓRUM)
