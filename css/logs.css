@@ -1,0 +1,296 @@
+/* ======================================================== */
+/* 📜 MÓDULO LOGS & AUDITORIA - TIMELINE FEED V1            */
+/* ======================================================== */
+
+/* ======================================================== */
+/* 1. CABEÇALHO & PÍLULAS INFORMATIVAS                     */
+/* ======================================================== */
+
+.pilula-versao-dash {
+    font-size: 11px;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    line-height: 1.2;
+    display: inline-block;
+}
+
+/* ======================================================== */
+/* 2. PAINEL DE FILTROS (OPÇÃO 6) E PÍLULAS                 */
+/* ======================================================== */
+
+.tabs-header-logs {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.tab-btn-logs {
+    flex: 1; /* Estica os botões para dividirem 100% do espaço */
+    text-align: center;
+    background: none;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    padding: 8px 10px; /* Mais respiro para o clique */
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.tab-btn-logs.active {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.tab-content-logs {
+    display: none;
+    animation: fadeInConfig 0.2s ease-out forwards;
+}
+
+.tab-content-logs.active {
+    display: block;
+}
+
+.pill-group-logs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-pill-logs {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--bg-site, #f4f6f8);
+    color: var(--txt-corpo, #475569);
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+}
+
+.filter-pill-logs:hover {
+    background: #e2e8f0;
+}
+
+.filter-pill-logs.active {
+    background: var(--cor-escura, #1e293b);
+    color: #ffffff;
+    border-color: var(--cor-escura, #1e293b);
+}
+
+
+/* ======================================================== */
+/* 3. ESTRUTURA DA TIMELINE FEED                            */
+/* ======================================================== */
+
+.timeline-container-saas {
+    position: relative;
+    padding-left: 20px;
+}
+
+.timeline-container-saas::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    background: #cbd5e1;
+}
+
+.timeline-item-saas {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.timeline-dot-saas {
+    position: absolute;
+    left: -20px;
+    top: 16px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #2E8B57;
+    box-sizing: border-box;
+    z-index: 2;
+}
+
+.timeline-card-saas {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.timeline-card-saas:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+/* ======================================================== */
+/* 4. GAVETA EXPANSÍVEL DE DETALHES                         */
+/* ======================================================== */
+
+.details-drawer-saas {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    border: 1px solid #e2e8f0;
+    display: none;
+}
+
+.details-drawer-saas.visible {
+    display: block;
+    animation: fadeInConfig 0.2s ease-out forwards;
+}
+
+.player-status-list {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.player-status-item {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed #cbd5e1;
+    font-size: 12.5px;
+}
+
+.player-status-item:last-child {
+    border-bottom: none;
+}
+
+/* ======================================================== */
+/* 5. BADGES & TAGS DE AÇÕES                                */
+/* ======================================================== */
+
+.badge-tag {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tag-manual   { background: #fee2e2; color: #b91c1c; }
+.tag-recusa   { background: #ffedd5; color: #c2410c; }
+.tag-expirado { background: #fef9c3; color: #a16207; }
+.tag-eviccao  { background: #e0f2fe; color: #0369a1; }
+
+/* ======================================================== */
+/* 6. COMPATIBILIDADE MODO ESCURO (DARK MODE)               */
+/* ======================================================== */
+
+body.dark-mode .filter-card-logs {
+    background: #1e1e1e !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode .pilula-versao-dash {
+    background: #333333 !important;
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .tabs-header-logs {
+    border-bottom-color: #333333;
+}
+
+body.dark-mode .tab-btn-logs {
+    color: #94a3b8;
+}
+
+body.dark-mode .tab-btn-logs.active {
+    background: #333333;
+    color: #ffffff;
+}
+
+body.dark-mode .filter-pill-logs {
+    background: #252525;
+    color: #94a3b8;
+    border-color: #333333;
+}
+
+body.dark-mode .filter-pill-logs:hover {
+    background: #333333;
+}
+
+body.dark-mode .filter-pill-logs.active {
+    background: var(--cor-primaria, #2E8B57);
+    color: #ffffff;
+    border-color: var(--cor-primaria, #2E8B57);
+}
+
+body.dark-mode .timeline-container-saas::before {
+    background: #333333;
+}
+
+body.dark-mode .timeline-dot-saas {
+    background: #1e1e1e;
+}
+
+body.dark-mode .timeline-card-saas {
+    background: #1e1e1e;
+    border-color: #333333;
+    color: #f8fafc;
+}
+
+body.dark-mode .details-drawer-saas {
+    background: #252525;
+    border-color: #333333;
+}
+
+body.dark-mode .player-status-item {
+    border-bottom-color: #333333;
+}
+
+body.dark-mode .tag-manual   { background: #451a1a; color: #f87171; }
+body.dark-mode .tag-recusa   { background: #431407; color: #fb923c; }
+body.dark-mode .tag-expirado { background: #3f3408; color: #facc15; }
+body.dark-mode .tag-eviccao  { background: #0c4a6e; color: #38bdf8; }
+
+/* ======================================================== */
+/* 7. ANIMAÇÃO MARQUEE (LETREIRO DE BUSCA)                  */
+/* ======================================================== */
+
+.marquee-texto {
+    display: inline-block;
+    padding-left: 10px;
+    color: #94a3b8;
+    font-size: 14px;
+    animation: deslizar-texto 8s linear infinite;
+}
+
+@keyframes deslizar-texto {
+    0%   { transform: translateX(15%); }
+    100% { transform: translateX(-100%); }
+}
+
+/* Proteção de cor no Input Dark Mode */
+body.dark-mode #busca-logs-input {
+    color: #ffffff;
+}
+body.dark-mode #busca-logs-input::placeholder {
+    color: transparent;
+}
