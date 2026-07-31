@@ -895,5 +895,26 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "An Alice": true,
+      "Ana Julia": false
+    },
+    "data": "01-08-2026",
+    "dataLocal": "31/07/2026, 17:52:18",
+    "duracao": "2 Horas",
+    "horario": "07:00 - 09:00",
+    "jogadores": "An Alice, Ana Julia",
+    "jogadores_completo": "ANA LICE DOURADO, ANA JULIA MARTINS",
+    "motivo": "Convite recusado por Adriano Feitosa. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "organizadorDaReserva": "ANA LICE DOURADO",
+    "origem": "manual",
+    "quadra": "Quadra 6 - Nokak Djokovic",
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-07-31T20:52:18.201Z"
   }
 ]
