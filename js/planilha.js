@@ -2728,6 +2728,7 @@ function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo) {
 
     // 🎯 A FUSÃO PERFEITA: Estrutura SaaS indexável por fora, Riqueza do Modelo Antigo por dentro
     const logReciboRich = {
+		origem: "manual",
         timestamp: new Date().toISOString(),
         dataLocal: new Date().toLocaleString('pt-BR'),
         autor: autorExclusao,
@@ -2922,6 +2923,7 @@ function executarFaxinaAutomaticaSaaS() {
 
                         // Log Riquíssimo de Auditoria
                         const logEviccao = {
+							origem: "sistema",
                             timestamp: new Date().toISOString(),
                             dataLocal: new Date().toLocaleString('pt-BR'),
                             autor: "Rotina Automática de Sistema",
@@ -2962,6 +2964,7 @@ function executarFaxinaAutomaticaSaaS() {
                             : `Limpeza automática por decurso do prazo de exibição (${DiasParaExibir}d)`;
 
                         const logReciboAutomático = {
+							origem: "sistema", 
                             timestamp: new Date().toISOString(),
                             dataLocal: new Date().toLocaleString('pt-BR'),
                             autor: "Rotina Automática de Sistema",
@@ -3211,7 +3214,7 @@ function iniciarRelogioConvitesSaaS() {
 
 
 function fecharModalConvitesEntradaSaaS() {
-    const modal = document.getElementById('modal-convites-entrada');
+    const modal = document.getElementById('modal-convites-entrada'); 
     if (!modal) return;
     
     modal.classList.remove('ativa');
@@ -3370,9 +3373,10 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                 }
 
                 const logRecusaCancelamento = {
+					origem: "sistema",
                     timestamp: new Date().toISOString(),
                     dataLocal: new Date().toLocaleString('pt-BR'),
-                    autor: nomeCompletoBusca,
+                    autor: "Rotina Automática de Sistema",
                     acao: "RECUSA_CONVITE_CANCELAMENTO",
                     motivo: `Convite recusado por ${apelidoBusca}. Reserva cancelada por falta de quórum mínimo.`,
                     clube: clubeAtivoId,
@@ -3415,6 +3419,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
             const duracao = parseInt(reservaAtualizada.duracao) || 1;
 
             const logRecusaParcial = {
+				origem: "manual", 
                 timestamp: new Date().toISOString(),
                 dataLocal: new Date().toLocaleString('pt-BR'),
                 autor: nomeCompletoBusca,

@@ -18,7 +18,7 @@ auth.onAuthStateChanged((user) => {
                 const dadosClube = childSnapshot.val();
                 if (dadosClube.info_clube && dadosClube.info_clube.gestor_uid === user.uid) {
                     codigoClubeEncontrado = childSnapshot.key;
-                    nomeClubeReal = dadosClube.info_clube.nome || codigoClubeEncontrado;
+                    nomeClubeReal = dadosClube.info_clube.nome || codigoClubeEncontrado; 
                 }
             });
 
@@ -453,10 +453,18 @@ window.addEventListener('load', verificarDirecionamentoSite);
 // ==========================================
 // 6. OCULTA BOTÕES DE FECHAR NO PWA / WEB
 // ==========================================
+// ==========================================
+// 6. OCULTA BOTÕES DE FECHAR NO PWA (iOS)
+// ==========================================
 function aplicarRegrasInterfacePWA() {
-    const isAndroidNativo = (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function');
+    // Detecta especificamente se é um dispositivo Apple (iPhone/iPad)
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    
+    // Detecta se está rodando fora do navegador (instalado como PWA na tela inicial)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
-    if (!isAndroidNativo) {
+    // A regra agora é cirúrgica: SÓ ESCONDE se for um iPhone instalado na tela de início
+    if (isIos && isStandalone) {
         // Oculta botão de fechar na Tela de Boas-Vindas
         const btnBoasVindas = document.getElementById('btn-fechar-app');
         if (btnBoasVindas) btnBoasVindas.style.display = 'none';

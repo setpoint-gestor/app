@@ -16,7 +16,7 @@ const firebaseConfig = {
 
 // Evita inicialização duplicada do Firebase
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig); 
+    firebase.initializeApp(firebaseConfig);  
 }
 
 const database = firebase.database();  
@@ -41,6 +41,9 @@ let configAulasGlobal = {};     // Espelho local da Grade de Aulas
 let configDuplasGlobal = {};    // Espelho local do Horário de Duplas
 let configConvidadosGlobal = {}; // Backup em tempo real de Convidados
 let reservasLocaisCache = {};   // Espelho local das reservas e agendamentos da quadra ativa
+
+// 🌟 VARIÁVEL INJETADA DA ETAPA 1 (Retenção de Logs):
+let DiasLimpezaLogs = 15;       // Parâmetro mestre de retenção de logs no GitHub (Padrão: 15 dias)
 
 let jogadoresGlobal = {};       // 🔥 DECLARAÇÃO GARANTIDA: Banco de dados de atletas na memória RAM
 let jogadoresGlobalAlterado = false; // 🔥 INTERRUPTOR INTELIGENTE: Controla se houve mudanças online no Firebase
@@ -547,6 +550,10 @@ function iniciarOuvinteMestreSaaS() {
             // 🧠 INTEGRAÇÃO GAVETA 2: Atualiza os Dias de Antecedência na Memória RAM
             DiasParaLimpar = parseInt(configRegrasGlobal.DiasParaLimpar) || 3;
 			DiasParaExibir = configRegrasGlobal.DiasParaExibir !== undefined ? parseInt(configRegrasGlobal.DiasParaExibir) : 1; // 🌟 Linha Injetada
+			
+			// 📜 ETAPA 1: Sincroniza a retenção de logs em dias na memória RAM
+            DiasLimpezaLogs = configRegrasGlobal.DiasLimpezaLogs !== undefined ? parseInt(configRegrasGlobal.DiasLimpezaLogs) : 15;
+            window.DiasLimpezaLogs = DiasLimpezaLogs; // Registra também na janela global
         }
                   
         console.log("✓ [Core] Regras operacionais atualizadas na memória RAM.");
