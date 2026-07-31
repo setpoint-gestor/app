@@ -22,12 +22,13 @@
     
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 	
-    <link rel="stylesheet" href="css/global.css?v=2">
-    <link rel="stylesheet" href="css/cadastro.css?v=2">
-    <link rel="stylesheet" href="css/quadras.css?v=2">
-    <link rel="stylesheet" href="css/planilha.css?v=2">
-    <link rel="stylesheet" href="css/config.css?v=2"> 
-    <link rel="stylesheet" href="css/regras.css?v=2">
+    <link rel="stylesheet" href="css/global.css?v=4">
+    <link rel="stylesheet" href="css/cadastro.css?v=4">
+    <link rel="stylesheet" href="css/quadras.css?v=4">
+    <link rel="stylesheet" href="css/planilha.css?v=4">
+    <link rel="stylesheet" href="css/config.css?v=4"> 
+    <link rel="stylesheet" href="css/regras.css?v=4"> 
+    <link rel="stylesheet" href="css/logs.css?v=4">
 	
 </head>
 <body>
@@ -157,10 +158,10 @@
                 <i class="material-icons" style="color: #f1c40f;">emoji_events</i>
                 <span class="label-card">Torneios</span>
             </div>
-            <div class="card-menu" onclick="showToast('Módulo de Histórico e Logs em breve!', 'info')">
-                <i class="material-icons" style="color: #888;">history</i>
-                <span class="label-card">Histórico e Logs</span>
-            </div>
+            <div class="card-menu" onclick="abrirModuloLogs()">
+				<i class="material-icons" style="color: var(--cor-primaria);">history</i>
+				<span class="label-card">Histórico e Logs</span>
+			</div>
             <div class="card-menu card-largo" onclick="abrirVisaoQuadras()" style="grid-column: span 2; background: linear-gradient(135deg, var(--cor-primaria) 0%, #216a3e 100%); color: white;">
                 <i class="material-icons" style="color: white !important;">sports_tennis</i>
                 <span class="label-card" style="color: white !important;">Visão das Quadras</span>
@@ -998,13 +999,142 @@
             </div>
 
             <div class="regras-footer">
-                <button class="btn-regras-salvar" onclick="salvarRegrasDeReserva()">Salvar Regras</button>
+                <button class="btn-regras-salvar" onclick="salvarRegrasDeReserva()">Salvar Regras</button> 
             </div>
 
         </div>
     </div>
+	
+	<!-- ======================================================== -->
+	<!-- 📜 MODAL: HISTÓRICO & AUDITORIA DE LOGS (TIMELINE FEED)  -->
+	<!-- ======================================================== -->
+	<div id="modal-historico-logs" class="modal-overlay">
+		<div class="modal-content modal-regras-fullscreen">
+			
+			<!-- Cabeçalho Unificado (Padrão Pílula do Dashboard) -->
+			<div class="header-painel">
+				<div style="display: flex; flex-direction: column; align-items: flex-start; text-align: left;">
+					<h2>📜 Histórico & Auditoria</h2>
+					<span style="font-size: 13px; color: #888; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px;">
+						Logs de reservas e cancelamentos.
+						<span id="txt-dias-retencao-logs" class="pilula-versao-dash">Auto-Faxina: 15d</span>
+					</span>
+				</div>
+				<button class="material-icons" style="background:none; border:none; cursor:pointer; color:var(--cor-escura); font-size: 28px;" onclick="fecharModalConfig('modal-historico-logs')" title="Voltar ao QG">arrow_back</button>
+			</div>
 
-    <div id="modal-horarios" class="modal-overlay">
+			<div class="regras-content-scroll">
+				<div style="max-width: 900px; margin: 0 auto;">
+					
+					<!-- BARRA DE CONTROLE, FILTROS E PESQUISA -->
+					<!-- ========================================== -->
+					<!-- NOVA BARRA DE CONTROLE E FILTROS (OPÇÃO 6) -->
+					<!-- ========================================== -->
+					<!-- BARRA DE CONTROLE, FILTROS E PESQUISA (Sem painel branco e com botões agrupados) -->
+					<div style="margin-bottom: 20px; width: 100%;">
+						
+						<!-- Linha Superior: Busca e Bloco de Botões -->
+						<div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+							
+							<!-- 1. Campo de Busca com Letreiro (Estica o máximo possível) -->
+							<div style="position: relative; flex: 1; min-width: 0; display: flex; align-items: center; background: var(--bg-card, white); border: 1px solid #cbd5e1; border-radius: 8px; height: 42px; overflow: hidden;">
+								<i class="material-icons" style="color: #94a3b8; font-size: 20px; margin-left: 12px; z-index: 2;">search</i>
+								
+								<!-- Letreiro Animado (Falso Placeholder) -->
+								<div id="marquee-container" style="position: absolute; left: 36px; right: 45px; top: 0; bottom: 0; overflow: hidden; pointer-events: none; display: flex; align-items: center; white-space: nowrap;">
+									<div class="marquee-texto">Buscar por jogador, quadra ou data...</div>
+								</div>
+
+								<!-- Input Real (Transparente) -->
+								<input type="text" id="busca-logs-input" class="input-app" autocomplete="off" oninput="filtrarLogsReativoSaaS(); toggleMarqueeSaaS(this.value);" onfocus="toggleMarqueeSaaS('focus')" onblur="toggleMarqueeSaaS(this.value)" style="margin: 0; padding-left: 8px; padding-right: 45px; height: 100%; font-size: 14px; width: 100%; border: none; background: transparent; box-shadow: none; outline: none; z-index: 1;">
+								
+								<!-- Pílula de Total DENTRO do Input -->
+								<div style="position: absolute; right: 10px; top: 0; bottom: 0; display: flex; align-items: center; z-index: 2; pointer-events: none;">
+									<span id="contador-logs-input" style="color: var(--cor-primaria); font-size: 12px; font-weight: 800;">(0)</span>
+								</div>
+							</div>
+
+							<!-- 2. Bloco de Botões (Agrupados bem juntinhos, separados da busca por 8px) -->
+							<div style="display: flex; gap: 4px; flex-shrink: 0;">
+								<!-- Botão Filtrar (Icon Only perfeito) -->
+								<button type="button" class="btn-app" style="margin: 0; width: 42px; padding: 0; height: 42px; background: #f1f5f9; color: #475569; border-radius: 8px; border: 1px solid #cbd5e1; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" onclick="togglePainelFiltroLogs()" title="Filtrar Resultados">
+									<i class="material-icons" style="font-size: 20px;">filter_alt</i>
+								</button>
+
+								<!-- Botão Mais Recentes -->
+								<button type="button" class="btn-app" style="margin: 0; width: auto; min-width: 42px; padding: 0 10px; height: 42px; background: #e2e8f0; color: #334155; font-size: 13px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0;" onclick="alternarOrdenacaoLogsSaaS()">
+									<i class="material-icons" style="font-size: 18px;" id="icone-ordem-logs">swap_vert</i>
+									<span id="txt-ordem-logs" class="txt-desktop">Mais Recentes</span>
+								</button>
+
+								<!-- Botão PDF -->
+								<button type="button" class="btn-app" style="margin: 0; width: auto; min-width: 42px; padding: 0 10px; height: 42px; background: var(--cor-primaria); color: white; font-size: 13px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0;" onclick="exportarLogsPDFSaaS()">
+									<i class="material-icons" style="font-size: 18px;">picture_as_pdf</i> <span class="txt-desktop">PDF</span>
+								</button>
+							</div>
+						</div>
+
+						<!-- Painel Oculto de Filtros Avançados -->
+						<div id="painel-filtros-logs" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
+							
+							<!-- Abas -->
+							<div class="tabs-header-logs">
+								<button class="tab-btn-logs active" onclick="showTabFiltrosLogs(1, this)">Ação</button>
+								<button class="tab-btn-logs" onclick="showTabFiltrosLogs(2, this)">Tipo</button>
+								<button class="tab-btn-logs" onclick="showTabFiltrosLogs(3, this)">Reserva</button>
+								<button class="tab-btn-logs" onclick="showTabFiltrosLogs(4, this)">Jogo</button>
+							</div>
+							
+							<!-- Conteúdo Abas e Pílulas -->
+							<div id="tab-log-1" class="tab-content-logs active">
+								<div class="pill-group-logs">
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'AÇÃO')">Manual</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'AÇÃO')">Sistema</div>
+								</div>
+							</div>
+
+							<div id="tab-log-2" class="tab-content-logs">
+								<div class="pill-group-logs">
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'TIPO')">1 Hora</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'TIPO')">2 Horas</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'TIPO')">Duplas</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'TIPO')">Torneio</div>
+								</div>
+							</div>
+
+							<div id="tab-log-3" class="tab-content-logs">
+								<div class="pill-group-logs">
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'RESERVA')">Confirmada</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'RESERVA')">Pendente</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'RESERVA')">Cancelada</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'RESERVA')">Excluída</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'RESERVA')">Recusada</div>
+								</div>
+							</div>
+
+							<div id="tab-log-4" class="tab-content-logs">
+								<div class="pill-group-logs">
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'JOGO')">Confirmado</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'JOGO')">Aguardando</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'JOGO')">Finalizado</div>
+									<div class="filter-pill-logs chip-log" style="margin: 0;" onclick="selecionarPilulaFiltroLogs(this, 'JOGO')">Cancelado</div>
+								</div>
+							</div>
+						</div>
+                    </div>   
+					
+					<!-- CONTAINER DA TIMELINE FEED (V1) -->
+					<div id="container-timeline-logs" class="timeline-container-saas" style="position: relative; padding-left: 20px; margin-top: 20px;">
+						<!-- Cards injetados via logs.js -->
+					</div>
+
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+    <div id="modal-horarios" class="modal-overlay"> 
 		<div class="modal-content modal-config-janela">
 			<!-- Cabeçalho Unificado sob o Padrão Global do Sistema -->
 			<div class="header-painel">
@@ -1662,22 +1792,23 @@
             <button class="btn-label-cancel" onclick="fecharModalConvitesEntradaSaaS()">Responder Depois</button>
         </div>
     </div>
-
-    
-    <script src="js/core.js?v=2"></script> 
-    <script src="js/autenticacao.js?v=2"></script>  
-    <script src="js/cadastro.js?v=2"></script>
-    <script src="js/quadras.js?v=2"></script>
-    <script src="js/planilha.js?v=2"></script>
-    <script src="js/config.js?v=2"></script>
-    <script src="js/regras.js?v=2"></script>	
+	
+	
+	<script src="js/core.js?v=4"></script> 
+    <script src="js/autenticacao.js?v=4"></script>  
+    <script src="js/cadastro.js?v=4"></script>
+    <script src="js/quadras.js?v=4"></script>
+    <script src="js/planilha.js?v=4"></script>
+    <script src="js/config.js?v=4"></script>
+    <script src="js/regras.js?v=4"></script>
+    <script src="js/logs.js?v=4"></script>	
 	
 	<!-- PWA: Registro do Motor Offline e Atualizador Automático -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 // Ao forçar o sw.js?v=2, quebramos o cache do próprio Service Worker
-                navigator.serviceWorker.register('sw.js?v=2')
+                navigator.serviceWorker.register('sw.js?v=4')
                     .then(reg => {
                         console.log('✅ PWA: Service Worker ativado!', reg.scope);
                         

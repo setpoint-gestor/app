@@ -1,24 +1,26 @@
-const CACHE_NAME = 'setpoint-gestor-v3'; // 🔄 Mudamos para a V3 para forçar a limpeza
+const CACHE_NAME = 'setpoint-gestor-v4'; // 🔄 Subimos para v4 para forçar a limpeza imediata do cache problemático
+
 const urlsToCache = [
   './',
   './index.html',
-  './css/global.css?v=3',
-  './css/cadastro.css?v=3',
-  './css/quadras.css?v=3',
-  './css/planilha.css?v=3',
-  './css/config.css?v=3',
-  './css/regras.css?v=3',
-  './js/core.js?v=3',
-  './js/autenticacao.js?v=3',
-  './js/cadastro.js?v=3',
-  './js/quadras.js?v=3',
-  './js/planilha.js?v=3',
-  './js/config.js?v=3',
-  './js/regras.js?v=3'
+  './css/global.css?v=4',
+  './css/cadastro.css?v=4',
+  './css/quadras.css?v=4',
+  './css/planilha.css?v=4',
+  './css/config.css?v=4',
+  './css/regras.css?v=4',
+  './css/logs.css?v=4',        
+  './js/core.js?v=4',
+  './js/autenticacao.js?v=4',
+  './js/cadastro.js?v=4',
+  './js/quadras.js?v=4',
+  './js/planilha.js?v=4',
+  './js/config.js?v=4',
+  './js/regras.js?v=4',
+  './js/logs.js?v=4'           
 ];
 
 self.addEventListener('install', event => {
-  // 🚀 Força o novo Service Worker a assumir o controle imediatamente
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -26,7 +28,6 @@ self.addEventListener('install', event => {
   );
 });
 
-// 🧹 O LIXEIRO: Quando a V3 assumir, apaga as versões anteriores para liberar memória
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -38,23 +39,29 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    }).then(() => self.clients.claim()) // Assume o controle das abas abertas na hora
+    }).then(() => self.clients.claim())
   );
 });
 
-// 🔥 ESTRATÉGIA NETWORK-FIRST (Rede Primeiro para Lógica e Estilo)
+// 🔥 CORREÇÃO CIRÚRGICA: Estratégia Network-First (Rede Primeiro) para TUDO
 self.addEventListener('fetch', event => {
-  const url = event.request.url;
+  // Ignora requisições que não sejam GET (ex: salvamentos no Firebase ou GitHub)
+  if (event.request.method !== 'GET') return;
 
-  // Se for arquivo de Lógica (.js) ou Estilo (.css), a prioridade absoluta é a REDE (Servidor)
-  if (url.endsWith('.js') || url.endsWith('.css')) {
-      event.respondWith(
-          fetch(event.request).catch(() => caches.match(event.request))
-      );
-  } else {
-      // Para o resto (HTML, Imagens, Ícones), usa o Cache Primeiro para ser rápido
-      event.respondWith(
-          caches.match(event.request).then(response => response || fetch(event.request))
-      );
-  }
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        // 1. A internet funcionou! Pegamos o arquivo fresquinho do servidor.
+        // Atualizamos o cache silenciosamente para garantir que o "modo offline" fique atualizado.
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseClone);
+        });
+        return response;
+      })
+      .catch(() => {
+        // 2. A internet caiu ou falhou! Só agora usamos o cache como plano B (Modo Offline).
+        return caches.match(event.request);
+      })
+  );
 });
