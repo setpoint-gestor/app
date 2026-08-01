@@ -1737,5 +1737,27 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-08-01T00:52:33.279Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-08-01T02:25:10.743Z",
+    "dataLocal": "31/07/2026, 23:25:10",
+    "autor": "ANA LICE DOURADO",
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "motivo": "Convite recusado por An Alice. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "03-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Ana Francisca": false,
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Ana Francisca",
+    "jogadores_completo": "ANA JULIA MARTINS, ANA FRANCISCA SANTOS",
+    "slotsExcluidos": []
   }
 ]
