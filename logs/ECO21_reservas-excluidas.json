@@ -1063,5 +1063,26 @@
         "hora": 15
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-01T00:46:12.615Z",
+    "dataLocal": "31/07/2026, 21:46:12",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 09:00",
+    "duracao": "1 Hora",
+    "data": "02-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia",
+    "jogadores_completo": "ANA JULIA MARTINS",
+    "slotsExcluidos": []
   }
 ]
