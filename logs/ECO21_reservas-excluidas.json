@@ -1084,5 +1084,40 @@
     "jogadores": "Ana Julia",
     "jogadores_completo": "ANA JULIA MARTINS",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-01T00:51:26.333Z",
+    "dataLocal": "31/07/2026, 21:51:26",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 4, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "15:00 - 17:00",
+    "duracao": "2 Horas",
+    "data": "02-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "An Alice": false,
+      "Ana Francisca": false,
+      "Ana Julia": true,
+      "Ana Maria Marinho": false
+    },
+    "jogadores": "Ana Julia, Ana Francisca, An Alice, Ana Maria Marinho",
+    "jogadores_completo": "ANA JULIA MARTINS, ANA FRANCISCA SANTOS, ANA LICE DOURADO, ANA MARIA MARINHO GOMES",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 15
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 16
+      }
+    ]
   }
 ]
