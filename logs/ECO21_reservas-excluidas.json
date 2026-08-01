@@ -1119,5 +1119,211 @@
         "hora": 16
       }
     ]
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "An Alice": false,
+      "Ana Francisca": false,
+      "Ana Julia": true,
+      "Ana Maria Marinho": false
+    },
+    "data": "02-08-2026",
+    "dataLocal": "31/07/2026, 21:51:26",
+    "duracao": "2 Horas",
+    "horario": "15:00 - 17:00",
+    "jogadores": "Ana Julia, Ana Francisca, An Alice, Ana Maria Marinho",
+    "jogadores_completo": "ANA JULIA MARTINS, ANA FRANCISCA SANTOS, ANA LICE DOURADO, ANA MARIA MARINHO GOMES",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 4, Confirmado(s) 1)",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 15,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 7,
+        "hora": 16,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-08-01T00:51:26.328Z"
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "An Alice": false,
+      "Ana Francisca": false,
+      "Ana Julia": true,
+      "Ana Maria Marinho": false
+    },
+    "data": "02-08-2026",
+    "dataLocal": "31/07/2026, 21:51:26",
+    "duracao": "2 Horas",
+    "horario": "15:00 - 17:00",
+    "jogadores": "Ana Julia, Ana Francisca, An Alice, Ana Maria Marinho",
+    "jogadores_completo": "ANA JULIA MARTINS, ANA FRANCISCA SANTOS, ANA LICE DOURADO, ANA MARIA MARINHO GOMES",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 4, Confirmado(s) 1)",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 15,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 7,
+        "hora": 16,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-08-01T00:51:26.332Z"
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "An Alice": false,
+      "Ana Francisca": false,
+      "Ana Julia": true,
+      "Ana Maria Marinho": false
+    },
+    "data": "02-08-2026",
+    "dataLocal": "31/07/2026, 21:51:26",
+    "duracao": "2 Horas",
+    "horario": "15:00 - 17:00",
+    "jogadores": "Ana Julia, Ana Francisca, An Alice, Ana Maria Marinho",
+    "jogadores_completo": "ANA JULIA MARTINS, ANA FRANCISCA SANTOS, ANA LICE DOURADO, ANA MARIA MARINHO GOMES",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 4, Confirmado(s) 1)",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 15,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 7,
+        "hora": 16,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-08-01T00:51:26.274Z"
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "An Alice": false,
+      "Ana Francisca": false,
+      "Ana Julia": true,
+      "Ana Maria Marinho": false
+    },
+    "data": "02-08-2026",
+    "dataLocal": "31/07/2026, 21:51:26",
+    "duracao": "2 Horas",
+    "horario": "15:00 - 17:00",
+    "jogadores": "Ana Julia, Ana Francisca, An Alice, Ana Maria Marinho",
+    "jogadores_completo": "ANA JULIA MARTINS, ANA FRANCISCA SANTOS, ANA LICE DOURADO, ANA MARIA MARINHO GOMES",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 4, Confirmado(s) 1)",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 15,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 7,
+        "hora": 16,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-08-01T00:51:26.297Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-01T00:52:33.295Z",
+    "dataLocal": "31/07/2026, 21:52:33",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "02-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Aline Garcia": false,
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Aline Garcia",
+    "jogadores_completo": "ANA JULIA MARTINS, ALINE MULLER GARCIA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-01T00:52:33.295Z",
+    "dataLocal": "31/07/2026, 21:52:33",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "09:00 - 11:00",
+    "duracao": "2 Horas",
+    "data": "02-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Aline Garcia": false,
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Aline Garcia",
+    "jogadores_completo": "ANA JULIA MARTINS, ALINE MULLER GARCIA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 9
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 10
+      }
+    ]
   }
 ]
