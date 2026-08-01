@@ -24,5 +24,31 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-08-01T02:39:19.689Z",
+    "dataLocal": "31/07/2026, 23:39:19",
+    "autor": "RONALDO TESBODA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "TESTE10",
+    "quadra": "Quadra 1",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "01-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "RONALDO TESBODA",
+    "confirmacoes": {
+      "Rone": true
+    },
+    "jogadores": "Rone",
+    "jogadores_completo": "RONALDO TESBODA",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 6
+      }
+    ]
   }
 ]
