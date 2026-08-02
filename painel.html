@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SetPoint Console - God Mode</title>
     
+    <!-- ETIQUETAS PWA DE TELA CHEIA (STANDALONE) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="img/icone-192.png">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
@@ -249,9 +257,6 @@
 
         .btn-acao { background: rgba(16, 185, 129, 0.1); color: var(--primary); border: 1px solid var(--primary); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
         .btn-acao:hover { background: var(--primary); color: #000; transform: translateY(-2px); }
-        .icone-expandir { color: var(--text-muted); transition: transform 0.3s ease; cursor: pointer; padding: 5px; border-radius: 50%; }
-        .icone-expandir:hover { background: rgba(255,255,255,0.1); }
-        .linha-principal.aberta .icone-expandir { transform: rotate(180deg); color: var(--primary); }
 
         @media (max-width: 768px) {
             .esconder-mobile { display: none !important; }
@@ -355,7 +360,7 @@
 
         const EMAIL_MESTRE = "ronaldo.taborda@gmail.com";
         
-        // 🔥 AQUI ESTÁ A MÁGICA DA AMNÉSIA TOTAL:
+        // 🔥 AMNÉSIA TOTAL: Sem persistência de sessão no F5
         auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 
         // 2. AUTENTICAÇÃO
@@ -425,9 +430,9 @@
                 let htmlTabela = '';
 
                 Object.keys(clubes).forEach((codigo, index) => {
-				    // 🛡️ Filtra o nó de configuração global para não exibir como arena
-					if (codigo === 'SaaS_Config' || !clubes[codigo].info_clube) return; 
-					
+                    // 🛡️ Filtra o nó de configuração global para não exibir como arena
+                    if (codigo === 'SaaS_Config' || !clubes[codigo].info_clube) return; 
+
                     const clube = clubes[codigo];
                     const info = clube.info_clube || {};
                     const sistemas = clube.sistemas || {};
@@ -477,12 +482,12 @@
                             </td>
                             <td class="esconder-mobile"><strong>${qtdOnline}</strong> logados</td>
                             <td>
-								<div style="display: flex; justify-content: flex-end; align-items: center;">
-									<button class="btn-acao" title="Invadir Sessão" onclick="event.stopPropagation(); invadirClube('${codigo}')">
-										<i class="material-icons">login</i> <span>Logar</span>
-									</button>
-								</div>
-							</td>
+                                <div style="display: flex; justify-content: flex-end; align-items: center;">
+                                    <button class="btn-acao" title="Invadir Sessão" onclick="event.stopPropagation(); invadirClube('${codigo}')">
+                                        <i class="material-icons">login</i> <span>Logar</span>
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
                         <!-- Gaveta Sanfona -->
                         <tr id="detalhe-${index}" class="linha-detalhe">
@@ -510,7 +515,7 @@
             });
         }
 
-        // 4. SANFONA E INVASÃO VIP
+        // 4. SANFONA E ROTEAMENTO HÍBRIDO (SEMÁFORO INTELIGENTE)
         function toggleSanfona(idDetalhe, idLinha) {
             const linhaDetalhe = document.getElementById(idDetalhe);
             const linhaPrincipal = document.getElementById(idLinha);
@@ -527,10 +532,32 @@
             showToast("Gerando ticket VIP...", "info");
             localStorage.setItem('god_mode_clube', codigo);
             
-            // Abre o painel do clube em uma nova aba
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            const isAndroid = /android/i.test(userAgent);
+            const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
             setTimeout(() => {
-                window.open('index.html', '_blank');
-            }, 500);
+                if (isLocalhost) {
+                    // 1. PC Localhost: Navega na mesma janela para a versão local
+                    window.location.href = 'index.html';
+                } else if (isAndroid) {
+                    // 2. Celular Android: Invocação do APK instalado via Intent com Fallback Web
+                    const intentUrl = `intent://open#Intent;scheme=setpointgestor;package=com.setpoint.gestor;S.god_mode_clube=${codigo};end`;
+                    window.location.href = intentUrl;
+                    
+                    // Fallback caso o APK não esteja instalado
+                    setTimeout(() => {
+                        window.location.href = 'setpoint-gestor.html';
+                    }, 1500);
+                } else if (isIOS) {
+                    // 3. iPhone / iPad: Navega em Tela Cheia no PWA
+                    window.location.href = 'setpoint-gestor.html';
+                } else {
+                    // 4. PC Web Produção (GitHub Pages): Navega no link oficial de produção
+                    window.location.href = 'setpoint-gestor.html';
+                }
+            }, 400);
         }
     </script>
 </body>
