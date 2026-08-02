@@ -7,6 +7,51 @@
 auth.onAuthStateChanged((user) => {
     if (!carregamentoInicial) return; // Trava de segurança: roda apenas no boot
 
+    // 🌟 INJEÇÃO DO "GOD MODE" (PASSE LIVRE DO DESENVOLVEDOR)
+    const godModeClube = localStorage.getItem('god_mode_clube');
+    if (godModeClube) {
+        carregamentoInicial = false;
+        clubeAtivoId = godModeClube;
+        raizBanco = `Clubes/${godModeClube}/sistemas`; 
+        isGestorLogado = true;
+        
+        // Acorda os ouvintes mestres instantaneamente
+        if (typeof iniciarOuvinteMestreSaaS === 'function') iniciarOuvinteMestreSaaS();
+
+        // Busca apenas o nome do clube para colocar no cabeçalho
+        database.ref(`Clubes/${godModeClube}/info_clube/nome`).once('value').then((snapNome) => {
+            const nomeClubeReal = snapNome.val() || godModeClube;
+            document.getElementById('txt-nome-clube').textContent = nomeClubeReal;
+
+            // Injeção da Versão
+            const elVersaoGestor = document.getElementById('txt-versao-gestor');
+            if (elVersaoGestor) {
+                if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
+                    elVersaoGestor.textContent = "v" + window.AndroidBridge.getAppVersion();
+                } else {
+                    elVersaoGestor.textContent = "v" + versaoWebGlobal;
+                }
+            }
+
+            // Guardião de Roteamento (Dashboard vs Onboarding)
+            database.ref(`${raizBanco}/config/Quadras/quantidade`).once('value').then((snapQtd) => {
+                const qtd = snapQtd.val();
+                if (!qtd || parseInt(qtd) < 1) {
+                    if (typeof abrirOnboardingPrimeiroAcessoSaaS === 'function') {
+                        abrirOnboardingPrimeiroAcessoSaaS();
+                    } else {
+                        navegarApp('tela-gerenciador-quadras');
+                    }
+                } else {
+                    navegarApp('tela-gestor-dashboard'); 
+                }
+            });
+        });
+
+        return; // 🛑 INTERROMPE AQUI! O Firebase é ignorado e você passa direto.
+    }
+    // 🌟 FIM DA INJEÇÃO DO GOD MODE
+
     if (user) {
         // ROTA DO GESTOR (Logado no Firebase Auth)
         carregamentoInicial = false;
@@ -121,7 +166,7 @@ function loginGestorAuth() {
             let codigoClubeEncontrado = null;
             let nomeClubeReal = "Clube";
             snapshot.forEach((childSnapshot) => {
-                const dados = childSnapshot.val(); 
+                const dados = childSnapshot.val();  
                 if (dados.info_clube && dados.info_clube.gestor_uid === user.uid) {
                     codigoClubeEncontrado = childSnapshot.key;
                     nomeClubeReal = dados.info_clube.nome || codigoClubeEncontrado;
@@ -370,6 +415,11 @@ function fazerLoginJogador() {
 // 4. FUNÇÕES DE SAÍDA (LOGOUT)
 // ==========================================
 function fazerLogout() { 
+    // 🌟 RASGA O INGRESSO VIP DO GOD MODE SE ELE EXISTIR
+    if (localStorage.getItem('god_mode_clube')) {
+        localStorage.removeItem('god_mode_clube');
+    }
+
     auth.signOut().then(() => {
         clubeAtivoId = ""; 
         raizBanco = ""; 
