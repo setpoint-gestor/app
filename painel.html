@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SetPoint Console - God Mode</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- SDKs do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --border: #334155;
+            --hover-row: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+        }
+
+        /* ==========================================
+           MOTOR DE NOTIFICAÇÕES (TOAST PREMIUM)
+           ========================================== */
+        #toastContainer {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: slideUp 0.3s ease forwards;
+            border-left: 4px solid var(--primary);
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .toast.error { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warning); }
+        .toast.saindo { animation: slideDown 0.3s ease forwards; }
+
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(20px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        @keyframes slideDown { 
+            from { opacity: 1; transform: translateY(0); } 
+            to { opacity: 0; transform: translateY(20px); } 
+        }
+
+        /* ==========================================
+           TELA DE LOGIN (Cortina de Ferro)
+           ========================================== */
+        #tela-login {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            padding: 40px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .login-card .branding-title {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .login-card .branding-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin: 8px 0 30px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .input-dev {
+            width: 100%;
+            padding: 14px 16px;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 15px;
+            box-sizing: border-box;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .input-dev:focus {
+            border-color: var(--primary);
+            background: rgba(0,0,0,0.4);
+        }
+
+        .btn-dev-login {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-dev-login:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-dev-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ==========================================
+           TELA DO PAINEL (Oculta por padrão)
+           ========================================== */
+        #tela-dashboard {
+            display: none;
+            padding-bottom: 50px;
+        }
+
+        header {
+            background: var(--bg-card);
+            padding: 20px 5%;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        main {
+            padding: 40px 5%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .secao-titulo {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .tabela-wrapper {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 18px 20px; color: var(--text-muted); font-size: 12px; text-transform: uppercase; border-bottom: 2px solid var(--border); background: rgba(0,0,0,0.1); }
+        .linha-principal { transition: background 0.2s; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .linha-principal:hover { background: var(--hover-row); }
+        .linha-principal.aberta { background: rgba(16, 185, 129, 0.05); border-bottom: none; }
+        .linha-principal td { padding: 16px 20px; font-size: 14px; vertical-align: middle; }
+        
+        .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
+        .badge-online { background: rgba(16, 185, 129, 0.1); color: var(--primary); border: 1px solid var(--primary); }
+        .badge-ocioso { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid var(--warning); }
+        .badge-fechado { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+
+        .mostrar-mobile { display: none; }
+        .ponto-status { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .ponto-online { background-color: var(--primary); box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+        .ponto-ocioso { background-color: var(--warning); box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
+        .ponto-fechado { background-color: var(--danger); box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+
+        .linha-detalhe { display: none; background: rgba(0, 0, 0, 0.15); border-bottom: 1px solid var(--border); }
+        .linha-detalhe.ativa { display: table-row; }
+        .conteudo-detalhe { padding: 20px 20px 25px 20px; display: flex; align-items: center; gap: 40px; animation: fadeIn 0.3s ease; color: var(--text-muted); font-size: 14px; }
+        .conteudo-detalhe div strong { color: var(--text-main); display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn-acao { background: rgba(16, 185, 129, 0.1); color: var(--primary); border: 1px solid var(--primary); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-acao:hover { background: var(--primary); color: #000; transform: translateY(-2px); }
+        .icone-expandir { color: var(--text-muted); transition: transform 0.3s ease; cursor: pointer; padding: 5px; border-radius: 50%; }
+        .icone-expandir:hover { background: rgba(255,255,255,0.1); }
+        .linha-principal.aberta .icone-expandir { transform: rotate(180deg); color: var(--primary); }
+
+        @media (max-width: 768px) {
+            .esconder-mobile { display: none !important; }
+            .mostrar-mobile { display: flex; align-items: center; gap: 8px; }
+            .linha-principal td { padding: 15px 10px; }
+            .btn-acao span { display: none; }
+            .btn-acao { padding: 8px 12px; }
+            .conteudo-detalhe { flex-direction: column; align-items: flex-start; gap: 15px; padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toastContainer"></div>
+
+    <!-- TELA 1: CORTINA DE FERRO (LOGIN) -->
+    <div id="tela-login">
+        <div class="login-card">
+            <h1 class="branding-title"><span style="color: var(--primary);">SetPoint</span> Console</h1>
+            <p class="branding-subtitle">God Mode & Infraestrutura</p>
+            <form onsubmit="event.preventDefault(); fazerLoginDev();">
+                <input type="email" id="dev-email" class="input-dev" placeholder="E-mail Mestre" required autocomplete="username">
+                <input type="password" id="dev-senha" class="input-dev" placeholder="Senha" required autocomplete="current-password">
+                <button type="submit" id="btn-entrar" class="btn-dev-login">
+                    Desbloquear Painel <i class="material-icons">lock_open</i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TELA 2: DASHBOARD MESTRE (Oculto) -->
+    <div id="tela-dashboard">
+        <header>
+            <div class="header-title"><span style="color: var(--primary);">SetPoint</span> Console</div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div style="font-size: 13px; color: var(--text-muted);">Mestre Logado</div>
+                <button onclick="fazerLogoutDev()" style="background: none; border: none; color: var(--danger); cursor: pointer; display: flex; align-items: center;" title="Sair do Painel">
+                    <i class="material-icons">logout</i>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <h2 class="secao-titulo">Monitoramento de Arenas</h2>
+            <div class="tabela-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome da Arena</th>
+                            <th class="esconder-mobile">Código</th>
+                            <th>Status</th>
+                            <th class="esconder-mobile">Usuários Online</th>
+                            <th style="text-align: right;">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-clubes-body">
+                        <!-- Renderizado pelo Firebase -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 0. TOAST NOTIFICATIONS
+        function showToast(msg, tipo = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `toast ${tipo}`;
+            let icon = 'info';
+            if (tipo === 'error') icon = 'error_outline';
+            if (tipo === 'success') icon = 'check_circle';
+            if (tipo === 'warning') icon = 'warning';
+            toast.innerHTML = `<i class="material-icons">${icon}</i> <span style="letter-spacing: 0.3px;">${msg}</span>`;
+            container.appendChild(toast); 
+            let timeoutId;
+            const fecharToast = () => {
+                clearTimeout(timeoutId);
+                toast.classList.add('saindo');
+                toast.onclick = null;
+                setTimeout(() => toast.remove(), 300);
+            };
+            toast.onclick = fecharToast;
+            timeoutId = setTimeout(fecharToast, 4000);
+        }
+
+        // 1. INICIALIZAÇÃO FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyARV9a_z2gzWHJ_I9hTxCM90ytvA_7qo0Y",
+            authDomain: "agenda-5ce95.firebaseapp.com",
+            databaseURL: "https://agenda-5ce95-default-rtdb.firebaseio.com/",
+            projectId: "agenda-5ce95",
+            storageBucket: "agenda-5ce95.firebasestorage.app",
+            messagingSenderId: "852007565195",
+            appId: "1:852007565195:web:d7bd789d140858f53f618e"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        const EMAIL_MESTRE = "ronaldo.taborda@gmail.com";
+        
+        // 🔥 AQUI ESTÁ A MÁGICA DA AMNÉSIA TOTAL:
+        auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+
+        // 2. AUTENTICAÇÃO
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                if (user.email.toLowerCase() === EMAIL_MESTRE.toLowerCase()) {
+                    liberarAcessoPainel();
+                } else {
+                    auth.signOut().then(() => showToast("Acesso Negado: Esta credencial não possui privilégios de desenvolvedor.", "error"));
+                }
+            } else {
+                bloquearAcessoPainel();
+            }
+        });
+
+        function fazerLoginDev() {
+            const email = document.getElementById('dev-email').value.trim();
+            const senha = document.getElementById('dev-senha').value;
+            const btn = document.getElementById('btn-entrar');
+            if (!email || !senha) return showToast("Preencha E-mail e Senha.", "warning");
+
+            btn.disabled = true;
+            btn.innerHTML = `Validando... <i class="material-icons" style="animation: spin 1s linear infinite;">sync</i>`;
+            auth.signInWithEmailAndPassword(email, senha).catch(() => {
+                showToast("Credenciais incorretas. Verifique sua senha.", "error");
+                btn.disabled = false;
+                btn.innerHTML = `Desbloquear Painel <i class="material-icons">lock_open</i>`;
+            });
+        }
+
+        function fazerLogoutDev() {
+            auth.signOut().then(() => {
+                bloquearAcessoPainel();
+                showToast("Sessão encerrada com segurança.", "success");
+            });
+        }
+
+        function liberarAcessoPainel() {
+            document.getElementById('tela-login').style.display = 'none';
+            document.getElementById('tela-dashboard').style.display = 'block';
+            carregarArenasRealTime(); 
+        }
+
+        function bloquearAcessoPainel() {
+            document.getElementById('tela-dashboard').style.display = 'none';
+            document.getElementById('tela-login').style.display = 'flex';
+            document.getElementById('dev-senha').value = '';
+            const btn = document.getElementById('btn-entrar');
+            btn.disabled = false;
+            btn.innerHTML = `Desbloquear Painel <i class="material-icons">lock_open</i>`;
+            db.ref('Clubes').off(); 
+        }
+
+        // 3. MOTOR DE DADOS E MONITORAMENTO
+        function carregarArenasRealTime() {
+            const tbody = document.getElementById('tabela-clubes-body');
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">Buscando infraestrutura... <i class="material-icons" style="animation: spin 1s linear infinite; vertical-align: middle; font-size: 18px; margin-left: 5px;">sync</i></td></tr>`;
+
+            db.ref('Clubes').on('value', (snapshot) => {
+                tbody.innerHTML = '';
+                if (!snapshot.exists()) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhuma arena cadastrada no sistema.</td></tr>`;
+                    return;
+                }
+
+                const clubes = snapshot.val();
+                let htmlTabela = '';
+
+                Object.keys(clubes).forEach((codigo, index) => {
+				    // 🛡️ Filtra o nó de configuração global para não exibir como arena
+					if (codigo === 'SaaS_Config' || !clubes[codigo].info_clube) return; 
+					
+                    const clube = clubes[codigo];
+                    const info = clube.info_clube || {};
+                    const sistemas = clube.sistemas || {};
+                    const config = sistemas.config || {};
+                    
+                    const nome = info.nome || codigo;
+                    const emailGestor = info.email_contato || 'Sem e-mail';
+                    
+                    const qtdQuadras = (config.Quadras && config.Quadras.quantidade) ? config.Quadras.quantidade : 0;
+                    
+                    // Cálculo de Presença (Ignora o Gestor)
+                    const onlineObj = sistemas.usuariosOnline || {};
+                    let qtdOnline = 0;
+                    Object.keys(onlineObj).forEach(key => {
+                        if (key !== 'GESTOR' && !onlineObj[key].isGestor) qtdOnline++;
+                    });
+
+                    // Lógica de Semáforo (Status)
+                    let statusBadge = '';
+                    let statusMobile = '';
+                    let isFechado = config.Abrir === false;
+
+                    if (isFechado) {
+                        statusBadge = `<span class="badge badge-fechado">Fechado</span>`;
+                        statusMobile = `<span class="ponto-status ponto-fechado"></span>`;
+                    } else if (qtdOnline > 0) {
+                        statusBadge = `<span class="badge badge-online">Online</span>`;
+                        statusMobile = `<span class="ponto-status ponto-online"></span>`;
+                    } else {
+                        statusBadge = `<span class="badge badge-ocioso">Ocioso</span>`;
+                        statusMobile = `<span class="ponto-status ponto-ocioso"></span>`;
+                    }
+
+                    htmlTabela += `
+                        <tr class="linha-principal" id="linha-${index}" onclick="toggleSanfona('detalhe-${index}', 'linha-${index}')">
+                            <td style="font-weight: 700;">${nome}</td>
+                            <td class="esconder-mobile" style="font-family: monospace; font-size: 13px; color: var(--text-muted);">${codigo}</td>
+                            <td>
+                                <div class="esconder-mobile">${statusBadge}</div>
+                                <div class="mostrar-mobile">
+                                    ${statusMobile}
+                                    <div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-weight: 700; font-size: 13px; color: var(--text-main);">${qtdOnline}</span>
+                                        <i class="material-icons" style="font-size: 14px; color: var(--text-muted);">groups</i>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="esconder-mobile"><strong>${qtdOnline}</strong> logados</td>
+                            <td>
+								<div style="display: flex; justify-content: flex-end; align-items: center;">
+									<button class="btn-acao" title="Invadir Sessão" onclick="event.stopPropagation(); invadirClube('${codigo}')">
+										<i class="material-icons">login</i> <span>Logar</span>
+									</button>
+								</div>
+							</td>
+                        </tr>
+                        <!-- Gaveta Sanfona -->
+                        <tr id="detalhe-${index}" class="linha-detalhe">
+                            <td colspan="5" style="padding: 0;">
+                                <div class="conteudo-detalhe">
+                                    <div>
+                                        <strong>Código de Acesso</strong>
+                                        <span style="font-family: monospace; color: var(--primary); font-size: 14px;">${codigo}</span>
+                                    </div>
+                                    <div>
+                                        <strong>Conta (Gestor)</strong>
+                                        ${emailGestor}
+                                    </div>
+                                    <div>
+                                        <strong>Infraestrutura</strong>
+                                        ${qtdQuadras} Quadra(s)
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = htmlTabela;
+            });
+        }
+
+        // 4. SANFONA E INVASÃO VIP
+        function toggleSanfona(idDetalhe, idLinha) {
+            const linhaDetalhe = document.getElementById(idDetalhe);
+            const linhaPrincipal = document.getElementById(idLinha);
+            const isAberta = linhaDetalhe.classList.contains('ativa');
+            document.querySelectorAll('.linha-detalhe').forEach(el => el.classList.remove('ativa'));
+            document.querySelectorAll('.linha-principal').forEach(el => el.classList.remove('aberta'));
+            if (!isAberta) {
+                linhaDetalhe.classList.add('ativa');
+                linhaPrincipal.classList.add('aberta');
+            }
+        }
+
+        function invadirClube(codigo) {
+            showToast("Gerando ticket VIP...", "info");
+            localStorage.setItem('god_mode_clube', codigo);
+            
+            // Abre o painel do clube em uma nova aba
+            setTimeout(() => {
+                window.open('index.html', '_blank');
+            }, 500);
+        }
+    </script>
+</body>
+</html>
