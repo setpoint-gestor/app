@@ -278,10 +278,10 @@
             <h1 class="branding-title"><span style="color: var(--primary);">SetPoint</span> Console</h1>
             <p class="branding-subtitle">God Mode & Infraestrutura</p>
             
-            <!-- Entrada de dados sem disparo automático do celular -->
+            <!-- Entrada de dados 100% manual (Sem <form> e sem onkeydown) -->
             <div style="width: 100%;">
-                <input type="email" id="dev-email" class="input-dev" placeholder="E-mail Mestre" required autocomplete="username" onkeydown="if(event.key==='Enter') fazerLoginDev()">
-                <input type="password" id="dev-senha" class="input-dev" placeholder="Senha" required autocomplete="current-password" onkeydown="if(event.key==='Enter') fazerLoginDev()">
+                <input type="email" id="dev-email" class="input-dev" placeholder="E-mail Mestre" required autocomplete="username">
+                <input type="password" id="dev-senha" class="input-dev" placeholder="Senha" required autocomplete="current-password">
                 
                 <button type="button" id="btn-entrar" class="btn-dev-login" onclick="fazerLoginDev()">
                     Desbloquear Painel <i class="material-icons">lock_open</i>
