@@ -368,20 +368,33 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // 🟢 MONITOR DE SAÚDE DA CONEXÃO FIREBASE (TEMPO REAL)
+        // 🟢 MONITOR DE SAÚDE DA CONEXÃO FIREBASE (TEMPO REAL - 3 ESTÁGIOS)
+        let timeoutReconexao; // Variável para guardar o cronômetro
+        
         db.ref('.info/connected').on('value', (snap) => {
             const ponto = document.getElementById('ponto-status-firebase');
             const txt = document.getElementById('txt-status-firebase');
             if (!ponto || !txt) return;
 
             if (snap.val() === true) {
+                // ESTÁGIO 1: 🟢 Voltou ou está Normal
+                clearTimeout(timeoutReconexao); // Cancela o cronômetro de queda
                 ponto.className = 'ponto-status ponto-online';
                 txt.textContent = 'Online';
                 txt.style.color = 'var(--primary)';
             } else {
-                ponto.className = 'ponto-status ponto-fechado';
-                txt.textContent = 'Off';
-                txt.style.color = 'var(--danger)';
+                // ESTÁGIO 2: 🟡 Caiu (Inicia tentativa de reconexão)
+                ponto.className = 'ponto-status ponto-ocioso'; // Usa o amarelo do CSS
+                txt.textContent = 'Reconectando...';
+                txt.style.color = 'var(--warning)';
+
+                // ESTÁGIO 3: 🔴 Passaram 5 segundos e não voltou
+                clearTimeout(timeoutReconexao); // Limpa o anterior por segurança
+                timeoutReconexao = setTimeout(() => {
+                    ponto.className = 'ponto-status ponto-fechado'; // Usa o vermelho do CSS
+                    txt.textContent = 'Off';
+                    txt.style.color = 'var(--danger)';
+                }, 5000); // 5000 milissegundos = 5 segundos
             }
         });
 
