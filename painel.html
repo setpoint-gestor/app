@@ -656,13 +656,27 @@
                     // 1. PC Localhost: Abre o index.html local em NOVA ABA
                     window.open(`index.html?god_mode_clube=${codigo}`, '_blank');
                 } else if (isAndroid) {
-                    // 2. Celular Android: Chama o APK (O Android gerencia em nova janela nativa)
+                    // 2. Celular Android: Dispara o aplicativo APK
                     window.location.href = `setpointgestor://open?god_mode_clube=${codigo}`;
                     
-                    // Fallback Web Android (se não tiver APK): Nova Aba
-                    setTimeout(() => {
+                    // 🛑 TEMPORIZADOR INTELIGENTE (Fallback Web apenas se NÃO tiver o APK)
+                    let timerFallback = setTimeout(() => {
                         window.open(`index.html?god_mode_clube=${codigo}`, '_blank');
                     }, 1500);
+
+                    // Se o APK abrir com sucesso, o Chrome vai para o fundo.
+                    // O sensor abaixo detecta isso e CANCELA a abertura da versão Web!
+                    const cancelarFallback = () => {
+                        clearTimeout(timerFallback);
+                        window.removeEventListener('pagehide', cancelarFallback);
+                        document.removeEventListener('visibilitychange', cancelarFallback);
+                    };
+
+                    window.addEventListener('pagehide', cancelarFallback);
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) cancelarFallback();
+                    });
+
                 } else {
                     // 3. iPhone / iPad ou PC Produção: Abre em NOVA ABA
                     window.open(`index.html?god_mode_clube=${codigo}`, '_blank');
