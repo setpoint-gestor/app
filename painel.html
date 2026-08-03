@@ -529,36 +529,31 @@
         }
 
         function invadirClube(codigo) {
-			showToast("Gerando ticket VIP...", "info");
-			localStorage.setItem('god_mode_clube', codigo);
-			
-			const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-			const isAndroid = /android/i.test(userAgent);
-			const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
-			const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            showToast("Gerando ticket VIP...", "info");
+            localStorage.setItem('god_mode_clube', codigo);
+            
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            const isAndroid = /android/i.test(userAgent);
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-			setTimeout(() => {
-				if (isLocalhost) {
-					// 1. PC Localhost: Navega para a versão local
-					window.location.href = 'index.html';
-				} else if (isAndroid) {
-					// 2. Celular Android: Invocação do APK instalado via Intent com Fallback Web
-					const intentUrl = `intent://open#Intent;scheme=setpointgestor;package=com.setpoint.gestor;S.god_mode_clube=${codigo};end`;
-					window.location.href = intentUrl;
-					
-					// Fallback caso o APK não esteja instalado
-					setTimeout(() => {
-						window.location.href = 'index.html';
-					}, 1500);
-				} else if (isIOS) {
-					// 3. iPhone / iPad: Navega em Tela Cheia no PWA
-					window.location.href = 'index.html';
-				} else {
-					// 4. PC Web Produção (GitHub Pages): Navega para o index.html oficial
-					window.location.href = 'index.html';
-				}
-			}, 400);
-		}
+            setTimeout(() => {
+                if (isLocalhost) {
+                    // 1. PC Localhost
+                    window.location.href = 'index.html';
+                } else if (isAndroid) {
+                    // 2. Celular Android: Dispara a antena do APK passando o clube na URL
+                    window.location.href = `setpointgestor://open?god_mode_clube=${codigo}`;
+                    
+                    // Fallback para Web se o APK não estiver instalado no celular
+                    setTimeout(() => {
+                        window.location.href = `index.html?god_mode_clube=${codigo}`;
+                    }, 1500);
+                } else {
+                    // 3. iPhone / iPad ou PC Produção
+                    window.location.href = `index.html?god_mode_clube=${codigo}`;
+                }
+            }, 400);
+        }
     </script>
 	
 <!-- PWA: Registro do Service Worker para liberar Tela Cheia no Android -->
