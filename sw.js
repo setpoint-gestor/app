@@ -3,6 +3,8 @@ const CACHE_NAME = 'setpoint-gestor-v4'; // 🔄 Subimos para v4 para forçar a 
 const urlsToCache = [
   './',
   './index.html',
+  './painel.html',
+  './manifest-console.json',
   './css/global.css?v=4',
   './css/cadastro.css?v=4',
   './css/quadras.css?v=4',

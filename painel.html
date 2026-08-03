@@ -560,5 +560,16 @@
 			}, 400);
 		}
     </script>
+	
+<!-- PWA: Registro do Service Worker para liberar Tela Cheia no Android -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js?v=4')
+                    .then(reg => console.log('✅ PWA Console ativado!'))
+                    .catch(err => console.error('❌ Erro PWA:', err));
+            });
+        }
+    </script>
 </body>
 </html>
