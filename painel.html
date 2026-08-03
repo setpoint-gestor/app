@@ -300,7 +300,7 @@
 				<!-- Indicador Dinâmico do Firebase -->
 				<div id="status-firebase-container" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;">
 					<span id="ponto-status-firebase" class="ponto-status ponto-online"></span>
-					<span id="txt-status-firebase" style="color: var(--primary);">Conectado</span>
+					<span id="txt-status-firebase" class="esconder-mobile" style="color: var(--primary);">Online</span>
 				</div>
 
 				<button onclick="fazerLogoutDev()" style="background: none; border: none; color: var(--danger); cursor: pointer; display: flex; align-items: center;" title="Sair do Painel">
@@ -376,11 +376,11 @@
 
             if (snap.val() === true) {
                 ponto.className = 'ponto-status ponto-online';
-                txt.textContent = 'Conectado';
+                txt.textContent = 'Online';
                 txt.style.color = 'var(--primary)';
             } else {
                 ponto.className = 'ponto-status ponto-fechado';
-                txt.textContent = 'Off-line';
+                txt.textContent = 'Off';
                 txt.style.color = 'var(--danger)';
             }
         });
