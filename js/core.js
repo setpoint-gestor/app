@@ -66,6 +66,24 @@ window.addEventListener('click', () => {
     });
 });
 
+// 🎯 OUVINTE DE DEEP LINK PARA APK ANDROID (CAPACITOR / GOD MODE)
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('appUrlOpen', (data) => {
+        if (data && data.url) {
+            try {
+                const urlObj = new URL(data.url);
+                const clubeDeepLink = urlObj.searchParams.get('god_mode_clube');
+                if (clubeDeepLink) {
+                    localStorage.setItem('god_mode_clube', clubeDeepLink);
+                    window.location.reload(); // Recarrega o APK já no novo clube
+                }
+            } catch (e) {
+                console.error("Erro ao processar Deep Link no APK:", e);
+            }
+        }
+    });
+}
+
 // ==========================================
 // 3. UTILITÁRIOS GLOBAIS DE UI (Interface do Usuário)
 // ==========================================
