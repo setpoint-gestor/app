@@ -232,9 +232,14 @@
 
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 18px 20px; color: var(--text-muted); font-size: 12px; text-transform: uppercase; border-bottom: 2px solid var(--border); background: rgba(0,0,0,0.1); }
+        
         .linha-principal { transition: background 0.2s; border-bottom: 1px solid var(--border); cursor: pointer; }
         .linha-principal:hover { background: var(--hover-row); }
-        .linha-principal.aberta { background: rgba(16, 185, 129, 0.05); border-bottom: none; }
+        .linha-principal.aberta { 
+            background: rgba(16, 185, 129, 0.08) !important; 
+            border-left: 4px solid var(--primary);
+            border-bottom: none !important; 
+        }
         .linha-principal td { padding: 16px 20px; font-size: 14px; vertical-align: middle; }
         
         .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-block; }
@@ -248,10 +253,42 @@
         .ponto-ocioso { background-color: var(--warning); box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
         .ponto-fechado { background-color: var(--danger); box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
 
-        .linha-detalhe { display: none; background: rgba(0, 0, 0, 0.15); border-bottom: 1px solid var(--border); }
-        .linha-detalhe.ativa { display: table-row; }
-        .conteudo-detalhe { padding: 20px 20px 25px 20px; display: flex; align-items: center; gap: 40px; animation: fadeIn 0.3s ease; color: var(--text-muted); font-size: 14px; }
-        .conteudo-detalhe div strong { color: var(--text-main); display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; }
+        /* ==========================================
+           SANFONA DE DETALHES (CAIXA FLUTUANTE 3D)
+           ========================================== */
+        .linha-detalhe { 
+            display: none; 
+            background: transparent !important; 
+            border-bottom: 1px solid var(--border); 
+        }
+        .linha-detalhe.ativa { 
+            display: table-row; 
+        }
+
+        .conteudo-detalhe { 
+            margin: 6px 16px 18px 16px; 
+            padding: 20px 24px; 
+            background: #0b1120; 
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary); 
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); 
+            display: flex; 
+            align-items: center; 
+            gap: 40px; 
+            animation: fadeIn 0.3s ease; 
+            color: var(--text-muted); 
+            font-size: 14px; 
+        }
+
+        .conteudo-detalhe div strong { 
+            color: var(--text-main); 
+            display: block; 
+            margin-bottom: 6px; 
+            font-size: 11px; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -264,7 +301,13 @@
             .linha-principal td { padding: 15px 10px; }
             .btn-acao span { display: none; }
             .btn-acao { padding: 8px 12px; }
-            .conteudo-detalhe { flex-direction: column; align-items: flex-start; gap: 15px; padding: 15px; }
+            .conteudo-detalhe { 
+                flex-direction: column; 
+                align-items: flex-start; 
+                gap: 15px; 
+                padding: 16px; 
+                margin: 6px 10px 14px 10px; 
+            }
         }
     </style>
 </head>
@@ -294,20 +337,20 @@
     <!-- TELA 2: DASHBOARD MESTRE (Oculto) -->
     <div id="tela-dashboard">
         <header>
-			<div class="header-title"><span style="color: var(--primary);">SetPoint</span> Console</div>
-			<div style="display: flex; gap: 15px; align-items: center;">
-				
-				<!-- Indicador Dinâmico do Firebase -->
-				<div id="status-firebase-container" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;">
-					<span id="ponto-status-firebase" class="ponto-status ponto-online"></span>
-					<span id="txt-status-firebase" class="esconder-mobile" style="color: var(--primary);">Online</span>
-				</div>
+            <div class="header-title"><span style="color: var(--primary);">SetPoint</span> Console</div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                
+                <!-- Indicador Dinâmico do Firebase -->
+                <div id="status-firebase-container" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;">
+                    <span id="ponto-status-firebase" class="ponto-status ponto-online"></span>
+                    <span id="txt-status-firebase" class="esconder-mobile" style="color: var(--primary);">Online</span>
+                </div>
 
-				<button onclick="fazerLogoutDev()" style="background: none; border: none; color: var(--danger); cursor: pointer; display: flex; align-items: center;" title="Sair do Painel">
-					<i class="material-icons">logout</i>
-				</button>
-			</div>
-		</header>
+                <button onclick="fazerLogoutDev()" style="background: none; border: none; color: var(--danger); cursor: pointer; display: flex; align-items: center;" title="Sair do Painel">
+                    <i class="material-icons">logout</i>
+                </button>
+            </div>
+        </header>
 
         <main>
             <h2 class="secao-titulo">Monitoramento de Arenas</h2>
@@ -317,9 +360,9 @@
                         <tr>
                             <th>Nome da Arena</th>
                             <th class="esconder-mobile">Código</th>
-                            <th>Status</th>
-                            <th class="esconder-mobile">Usuários Online</th>
-                            <th style="text-align: right;">Ação</th>
+                            <th style="text-align: center;">Status</th>
+                            <th class="esconder-mobile" style="text-align: center;">Usuários Online</th>
+                            <th style="text-align: center;">Ação</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-clubes-body">
@@ -369,7 +412,7 @@
         const db = firebase.database();
 
         // 🟢 MONITOR DE SAÚDE DA CONEXÃO FIREBASE (TEMPO REAL - 3 ESTÁGIOS)
-        let timeoutReconexao; // Variável para guardar o cronômetro
+        let timeoutReconexao;
         
         db.ref('.info/connected').on('value', (snap) => {
             const ponto = document.getElementById('ponto-status-firebase');
@@ -378,23 +421,23 @@
 
             if (snap.val() === true) {
                 // ESTÁGIO 1: 🟢 Voltou ou está Normal
-                clearTimeout(timeoutReconexao); // Cancela o cronômetro de queda
+                clearTimeout(timeoutReconexao);
                 ponto.className = 'ponto-status ponto-online';
                 txt.textContent = 'Online';
                 txt.style.color = 'var(--primary)';
             } else {
                 // ESTÁGIO 2: 🟡 Caiu (Inicia tentativa de reconexão)
-                ponto.className = 'ponto-status ponto-ocioso'; // Usa o amarelo do CSS
+                ponto.className = 'ponto-status ponto-ocioso';
                 txt.textContent = 'Reconectando...';
                 txt.style.color = 'var(--warning)';
 
                 // ESTÁGIO 3: 🔴 Passaram 5 segundos e não voltou
-                clearTimeout(timeoutReconexao); // Limpa o anterior por segurança
+                clearTimeout(timeoutReconexao);
                 timeoutReconexao = setTimeout(() => {
-                    ponto.className = 'ponto-status ponto-fechado'; // Usa o vermelho do CSS
+                    ponto.className = 'ponto-status ponto-fechado';
                     txt.textContent = 'Off';
                     txt.style.color = 'var(--danger)';
-                }, 5000); // 5000 milissegundos = 5 segundos
+                }, 5000);
             }
         });
 
@@ -459,6 +502,15 @@
             const tbody = document.getElementById('tabela-clubes-body');
             tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">Buscando infraestrutura... <i class="material-icons" style="animation: spin 1s linear infinite; vertical-align: middle; font-size: 18px; margin-left: 5px;">sync</i></td></tr>`;
 
+            // SVG Path do WhatsApp
+            const pathWhatsapp = `M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.105 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z`;
+
+            // SVG Desktop (Verde sob fundo escuro)
+            const svgWhatsappDesktop = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366" style="vertical-align: middle; flex-shrink: 0;"><path d="${pathWhatsapp}"/></svg>`;
+
+            // SVG Mobile (Branco destacado no centro do botão)
+            const svgWhatsappMobile = `<svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" style="vertical-align: middle; flex-shrink: 0;"><path d="${pathWhatsapp}"/></svg>`;
+
             db.ref('Clubes').on('value', (snapshot) => {
                 tbody.innerHTML = '';
                 if (!snapshot.exists()) {
@@ -470,7 +522,6 @@
                 let htmlTabela = '';
 
                 Object.keys(clubes).forEach((codigo, index) => {
-                    // 🛡️ Filtra o nó de configuração global para não exibir como arena
                     if (codigo === 'SaaS_Config' || !clubes[codigo].info_clube) return; 
 
                     const clube = clubes[codigo];
@@ -480,17 +531,16 @@
                     
                     const nome = info.nome || codigo;
                     const emailGestor = info.email_contato || 'Sem e-mail';
+                    const whatsGestor = info.whatsapp || info.celular || info.telefone || null;
                     
                     const qtdQuadras = (config.Quadras && config.Quadras.quantidade) ? config.Quadras.quantidade : 0;
                     
-                    // Cálculo de Presença (Ignora o Gestor)
                     const onlineObj = sistemas.usuariosOnline || {};
                     let qtdOnline = 0;
                     Object.keys(onlineObj).forEach(key => {
                         if (key !== 'GESTOR' && !onlineObj[key].isGestor) qtdOnline++;
                     });
 
-                    // Lógica de Semáforo (Status)
                     let statusBadge = '';
                     let statusMobile = '';
                     let isFechado = config.Abrir === false;
@@ -506,13 +556,31 @@
                         statusMobile = `<span class="ponto-status ponto-ocioso"></span>`;
                     }
 
+                    // Configuração Estrita de Links por Dispositivo
+                    let htmlWhatsappDesktop = `<span style="color: var(--text-muted);">Não cadastrado</span>`;
+                    let btnWhatsMobile = '';
+
+                    if (whatsGestor) {
+                        const numeroLimpo = whatsGestor.replace(/\D/g, '');
+                        
+                        // 🖥️ Desktop: Texto com Ícone na coluna dedicada
+                        htmlWhatsappDesktop = `<a href="https://wa.me/55${numeroLimpo}" target="_blank" style="color: #25d366; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                            ${svgWhatsappDesktop} ${whatsGestor}
+                        </a>`;
+                        
+                        // 📱 Mobile: Botão de Ação Destacado de 36px (Oculto via CSS no PC)
+                        btnWhatsMobile = `<a href="https://wa.me/55${numeroLimpo}" target="_blank" class="mostrar-mobile" title="Chamar no WhatsApp" style="text-decoration: none; background: #25d366; width: 36px; height: 36px; border-radius: 50%; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.45); flex-shrink: 0; margin-left: 10px;">
+                            ${svgWhatsappMobile}
+                        </a>`;
+                    }
+
                     htmlTabela += `
                         <tr class="linha-principal" id="linha-${index}" onclick="toggleSanfona('detalhe-${index}', 'linha-${index}')">
                             <td style="font-weight: 700;">${nome}</td>
                             <td class="esconder-mobile" style="font-family: monospace; font-size: 13px; color: var(--text-muted);">${codigo}</td>
-                            <td>
+                            <td style="text-align: center;">
                                 <div class="esconder-mobile">${statusBadge}</div>
-                                <div class="mostrar-mobile">
+                                <div class="mostrar-mobile" style="justify-content: center;">
                                     ${statusMobile}
                                     <div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
                                         <span style="font-weight: 700; font-size: 13px; color: var(--text-main);">${qtdOnline}</span>
@@ -520,16 +588,16 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="esconder-mobile"><strong>${qtdOnline}</strong> logados</td>
-                            <td>
-                                <div style="display: flex; justify-content: flex-end; align-items: center;">
+                            <td class="esconder-mobile" style="text-align: center;"><strong>${qtdOnline}</strong> logados</td>
+                            <td style="text-align: center;">
+                                <div style="display: flex; justify-content: center; align-items: center;">
                                     <button class="btn-acao" title="Invadir Sessão" onclick="event.stopPropagation(); invadirClube('${codigo}')">
                                         <i class="material-icons">login</i> <span>Logar</span>
                                     </button>
                                 </div>
                             </td>
                         </tr>
-                        <!-- Gaveta Sanfona -->
+                        <!-- Gaveta Sanfona Inteligente (Caixa Flutuante 3D) -->
                         <tr id="detalhe-${index}" class="linha-detalhe">
                             <td colspan="5" style="padding: 0;">
                                 <div class="conteudo-detalhe">
@@ -539,7 +607,14 @@
                                     </div>
                                     <div>
                                         <strong>Conta (Gestor)</strong>
-                                        ${emailGestor}
+                                        <div style="display: flex; align-items: center;">
+                                            <span>${emailGestor}</span>
+                                            ${btnWhatsMobile}
+                                        </div>
+                                    </div>
+                                    <div class="esconder-mobile">
+                                        <strong>WhatsApp (Contato)</strong>
+                                        ${htmlWhatsappDesktop}
                                     </div>
                                     <div>
                                         <strong>Infraestrutura</strong>
@@ -594,11 +669,9 @@
                 }
             }, 400);
         }
-		
-		
     </script>
 	
-<!-- PWA: Registro do Service Worker para liberar Tela Cheia no Android -->
+    <!-- PWA: Registro do Service Worker para liberar Tela Cheia no Android -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

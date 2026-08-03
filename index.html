@@ -103,16 +103,17 @@
     </div>
 
     <div id="tela-gestor-cadastro" class="tela-app">
-        <div class="container-central">
-            <h2>Novo Clube</h2>
-            <input type="text" id="cad-nome-clube" class="input-app" placeholder="Nome do Clube (Ex: Arena Olímpica)">
-            <input type="text" id="cad-codigo-clube" class="input-app" placeholder="Crie um Código (Ex: OLIMPICO10)" style="text-transform: uppercase;">
-            <input type="email" id="cad-email" class="input-app" placeholder="Seu E-mail (Admin)">
-            <input type="password" id="cad-senha" class="input-app" placeholder="Crie uma Senha (mín. 6 caracteres)">
-            <button class="btn-app btn-gestor" onclick="cadastrarNovoClube()">Finalizar Cadastro</button>
-            <button class="btn-app btn-link" onclick="navegarApp('tela-gestor-login')">Já tenho conta</button>
-        </div>
-    </div>
+		<div class="container-central">
+			<h2>Novo Clube</h2>
+			<input type="text" id="cad-nome-clube" class="input-app" placeholder="Nome do Clube (Ex: Arena Olímpica)">
+			<input type="text" id="cad-codigo-clube" class="input-app" placeholder="Crie um Código (Ex: OLIMPICO10)" style="text-transform: uppercase;">
+			<input type="email" id="cad-email" class="input-app" placeholder="Seu E-mail (Admin)">
+			<input type="tel" id="cad-whatsapp" class="input-app" placeholder="WhatsApp / Celular (Ex: 41999998888)">
+			<input type="password" id="cad-senha" class="input-app" placeholder="Crie uma Senha (mín. 6 caracteres)">
+			<button class="btn-app btn-gestor" onclick="cadastrarNovoClube()">Finalizar Cadastro</button>
+			<button class="btn-app btn-link" onclick="navegarApp('tela-gestor-login')">Já tenho conta</button>
+		</div>
+	</div>
 
     <div id="tela-gestor-dashboard" class="tela-app" style="justify-content: flex-start;">
         <div class="header-painel">
@@ -169,7 +170,7 @@
         </div>
     </div>
 
-    <div id="tela-sub-jogadores" class="tela-app" style="justify-content: flex-start;">
+    <div id="tela-sub-jogadores" class="tela-app" style="justify-content: flex-start;"> 
         <div class="header-painel">
             <div>
                 <h2 id="titulo-qg-jogadores" title="Gerenciamento de Atletas">👥 Jogadores</h2>
