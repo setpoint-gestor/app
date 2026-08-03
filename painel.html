@@ -277,27 +277,37 @@
         <div class="login-card">
             <h1 class="branding-title"><span style="color: var(--primary);">SetPoint</span> Console</h1>
             <p class="branding-subtitle">God Mode & Infraestrutura</p>
-            <form onsubmit="event.preventDefault(); fazerLoginDev();">
-                <input type="email" id="dev-email" class="input-dev" placeholder="E-mail Mestre" required autocomplete="username">
-                <input type="password" id="dev-senha" class="input-dev" placeholder="Senha" required autocomplete="current-password">
-                <button type="submit" id="btn-entrar" class="btn-dev-login">
+            
+            <!-- Entrada de dados sem disparo automático do celular -->
+            <div style="width: 100%;">
+                <input type="email" id="dev-email" class="input-dev" placeholder="E-mail Mestre" required autocomplete="username" onkeydown="if(event.key==='Enter') fazerLoginDev()">
+                <input type="password" id="dev-senha" class="input-dev" placeholder="Senha" required autocomplete="current-password" onkeydown="if(event.key==='Enter') fazerLoginDev()">
+                
+                <button type="button" id="btn-entrar" class="btn-dev-login" onclick="fazerLoginDev()">
                     Desbloquear Painel <i class="material-icons">lock_open</i>
                 </button>
-            </form>
+            </div>
+
         </div>
     </div>
 
     <!-- TELA 2: DASHBOARD MESTRE (Oculto) -->
     <div id="tela-dashboard">
         <header>
-            <div class="header-title"><span style="color: var(--primary);">SetPoint</span> Console</div>
-            <div style="display: flex; gap: 15px; align-items: center;">
-                <div style="font-size: 13px; color: var(--text-muted);">Mestre Logado</div>
-                <button onclick="fazerLogoutDev()" style="background: none; border: none; color: var(--danger); cursor: pointer; display: flex; align-items: center;" title="Sair do Painel">
-                    <i class="material-icons">logout</i>
-                </button>
-            </div>
-        </header>
+			<div class="header-title"><span style="color: var(--primary);">SetPoint</span> Console</div>
+			<div style="display: flex; gap: 15px; align-items: center;">
+				
+				<!-- Indicador Dinâmico do Firebase -->
+				<div id="status-firebase-container" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;">
+					<span id="ponto-status-firebase" class="ponto-status ponto-online"></span>
+					<span id="txt-status-firebase" style="color: var(--primary);">Conectado</span>
+				</div>
+
+				<button onclick="fazerLogoutDev()" style="background: none; border: none; color: var(--danger); cursor: pointer; display: flex; align-items: center;" title="Sair do Painel">
+					<i class="material-icons">logout</i>
+				</button>
+			</div>
+		</header>
 
         <main>
             <h2 class="secao-titulo">Monitoramento de Arenas</h2>
@@ -357,6 +367,23 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
+
+        // 🟢 MONITOR DE SAÚDE DA CONEXÃO FIREBASE (TEMPO REAL)
+        db.ref('.info/connected').on('value', (snap) => {
+            const ponto = document.getElementById('ponto-status-firebase');
+            const txt = document.getElementById('txt-status-firebase');
+            if (!ponto || !txt) return;
+
+            if (snap.val() === true) {
+                ponto.className = 'ponto-status ponto-online';
+                txt.textContent = 'Conectado';
+                txt.style.color = 'var(--primary)';
+            } else {
+                ponto.className = 'ponto-status ponto-fechado';
+                txt.textContent = 'Off-line';
+                txt.style.color = 'var(--danger)';
+            }
+        });
 
         const EMAIL_MESTRE = "ronaldo.taborda@gmail.com";
         
@@ -538,22 +565,24 @@
 
             setTimeout(() => {
                 if (isLocalhost) {
-                    // 1. PC Localhost
-                    window.location.href = 'index.html';
+                    // 1. PC Localhost: Abre o index.html local em NOVA ABA
+                    window.open(`index.html?god_mode_clube=${codigo}`, '_blank');
                 } else if (isAndroid) {
-                    // 2. Celular Android: Dispara a antena do APK passando o clube na URL
+                    // 2. Celular Android: Chama o APK (O Android gerencia em nova janela nativa)
                     window.location.href = `setpointgestor://open?god_mode_clube=${codigo}`;
                     
-                    // Fallback para Web se o APK não estiver instalado no celular
+                    // Fallback Web Android (se não tiver APK): Nova Aba
                     setTimeout(() => {
-                        window.location.href = `index.html?god_mode_clube=${codigo}`;
+                        window.open(`index.html?god_mode_clube=${codigo}`, '_blank');
                     }, 1500);
                 } else {
-                    // 3. iPhone / iPad ou PC Produção
-                    window.location.href = `index.html?god_mode_clube=${codigo}`;
+                    // 3. iPhone / iPad ou PC Produção: Abre em NOVA ABA
+                    window.open(`index.html?god_mode_clube=${codigo}`, '_blank');
                 }
             }, 400);
         }
+		
+		
     </script>
 	
 <!-- PWA: Registro do Service Worker para liberar Tela Cheia no Android -->
