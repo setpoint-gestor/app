@@ -8,8 +8,11 @@ auth.onAuthStateChanged((user) => {
     if (!carregamentoInicial) return; // Trava de segurança: roda apenas no boot
 
     // 🌟 INJEÇÃO DO "GOD MODE" (PASSE LIVRE DO DESENVOLVEDOR)
-    const godModeClube = localStorage.getItem('god_mode_clube');
+    const urlParams = new URLSearchParams(window.location.search);
+    const godModeClube = localStorage.getItem('god_mode_clube') || urlParams.get('god_mode_clube');
+
     if (godModeClube) {
+        localStorage.setItem('god_mode_clube', godModeClube);
         carregamentoInicial = false;
         clubeAtivoId = godModeClube;
         raizBanco = `Clubes/${godModeClube}/sistemas`; 
@@ -417,7 +420,7 @@ function fazerLoginJogador() {
 function fazerLogout() { 
     // 🌟 RASGA O INGRESSO VIP DO GOD MODE SE ELE EXISTIR
     if (localStorage.getItem('god_mode_clube')) {
-        localStorage.removeItem('god_mode_clube');
+        localStorage.removeItem('god_mode_clube'); 
     }
 
     auth.signOut().then(() => {
