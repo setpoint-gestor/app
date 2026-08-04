@@ -66,11 +66,19 @@ auth.onAuthStateChanged((user) => {
                 const dadosClube = childSnapshot.val();
                 if (dadosClube.info_clube && dadosClube.info_clube.gestor_uid === user.uid) {
                     codigoClubeEncontrado = childSnapshot.key;
-                    nomeClubeReal = dadosClube.info_clube.nome || codigoClubeEncontrado; 
+                    nomeClubeReal = dadosClube.info_clube.nome || codigoClubeEncontrado;  
                 }
             });
 
             if (codigoClubeEncontrado) {
+                const dadosClubeAuto = snapshot.child(codigoClubeEncontrado).val();
+                
+                // 🛑 TRAVA MESTRE DO DESENVOLVEDOR (KILL SWITCH NO AUTO-LOGIN)
+                if (dadosClubeAuto.info_clube && dadosClubeAuto.info_clube.ativo === false) {
+                    navegarApp('tela-manutencao');
+                    return;
+                }
+
                 clubeAtivoId = codigoClubeEncontrado;
                 raizBanco = `Clubes/${codigoClubeEncontrado}/sistemas`; 
                 isGestorLogado = true;
@@ -126,21 +134,27 @@ auth.onAuthStateChanged((user) => {
             
             if (typeof iniciarOuvinteMestreSaaS === 'function') iniciarOuvinteMestreSaaS();
             
-            if (jogadorSalvoId) {
-                // O Segredo do CTRL+F5: Função paciente que aguarda os scripts terminarem de baixar
-                const iniciarPlanilhaSegura = setInterval(() => {
-                    if (typeof abrirVisaoQuadras === 'function') {
-                        clearInterval(iniciarPlanilhaSegura); // Para de procurar
-                        abrirVisaoQuadras(); // Abre a planilha com sucesso
-                    }
-                }, 50); // Checa a cada 50 milissegundos
-                return; 
-            }
-            
-            // Tem clube salvo, mas não escolheu o jogador e senha ainda
-            document.getElementById('nome-clube-encontrado').textContent = clubeSalvoNome;
-            carregarDropdownLoginsSocio();
-            navegarApp('tela-jogador-login');
+            // 🛑 CHECAGEM DE LICENÇA NO AUTO-LOGIN DO F5
+            database.ref(`Clubes/${clubeSalvoId}/info_clube/ativo`).once('value').then((snapAtivo) => {
+                if (snapAtivo.val() === false && !localStorage.getItem('god_mode_clube')) {
+                    navegarApp('tela-manutencao');
+                    return;
+                }
+
+                if (jogadorSalvoId) {
+                    const iniciarPlanilhaSegura = setInterval(() => {
+                        if (typeof abrirVisaoQuadras === 'function') {
+                            clearInterval(iniciarPlanilhaSegura);
+                            abrirVisaoQuadras();
+                        }
+                    }, 50);
+                    return; 
+                }
+                
+                document.getElementById('nome-clube-encontrado').textContent = clubeSalvoNome;
+                carregarDropdownLoginsSocio();
+                navegarApp('tela-jogador-login');
+            });
         } else {
             // Primeiro acesso real ou vindo diretamente do site
             const urlParams = new URLSearchParams(window.location.search);
@@ -176,9 +190,16 @@ function loginGestorAuth() {
                 }
             });
             if (codigoClubeEncontrado) {
+                // 🛑 TRAVA MESTRE DO DESENVOLVEDOR (KILL SWITCH)
+                const dadosClubeFinal = snapshot.child(codigoClubeEncontrado).val();
+                if (dadosClubeFinal.info_clube && dadosClubeFinal.info_clube.ativo === false) {
+                    return showToast('Acesso suspenso. Entre em contato com o suporte do SetPoint.', 'error');
+                }
+
                 clubeAtivoId = codigoClubeEncontrado;
                 raizBanco = `Clubes/${codigoClubeEncontrado}/sistemas`;
-                document.getElementById('txt-nome-clube').textContent = nomeClubeReal;
+                
+				document.getElementById('txt-nome-clube').textContent = nomeClubeReal;
 				// 📱 INJEÇÃO DA VERSÃO REAL DO APK + GATILHO DE ATUALIZAÇÃO GLOBAL
                 const elVersaoGestor = document.getElementById('txt-versao-gestor');
                 if (elVersaoGestor) {
@@ -270,7 +291,7 @@ function cadastrarNovoClube() {
                     if (typeof abrirOnboardingPrimeiroAcessoSaaS === 'function') {
                         abrirOnboardingPrimeiroAcessoSaaS();
                     } else {
-                        navegarApp('tela-onboarding-quadras');
+                        navegarApp('tela-onboarding-quadras'); 
                     }
 
                     showToast('Clube criado com sucesso!', 'success');
@@ -304,8 +325,15 @@ function verificarCodigoClube() {
     database.ref(`Clubes/${codigo}`).once('value').then((snapshot) => {
         if (snapshot.exists()) {
             const dados = snapshot.val();
+
+            // 🛑 TRAVA MESTRE DO DESENVOLVEDOR (KILL SWITCH)
+            if (dados.info_clube && dados.info_clube.ativo === false) {
+                return showToast('Esta arena está com o acesso suspenso temporariamente.', 'error');
+            }
+
             clubeAtivoId = codigo;
-            raizBanco = `Clubes/${codigo}/sistemas`; 
+            
+			raizBanco = `Clubes/${codigo}/sistemas`; 
             const nomeRealClube = (dados.info_clube && dados.info_clube.nome) || `Clube: ${codigo}`;
             
             localStorage.setItem('setpoint_jogador_clube_id', codigo);
@@ -434,7 +462,8 @@ function fazerLogout() {
         isGestorLogado = false;
         localStorage.removeItem('jogadorLogadoId'); 
         localStorage.removeItem('jogadorLogadoNome');
-        location.reload();  
+        // Redireciona limpando os parâmetros da URL (?god_mode_clube)
+        window.location.href = window.location.pathname;  
     }); 
 }
 
