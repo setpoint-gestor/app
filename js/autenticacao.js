@@ -27,7 +27,7 @@ auth.onAuthStateChanged((user) => {
             document.getElementById('txt-nome-clube').textContent = nomeClubeReal;
 
             // Injeção da Versão e Sincronização Global
-            const elVersaoGestor = document.getElementById('txt-versao-gestor');
+            const elVersaoGestor = document.getElementById('txt-versao-gestor'); 
             if (elVersaoGestor) {
                 if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
                     const versaoAndroidNativa = window.AndroidBridge.getAppVersion();
@@ -45,8 +45,7 @@ auth.onAuthStateChanged((user) => {
                     if (containerSubtitulo) {
                         const divBadge = document.createElement('div');
                         divBadge.id = 'badge-godmode-dash';
-                        divBadge.style.marginTop = '4px';
-                        divBadge.innerHTML = `<span class="badge" style="background-color: #8b5cf6; color: #ffffff; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: bold; letter-spacing: 0.5px; display: inline-block;">God Mode</span>`;
+                        divBadge.innerHTML = `<span class="badge badge-godmode">God Mode</span>`;
                         containerSubtitulo.insertAdjacentElement('afterend', divBadge);
                     }
                 }
@@ -502,38 +501,14 @@ function exibirAvisoInstalacaoIOS() {
 
     const banner = document.createElement('div');
     banner.id = 'banner-dica-ios';
-    banner.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #1e293b;
-        color: #ffffff;
-        padding: 14px 18px;
-        border-radius: 14px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.35);
-        z-index: 99999;
-        font-size: 13.5px;
-        line-height: 1.4;
-        font-weight: 500;
-        text-align: left;
-        max-width: 90%;
-        width: 360px;
-        cursor: pointer;
-        border: 1px solid #334155;
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-    `;
+    banner.className = 'banner-dica-ios';
 
     banner.innerHTML = `
         <div>
             📱 <b>Dica de Instalação no Safari:</b><br>
             Toque em <b>"Compartilhar"</b> e selecione <b>"Adicionar à Tela de Início"</b>.
         </div>
-        <span style="font-size: 14px; opacity: 0.7; font-weight: bold; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 20px;">✕</span>
+        <span class="banner-ios-fechar">✕</span>
     `;
 
     // ⏱️ Permanece na tela por 10 segundos
@@ -549,6 +524,7 @@ function exibirAvisoInstalacaoIOS() {
 
     document.body.appendChild(banner);
 }
+
 
 function verificarDirecionamentoSite() {
     const urlParams = new URLSearchParams(window.location.search);
