@@ -38,6 +38,18 @@ auth.onAuthStateChanged((user) => {
                 } else {
                     elVersaoGestor.textContent = "v" + versaoWebGlobal;
                 }
+
+                // 🔮 Injeção da pílula God Mode abaixo do subtítulo
+                if (!document.getElementById('badge-godmode-dash')) {
+                    const containerSubtitulo = elVersaoGestor.closest('.subtitulo-header') || elVersaoGestor.parentElement;
+                    if (containerSubtitulo) {
+                        const divBadge = document.createElement('div');
+                        divBadge.id = 'badge-godmode-dash';
+                        divBadge.style.marginTop = '4px';
+                        divBadge.innerHTML = `<span class="badge" style="background-color: #8b5cf6; color: #ffffff; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: bold; letter-spacing: 0.5px; display: inline-block;">God Mode</span>`;
+                        containerSubtitulo.insertAdjacentElement('afterend', divBadge);
+                    }
+                }
             }
 
             // Guardião de Roteamento (Dashboard vs Onboarding)
