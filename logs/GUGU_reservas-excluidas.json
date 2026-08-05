@@ -1,0 +1,23 @@
+[
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-05T17:22:47.395Z",
+    "dataLocal": "05/08/2026, 14:22:47",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "GUGU",
+    "quadra": "Quadra 1",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "06-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Ronaldo Taborda Costa",
+    "confirmacoes": {
+      "Ronaldo Taborda Costa": true
+    },
+    "jogadores": "Ronaldo Taborda Costa",
+    "jogadores_completo": "Ronaldo Taborda Costa",
+    "slotsExcluidos": []
+  }
+]
