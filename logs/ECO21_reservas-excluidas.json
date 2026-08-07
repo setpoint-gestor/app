@@ -2173,5 +2173,36 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Ana Julia": true
+    },
+    "data": "08-08-2026",
+    "dataLocal": "07/08/2026, 13:42:45",
+    "duracao": "2 Horas",
+    "horario": "07:00 - 09:00",
+    "jogadores": "Adriano Feitosa, Ana Julia",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ANA JULIA MARTINS",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 7
+      },
+      {
+        "dia": 6,
+        "hora": 8
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-08-07T16:42:45.946Z"
   }
 ]
