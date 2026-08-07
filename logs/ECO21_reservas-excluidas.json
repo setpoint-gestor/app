@@ -2204,5 +2204,38 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-08-07T16:42:45.946Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-07T17:49:36.645Z",
+    "dataLocal": "07/08/2026, 14:49:36",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "08-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Ana Francisca": false
+    },
+    "jogadores": "Adriano Feitosa, Ana Francisca",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ANA FRANCISCA SANTOS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 6,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 6,
+        "hora": 11
+      }
+    ]
   }
 ]
