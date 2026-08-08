@@ -2487,5 +2487,26 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-08-08T20:31:31.333Z",
+    "dataLocal": "08/08/2026, 17:31:31",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "motivo": "Convite recusado por Adriano Feitosa. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 09:00",
+    "duracao": "1 Hora",
+    "data": "09-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA FRANCISCA SANTOS",
+    "confirmacoes": {
+      "Ana Francisca": true
+    },
+    "jogadores": "Ana Francisca",
+    "jogadores_completo": "ANA FRANCISCA SANTOS",
+    "slotsExcluidos": []
   }
 ]
