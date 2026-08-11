@@ -1,0 +1,2176 @@
+/* ======================================================== */
+/* 1. ESTRUTURA E CONTAINER DA TELA DA PLANILHA             */
+/* ======================================================== */
+#tela-visao-quadras {
+    justify-content: flex-start;
+    padding-bottom: 0px !important;
+    background: #f4f6f8;
+    min-height: 100vh;
+}
+
+/* NOVO PAINEL DE BOAS-VINDAS (CÓPIA FIEL DO ANTIGO) */
+#app-header {
+    width: 100%; 
+    height: 35px;
+    background: linear-gradient(to bottom, #ffffff 0%, #e8e8e8 100%);   
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    box-sizing: border-box;
+    border-bottom: 1px solid #cbd5e1;   
+}
+
+/* ======================================================== */
+/* AJUSTES ANATÔMICOS DE RETICÊNCIAS E BADGES NO CABEÇALHO   */
+/* ======================================================== */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 75%; /* Impede que o bloco do usuário esmague os botões da direita */
+    overflow: hidden;
+}
+
+.header-user-wrapper {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    width: 100%;
+}
+
+.header-user-text {
+    font-family: 'Roboto', sans-serif; 
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+    text-shadow: 0 1px 0 #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* A mágica das reticências (...) acontecendo aqui */
+    flex-shrink: 1; 
+}
+
+.header-user-badges {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0; /* Impede que as pílulas sejam esmagadas */
+}
+
+/* ======================================================== */
+/* 💊 A CURA DEFINITIVA DAS PÍLULAS (VÍNCULO E PERFIS)       */
+/* ======================================================== */
+#app-header .badge {
+    text-shadow: none !important;        /* 1. Remove a sombra branca que borrava as letras */
+    border-radius: 12px !important;     /* 2. Força o formato oval de cápsula do cadastro */
+    padding: 2px 6px !important;        /* 3. Cura o esmagamento e dá fôlego ao bloco */
+    font-size: 10px !important;         /* 4. Devolve o tamanho nítido de leitura */
+    font-weight: bold !important;       /* 5. Garante o destaque correto do crachá */
+    display: inline-flex !important;
+    align-items: center !important;
+    margin-left: 5px !important;        /* 6. Espaçamento unificado no CSS */
+}
+
+.header-avatar {
+    display: flex;
+    align-items: center;
+    color: #475569;
+}
+
+.header-avatar .material-icons {
+    font-size: 24px;
+}
+
+.header-user {
+    font-family: 'Roboto', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+    text-shadow: 0 1px 0 #fff;
+    white-space: nowrap;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.notificacao-container {
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: #475569;
+}
+
+.notificacao-container .material-icons {
+    font-size: 22px;
+}
+
+.badge-vermelho {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background-color: #ef4444;
+    color: white;
+    font-size: 9px;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid white;
+}
+
+.header-logout {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    color: #dc3545;
+    transition: transform 0.2s;
+}
+
+.header-logout .material-icons {
+    font-size: 22px;
+}
+
+.header-logout:active {
+    transform: scale(0.9);
+}
+
+/* Visibilidade Responsiva do Nome */
+.nome-desktop {
+    display: inline;
+}
+
+.nome-mobile {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .nome-desktop {
+        display: none;
+    }
+    
+    .nome-mobile {
+        display: inline;
+    }
+}
+
+/* ======================================================== */
+/* 2. CONTÊINER DE ABAS - HÍBRIDO (CARROSSEL NO DESKTOP)    */
+/* ======================================================== */
+.tab-container {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;          
+    white-space: nowrap !important;        
+    width: 100% !important;
+    padding: 12px 15px !important;
+    box-sizing: border-box !important;
+    justify-content: flex-start !important; 
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    scrollbar-width: none !important; 
+    -webkit-overflow-scrolling: touch !important; 
+}
+
+.tab-container::-webkit-scrollbar {
+    display: none !important;
+}
+
+.tab-button {
+    flex: 1 0 auto !important;              
+    padding: 8px 20px !important;
+    border-radius: 50px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    border: 1px solid #cbd5e1 !important;
+    background-color: #f8fafc !important;
+    color: #475569 !important;
+    transition: all 0.2s !important;
+    outline: none;
+    text-align: center !important;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.tab-button.selected {
+    background-color: var(--cor-primaria) !important;
+    color: white !important;
+    border-color: var(--cor-primaria) !important;
+    box-shadow: 0 4px 10px rgba(40, 167, 69, 0.2);
+}
+
+/* ======================================================== */
+/* 3. TOPO DA PLANILHA: LEGENDA, AGENDA E TÍTULO            */
+/* ======================================================== */
+.header-legenda-container {
+    width: 100%;
+    padding: 10px 20px 10px 20px !important;
+    box-sizing: border-box;
+    background-color: #ffffff;
+}
+
+.header-legenda-linha {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 30px;
+}
+
+.container-titulo-central {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+}
+
+#btn-trigger-mapa-mobile {
+        display: inline-flex !important;
+        align-items: center !important;
+        background: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        color: #1e293b !important;
+		cursor: pointer !important;
+}
+	
+
+#lbl-quadra-titulo {
+    margin: 0 !important;
+    font-size: 20px;
+    color: #333;
+    font-weight: 700;
+    line-height: 1 !important;
+}
+
+.agenda-trigger, .legenda-trigger {
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #475569;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#agenda-icone, #legenda-icone {
+    display: inline-block;
+    transition: transform 0.2s;
+    font-size: 12px;
+}
+
+.agenda-trigger.expandido #agenda-icone,
+.legenda-trigger.expandido #legenda-icone {
+    transform: rotate(180deg);
+}
+
+.agenda-conteudo, .legenda-conteudo {
+    display: none;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background-color: #f8fafc;
+    margin-top: 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.agenda-nenhuma-reserva {
+    text-align: center;
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+    font-style: italic;
+}
+
+.legenda-itens-linha-unica {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-start;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legenda-icone-cor {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    display: inline-block; 
+}
+
+.legenda-texto {
+    font-size: 13px;
+    color: #475569;
+    font-weight: 500;
+}
+
+/* ======================================================== */
+/* 4. DESIGN DA TABELA E MOLDURA CINZA SÓLIDA               */
+/* ======================================================== */
+.tabela-container {
+    width: 100%;
+    padding: 5px 5px !important; 
+    box-sizing: border-box;
+    overflow-x: auto; 
+}
+
+#tabelaQuadra {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    border: 1px solid #e2e8f0;
+}
+
+/* LINHAS DE CABEÇALHO - ALTURA E PADDING FORÇADOS */
+#tabelaQuadra th, #linha-datas-tabela td {
+    background-color: #f2f2f2 !important;
+    color: #475569 !important;
+    font-weight: 700 !important;
+    border: 1px solid #e2e8f0 !important;
+    vertical-align: middle !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    padding: 0 8px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    line-height: 32px !important;
+}
+
+#tabelaQuadra th {
+    font-size: 14px !important;
+}
+
+#linha-datas-tabela td {
+    font-size: 12px !important;
+}
+
+/* CÉLULAS DO MIOLO */
+#tabelaQuadra td {
+    border: 1px solid #e2e8f0;
+    padding: 5px 8px;
+    font-size: 14px;
+    text-align: center;
+    min-width: 90px;
+    height: 34px;
+    box-sizing: border-box;
+	/* ======================================================== */
+    /* ✨ AS 3 LINHAS DE BLINDAGEM ANTI-QUEBRA (RETICÊNCIAS)   */
+    /* ======================================================== */
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    /* ======================================================== */
+}
+
+#tabelaQuadra td.horario-celula {
+    background-color: #f2f2f2 !important;
+    color: #334155;
+    font-weight: normal; 
+    font-size: 14px;
+    line-height: 1.2;
+    width: 110px !important;
+    min-width: auto !important;
+    padding: 4px 8px !important;
+    height: 34px;
+    box-sizing: border-box;
+}
+
+/* ======================================================== */
+/* NOVO: STATUS E CORES DAS CÉLULAS (BEBENDO DO GLOBAL.CSS) */
+/* ======================================================== */
+.celula-bloqueada {
+    background-color: var(--bg-celula-bloqueada) !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+/* .celula-ocupada agora não tem cor aqui, pois serve apenas como marcador lógico para o JS */
+.celula-reserva-1h {
+    background-color: var(--bg-reserva-1h) !important; /* 🟢 Puxa o verde do global.css */
+}
+
+.celula-reserva-2h {
+    background-color: var(--bg-reserva-2h) !important; /* 🔵 Puxa o azul do global.css */ 
+}
+
+.celula-aula {
+    background-color: var(--bg-celula-aula) !important;
+    color: var(--txt-celula-tabela) !important;
+}
+
+.celula-dupla {
+    background-color: var(--bg-celula-dupla) !important; 
+    color: var(--txt-celula-tabela) !important;
+}
+
+.celula-reserva-ranking {
+    background-color: var(--bg-reserva-ranking) !important; /* 🟡 Puxa o amarelo do global.css */ 
+}
+
+
+
+/* ======================================================== */
+/* 5. REGRAS DE MEDIA QUERIES (COMPORTAMENTO MOBILE)        */
+/* ======================================================== */
+@media (max-width: 767px) {
+    #tela-visao-quadras {
+        padding-bottom: 5px !important; 
+    }
+
+    .tab-container {
+        display: none !important;
+    }
+    
+    .header-legenda-linha {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+        gap: 5px !important;
+    }
+
+    .container-titulo-central {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        flex-grow: 1 !important;
+        margin: 0 10px !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+    }
+
+    
+
+    #lbl-quadra-titulo {
+        font-size: 17px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        text-align: center !important;
+        max-width: 120px !important;
+    }
+
+    .agenda-trigger, .legenda-trigger {
+        flex-shrink: 0 !important;
+        font-size: 15px !important;
+        padding: 4px 6px !important;
+    }
+
+    #agenda-icone, #legenda-icone {
+        font-size: 13px !important;
+    }
+    
+    .header-legenda-container {
+        padding: 9px 10px 9px 10px !important;
+    }
+    
+    .tabela-container {
+        padding: 5px 5px;
+    }
+    
+    #tabelaQuadra td {
+        min-width: 80px;
+        font-size: 13px; /* 🔹 Reduzimos de 12px para 11px para ganhar espaço */
+        padding: 3px 4px !important; /* 🔹 Reduzimos o padding vertical de 6px para 3px */
+        line-height: 1.1 !important; /* 🔹 Espaçamento de linha colado para o texto duplo não vazar */
+        height: 32px; /* 🔹 Altura compacta ideal que o navegador agora consegue obedecer */
+    }
+    
+    #tabelaQuadra td.horario-celula {
+        font-size: 13px; /* 🔹 Alinhado com o miolo */
+        width: auto !important; 
+        min-width: 55px;
+        padding: 3px 2px !important; /* 🔹 Padding enxuto para as duas linhas de hora */
+        line-height: 1.1 !important;
+        height: 32px; /* 🔹 Mesma altura idêntica para manter a linha reta */
+    }
+    
+    #tabelaQuadra td.horario-celula .hora-traco { 
+        display: none; 
+    }
+    
+    #tabelaQuadra td.horario-celula .hora-item { 
+        display: block; 
+    }
+}
+
+/* ======================================================== */
+/* 6. DESIGN DO MODAL DE SELEÇÃO E CONTENÇÃO DE SCROLL      */
+/* ======================================================== */
+
+/* -------------------------------------------------------- */
+/* NOVO: CONTAINER DE BUSCA PREMIUM (MATTE GLASS)           */
+/* -------------------------------------------------------- */
+.busca-mapa-wrapper {
+    display: none; /* Escondido por padrão, controlado pelos modos abaixo */
+    position: relative;
+    margin: 0 auto 16px auto;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0 2px;
+}
+
+#input-busca-mapa-quadras {
+    width: 100%;
+    height: 42px;
+    padding: 0 16px 0 42px;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+    background-color: #f8fafc;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#input-busca-mapa-quadras:focus {
+    border-color: var(--cor-primaria); /* Verde SetPoint */
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.15);
+}
+
+.busca-mapa-icone {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+    font-size: 20px;
+    pointer-events: none;
+}
+
+/* -------------------------------------------------------- */
+/* REGRA IMPERATIVA DE VISIBILIDADE SELETIVA INTELIGENTE    */
+/* -------------------------------------------------------- */
+
+/* Quando o modal estiver com a classe/estado de lista, exibe a busca */
+.modal-modo-lista .busca-mapa-wrapper {
+    display: block;
+}
+
+/* Quando estiver em modo grade, garante o display none estrito */
+.modal-modo-grade .busca-mapa-wrapper {
+    display: none !important;
+}
+
+/* -------------------------------------------------------- */
+/* SUPORTE PREMIUM AO MODO ESCURO (DARK MODE)               */
+/* -------------------------------------------------------- */
+body.dark-mode #input-busca-mapa-quadras {
+    background-color: #262626;
+    border-color: #444444;
+    color: #f8fafc;
+}
+body.dark-mode #input-busca-mapa-quadras:focus {
+    border-color: var(--cor-primaria);
+    background-color: #1e1e1e;
+}
+body.dark-mode .busca-mapa-icone {
+    color: #94a3b8;
+}
+
+.modal-scroll-wrapper {
+    height: auto !important;         
+    max-height: 275px !important;    
+    overflow-y: auto !important;     
+    margin-bottom: 20px !important;  
+}
+
+.modal-scroll-wrapper::-webkit-scrollbar {
+    width: 4px;
+}
+
+.modal-scroll-wrapper::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+
+#grid-numerico-quadras {
+    display: grid !important;
+    gap: 12px !important;
+    padding: 2px !important;         
+    box-sizing: border-box;
+}
+
+/* Layout Responsivo do Grid conforme o modo ativo (Grade x Lista) */
+.modal-modo-grade #grid-numerico-quadras {
+    grid-template-columns: repeat(4, 1fr) !important;
+}
+
+.modal-modo-lista #grid-numerico-quadras {
+    grid-template-columns: 50px 1fr !important;
+}
+
+.btn-quadra-grade, .btn-quadra-num, .btn-quadra-nome {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #f8fafc !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    font-family: inherit;
+    transition: all 0.15s ease-in-out;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn-quadra-grade {
+    display: inline-block !important;
+    text-align: center !important;
+    padding: 12px 5px !important; /* 🌟 Trazido do JS */
+    font-size: 15px !important;   /* 🌟 Trazido do JS */
+    font-weight: bold !important; /* 🌟 Trazido do JS */
+}
+
+.btn-quadra-num {
+    text-align: center !important;
+    padding: 12px 5px !important; /* 🌟 Trazido do JS */
+    font-size: 15px !important;   /* 🌟 Trazido do JS */
+    font-weight: bold !important; /* 🌟 Trazido do JS */
+}
+
+.btn-quadra-nome {
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important; 
+    padding: 12px 12px !important; /* 🌟 Trazido do JS (Ajustado o padding geral) */
+    font-size: 14px !important;    /* 🌟 Trazido do JS */
+    font-weight: 500 !important;   /* 🌟 Trazido do JS */
+}
+
+/* ======================================================== */
+/* 7. CONTROLE DE ALTERNÂNCIA (SEGMENTED CONTROL CHAVINHA)  */
+/* ======================================================== */
+.view-toggle-container {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+    margin-bottom: 20px !important; 
+}
+
+.view-toggle {
+    display: flex !important;
+    background: #f1f5f9 !important;
+    padding: 3px !important;
+    border-radius: 30px !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+.toggle-btn {
+    padding: 6px 24px !important;
+    border-radius: 30px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease-in-out !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.toggle-btn.active {
+    background: #ffffff !important;
+    color: var(--cor-primaria) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ======================================================== */
+/* 8. DESIGN DA PÍLULA FLUTUANTE (DYNAMIC ISLAND PREMIUM)   */
+/* ======================================================== */
+.quadra-pill-toast {
+    position: fixed !important;
+    top: 50px !important;             
+    left: 50% !important;
+    transform: translate(-50%, -30px) !important; 
+    background: rgba(15, 23, 42, 0.88) !important; 
+    backdrop-filter: blur(10px) !important;       
+    -webkit-backdrop-filter: blur(10px) !important;
+    color: #ffffff !important;
+    padding: 8px 24px !important;
+    border-radius: 40px !important;   
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important; 
+    border: 1px solid rgba(255, 255, 255, 0.12) !important; 
+    z-index: 9999 !important;         
+    opacity: 0 !important;            
+    pointer-events: none !important;  
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important; 
+    letter-spacing: 0.3px !important;
+    white-space: nowrap !important;
+}
+
+.quadra-pill-toast.visible {
+    opacity: 1 !important;
+    transform: translate(-50%, 0) !important; 
+}
+
+/* ======================================================== */
+/* 9. BOTÕES FLUTUANTES (FABs - ESQUERDA E DIREITA PREMIUM) */
+/* ======================================================== */
+.fab-btn {
+    position: fixed !important;
+    bottom: 25px !important;
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important; 
+    outline: none !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9000 !important; 
+    transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+.fab-btn .material-icons {
+    font-size: 28px !important;
+    transition: color 0.3s ease, text-shadow 0.3s ease !important; 
+}
+
+.fab-btn:active {
+    transform: scale(0.92) !important;
+}
+
+.fab-left {
+    left: 20px !important;
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important; 
+    color: white !important;
+    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4) !important; 
+}
+
+.fab-left:active {
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
+}
+
+.fab-right {
+    right: 20px !important;
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%) !important;
+    color: white !important;
+    box-shadow: 0 6px 16px rgba(30, 41, 59, 0.4) !important; 
+}
+
+.fab-right:active {
+    box-shadow: 0 2px 8px rgba(30, 41, 59, 0.3) !important;
+}
+
+/* ======================================================== */
+/* 10. MODO ESCURO (PINTURA DA TELA DA PLANILHA)            */
+/* ======================================================== */
+body.dark-mode #tela-visao-quadras {
+    background-color: #121212 !important;
+}
+body.dark-mode #app-header {
+    background: linear-gradient(to bottom, #2a2a2a 0%, #1a1a1a 100%) !important;
+    border-bottom: 1px solid #444 !important;
+}
+body.dark-mode .header-user { 
+    color: #ffffff !important; 
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8) !important; 
+}
+body.dark-mode .header-avatar,
+body.dark-mode .notificacao-container { 
+    color: #ccc !important; 
+}
+body.dark-mode .tab-container {
+    background-color: #1e1e1e !important;
+    border-bottom: 1px solid #333 !important;
+}
+body.dark-mode .tab-button {
+    background-color: #333 !important;
+    color: #ccc !important;
+    border-color: #444 !important;
+}
+body.dark-mode .tab-button.selected {
+    background-color: var(--cor-primaria) !important;
+    color: white !important;
+    border-color: white !important;
+}
+
+/* Área do Título, Agenda e Legenda */
+body.dark-mode .header-legenda-container {
+    background-color: #1e1e1e !important; 
+    border-bottom: 1px solid #333333 !important; 
+}
+body.dark-mode #lbl-quadra-titulo { 
+    color: #ffffff !important; 
+}
+body.dark-mode .agenda-trigger, 
+body.dark-mode .legenda-trigger { 
+    color: #ccc !important; 
+}
+body.dark-mode #btn-trigger-mapa-mobile {
+    color: #ccc !important;
+}
+body.dark-mode .agenda-conteudo, 
+body.dark-mode .legenda-conteudo {
+    background-color: #1e1e1e !important;
+    border-color: #333 !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
+}
+body.dark-mode .legenda-texto,
+body.dark-mode .agenda-nenhuma-reserva { 
+    color: #ccc !important; 
+}
+
+/* --- A MÁGICA DA UNIFICAÇÃO DA MOLDURA ESCURA --- */
+body.dark-mode #tabelaQuadra {
+    background-color: transparent !important;
+    border-color: #333333 !important; /* Suavizei a borda mestre */
+}
+body.dark-mode #tabelaQuadra th, 
+body.dark-mode #linha-datas-tabela td,
+body.dark-mode #tabelaQuadra td.horario-celula {
+    background-color: #252525 !important; /* Unificado com o miolo bloqueado */
+    color: #ffffff !important; 
+    border-color: #333333 !important; /* Borda interna suavizada */
+}
+body.dark-mode #tabelaQuadra td {
+    border-color: #333333 !important; 
+}
+
+/* Botões Flutuantes Escuros */
+body.dark-mode .fab-right {
+    background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important; 
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.15) !important; 
+    color: #1e293b !important;
+}
+body.dark-mode .fab-right .material-icons {
+    color: #f59e0b !important; 
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.4) !important; 
+}
+
+/* ======================================================== */
+/* 11. TOQUES DE COR (VERDE SETPOINT)                       */
+/* ======================================================== */
+.texto-legenda {
+    color: var(--cor-primaria, #28a745) !important;
+    transition: color 0.3s ease !important;
+}
+body.dark-mode .texto-legenda {
+    color: #4ade80 !important; 
+}
+
+/* ======================================================== */
+/* 12. DIAS PASSADOS OU FORA DA ANTECEDÊNCIA (BLOQUEADOS)   */
+/* ======================================================== */
+.dia-bloqueado-visual {
+    color: #94a3b8 !important;         
+    background-color: #eaeaea !important; 
+    opacity: 0.65;
+    cursor: not-allowed !important; 
+}
+
+body.dark-mode .dia-bloqueado-visual {
+    color: #555555 !important;         
+    background-color: #252525 !important; /* UNIFICADO: O mesmo cinza da moldura */
+    opacity: 0.5; /* Apenas escurecemos levemente via opacidade */
+}
+
+/* ======================================================== */
+/* CORREÇÃO MODO ESCURO: CABEÇALHO DO USUÁRIO               */
+/* ======================================================== */
+body.dark-mode .header-user-text {
+    color: #f8fafc; /* Branco gelo para leitura perfeita no fundo escuro */
+    text-shadow: none; /* Remove a sombra branca que suja a fonte no modo noturno */
+}
+
+
+/* ======================================================== */
+/* 13. FORMULÁRIO DE NOVO AGENDAMENTO PREMIUM (FASE 2.1)    */
+/* ======================================================== */
+
+/* Força as proporções enxutas do laboratório contra o esticamento antigo */
+#modal-agendamento .modal-form-content { 
+    background-color: #ffffff !important; /* Resgata o fundo branco real */
+    border-radius: 12px !important; 
+    overflow: hidden !important; 
+    padding: 0 !important; /* Encaixe milimétrico do cabeçalho */
+    max-width: 400px !important; /* RETORNO DEFINITIVO: Trava o chassi compacto de testes */
+    width: 100% !important;
+    box-sizing: border-box !important; 
+    transition: all 0.25s ease-in-out !important; 
+    border: 1px solid transparent !important; 
+    box-shadow: 0 0 25px rgba(46, 139, 87, 0.22) !important; /* Glow Esfumaçado Verde */
+}
+
+/* Modo Escuro */
+body.dark-mode #modal-agendamento .modal-form-content {
+    background-color: #1e1e1e !important; /* Resgata o grafite real */
+    box-shadow: 0 0 30px rgba(74, 222, 128, 0.18) !important;
+}
+
+/* Reatividade Mobile (Garante o preenchimento confortável no telefone) */
+@media (max-width: 600px) {
+    #modal-agendamento .modal-form-content {
+        border-radius: 20px 20px 0 0 !important;
+        max-width: 100% !important;
+    }
+}
+
+/* ❌ AJUSTE CIRÚRGICO DO BOTÃO DE REMOVER ATLETA (X) */
+.btn-remover-atleta {
+    color: #ef4444 !important;           /* 1. Força a cor vermelha oficial do chassi[cite: 10] */
+    font-size: 22px !important;          /* 2. Aumenta sutilmente o tamanho do caractere */
+    font-weight: 700 !important;         /* 3. Dá uma presença mais robusta e firme ao traço */
+    cursor: pointer !important;          /* 4. Transforma o cursor em mãozinha ao passar o mouse */
+    margin-left: 5px !important;         /* 5. Dá um recuo seguro em relação à borda do seletor */
+    height: 40px !important;             /* 6. Fixa a mesma altura idêntica do .saas-field */
+    display: inline-flex !important;     /* 7. Transforma em flexbox para controle milimétrico */
+    align-items: center !important;      /* 8. MÁGICA DA CENTRALIZAÇÃO: Alinha o "x" no meio do bloco vertical */
+    justify-content: center !important;
+    flex-shrink: 0 !important;           /* 9. Impede que o botão seja esmagado em telas menores */
+    user-select: none !important;        /* 10. Evita que o usuário selecione o texto por acidente no duplo clique */
+    transition: transform 0.1s ease, opacity 0.2s !important;
+}
+
+/* Feedback tátil sutil de afundamento ao clicar no celular */
+.btn-remover-atleta:active {
+    transform: scale(0.88) !important;
+    opacity: 0.7 !important;
+}
+
+.saas-header { 
+    display: flex !important; 
+    justify-content: space-between !important; 
+    align-items: center !important; 
+    padding: 10px 20px !important; 
+    background: linear-gradient(135deg, #1f4037 0%, #2e8b57 100%) !important; /* Linha Apple */
+    color: #ffffff !important; 
+    height: 50px !important;
+    box-sizing: border-box !important;
+}
+
+.saas-header h3 { 
+    margin: 0 !important; 
+    font-size: 18px !important; 
+    font-weight: 700 !important; 
+}
+
+.btn-voltar-saas { 
+    background: transparent !important; 
+    border: none !important; 
+    padding: 0 !important; 
+    cursor: pointer !important; 
+    display: inline-flex !important; 
+    align-items: center !important; 
+    color: inherit !important; 
+    font-size: 28px !important; 
+    outline: none !important; 
+    -webkit-tap-highlight-color: transparent;
+}
+
+.saas-body { 
+    padding: 20px !important; 
+    box-sizing: border-box !important; 
+}
+
+.saas-row { 
+    display: flex !important; 
+    align-items: flex-start !important; /* Suporta de forma limpa a expansão de novos atletas */
+    justify-content: space-between !important; 
+    margin-bottom: 14px !important; 
+    width: 100% !important; 
+    gap: 10px !important; 
+}
+
+/* FIX LINE: Conecta perfeitamente as palavras do rótulo ao centro da primeira caixa */
+.saas-row label { 
+    flex: 0 0 85px !important; 
+    text-align: left !important; 
+    font-weight: bold !important; 
+    font-size: 14px !important; 
+    color: #1e293b !important; 
+    white-space: nowrap !important; 
+    height: 40px !important; 
+    display: inline-flex !important;
+    align-items: center !important; /* Centralização do texto do label */
+}
+
+body.dark-mode .saas-row label {
+    color: #f8fafc !important;
+}
+
+/* COMPONENTES DOS CAMPOS DROPDOWN */
+.saas-field { 
+    flex: 1 !important; 
+    padding: 0 12px !important; /* Desobstrui o eixo vertical */
+    border: 1px solid #cbd5e1 !important; 
+    border-radius: 8px !important; 
+    font-size: 14px !important; 
+    font-family: inherit !important; 
+    background-color: #f8fafc !important; 
+    color: #1e293b !important; 
+    outline: none !important; 
+    height: 40px !important; 
+    line-height: 38px !important; /* Alinha o texto cirurgicamente no meio */
+    box-sizing: border-box !important; 
+    transition: all 0.2s !important; 
+    min-width: 0 !important;
+}
+
+.saas-field:focus { 
+    border-color: #2E8B57 !important; 
+    background-color: #ffffff !important; 
+}
+
+.saas-field:disabled { 
+    background-color: #e2e8f0 !important; 
+    color: #475569 !important;
+    cursor: not-allowed !important; 
+    opacity: 0.8 !important; 
+}
+
+body.dark-mode .saas-field {
+    background-color: #2d2d2d !important;
+    border-color: #444444 !important;
+    color: #ffffff !important;
+}
+
+body.dark-mode .saas-field:disabled {
+    background-color: #252525 !important;
+    color: #94a3b8 !important;
+}
+
+.bloco-jogadores-saas { 
+    display: flex !important; 
+    flex-direction: column !important; 
+    gap: 10px !important; 
+    width: 100% !important; 
+}
+
+.add-atleta { 
+    display: inline-flex !important; 
+    align-items: center !important; 
+    justify-content: center !important; 
+    width: 38px !important; 
+    height: 38px !important; 
+    border-radius: 50% !important; 
+    background-color: #e8f5e9 !important; 
+    color: #2e7d32 !important; 
+    border: 1px solid #c8e6c9 !important; 
+    font-size: 24px !important; 
+    font-weight: bold !important; 
+    line-height: 1 !important; 
+    cursor: pointer !important; 
+    transition: transform 0.1s ease !important; 
+    user-select: none !important; 
+    flex-shrink: 0 !important; 
+}
+
+.add-atleta:active { transform: scale(0.92) !important; }
+
+body.dark-mode .add-atleta { 
+    background-color: #1b5e20 !important; 
+    color: #ffffff !important; 
+    border-color: #2e7d32 !important; 
+}
+
+.saas-btn-submit { 
+    width: 100% !important; 
+    padding: 12px !important; 
+    margin-top: 15px !important;  
+    border: none !important; 
+    border-radius: 8px !important; 
+    font-size: 15px !important; 
+    font-weight: bold !important; 
+    cursor: pointer !important; 
+    background-color: #2E8B57 !important; 
+    color: white !important; 
+    box-shadow: 0 4px 12px rgba(46, 139, 87, 0.15) !important; 
+    box-sizing: border-box !important; 
+    transition: transform 0.1s, background-color 0.2s, padding 0.2s !important; 
+}
+
+@media (max-width: 600px) { 
+    .saas-btn-submit { 
+        padding: 14.5px 12px !important; 
+        font-size: 16px !important; 
+    } 
+}
+
+
+/* Linhas e Seletores Dinâmicos de Atletas Adicionais */
+.saas-row-atleta {
+    margin: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.saas-field-atleta {
+    width: 0px !important;
+    flex: 1 !important;
+    max-width: 100% !important;
+}
+
+
+/* ======================================================== */
+/* 14. ESTADOS CONTEXTUAIS REATIVOS DAS QUADRAS             */
+/* ======================================================== */
+
+/* --- MODO CLARO: QUADRA INTERDITADA --- */
+.status-saas-interditada,  
+.tab-button.selected.status-saas-interditada {
+    background-color: #fee2e2 !important; /* Vermelho pastel suave */
+    color: #991b1b !important;            /* Texto vinho escuro */
+    border-color: #fca5a5 !important;
+}
+/* Força uma borda mais grossa na aba selecionada para indicar o foco ativo */
+.tab-button.selected.status-saas-interditada {
+    border: 2px solid #991b1b !important;
+}
+
+/* --- MODO CLARO: QUADRA BLOQUEADA --- */
+.status-saas-bloqueada, 
+.tab-button.selected.status-saas-bloqueada {
+    background-color: #ffedd5 !important; /* Laranja pastel suave */
+    color: #9a3412 !important;            /* Texto marrom escuro */
+    border-color: #fed7aa !important;
+}
+/* Força uma borda mais grossa na aba selecionada para indicar o foco ativo */
+.tab-button.selected.status-saas-bloqueada {
+    border: 2px solid #9a3412 !important;
+}
+
+/* --- MODO ESCURO (DARK MODE) --- */
+/* ======================================================== */
+/* 🌓 REFINE DE CORES DE STATUS (INTERDITADA / BLOQUEADA)   */
+/* VALIDO PARA OS BOTÕES DO TOPO E PARA O MODAL EM MODO ESCURO */
+/* ======================================================== */
+
+/* 🔴 QUADRAS INTERDITADAS (Vermelho Translúcido Elétrico) */
+body.dark-mode .status-saas-interditada,
+body.dark-mode #modal-mapa-quadras .status-saas-interditada {
+    background-color: rgba(239, 68, 68, 0.15) !important; /* Fundo vermelho suave e brilhante */
+    color: #f87171 !important;                            /* Texto vermelho claro de alta leitura */
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;  /* Borda sutil demarcando o botão */
+}
+
+/* 🟠 QUADRAS BLOQUEADAS (Laranja Translúcido Elétrico) */
+body.dark-mode .status-saas-bloqueada,
+body.dark-mode #modal-mapa-quadras .status-saas-bloqueada {
+    background-color: rgba(249, 115, 22, 0.15) !important; /* Fundo laranja suave e brilhante */
+    color: #fb923c !important;                             /* Texto laranja claro de alta leitura */
+    border: 1px solid rgba(249, 115, 22, 0.4) !important;  /* Borda sutil demarcando o botão */
+}
+
+/* 🟢 Força o destaque da borda se a aba do topo com status estiver selecionada pelo gestor */
+body.dark-mode .tab-button.selected.status-saas-interditada {
+    border: 2px solid #f87171 !important;
+}
+body.dark-mode .tab-button.selected.status-saas-bloqueada {
+    border: 2px solid #fb923c !important;
+}
+
+
+/* ======================================================== */
+/* 15. 🌓 COBERTURA DE MODO ESCURO: MODAL SELECIONAR QUADRA */
+/* ======================================================== */
+body.dark-mode #modal-mapa-quadras .modal-content {
+    background-color: #1e293b !important; /* Fundo ardósia escuro premium */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode #modal-mapa-quadras .modal-content h3 {
+    color: #f8fafc !important;
+}
+
+body.dark-mode #modal-mapa-quadras .modal-content p {
+    color: #94a3b8 !important;
+}
+
+/* Chavinha de Seleção Segmentada (Grade / Lista) */
+body.dark-mode #modal-mapa-quadras .view-toggle {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode #modal-mapa-quadras .toggle-btn {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode #modal-mapa-quadras .toggle-btn.active {
+    background: #1e293b !important;
+    color: #4ade80 !important; /* Verde reativo para o modo escuro */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Botões das Quadras Disponíveis (Substituído pelo Efeito Matte/Vidro Suave) */
+body.dark-mode #modal-mapa-quadras .btn-quadra-grade,
+body.dark-mode #modal-mapa-quadras .btn-quadra-num,
+body.dark-mode #modal-mapa-quadras .btn-quadra-nome {
+    background-color: rgba(255, 255, 255, 0.05) !important; /* Slate flutuante translúcido */
+    color: #cbd5e1 !important;                               /* Prata fosco de alta nitidez */
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;  /* Borda sutil de vidro */
+}
+
+/* Botão Cancelar na base do modal */
+body.dark-mode #modal-mapa-quadras .btn-app {
+    background-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+/* 🚨 PRESERVAÇÃO DAS CORES DE STATUS (INTERDITADA/BLOQUEADA) DENTRO DO MODAL ESCURO */
+body.dark-mode #modal-mapa-quadras .status-saas-interditada {
+    background-color: rgba(239, 68, 68, 0.15) !important; /* Fundo vermelho translúcido elétrico */
+    color: #f87171 !important;                            /* Texto vermelho claro de alta leitura */
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;  /* Borda de contenção avermelhada */
+}
+
+body.dark-mode #modal-mapa-quadras .status-saas-bloqueada {
+    background-color: rgba(249, 115, 22, 0.15) !important; /* Fundo laranja translúcido elétrico */
+    color: #fb923c !important;                             /* Texto laranja claro de alta leitura */
+    border: 1px solid rgba(249, 115, 22, 0.4) !important;  /* Borda de contenção alaranjada */
+}
+
+
+/* ======================================================== */
+/* 16. 🚨 COORDENAÇÃO VISUAL: ESTADO DE MANUTENÇÃO (OFF)    */
+/* ======================================================== */
+
+/* 🔒 TRAVA ABSOLUTA: Supera o "#app-header .badge" e força a pílula a sumir no modo ON */
+#app-header .badge.badge-SaaS-off {
+    display: none !important; 
+}
+
+/* 🔓 LIBERAÇÃO CONTEXTUAL: Só ganha vida se o corpo do app estiver em OFF */
+body.sistema-SaaS-off #app-header .badge.badge-SaaS-off {
+    display: inline-flex !important;
+}
+
+/* 🔴 Altera o Painel de Boas-Vindas para o Vermelho/Coral das Aulas */
+body.sistema-SaaS-off #app-header {
+    background: linear-gradient(135deg, #e05c5c 0%, #f08080 100%) !important;
+    border-bottom: 2px solid #e06666 !important;
+}
+body.sistema-SaaS-off #app-header .header-user-text,
+body.sistema-SaaS-off #app-header .material-icons {
+    color: #ffffff !important;
+}
+
+/* Compatibilidade da barra em Modo Escuro */
+body.dark-mode.sistema-SaaS-off #app-header {
+    background: linear-gradient(135deg, #9b4444 0%, #cd5c5c 100%) !important;
+    border-bottom-color: #a52a2a !important;
+}
+
+/* 🧱 Apenas o contorno externo (moldura) da tabela em Vermelho Alarme */
+body.sistema-SaaS-off #tabelaQuadra {
+    outline: 2px solid #e06666 !important;
+}
+
+body.dark-mode.sistema-SaaS-off #tabelaQuadra {
+    outline: 2px solid #a52a2a !important;
+}
+
+
+
+/* ======================================================== */
+/* 17. DESIGN DO MENU CONTEXTUAL DE RESERVAS (HÍBRIDO)      */
+/* ======================================================== */
+
+/* Container Mestre de Sobreposição (Backdrop) */
+#modal-acoes-reserva {
+    display: none; /* Ativado via JS mudando para flex */
+    align-items: center; /* Desktop: Centraliza no meio da tela */
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 12000 !important;
+    transition: opacity 0.25s ease-in-out;
+}
+
+/* O Chassi do Menu (Comportamento Desktop Padrão - Soft Tactile Depth) */
+#modal-acoes-reserva .modal-acoes-content {
+    background: #ffffff !important;
+    border-radius: 16px !important;
+    width: 100% !important;
+    max-width: 350px !important; /* Trava o chassi do card */
+    box-sizing: border-box !important;
+    /* AJUSTE 1: Reduzido o padding-bottom de 24px para 14px para encolher a base */
+    padding: 24px 24px 14px 24px !important;
+    border: 1px solid #e6eef5 !important;
+    /* Sombras tridimensionais em camadas realistas */
+    box-shadow: 0 4px 6px -1px rgba(163, 177, 198, 0.15), 0 12px 30px -4px rgba(163, 177, 198, 0.35) !important;
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1) !important;
+}
+
+/* Oculta la barra de arrastar do celular no computador */
+#modal-acoes-reserva .sheet-drag-handle { 
+    display: none; 
+}
+
+/* Cabeçalho de Contexto Limpo (Sem Raquete/Ícones) */
+.acoes-header-text {
+    text-align: left !important;
+    margin-bottom: 24px !important;
+}
+.acoes-header-text h3 {
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+}
+.acoes-header-text p {
+    margin: 4px 0 0 0 !important;
+    font-size: 13px !important;
+    color: #64748b !important;
+    font-weight: 500 !important;
+}
+
+/* Grid de Botões Elásticos */
+.saas-grid-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+}
+
+/* Estilo das Ações Volumosas (Soft Tactile Depth) */
+.btn-universal {
+    width: 100% !important;
+    height: 46px !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 4px rgba(163, 177, 198, 0.2), 0 4px 10px rgba(163, 177, 198, 0.3) !important;
+    transition: transform 0.1s, opacity 0.2s !important;
+}
+
+/* Efeito mecânico ao pressionar */
+.btn-universal:active {
+    transform: scale(0.96) !important;
+    box-shadow: 0 1px 2px rgba(163, 177, 198, 0.1) !important;
+}
+
+/* Gradição Cromática Premium */
+.btn-ranking-gold { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; }
+.btn-ranking-gold.btn-bloqueado { background: #f1f5f9 !important; color: #94a3b8 !important; box-shadow: none !important; cursor: not-allowed !important; border: 1px solid #e2e8f0 !important; }
+.btn-view { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; }
+.btn-edit { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%) !important; }
+.btn-edit-1h { background: var(--gradiente-1-hora-detalhes) !important; }
+.btn-edit-2h { background: var(--gradiente-2-horas-detalhes) !important; }
+.btn-delete { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important; }
+
+/* AJUSTE 2: Divisor pontilhado com margem vertical reduzida de 6px para 4px */
+.divisor-SaaS-linha {
+    border: 0 !important;
+    border-top: 1px dashed #e2e8f0 !important;
+    margin: 4px 0 !important;
+    width: 100% !important;
+}
+
+/* O Rótulo Minimalista de Cancelar */
+.btn-saas-label-cancel {
+    width: 100% !important;
+    border: none !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    /* AJUSTE 3: Altura reduzida de 36px para 18px para eliminar a caixa invisível */
+    height: 18px !important;
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: color 0.15s ease !important;
+    text-decoration: none !important;
+}
+.btn-saas-label-cancel:active { color: #475569 !important; }
+
+/* ======================================================== */
+/* 📱 CAMALEÃO: TRANSFORMA EM BOTTOM SHEET NO MOBILE        */
+/* ======================================================== */
+@media (max-width: 767px) {
+    #modal-acoes-reserva {
+        align-items: flex-end !important;
+    }
+    #modal-acoes-reserva .modal-acoes-content {
+        max-width: 100% !important;
+        border-radius: 24px 24px 0 0 !important;
+        /* Mobile preserva o respiro confortável original para o polegar e gestos */
+        padding: 16px 20px 20px 20px !important; 
+        transform: translateY(100%);
+    }
+    #modal-acoes-reserva .sheet-drag-handle {
+        display: block !important;
+        width: 40px !important;
+        height: 5px !important;
+        background: #cbd5e1 !important;
+        border-radius: 5px !important;
+        margin: 0 auto 20px auto !important;
+    }
+}
+
+/* ======================================================== */
+/* 🌓 ADAPTAÇÃO TOTAL PARA O MODO ESCURO (CARBONO)          */
+/* ======================================================== */
+body.dark-mode #modal-acoes-reserva .modal-acoes-content {
+    background-color: #1e1e1e !important;
+    border-color: #333333 !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+body.dark-mode .acoes-header-text h3 { color: #f8fafc !important; }
+body.dark-mode .acoes-header-text p { color: #94a3b8 !important; }
+body.dark-mode #modal-acoes-reserva .sheet-drag-handle { background: #333333 !important; }
+body.dark-mode .divisor-SaaS-linha { border-top-color: #333333 !important; }
+body.dark-mode .btn-saas-label-cancel { color: #64748b !important; }
+body.dark-mode .btn-saas-label-cancel:active { color: #cbd5e1 !important; }
+
+body.dark-mode .btn-universal {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important; 
+}
+
+body.dark-mode .btn-saas-label-cancel { color: #64748b !important; }
+body.dark-mode .btn-saas-label-cancel:active { color: #cbd5e1 !important; }
+
+body.dark-mode .btn-universal {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* --- CONTROLE DE ESTADO: MODO LEITURA --- */
+/* Quando o painel mestre estiver em modo leitura, força a ocultação dos botões de alteração */
+#modal-acoes-reserva.saas-modo-leitura #btn-saas-editar-reserva,
+#modal-acoes-reserva.saas-modo-leitura #btn-saas-excluir-reserva {
+    display: none !important;
+}
+
+
+
+/* ======================================================== */
+/* 18. PROMPT DE CONFIRMAÇÃO DE EXCLUSÃO PREMIUM             */
+/* ======================================================== */
+
+/* Alarga o chassi do prompt global para os 440px do mockup */
+#modalPrompt .modal-prompt-content {
+    max-width: 440px !important; 
+    border-radius: 16px !important;
+    padding: 26px 30px !important;
+}
+
+#modalPrompt h3 {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+}
+
+.prompt-saas-container {
+    font-family: 'Roboto', sans-serif;
+    text-align: center;
+}
+
+.prompt-saas-fieldset {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 20px 0;
+    background-color: #ffffff;
+    text-align: left;
+}
+
+.prompt-saas-legend {
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 900;
+    color: #94a3b8;
+    letter-spacing: 1.5px;
+    text-align: center;
+    margin: 0 auto;
+}
+
+.prompt-saas-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.prompt-saas-item {
+    font-size: 14.5px;
+    line-height: 2;
+    color: #334155;
+    font-weight: 500;
+}
+
+.prompt-saas-bullet {
+    color: #94a3b8;
+    margin-right: 8px;
+    font-weight: bold;
+}
+
+.prompt-saas-warning {
+    font-size: 15px;
+    color: #334155;
+    font-weight: 500;
+    margin: 20px 0 0 0;
+}
+
+#modalPrompt .modal-prompt-buttons {
+    gap: 14px !important;
+    margin-top: 24px !important;
+}
+
+#modalPrompt .btn-prompt {
+    padding: 12px 20px !important;
+    font-size: 15px !important;
+    border-radius: 10px !important;
+}
+
+#modalPrompt .btn-prompt-cancel {
+    background-color: #64748b !important; /* Slate Grey do botão Cancelar do mockup */
+}
+
+/* --- INTEGRAÇÃO DIRETA COM O SEU MODO ESCURO --- */
+body.dark-mode .prompt-saas-fieldset {
+    background-color: #252525 !important;
+    border-color: #444444 !important;
+}
+
+body.dark-mode .prompt-saas-item {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .prompt-saas-warning {
+    color: #cbd5e1 !important; 
+}
+
+/* --- INTEGRAÇÃO DIRETA COM O SEU MODO ESCURO --- */
+body.dark-mode #modalPrompt h3 {
+    color: #f8fafc !important; /* ⚪ Título em branco/gelo legível */
+}
+
+body.dark-mode .prompt-saas-fieldset {
+    background-color: #252525 !important;
+    border-color: #444444 !important;
+}
+
+body.dark-mode .prompt-saas-item {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .prompt-saas-warning {
+    color: #cbd5e1 !important;
+}
+
+
+/* ======================================================== */
+/* 19. COMPONENTE: USUÁRIOS ONLINE SAAS (MATTE GLASS)       */
+/* ======================================================== */
+.badge-SaaS-online {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background-color: #2e8b57;
+    color: white;
+    font-size: 9px;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid white;
+}
+body.dark-mode .badge-SaaS-online {
+    border-color: #2a2a2a;
+}
+
+/* Estrutura Base das Janelas Suspensas Matte Glass */
+.sheet-SaaS-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.25) !important;
+    z-index: 26000 !important; /* Camada superior para sobreposição total */
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.sheet-SaaS-content {
+    width: 100%;
+    max-width: 400px;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 16px 20px 20px 20px !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.05) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(25px) !important;
+    -webkit-backdrop-filter: blur(25px) !important;
+}
+body.dark-mode .sheet-SaaS-content {
+    background: rgba(30, 30, 30, 0.88) !important;
+    border-color: rgba(255, 255, 255, 0.06) !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+.drag-handle-SaaS {
+    width: 35px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 4px;
+    margin: 0 auto 15px auto;
+}
+body.dark-mode .drag-handle-SaaS { background: #444444; }
+
+.sheet-SaaS-title {
+    margin: 0 0 2px 0 !important;
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+}
+body.dark-mode .sheet-SaaS-title { color: #f8fafc !important; }
+
+.sheet-SaaS-subtitle {
+    margin: 0 0 15px 0 !important;
+    font-size: 12.5px !important;
+    color: #64748b !important;
+}
+body.dark-mode .sheet-SaaS-subtitle { color: #94a3b8 !important; }
+
+.lista-online-SaaS {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.linha-usuario-SaaS {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+}
+.nome-usuario-SaaS {
+    font-size: 14px;
+    font-weight: 500;
+    color: #334155;
+}
+body.dark-mode .nome-usuario-SaaS { color: #cbd5e1; }
+.tags-container-SaaS {
+    display: flex;
+    gap: 4px;
+}
+
+/* Cápsulas Pílulas de Identificação */
+.SaaS-tag {
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 50px;
+    display: inline-flex;
+    align-items: center;
+}
+.SaaS-tag-socio { background-color: rgba(52, 152, 219, 0.12); color: #2980b9; }
+.SaaS-tag-dependente { background-color: rgba(155, 89, 182, 0.12); color: #8e44ad; }
+.SaaS-tag-admin { background-color: rgba(211, 47, 47, 0.12); color: #c62828; text-transform: none !important; }
+
+body.dark-mode .SaaS-tag-socio { background-color: rgba(52, 152, 219, 0.2); color: #5dade2; }
+body.dark-mode .SaaS-tag-dependente { background-color: rgba(155, 89, 182, 0.2); color: #bb8fce; }
+body.dark-mode .SaaS-tag-admin { background-color: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+/* Traço Contínuo Sólido Extra-Fino */
+.divisor-SaaS-linha {
+    border: 0 !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    margin: 12px 0 8px 0 !important;
+    width: 100% !important;
+}
+body.dark-mode .divisor-SaaS-linha {
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Rótulo Centralizado de Fechamento */
+.btn-saas-label-cancel {
+    width: 100% !important;
+    border: none !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    height: 24px !important;
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: color 0.15s ease !important;
+    text-decoration: none !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent;
+}
+.btn-saas-label-cancel:active { color: #475569 !important; }
+body.dark-mode .btn-saas-label-cancel { color: #64748b !important; }
+body.dark-mode .btn-saas-label-cancel:active { color: #cbd5e1 !important; }
+
+/* Mensagem de Estado Vazio da Gaveta */
+.SaaS-lista-vazia {
+    text-align: center;
+    color: #888;
+    font-size: 13.5px;
+    margin: 15px 0;
+    font-style: italic;
+}
+
+body.dark-mode .SaaS-lista-vazia {
+    color: #94a3b8;
+}
+
+/* ======================================================== */
+/* 20. ALONGAMENTO DA PÍLULA DE TOAST (MOBILE)              */
+/* ======================================================== */
+@media (max-width: 767px) {
+    #toastContainer {
+        width: 95% !important; 
+        left: 50% !important;
+        transform: translateX(-50%) !important;  
+    }
+    
+    #toastContainer .toast {
+        width: 100% !important; 
+        max-width: none !important; 
+        box-sizing: border-box !important;
+        padding: 12px 10px !important; 
+    }
+}
+
+/* ======================================================== */
+/* 21. COMPONENTE: MODAL "VER DETALHES DA RESERVA"           */
+/* ======================================================== */
+#modal-ver-detalhes {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 13000 !important;
+}
+
+#modal-ver-detalhes .modal-card-detalhes {
+    background: #ffffff;
+    width: 90%;
+    max-width: 380px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#modal-ver-detalhes .card-header-detalhes {
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #ffffff;
+}
+
+/* 🟢 Cabeçalho 1 Hora */
+#modal-ver-detalhes .card-header-detalhes.header-1h {
+    background: var(--gradiente-1-hora-detalhes);
+}
+
+/* 🔵 Cabeçalho 2 Horas */
+#modal-ver-detalhes .card-header-detalhes.header-2h {
+    background: var(--gradiente-2-horas-detalhes);
+}
+
+/* 🟡 Cabeçalho Ranking */
+#modal-ver-detalhes .card-header-detalhes.header-ranking {
+    background: var(--gradiente-ranking-detalhes);
+}
+
+#modal-ver-detalhes .court-title-detalhes {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 0;
+    color: #ffffff;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+#modal-ver-detalhes .time-badge-detalhes {
+    font-size: 12.5px;
+    color: #ffffff;
+    font-weight: 400;
+    opacity: 0.95;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+#modal-ver-detalhes .btn-back-detalhes {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    opacity: 0.92;
+    transition: opacity 0.2s, transform 0.1s;
+}
+#modal-ver-detalhes .btn-back-detalhes:hover { opacity: 1; }
+#modal-ver-detalhes .btn-back-detalhes:active { transform: scale(0.9); }
+
+#modal-ver-detalhes .body-detalhes { padding: 18px; text-align: left; }
+
+#modal-ver-detalhes .info-box-detalhes {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+#modal-ver-detalhes .org-name-detalhes { font-size: 14.5px; font-weight: 700; color: #1e293b; }
+#modal-ver-detalhes .org-sub-detalhes { font-size: 12px; color: #64748b; margin-top: 2px; font-weight: 500; }
+
+#modal-ver-detalhes .player-row-detalhes { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f1f5f9; }
+#modal-ver-detalhes .player-row-detalhes:last-child { border-bottom: none; }
+#modal-ver-detalhes .status-dot-detalhes { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+
+#modal-ver-detalhes .confirmed-dot { background: #10b981; }
+#modal-ver-detalhes .pending-dot { background: #f59e0b; }
+
+#modal-ver-detalhes .txt-confirmed { color: #10b981; font-weight: 700; font-size: 11px; }
+#modal-ver-detalhes .txt-pending { color: #d97706; font-weight: 700; font-size: 11px; }
+
+/* 🌓 Suporte ao Modo Escuro */
+body.dark-mode #modal-ver-detalhes .modal-card-detalhes {
+    background-color: #1e1e1e !important;
+    border-color: #333333 !important;
+}
+body.dark-mode #modal-ver-detalhes .info-box-detalhes {
+    background-color: #252525 !important;
+    border-color: #333333 !important;
+}
+body.dark-mode #modal-ver-detalhes .org-name-detalhes { color: #f8fafc !important; }
+body.dark-mode #modal-ver-detalhes .org-sub-detalhes { color: #94a3b8 !important; }
+body.dark-mode #modal-ver-detalhes .player-row-detalhes {
+    border-bottom-color: #2e2e2e !important;
+    color: #cbd5e1 !important;
+}
+
+/* ======================================================== */
+/* CRONÔMETRO DE PENDÊNCIA (MODAL DETALHES)                 */
+/* ======================================================== */
+.titulo-jogadores-flex {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+
+#badge-timer-detalhes {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #d97706; /* Laranja da pendência */
+    background-color: #fef3c7; /* Fundo amarelo claro */
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    letter-spacing: 0.5px;
+    text-transform: none;
+}
+
+/* 🌓 Suporte ao Modo Escuro para o Relógio */
+body.dark-mode #badge-timer-detalhes {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+
+/* Ajustes Finos de Tipografia e Ícone da Modal Detalhes */
+#modal-ver-detalhes .player-row-detalhes > span:first-child {
+    font-size: 13.5px;
+}
+
+#badge-timer-detalhes .material-icons {
+    font-size: 13px;
+    margin-right: 4px;
+}
+
+/* ======================================================== */
+/* 22. COMPONENTE: MODAL DE CONVITES PENDENTES (POP-UP)     */
+/* ======================================================== */
+
+#modal-convites-entrada {
+    display: none; /* Ativado via JS (flex) */
+    align-items: flex-end; /* Gaveta sobe do fundo no mobile */
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 15000 !important; /* Camada Altíssima, sobrepondo quase tudo */
+}
+
+/* O Chassi (Bottom Sheet) */
+#modal-convites-entrada .bottom-sheet-mock {
+    background: #ffffff;
+    width: 100%;
+    max-width: 420px;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -10px 25px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.05);
+    /* 🔹 MÁGICA: Ajustado para 12px na base (igual à margem do cartão) */
+    padding: 16px 20px 12px 20px; 
+    box-sizing: border-box;
+    position: relative;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+}
+
+#modal-convites-entrada.ativa .bottom-sheet-mock {
+    transform: translateY(0);
+}
+
+#modal-convites-entrada .sheet-drag-handle {
+    width: 40px; height: 5px; background: #cbd5e1; border-radius: 5px; margin: 0 auto 20px auto;
+}
+
+#modal-convites-entrada .acoes-header-text { 
+    text-align: center; 
+    margin-top: 10px; /* 🔹 Empurra levemente para baixo para afastar do teto no PC */
+    margin-bottom: 22px; 
+}
+#modal-convites-entrada .acoes-header-text h3 { 
+    margin: 0; font-size: 20px; font-weight: 700; color: #1e293b; 
+}
+
+
+/* O Cartão do Jogo (A Lista de Convites) */
+#lista-convites-container {
+    max-height: 50vh; /* Se tiver muitos, cria scroll sem vazar a tela */
+    overflow-y: auto;
+    padding-bottom: 0; /* 🔹 ZERADO: Removemos o buraco fantasma do fundo da lista */
+}
+
+.convite-item {
+    border: 1px solid #e2e8f0; 
+    border-radius: 12px; 
+    padding: 16px; 
+    margin-bottom: 12px; 
+    text-align: left;
+    background-color: #ffffff;
+}
+
+.convite-header {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.convite-data { font-size: 15px; font-weight: 700; color: #1e293b; }
+.txt-expira { font-size: 13px; font-weight: 700; color: #d97706; display: flex; align-items: center; gap: 4px; }
+.txt-expira .material-icons { font-size: 15px; }
+
+.convite-info {
+    font-size: 13.5px; 
+    color: #64748b; 
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+.convite-info strong { color: #1e293b; }
+
+
+/* Botões Robustos (Isolados apenas para o modal de convites) */
+#modal-convites-entrada .botoes-acao { display: flex; gap: 10px; }
+
+#modal-convites-entrada .btn-universal {
+    height: 42px; border: none; border-radius: 8px;
+    font-family: 'Roboto', sans-serif; font-size: 14px; font-weight: 700; color: #ffffff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    box-shadow: 0 2px 4px rgba(163, 177, 198, 0.2), 0 4px 10px rgba(163, 177, 198, 0.3);
+    transition: transform 0.1s; flex: 1; margin: 0;
+}
+#modal-convites-entrada .btn-universal:active { transform: scale(0.96); }
+
+#modal-convites-entrada .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
+#modal-convites-entrada .btn-success { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); }
+
+#modal-convites-entrada .btn-label-cancel {
+    width: 100%; border: none; background: transparent; color: #94a3b8; 
+    height: 40px; 
+    font-family: 'Roboto', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;
+    /* 🔹 MÁGICA: Zera a margem do botão para não somar com o cartão */
+    margin-top: 0; 
+    padding: 0; 
+    display: flex; align-items: center; justify-content: center; 
+}
+
+/* --- MODO PC (Centraliza a gaveta no meio da tela como um Card) --- */
+@media (min-width: 768px) {
+    #modal-convites-entrada {
+        align-items: center !important;
+    }
+    #modal-convites-entrada .bottom-sheet-mock {
+        border-radius: 16px !important;
+        transform: scale(0.95);
+        opacity: 0;
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    }
+    #modal-convites-entrada.ativa .bottom-sheet-mock {
+        transform: scale(1);
+        opacity: 1;
+    }
+    #modal-convites-entrada .sheet-drag-handle { display: none; }
+}
+
+/* --- SUPORTE MODO ESCURO (Carbono) --- */
+body.dark-mode #modal-convites-entrada .bottom-sheet-mock {
+    background-color: #1e1e1e !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+body.dark-mode #modal-convites-entrada .acoes-header-text h3 { color: #f8fafc !important; }
+body.dark-mode #modal-convites-entrada .sheet-drag-handle { background: #333333 !important; }
+body.dark-mode .convite-item {
+    background-color: #252525 !important;
+    border-color: #333333 !important;
+}
+body.dark-mode .convite-data, body.dark-mode .convite-info strong { color: #f8fafc !important; }
+body.dark-mode .convite-info { color: #cbd5e1 !important; }
+
+/* Estados de Processamento e Saída dos Convites */
+.convite-item.convite-processando {
+    opacity: 0.4 !important;
+    pointer-events: none !important;
+    transform: scale(0.98) !important;
+    transition: all 0.2s ease !important;
+}
+
+.convite-item.convite-saindo {
+    transform: translateX(100%) !important;
+    opacity: 0 !important;
+    transition: all 0.2s ease !important;
+}
+
+
+/* ======================================================== */
+/* 23. FORMATAÇÃO RICA DOS NOMES NA GRADE (ORGANIZADOR/STATUS) */
+/* ======================================================== */
+.nome-organizador-grade {
+    font-weight: normal !important; /* Remove o negrito pesado */
+    font-style: italic !important;  /* Aplica o itálico elegante */
+}
+
+/* ========================================== */
+/* OPÇÃO 1: LARANJA QUEIMADO SÓLIDO (ATIVA)   */
+/* Limpo, sem sombras, contraste natural.     */
+/* ========================================== */
+.nome-pendente-grade {
+    color: #c2410c !important; /* Laranja ferrugem escuro e nítido */
+    font-weight: 700 !important;
+    text-shadow: none !important; 
+}
+body.dark-mode .nome-pendente-grade {
+    /* Como a célula continua colorida no modo escuro, mantemos um tom escuro/forte */
+    color: #9a3412 !important; /* Ferrugem mais fechado/marrom para contraste absoluto */
+    text-shadow: none !important;
+}
+
+/* ======================================================== */
+/* 24. PÍLULA 'X' DO RANKING (CORREÇÃO DE ESPECIFICIDADE)   */
+/* ======================================================== */
+
+/* O seletor com #tabelaQuadra garante que a célula do ranking ganhe do overflow: hidden geral */
+#tabelaQuadra td.celula-reserva-ranking {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+/* Pílula para bloco de 2 Horas */
+#tabelaQuadra td .pilula-x-ranking {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fef08a;
+    color: #854d0e;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 12px;
+    z-index: 30;
+    pointer-events: none;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+}
+
+/* Pílula para bloco de 1 Hora (Visual idêntico à de 2 Horas) */
+#tabelaQuadra td .pilula-x-ranking-1h {
+    background-color: #fef08a !important;
+    color: #854d0e !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    padding: 1px 6px !important;
+    border-radius: 10px !important;
+    line-height: 1 !important;
+    display: inline-block !important;
+    margin: 2px 0 !important;
+    vertical-align: middle !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18) !important;
+}
+
+
+
+/* 🏷️ PÍLULA DA POSIÇÃO NO RANKING (EX: 23º / 24º) */
+#tabelaQuadra td .pos-tag {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: #854d0e !important;
+    background: rgba(255, 255, 255, 0.75) !important;
+    padding: 1px 4px !important;
+    border-radius: 4px !important;
+    margin-right: 3px !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    line-height: 1 !important;
+}
+
+/* Mantém o selo branco e nítido mesmo com o fundo da tabela escuro */
+body.dark-mode #tabelaQuadra td .pos-tag {
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: #854d0e !important;
+}

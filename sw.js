@@ -11,7 +11,8 @@ const urlsToCache = [
   './css/planilha.css?v=4',
   './css/config.css?v=4',
   './css/regras.css?v=4',
-  './css/logs.css?v=4',        
+  './css/logs.css?v=4',
+  './css/ranking.css?v=4',
   './js/core.js?v=4',
   './js/autenticacao.js?v=4',
   './js/cadastro.js?v=4',
@@ -19,7 +20,8 @@ const urlsToCache = [
   './js/planilha.js?v=4',
   './js/config.js?v=4',
   './js/regras.js?v=4',
-  './js/logs.js?v=4'           
+  './js/logs.js?v=4',
+  './js/ranking.js?v=4'  
 ];
 
 self.addEventListener('install', event => {

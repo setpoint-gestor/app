@@ -29,6 +29,8 @@
     <link rel="stylesheet" href="css/config.css?v=4"> 
     <link rel="stylesheet" href="css/regras.css?v=4"> 
     <link rel="stylesheet" href="css/logs.css?v=4">
+	<!-- NOVO: Estilo exclusivo do Módulo de Ranking -->
+    <link rel="stylesheet" href="css/ranking.css?v=4">
 	
 </head>
 <body>
@@ -88,7 +90,7 @@
         </div>
     </div>
 
-    <div id="tela-gestor-login" class="tela-app">
+    <div id="tela-gestor-login" class="tela-app"> 
         <div class="container-central">
             <h2>Painel do Gestor</h2>
             <input type="email" id="login-email" class="input-app" placeholder="E-mail profissional">
@@ -155,10 +157,10 @@
                 <i class="material-icons c-regras">settings</i>
                 <span class="label-card">Regras de Reserva</span>
             </div>
-            <div class="card-menu" onclick="showToast('Módulo de Torneios (Fase 3) em breve!', 'info')">
-                <i class="material-icons" style="color: #f1c40f;">emoji_events</i>
-                <span class="label-card">Torneios</span>
-            </div>
+            <div class="card-menu" onclick="abrirModalConfigRanking()">
+				<i class="material-icons" style="color: #f1c40f;">emoji_events</i>
+				<span class="label-card">Ranking</span>
+			</div>
             <div class="card-menu" onclick="abrirModuloLogs()">
 				<i class="material-icons" style="color: var(--cor-primaria);">history</i>
 				<span class="label-card">Histórico e Logs</span>
@@ -518,6 +520,12 @@
                         <span class="legenda-icone-cor" style="background-color: #cbd5e1; border: 1px solid #94a3b8; box-sizing: border-box;"></span>
                         <span class="legenda-texto">Dupla</span>
                     </div>
+					
+					<!-- 🟡 Marcador Ranking Oficial (Oculto por padrão) -->
+					<div class="legenda-item" id="legenda-item-ranking" style="display: none;">
+						<span class="legenda-icone-cor" style="background-color: #FFEB99; border: 1px solid #f97316; box-sizing: border-box;"></span>
+						<span class="legenda-texto">Ranking</span>
+					</div>
                 </div>
             </div>
         </div>
@@ -1533,12 +1541,13 @@
                     </div>
 
                     <div class="saas-row">
-                        <label for="saas-duracao">Duração:</label>
-                        <select id="saas-duracao" class="saas-field" onchange="atualizarOpcoesHorarioSaaS()">
-                            <option value="1">1 hora</option>
-                            <option value="2">2 horas</option>
-                        </select>
-                    </div>
+						<label for="saas-duracao">Duração:</label>
+						<select id="saas-duracao" class="saas-field" onchange="atualizarOpcoesHorarioSaaS()">
+							<option value="1">1 hora</option>
+							<option value="2">2 horas</option>
+							<option value="ranking" id="opt-duracao-ranking" style="display: none;">Ranking</option>
+						</select>
+					</div>
 
                     <div class="saas-row">
                         <label for="saas-hora">Horários:</label>
@@ -1589,6 +1598,11 @@
             <div class="saas-grid-body">
                 <button id="btn-saas-ver-detalhes" class="btn-universal btn-view">Ver Detalhes</button>
                 <button id="btn-saas-editar-reserva" class="btn-universal btn-edit">Editar Reserva</button> 
+				<!-- NOVO: Botão Gatilho do Ranking -->
+                <button id="btn-saas-gatilho-placar" class="btn-universal btn-ranking-gold" style="display: none;">
+                    <i class="material-icons">emoji_events</i>
+                    <span>Lançar Placar</span>
+                </button>
                 <button id="btn-saas-excluir-reserva" class="btn-universal btn-delete">Excluir Reserva</button>
                 
                 <hr class="divisor-SaaS-linha">
@@ -1794,6 +1808,637 @@
         </div>
     </div>
 	
+
+	<!-- ======================================================== -->
+	<!-- 🏆 MODAL: CONFIGURAÇÕES DO RANKING OFICIAL (GESTOR)       -->
+	<!-- ======================================================== -->
+	<div id="modal-config-ranking" class="modal-overlay">
+		<div class="modal-content modal-regras-fullscreen">
+			
+			<!-- Cabeçalho Fixo -->
+			<div class="header-painel">
+				<div>
+					<h2>🏆 Configurações do Ranking</h2>
+					<span style="font-size: 13px; color: #888;">Parâmetros da temporada, formato de disputa, súmulas e cobrança.</span>
+				</div>
+				<button class="material-icons" style="background:none; border:none; cursor:pointer; color:var(--cor-escura); font-size: 28px;" onclick="fecharModalConfig('modal-config-ranking')" title="Voltar ao QG">arrow_back</button>
+			</div> 
+
+			<div class="regras-content-scroll"> 
+				<div class="sanfona-container">
+					
+					<!-- ABA 1: Parâmetros Gerais -->
+					<div class="accordion-item active" onclick="toggleGavetaRegras(this)">
+						<div class="accordion-header">
+							<div class="accordion-header-left">
+								<i class="material-icons" style="color: #2E8B57;">settings</i>
+								<div class="header-title-block">
+									<span class="sidebar-title">Parâmetros Gerais</span>
+									<span class="sidebar-desc">Disponibilidade do módulo, gênero e travas de uso.</span>
+								</div>
+							</div>
+							<i class="material-icons icon-arrow">expand_more</i>
+						</div>
+						<div class="accordion-content">
+							<div class="accordion-content-inner"> 
+								
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Status do Ranking (ON/OFF)</span>
+										<span class="ctrl-desc">Ativa ou oculta o módulo de desafios no app para os sócios.</span>
+									</div>
+									<label class="switch">
+										<input type="checkbox" id="regra-ranking-ativo" checked>
+										<span class="slider"></span>
+									</label>
+								</div>
+								
+								<!-- Duração da Partida de Ranking -->
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<p class="ctrl-title">Duração da Partida</p>
+										<p class="ctrl-desc">Tempo de quadra reservado na planilha para os jogos de ranking.</p>
+									</div>
+									<select id="saas-ranking-duracao" class="modern-select">
+										<option value="1">1 hora</option>
+										<option value="2" selected>2 horas</option>
+									</select>
+								</div>
+
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Divisão por Gênero</span>
+										<span class="ctrl-desc">Separação das tabelas de classificação.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-genero">
+										<option value="separado" selected>Separado</option>
+										<option value="unificado">Unificado</option>
+									</select>
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+					<!-- ABA 2: Tipo de Torneio (Dinâmica) -->
+					<div class="accordion-item" onclick="toggleGavetaRegras(this)">
+						<div class="accordion-header">
+							<div class="accordion-header-left">
+								<i class="material-icons" style="color: #f59e0b;">emoji_events</i>
+								<div class="header-title-block">
+									<span class="sidebar-title">Tipo de Torneio</span>
+									<span class="sidebar-desc">Escolha do modelo de disputa e parâmetros específicos.</span>
+								</div>
+							</div>
+							<i class="material-icons icon-arrow">expand_more</i>
+						</div>
+						<div class="accordion-content">
+							<div class="accordion-content-inner">
+								
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Modelo de Disputa</span>
+										<span class="ctrl-desc">Campo Mestre do Torneio.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-modelo" onchange="toggleModeloTorneioRankingSaaS()">
+										<option value="piramide" selected>Pirâmide</option>
+										<option value="barragem">Barragem</option>
+										<option value="grupos">Grupos</option>
+									</select>
+								</div>
+
+								<!-- BLOCO DINÂMICO: PIRÂMIDE -->
+								<div id="bloco-regras-piramide">
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Alcance do Desafio</span>
+											<span class="ctrl-desc">Mecânica de limite de posições para desafiar.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-alcance-tipo" onchange="toggleSubAlcanceRankingSaaS()">
+											<option value="linha" selected>Número da Linha</option>
+											<option value="fixo">Fixo por Posições</option>
+											<option value="livre">Livre</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row" id="row-alcance-num-posicoes" style="display: none;">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Limite Fixo de Posições</span>
+											<span class="ctrl-desc">Máximo de posições acima permitidas.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-limite-posicoes">
+											<option value="1">Até 1 posição</option>
+											<option value="2">Até 2 posições</option>
+											<option value="3" selected>Até 3 posições</option>
+											<option value="4">Até 4 posições</option>
+											<option value="5">Até 5 posições</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Limite Mensal de Desafios</span>
+											<span class="ctrl-desc">Máximo de desafios lançados por atleta por mês.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-limite-mensal">
+											<option value="2">2 por mês</option>
+											<option value="3">3 por mês</option>
+											<option value="4" selected>4 por mês</option>
+											<option value="0">Sem limite</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Aceite Mínimo Obrigatório</span>
+											<span class="ctrl-desc">Mínimo de desafios recebidos que o atleta deve aceitar.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-aceite-minimo">
+											<option value="1">1/mês</option>
+											<option value="2" selected>2/mês</option>
+											<option value="0">Sem mínimo</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Mecânica de Troca em Vitória</span>
+											<span class="ctrl-desc">Comportamento do ranking quando o desafiante vence.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-mecanica-troca">
+											<option value="direta" selected>Troca Direta</option>
+											<option value="cascata">Cascata</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Entrada de Novos Inscritos</span>
+											<span class="ctrl-desc">Posição de estreia de novos atletas na pirâmide.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-entrada-inscritos">
+											<option value="fim" selected>Última posição</option>
+											<option value="gestao">Escolha da Gestão</option>
+										</select>
+									</div>
+								</div>
+
+								<!-- BLOCO DINÂMICO: BARRAGEM -->
+								<div id="bloco-regras-barragem" style="display: none;">
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Pontos por Vitória</span>
+											<span class="ctrl-desc">Pontos somados ao vencer uma partida.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-barragem-vitoria">
+											<option value="3" selected>3 pontos</option>
+											<option value="2">2 pontos</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Pontos por Derrota (Jogo jogado)</span>
+											<span class="ctrl-desc">Pontos por participar e finalizar o jogo.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-barragem-derrota">
+											<option value="1" selected>1 ponto</option>
+											<option value="0">0 pontos</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Pontos por W.O.</span>
+											<span class="ctrl-desc">Pontuação aplicada em caso de W.O.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-barragem-wo">
+											<option value="0" selected>0 pontos</option>
+											<option value="-1">-1 ponto</option>
+										</select>
+									</div>
+								</div>
+
+								<!-- BLOCO DINÂMICO: GRUPOS -->
+								<div id="bloco-regras-grupos" style="display: none;">
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Tamanho do Grupo</span>
+											<span class="ctrl-desc">Quantidade de atletas por chave/grupo.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-grupos-tamanho">
+											<option value="3">3 atletas</option>
+											<option value="4" selected>4 atletas</option>
+											<option value="5">5 atletas</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Classificados por Grupo</span>
+											<span class="ctrl-desc">Atletas que avançam para a próxima fase.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-grupos-classificados">
+											<option value="1">1º colocado</option>
+											<option value="2" selected>1º e 2º colocados</option>
+											<option value="dinamico">Dinâmico (1º ou 2º conforme chave)</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Critério de Desempate</span>
+											<span class="ctrl-desc">Ordem de desempate de pontos no grupo.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-grupos-desempate">
+											<option value="games_confronto_sorteio" selected>Saldo de Games > Confronto Direto > Sorteio</option>
+											<option value="confronto_games">Confronto Direto > Saldo de Games</option>
+											<option value="sets_games">Saldo de Sets > Saldo de Games</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Cabeças de Chave</span>
+											<span class="ctrl-desc">Definição dos sementes nos grupos.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-grupos-cabecas">
+											<option value="ranking" selected>Ranking Anterior</option>
+											<option value="sorteio">Sorteio 100% Aleatório</option>
+											<option value="gestao">Manual da Gestão</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Tratamento de Desistência</span>
+											<span class="ctrl-desc">Regra aplicada se um atleta abandonar o grupo.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-grupos-desistência">
+											<option value="anular" selected>Anular jogos e aplicar W.O. geral</option>
+											<option value="manter">Manter placares e W.O. nos futuros</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Prazo Limite da Rodada</span>
+											<span class="ctrl-desc">Tempo para realizar os jogos do grupo.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-grupos-prazo-rodada">
+											<option value="7" selected>7 dias por rodada</option>
+											<option value="10">10 dias por rodada</option>
+											<option value="14">14 dias por rodada</option>
+										</select>
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Estouro de Prazo sem Acordo</span>
+											<span class="ctrl-desc">Decisão caso o jogo não ocorra no prazo.</span>
+										</div>
+										<select class="modern-select" id="select-ranking-grupos-estouro">
+											<option value="sorteio" selected>Sorteio no App</option>
+											<option value="wo_duplo">W.O. Duplo (Ambos Eliminados)</option>
+											<option value="prorrogar">Prorrogar 1 Semana</option>
+										</select>
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+					<!-- ABA 3: Regras de Jogo & Súmula -->
+					<div class="accordion-item" onclick="toggleGavetaRegras(this)">
+						<div class="accordion-header">
+							<div class="accordion-header-left">
+								<i class="material-icons" style="color: #10b981;">edit_note</i>
+								<div class="header-title-block">
+									<span class="sidebar-title">Regras de Jogo & Súmula</span>
+									<span class="sidebar-desc">Formato das partidas, pontuação de games e validação de placar.</span>
+								</div>
+							</div>
+							<i class="material-icons icon-arrow">expand_more</i>
+						</div>
+						<div class="accordion-content">
+							<div class="accordion-content-inner">
+								
+								<!-- 1. CAMPO FORMATO DE PARTIDA ATUALIZADO -->
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Formato de Partida</span>
+										<span class="ctrl-desc">Contagem de sets e games da disputa.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-formato-partida" onchange="toggleDecisaoTerceiroSetSaaS()">
+										<option value="set_unico_6" selected>Set Único (até 6 games)</option>
+										<option value="pro_set_8">Pro-Set (até 8 games)</option>
+										<option value="m3_curtos_4">3 Sets Curtos (4 games)</option>
+										<option value="m3_tradicional_6">3 Sets tradicionais</option>
+									</select>
+								</div>
+
+								<!-- 2. NOVO CAMPO: DECISÃO DO 3º SET (Inicia oculto) -->
+								<div class="ctrl-row" id="row-decisao-terceiro-set" style="display: none;">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Decisão do 3º Set</span>
+										<span class="ctrl-desc">Como o desempate final será jogado.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-decisao-3set">
+										<option value="super_tiebreak" selected>Super Tie-break(10)</option>
+										<option value="set_tradicional">Set tradicional</option>
+									</select>
+								</div>
+
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Regra de Vantagem (Games)</span>
+										<span class="ctrl-desc">Decisão dos games no 40x40.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-vantagem-games">
+										<option value="com_vantagem" selected>Com Vantagem</option>
+										<option value="no_ad">Sem Vantagem (No-Ad)</option>
+									</select>
+								</div>
+
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Limite Semanal de Jogos</span>
+										<span class="ctrl-desc">Máximo de partidas oficiais por atleta na semana.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-max-jogos">
+										<option value="1">1 jogo/semana</option>
+										<option value="2" selected>2 jogos/semana</option>
+										<option value="3">3 jogos/semana</option>
+										<option value="0">Sem limite</option>
+									</select>
+								</div>
+
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Prazo para Autoconfirmação do Placar</span>
+										<span class="ctrl-desc">Tempo para o perdedor confirmar a súmula no app.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-prazo-autoconf">
+										<option value="12">12 horas</option>
+										<option value="24" selected>24 horas</option>
+										<option value="48">48 horas</option>
+									</select>
+								</div>
+
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Tolerância de Inatividade</span>
+										<span class="ctrl-desc">Dias limite sem jogar antes da penalidade.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-prazo-inatividade">
+										<option value="10">10 dias</option>
+										<option value="15" selected>15 dias</option>
+										<option value="30">30 dias</option>
+									</select>
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+					<!-- ABA 4: Taxa de Inscrição & PIX -->
+					<div class="accordion-item" onclick="toggleGavetaRegras(this)">
+						<div class="accordion-header">
+							<div class="accordion-header-left">
+								<i class="material-icons" style="color: #3b82f6;">payments</i>
+								<div class="header-title-block">
+									<span class="sidebar-title">Taxa de Inscrição & PIX</span>
+									<span class="sidebar-desc">Parâmetros financeiros e dados bancários.</span>
+								</div>
+							</div>
+							<i class="material-icons icon-arrow">expand_more</i>
+						</div>
+						<div class="accordion-content">
+							<div class="accordion-content-inner">
+								
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Cobrar Taxa de Inscrição</span>
+										<span class="ctrl-desc">Exibe valor e PIX no comprovante do agendamento.</span>
+									</div>
+									<label class="switch">
+										<input type="checkbox" id="regra-ranking-cobrar-taxa" onchange="toggleBlocoFinanceiroRankingSaaS(this.checked)">
+										<span class="slider"></span>
+									</label>
+								</div>
+
+								<div id="container-financeiro-ranking">
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Valor da Taxa (R$)</span>
+											<span class="ctrl-desc">Taxa cobrada por atleta por partida disputada.</span>
+										</div>
+										<input type="text" id="txt-ranking-valor-taxa" class="input-app" placeholder="0,00" style="margin: 0; width: 130px; padding: 8px 12px; font-size: 14px; text-align: center;" oninput="mascaraMoedaRealSaaS(this)">
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Chave PIX Oficial</span>
+											<span class="ctrl-desc">Chave para transferência exibida no app.</span>
+										</div>
+										<input type="text" id="txt-ranking-chave-pix" class="input-app" placeholder="CNPJ, E-mail, Celular..." style="margin: 0; width: 180px; padding: 8px 12px; font-size: 14px;">
+									</div>
+
+									<div class="ctrl-row">
+										<div class="ctrl-text">
+											<span class="ctrl-title">Titular / Recebedor</span>
+											<span class="ctrl-desc">Nome da conta para conferência do pagamento.</span>
+										</div>
+										<input type="text" id="txt-ranking-recebedor-pix" class="input-app" placeholder="Secretaria / Arena" style="margin: 0; width: 180px; padding: 8px 12px; font-size: 14px;">
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+					<!-- ABA 5: Gestão da Temporada -->
+					<div class="accordion-item" onclick="toggleGavetaRegras(this)">
+						<div class="accordion-header">
+							<div class="accordion-header-left">
+								<i class="material-icons" style="color: #ef4444;">campaign</i>
+								<div class="header-title-block">
+									<span class="sidebar-title">Gestão da Temporada</span>
+									<span class="sidebar-desc">Ações operacionais da classificação e mensagens.</span>
+								</div>
+							</div>
+							<i class="material-icons icon-arrow">expand_more</i>
+						</div>
+						<div class="accordion-content">
+							<div class="accordion-content-inner">
+								
+								<div class="ranking-actions-container">
+									<!-- Botão de Visualização / Edição da Tabela -->
+									<button type="button" class="btn-ranking-action btn-ranking-view" onclick="abrirVisualizacaoRankingSaaS()">
+										<i class="material-icons">visibility</i> 👁️ Ver Tabela de Classificação
+									</button>
+
+									<!-- Disparo de Convites Massivo -->
+									<button type="button" class="btn-ranking-action btn-ranking-invite" onclick="dispararConvitesTemporadaSaaS()">
+										<i class="material-icons">send</i> Disparar Convites de Temporada
+									</button>
+									
+									<!-- Zerar / Reiniciar Ranking -->
+									<button type="button" class="btn-ranking-action btn-ranking-reset" onclick="solicitarResetRankingSaaS()">
+										<i class="material-icons">restart_alt</i> Zerar / Reiniciar Ranking
+									</button>
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+
+			<div class="regras-footer">
+				<button class="btn-regras-salvar" onclick="salvarConfigRankingSaas()">Salvar Parâmetros do Ranking</button> 
+			</div>
+
+		</div>
+	</div>	
+	
+	
+	<!-- ======================================================== -->
+	<!-- 🏆 MODAL: SÚMULA OFICIAL DE LANÇAMENTO DE PLACAR         -->
+	<!-- ======================================================== -->
+	<div id="modal-sumula-ranking" class="modal-overlay">
+		<div class="modal-card-detalhes">
+			
+			<!-- CABEÇALHO BRANCO -->
+			<div class="card-header-detalhes">
+				<div>
+					<h3 class="court-title-detalhes">🏆 Súmula</h3>
+					<div class="time-badge-detalhes" id="sumula-txt-modelo">Ranking Oficial</div>
+				</div>
+				
+				<div class="botoes-topo">
+					<!-- Menu Kebab -->
+					<div class="kebab-container" style="display: flex; align-items: center; transform: translateY(-13px);">
+						<button class="btn-header-icon" onclick="toggleKebabSumulaSaaS(event)">
+							<i class="material-icons">more_vert</i>
+						</button>
+						<!-- Dropdown com Exceções -->
+						<div id="menu-excecoes-sumula" class="dropdown-saas-menu">
+							<button class="item-excluir-saas" onclick="declararWoSumulaSaaS()"><i class="material-icons">flag</i> Declarar W.O.</button>
+							<button class="item-excluir-saas" onclick="declararDesistenciaSumulaSaaS()"><i class="material-icons">sick</i> Desistência</button>
+						</div>
+					</div>
+
+					<!-- Setinha de Voltar -->
+					<button class="btn-header-icon" onclick="fecharModalConfig('modal-sumula-ranking')">
+						<i class="material-icons">arrow_back</i>
+					</button>
+				</div>
+			</div>
+
+			<!-- CORPO DO MODAL -->
+			<div class="body-detalhes">
+				
+				<!-- CABEÇALHO DOS NÚMEROS (1, 2, 3) -->
+				<div class="cabecalho-sets">
+					<div class="numeros-sets">
+						<span id="head-set-1">1</span>
+						<span id="head-set-2">2</span>
+						<span id="head-set-3">3</span>
+					</div>
+				</div>
+
+				<!-- CARD BRANCO: JOGADOR 1 -->
+				<div class="linha-atleta-placar">
+					<div class="nome-jogador" id="sumula-nome-j1">Desafiante</div>
+					<div class="container-inputs">
+						<div class="input-wrapper" id="wrap-s1-j1">
+							<input type="number" id="inp-s1-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+							<input type="number" id="inp-tb1-j1" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+						</div>
+						<div class="input-wrapper" id="wrap-s2-j1">
+							<input type="number" id="inp-s2-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+							<input type="number" id="inp-tb2-j1" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+						</div>
+						<div class="input-wrapper" id="wrap-s3-j1">
+							<input type="number" id="inp-s3-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+						</div>
+					</div>
+				</div>
+
+				<!-- CARD BRANCO: JOGADOR 2 -->
+				<div class="linha-atleta-placar">
+					<div class="nome-jogador" id="sumula-nome-j2">Desafiado</div>
+					<div class="container-inputs">
+						<div class="input-wrapper" id="wrap-s1-j2">
+							<input type="number" id="inp-s1-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+							<input type="number" id="inp-tb1-j2" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+						</div>
+						<div class="input-wrapper" id="wrap-s2-j2">
+							<input type="number" id="inp-s2-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+							<input type="number" id="inp-tb2-j2" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+						</div>
+						<div class="input-wrapper" id="wrap-s3-j2">
+							<input type="number" id="inp-s3-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+						</div>
+					</div>
+				</div>
+
+				<!-- CARD BRANCO: VENCEDOR -->
+				<div class="vencedor-box"> 
+					Vencedor: <span id="label-vencedor-sumula">--</span>
+				</div>
+				
+			</div>
+
+			<!-- RODAPÉ BRANCO FIXO COM BOTÃO -->
+			<div class="sumula-footer">
+				<button id="btn-salvar-sumula-saas" class="btn-app btn-sucesso" onclick="salvarSumulaSaaS()" disabled>Salvar Súmula</button>
+			</div>
+
+		</div>
+	</div>
+	
+	<!-- ======================================================== -->
+	<!-- 🎯 NOVO COMPONENTE: GAVETA DE VALIDAÇÃO DE PLACAR        -->
+	<!-- ======================================================== -->
+	<div id="modal-validacao-placar" class="modal-form-overlay">
+		<div class="bottom-sheet-mock">
+			
+			<div class="acoes-header-text">
+				<h3 id="val-txt-titulo">1 Placar Pendente</h3>
+			</div>
+
+			<!-- Cartão de Aprovação do Placar -->
+			<div class="convite-item">
+				<div class="convite-header">
+					<span id="val-txt-data-horario" class="convite-data">Carregando...</span>
+					<span class="txt-expira">
+						<i class="material-icons">timer</i> 
+						<span id="val-timer-countdown">23h 59m 59s</span>
+					</span>
+				</div>
+				
+				<div class="convite-info">
+					<span id="val-txt-quadra-modelo">Quadra • Ranking</span><br>
+					
+					<div class="box-placar">
+						<span id="val-txt-vencedor" class="vencedor-txt">Vencedor</span> venceu <span id="val-txt-perdedor" class="perdedor-txt">Perdedor</span>
+						<strong id="val-txt-placar" class="placar-numeros">0-0, 0-0</strong>
+					</div>
+				</div>
+				
+				<div class="botoes-acao">
+					<button class="btn-universal btn-danger" onclick="recusarPlacarAdversarioSaaS()">Recusar</button>
+					<button class="btn-universal btn-success" onclick="confirmarPlacarAdversarioSaaS()">Confirmar</button>
+				</div>
+			</div>
+
+			<button class="btn-label-cancel" onclick="fecharModalConfig('modal-validacao-placar')">Responder Depois</button>
+		</div>
+	</div>
 	
 	<script src="js/core.js?v=4"></script> 
     <script src="js/autenticacao.js?v=4"></script>  
@@ -1803,6 +2448,8 @@
     <script src="js/config.js?v=4"></script>
     <script src="js/regras.js?v=4"></script>
     <script src="js/logs.js?v=4"></script>	
+	<!-- NOVO: Lógica isolada do Módulo de Ranking -->
+    <script src="js/ranking.js?v=4"></script>
 	
 	<!-- PWA: Registro do Motor Offline e Atualizador Automático -->
     <script>
