@@ -3536,5 +3536,36 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-08-12T19:37:44.801Z",
+    "dataLocal": "12/08/2026, 16:37:44",
+    "autor": "JOAO BENTO PEREIRA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "13:00 - 15:00",
+    "duracao": "2 Horas",
+    "data": "12-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JOAO BENTO PEREIRA",
+    "confirmacoes": {
+      "Joao Bento": true,
+      "Joao Francisco": true
+    },
+    "jogadores": "Joao Bento, Joao Francisco",
+    "jogadores_completo": "JOAO BENTO PEREIRA, JOAO FRANCISCO DA SILVA",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 13
+      },
+      {
+        "dia": 3,
+        "hora": 14
+      }
+    ]
   }
 ]
