@@ -3505,5 +3505,36 @@
         "hora": 22
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-08-12T16:45:53.542Z",
+    "dataLocal": "12/08/2026, 13:45:53",
+    "autor": "VANIA TABORDA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 10:00",
+    "duracao": "2 Horas",
+    "data": "12-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JOAO MARIA SOBRINHO",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Joao Maria": true
+    },
+    "jogadores": "Joao Maria, Adriano Feitosa",
+    "jogadores_completo": "JOAO MARIA SOBRINHO, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 8
+      },
+      {
+        "dia": 3,
+        "hora": 9
+      }
+    ]
   }
 ]
