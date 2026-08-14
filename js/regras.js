@@ -459,17 +459,20 @@ function verificarPortariaSistema() {
  * 8. RESET INTELIGENTE E ANTI-FANTASMA
  * ========================================================
  */
-function resetarModalRegras() {
+function resetarModalRegras(idModal = 'modal-regras') {
+    const modalTarget = document.getElementById(idModal);
+    if (!modalTarget) return;
+
     const isMobile = window.innerWidth <= 768; 
-    const gavetas = document.querySelectorAll('#modal-regras .accordion-item');
+    const gavetas = modalTarget.querySelectorAll('.accordion-item');
     if (gavetas.length === 0) return;  
 	
-	// 🎯 Reseta todas as sub-gavetas expandidas (Quem pode agendar + Permissões)
-    document.querySelectorAll('.card-agendar-box, #acordeao-permissao').forEach(box => {
+    // 🎯 Reseta todas as sub-gavetas expandidas (Quem pode agendar + Permissões)
+    modalTarget.querySelectorAll('.card-agendar-box, #acordeao-permissao').forEach(box => {
         box.classList.remove('aberto');
     });
 
-    const conteudos = document.querySelectorAll('#modal-regras .accordion-content');
+    const conteudos = modalTarget.querySelectorAll('.accordion-content');
     conteudos.forEach(content => content.style.transition = 'none');
 
     gavetas.forEach(item => {
@@ -982,4 +985,210 @@ function togglePrazoConfirmacaoSaaS() {
             selectPrazo.style.cursor = 'not-allowed';
         }
     }
+}
+
+
+// ========================================================
+// 12. MÓDULO RANKING: PAINEL E CONFIGURAÇÕES DO GESTOR
+// ========================================================
+
+/**
+ * Abertura e Preenchimento dos Parâmetros do Ranking
+ */
+function abrirModalConfigRanking() {
+    if (navigator.vibrate) navigator.vibrate(30);
+    console.log("⚡ [Ranking] Acessando painel de configurações do Gestor...");
+
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const fin = conf.financeiro || {};
+    const pir = conf.piramide || {};
+    const bar = conf.barragem || {};
+    const gru = conf.grupos || {};
+    const sum = conf.sumula || {};
+
+    // ABA 1: Parâmetros Gerais
+    document.getElementById('regra-ranking-ativo').checked = conf.ativo !== false;
+    document.getElementById('select-ranking-genero').value = conf.divisaoGenero || "separado";
+	// 🏆 Nova Duração da Partida de Ranking (Padrão: 2 horas)
+    document.getElementById('saas-ranking-duracao').value = String(conf.duracaoPartida !== undefined ? conf.duracaoPartida : 2);
+
+    // ABA 2: Tipo de Torneio (Modelo Mestre)
+    document.getElementById('select-ranking-modelo').value = conf.modeloAtivo || "piramide";
+
+    // Subcampos Pirâmide
+    document.getElementById('select-ranking-alcance-tipo').value = pir.alcanceTipo || "linha";
+    document.getElementById('select-ranking-limite-posicoes').value = String(pir.limitePosicoes !== undefined ? pir.limitePosicoes : 3);
+    document.getElementById('select-ranking-limite-mensal').value = String(pir.limiteMensal !== undefined ? pir.limiteMensal : 4);
+    document.getElementById('select-ranking-aceite-minimo').value = String(pir.aceiteMinimo !== undefined ? pir.aceiteMinimo : 2);
+    document.getElementById('select-ranking-mecanica-troca').value = pir.mecanicaTroca || "direta";
+    document.getElementById('select-ranking-entrada-inscritos').value = pir.entradaInscritos || "fim";
+
+    // Subcampos Barragem
+    document.getElementById('select-ranking-barragem-vitoria').value = String(bar.pontosVitoria !== undefined ? bar.pontosVitoria : 3);
+    document.getElementById('select-ranking-barragem-derrota').value = String(bar.pontosDerrota !== undefined ? bar.pontosDerrota : 1);
+    document.getElementById('select-ranking-barragem-wo').value = String(bar.pontosWO !== undefined ? bar.pontosWO : 0);
+
+    // Subcampos Grupos
+    document.getElementById('select-ranking-grupos-tamanho').value = String(gru.tamanhoGrupo !== undefined ? gru.tamanhoGrupo : 4);
+    document.getElementById('select-ranking-grupos-classificados').value = gru.classificadosGrupo || "2";
+    document.getElementById('select-ranking-grupos-desempate').value = gru.criterioDesempate || "games_confronto_sorteio";
+    document.getElementById('select-ranking-grupos-cabecas').value = gru.cabecasChave || "ranking";
+    document.getElementById('select-ranking-grupos-desistência').value = gru.tratarDesistência || "anular";
+    document.getElementById('select-ranking-grupos-prazo-rodada').value = String(gru.prazoRodada !== undefined ? gru.prazoRodada : 7);
+    document.getElementById('select-ranking-grupos-estouro').value = gru.estouroPrazo || "sorteio";
+
+    // ABA 3: Regras de Jogo & Súmula
+    document.getElementById('select-ranking-formato-partida').value = sum.formatoPartida || "set_unico_6";
+	// --> ADICIONE ESTAS DUAS LINHAS AQUI <--
+    document.getElementById('select-ranking-decisao-3set').value = sum.decisaoTerceiroSet || "super_tiebreak";
+    toggleDecisaoTerceiroSetSaaS(); // Força a exibição correta ao abrir a tela
+    // ----------------------------------------
+    document.getElementById('select-ranking-vantagem-games').value = sum.vantagemGames || "com_vantagem";
+    
+    document.getElementById('select-ranking-max-jogos').value = String(conf.maxJogosSemana !== undefined ? conf.maxJogosSemana : 2);
+    document.getElementById('select-ranking-prazo-autoconf').value = String(sum.prazoAutoconf !== undefined ? sum.prazoAutoconf : 24);
+    document.getElementById('select-ranking-prazo-inatividade').value = String(conf.prazoInatividadeDias !== undefined ? conf.prazoInatividadeDias : 15);
+
+    // ABA 4: Taxa de Inscrição & PIX
+    const cobrarTaxa = fin.cobrarTaxa === true;
+    document.getElementById('regra-ranking-cobrar-taxa').checked = cobrarTaxa;
+    document.getElementById('txt-ranking-valor-taxa').value = fin.valorTaxa || "";
+    document.getElementById('txt-ranking-chave-pix').value = fin.chavePix || "";
+    document.getElementById('txt-ranking-recebedor-pix').value = fin.recebedorPix || "";
+
+    toggleBlocoFinanceiroRankingSaaS(cobrarTaxa);
+    toggleModeloTorneioRankingSaaS();
+
+    // Reset de visualização da sanfona/sidebar
+    if (typeof resetarModalRegras === 'function') {
+        resetarModalRegras('modal-config-ranking');
+    }
+
+    abrirModalConfig('modal-config-ranking');
+}
+
+/**
+ * Controla a exibição condicional dos blocos de modelo (Pirâmide, Barragem ou Grupos)
+ */
+function toggleModeloTorneioRankingSaaS() {
+    const modelo = document.getElementById('select-ranking-modelo').value;
+    const blocoPiramide = document.getElementById('bloco-regras-piramide');
+    const blocoBarragem = document.getElementById('bloco-regras-barragem');
+    const blocoGrupos = document.getElementById('bloco-regras-grupos');
+
+    if (blocoPiramide) blocoPiramide.style.display = (modelo === 'piramide') ? 'block' : 'none';
+    if (blocoBarragem) blocoBarragem.style.display = (modelo === 'barragem') ? 'block' : 'none';
+    if (blocoGrupos) blocoGrupos.style.display = (modelo === 'grupos') ? 'block' : 'none';
+
+    toggleSubAlcanceRankingSaaS();
+}
+
+/**
+ * Controla a exibição do campo de Decisão do 3º Set
+ */
+function toggleDecisaoTerceiroSetSaaS() {
+    const formato = document.getElementById('select-ranking-formato-partida').value;
+    const row3Set = document.getElementById('row-decisao-terceiro-set');
+    if (!row3Set) return;
+
+    // Se for "Melhor de 3" (curto ou tradicional), exibe o campo
+    if (formato === 'm3_curtos_4' || formato === 'm3_tradicional_6') {
+        row3Set.style.display = 'flex';
+    } else {
+        row3Set.style.display = 'none';
+    }
+}
+
+/**
+ * Controla a exibição do subcampo numérico de limite de posições quando "Fixo por Posições" estiver ativo
+ */
+function toggleSubAlcanceRankingSaaS() {
+    const alcanceTipo = document.getElementById('select-ranking-alcance-tipo').value;
+    const rowNumPosicoes = document.getElementById('row-alcance-num-posicoes');
+    if (!rowNumPosicoes) return;
+
+    rowNumPosicoes.style.display = (alcanceTipo === 'fixo') ? 'flex' : 'none';
+}
+
+/**
+ * Controla a visibilidade dos campos de PIX
+ */
+function toggleBlocoFinanceiroRankingSaaS(isAtivo) {
+    const container = document.getElementById('container-financeiro-ranking');
+    if (!container) return;
+    container.style.display = isAtivo ? 'block' : 'none';
+}
+
+/**
+ * Gravação Atômica das Regras do Ranking no Firebase
+ */
+function salvarConfigRankingSaas() {
+    if (navigator.vibrate) navigator.vibrate(40); 
+
+    const payloadRanking = {
+        ativo: document.getElementById('regra-ranking-ativo').checked,
+        divisaoGenero: document.getElementById('select-ranking-genero').value,
+		duracaoPartida: parseInt(document.getElementById('saas-ranking-duracao').value) || 2,
+        modeloAtivo: document.getElementById('select-ranking-modelo').value,
+        maxJogosSemana: parseInt(document.getElementById('select-ranking-max-jogos').value) || 2,
+        prazoInatividadeDias: parseInt(document.getElementById('select-ranking-prazo-inatividade').value) || 15,
+        
+        piramide: {
+            alcanceTipo: document.getElementById('select-ranking-alcance-tipo').value,
+            limitePosicoes: parseInt(document.getElementById('select-ranking-limite-posicoes').value) || 3,
+            limiteMensal: parseInt(document.getElementById('select-ranking-limite-mensal').value) || 4,
+            aceiteMinimo: parseInt(document.getElementById('select-ranking-aceite-minimo').value) || 2,
+            mecanicaTroca: document.getElementById('select-ranking-mecanica-troca').value,
+            entradaInscritos: document.getElementById('select-ranking-entrada-inscritos').value
+        },
+        barragem: {
+            pontosVitoria: parseInt(document.getElementById('select-ranking-barragem-vitoria').value) || 3,
+            pontosDerrota: parseInt(document.getElementById('select-ranking-barragem-derrota').value) || 1,
+            pontosWO: parseInt(document.getElementById('select-ranking-barragem-wo').value) || 0
+        },
+        grupos: {
+            tamanhoGrupo: parseInt(document.getElementById('select-ranking-grupos-tamanho').value) || 4,
+            classificadosGrupo: document.getElementById('select-ranking-grupos-classificados').value,
+            criterioDesempate: document.getElementById('select-ranking-grupos-desempate').value,
+            cabecasChave: document.getElementById('select-ranking-grupos-cabecas').value,
+            tratarDesistência: document.getElementById('select-ranking-grupos-desistência').value,
+            prazoRodada: parseInt(document.getElementById('select-ranking-grupos-prazo-rodada').value) || 7,
+            estouroPrazo: document.getElementById('select-ranking-grupos-estouro').value
+        },
+        sumula: {
+            formatoPartida: document.getElementById('select-ranking-formato-partida').value,
+            decisaoTerceiroSet: document.getElementById('select-ranking-decisao-3set').value,
+            vantagemGames: document.getElementById('select-ranking-vantagem-games').value,
+            
+            prazoAutoconf: parseInt(document.getElementById('select-ranking-prazo-autoconf').value) || 24
+        },
+        financeiro: {
+            cobrarTaxa: document.getElementById('regra-ranking-cobrar-taxa').checked,
+            valorTaxa: document.getElementById('txt-ranking-valor-taxa').value.trim(),
+            chavePix: document.getElementById('txt-ranking-chave-pix').value.trim(),
+            recebedorPix: document.getElementById('txt-ranking-recebedor-pix').value.trim()
+        }
+    };
+
+    database.ref(`${raizBanco}/config/ranking`).set(payloadRanking)
+        .then(() => {
+            showToast("Parâmetros do Ranking salvos com sucesso!", "success");
+            fecharModalConfig('modal-config-ranking');
+        })
+        .catch(err => {
+            console.error("Erro ao salvar regras do ranking:", err);
+            showToast("Erro ao gravar dados no Firebase.", "error");
+        });
+}
+
+function abrirVisualizacaoRankingSaaS() {
+    showToast("Abrindo gaveta do Leaderboard (Será conectada na Etapa 4).", "info");
+}
+
+function dispararConvitesTemporadaSaaS() {
+    showToast("Ação de convites massivos (Será conectada na Etapa 3).", "info");
+}
+
+function solicitarResetRankingSaaS() {
+    showToast("Ação de zerar classificação (Será conectada na Etapa 5).", "info");
 }

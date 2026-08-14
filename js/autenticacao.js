@@ -15,7 +15,7 @@ auth.onAuthStateChanged((user) => {
         localStorage.setItem('god_mode_clube', godModeClube);
         carregamentoInicial = false;
         clubeAtivoId = godModeClube;
-        raizBanco = `Clubes/${godModeClube}/sistemas`; 
+        raizBanco = `Clubes/${godModeClube}/sistemas`;  
         isGestorLogado = true;
         
         // Acorda os ouvintes mestres instantaneamente
@@ -466,6 +466,11 @@ function fazerLoginJogador() {
 // 4. FUNÇÕES DE SAÍDA (LOGOUT)
 // ==========================================
 function fazerLogout() { 
+    // 🛡️ DESLIGA TODOS OS RADARES ANTES DE LIMPAR A MEMÓRIA
+    if (typeof desligarTodosRadaresSaaS === 'function') {
+        desligarTodosRadaresSaaS();
+    }
+
     // 🌟 RASGA O INGRESSO VIP DO GOD MODE SE ELE EXISTIR
     if (localStorage.getItem('god_mode_clube')) {
         localStorage.removeItem('god_mode_clube'); 

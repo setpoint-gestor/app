@@ -20,7 +20,7 @@ if (!firebase.apps.length) {
 }
 
 const database = firebase.database();  
-const auth = firebase.auth();
+const auth = firebase.auth(); 
 
 
 
@@ -42,12 +42,15 @@ let configAulasGlobal = {};     // Espelho local da Grade de Aulas
 let configDuplasGlobal = {};    // Espelho local do Horário de Duplas
 let configConvidadosGlobal = {}; // Backup em tempo real de Convidados
 let reservasLocaisCache = {};   // Espelho local das reservas e agendamentos da quadra ativa
+let isLicencaAtivaGlobal = true; // Espelho local do status da licença (Kill Switch)
 
 // 🌟 VARIÁVEL INJETADA DA ETAPA 1 (Retenção de Logs):
 let DiasLimpezaLogs = 15;       // Parâmetro mestre de retenção de logs no GitHub (Padrão: 15 dias)
 
 let jogadoresGlobal = {};       // 🔥 DECLARAÇÃO GARANTIDA: Banco de dados de atletas na memória RAM
 let jogadoresGlobalAlterado = false; // 🔥 INTERRUPTOR INTELIGENTE: Controla se houve mudanças online no Firebase
+
+let rankingTabelasGlobal = {}; // Espelho local das tabelas do ranking na memória RAM
 
 let configQuadrasGlobal = {};    // Espelho local em tempo real da Infraestrutura e Status das Quadras
 
@@ -62,7 +65,7 @@ let saasUsuariosOnlineCache = {}; // Espelho local dos usuários conectados em t
 // Auto-fechamento universal dos Menus Kebab (3 pontinhos) ao clicar fora deles
 window.addEventListener('click', () => {
     document.querySelectorAll('.dropdown-kebab').forEach(dropdown => {
-        dropdown.classList.remove('ativo');
+        dropdown.classList.remove('ativo'); 
     });
 });
 
@@ -103,11 +106,8 @@ function showToast(msg, tipo = 'info', tempoCustomizado = null) {
     // 💎 MODIFICAÇÃO: Sem ícones (design limpo). Renderiza apenas a string centralizada.
     if (tipo === 'premium') {
         toast.innerHTML = msg;
-        toast.style.background = 'transparent'; 
-        toast.style.boxShadow = 'none';
-        toast.style.padding = '0';
     } else {
-        toast.innerHTML = `<span style="letter-spacing: 0.3px;">${msg}</span>`;
+        toast.innerHTML = `<span>${msg}</span>`;
     }
     
     container.appendChild(toast); 
@@ -185,6 +185,16 @@ function showPrompt(titulo, msg, callback) {
 }
 
 
+function avaliarEstadoManutencaoSaaS() {
+    const licencaOk = isLicencaAtivaGlobal !== false;
+    const gestorOk = configRegrasGlobal ? configRegrasGlobal.Abrir !== false : true;
+    const sistemaAberto = licencaOk && gestorOk;
+
+    if (typeof atualizarVisualManutencaoSaaS === 'function') {
+        atualizarVisualManutencaoSaaS(sistemaAberto);
+    }
+}
+
 // Variable de controle para evitar disparos repetidos e mapear transições em tempo real
 let sistemaAbertoAnterior = null;
 
@@ -244,13 +254,7 @@ function dispararFumacaSaaS() {
 
     const canvas = document.createElement('canvas');
     canvas.id = 'canvas-fumaca-saas';
-    canvas.style.position = 'fixed';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.width = '100vw';
-    canvas.style.height = '100vh';
-    canvas.style.zIndex = '99999'; // Camada mestre por cima de tudo
-    canvas.style.pointerEvents = 'none'; // Não bloqueia os cliques do Admin
+    canvas.className = 'canvas-fumaca-saas';
     document.body.appendChild(canvas);
 
     const ctx = canvas.getContext('2d');
@@ -355,10 +359,19 @@ function dispararFumacaSaaS() {
  * Alterna entre as telas principais do sistema SPA.
  */
 function navegarApp(idDestino) {
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    const licencaOk = isLicencaAtivaGlobal !== false;
     const config = configRegrasGlobal || {};
-    const sistemaAberto = config.Abrir !== false;
+    const gestorOk = config.Abrir !== false;
 
-    if (!sistemaAberto && !isGestorLogado) {
+    // 1. TRAVA MESTRE DO DESENVOLVEDOR (Arena desativada pelo Console)
+    if (!licencaOk && !isGodMode) {
+        if (idDestino !== 'tela-manutencao' && idDestino !== 'tela-boas-vindas') {
+            idDestino = 'tela-manutencao';
+        }
+    } 
+    // 2. TRAVA DE MANUTENÇÃO DO GESTOR (config.Abrir = false)
+    else if (!gestorOk && !isGestorLogado && !isGodMode) {
         const nomeAtletaLogado = localStorage.getItem('jogadorLogadoNome') || "";
         const idAtleta = Object.keys(jogadoresGlobal).find(key => 
             jogadoresGlobal[key].nomeCompleto === nomeAtletaLogado
@@ -375,7 +388,7 @@ function navegarApp(idDestino) {
         tela.classList.remove('ativa');
     });
     
-    const telaDestino = document.getElementById(idDestino);
+    const telaDestino = document.getElementById(idDestino);  
     if (telaDestino) {
         telaDestino.classList.add('ativa');
     }
@@ -390,6 +403,17 @@ function navegarApp(idDestino) {
             if (typeof iniciarRadarDeConvitesSaaS === 'function') {
                 iniciarRadarDeConvitesSaaS(true);
             }
+            if (typeof iniciarRadarSumulasPendentesSaaS === 'function') {
+                iniciarRadarSumulasPendentesSaaS(true);
+            }
+            // ⚖️ DISPARO DO ÁRBITRO
+            if (typeof iniciarRadarArbitroContestacoesSaaS === 'function') {
+                iniciarRadarArbitroContestacoesSaaS();
+            }
+			// ⚖️ NOTIFICAÇAO DA DECISAO DO ÁRBITRO
+			if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
+				iniciarOuvinteNotificacoesJogadorSaaS();
+			}
         }, 300);
     }
 }
@@ -445,13 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (btnTemaGestor) {
             btnTemaGestor.textContent = isDark ? 'light_mode' : 'dark_mode'; 
-            
-            // 🎨 INJEÇÃO DE COR: Sol amarelo no modo escuro, lua padrão no claro
-            if (isDark) {
-                btnTemaGestor.style.color = '#f1c40f'; // Amarelo girassol premium
-            } else {
-                btnTemaGestor.style.color = ''; // Reseta para o grafite padrão do seu CSS
-            }
         }
     };
 
@@ -490,7 +507,43 @@ document.addEventListener('DOMContentLoaded', () => {
 function iniciarOuvinteMestreSaaS() {
     // Trava de segurança: impede que a conexão seja duplicada acidentalmente
     if (window.ouvinteMestreSaaSAtivo) return;
-    window.ouvinteMestreSaaSAtivo = true;
+    window.ouvinteMestreSaaSAtivo = true; 
+
+    // 🛑 OUVINTE MESTRE DE LICENÇA (KILL SWITCH DO DESENVOLVEDOR)
+    database.ref(`Clubes/${clubeAtivoId}/info_clube/ativo`).on('value', (snapshot) => {
+        isLicencaAtivaGlobal = snapshot.val() !== false;
+        const isGodMode = !!localStorage.getItem('god_mode_clube');
+        const telaManutencao = document.getElementById('tela-manutencao');
+        const estaNaManutencao = telaManutencao && telaManutencao.classList.contains('ativa');
+
+        // Sincroniza o tema ambiental unificado
+        if (typeof avaliarEstadoManutencaoSaaS === 'function') {
+            avaliarEstadoManutencaoSaaS();
+        }
+
+        if (!isLicencaAtivaGlobal && !isGodMode) {
+            console.warn("🛑 [Kill Switch] Arena desativada pelo Desenvolvedor.");
+            // 🧹 Remove o carimbo de presença online do banco imediatamente
+            if (typeof removerPresencaOnlineSaaS === 'function') {
+                removerPresencaOnlineSaaS();
+            }
+            if (typeof navegarApp === 'function') {
+                navegarApp('tela-manutencao');
+            }
+        } else if (isLicencaAtivaGlobal && estaNaManutencao && !isGodMode) {
+            console.log("✅ [Kill Switch] Arena religada! Redirecionando usuário de volta...");
+            if (isGestorLogado) {
+                navegarApp('tela-gestor-dashboard');
+            } else {
+                if (typeof abrirVisaoQuadras === 'function') {
+                    abrirVisaoQuadras();
+                } else {
+                    navegarApp('tela-visao-quadras');
+                }
+            }
+        }
+    });
+
 
     // --- 1. OUVINTE DO HORÁRIO PADRÃO ---
     database.ref(`${raizBanco}/config/Horarios/Padrao`).on('value', (snapshot) => {
@@ -544,7 +597,21 @@ function iniciarOuvinteMestreSaaS() {
         console.log(`✓ [Core] ${Object.keys(jogadoresGlobal).length} jogadores sincronizados na memória RAM.`);
     });
 	
-// --- 5. OUVINTE MESTRE DE INFRAESTRUTURA E STATUS DE QUADRAS ---
+	// --- 4.5. OUVINTE MESTRE DAS TABELAS DE RANKING ---
+    console.log("🏆 [Core] Sincronizando tabelas do ranking em tempo real...");
+    database.ref(`${raizBanco}/ranking/tabelas`).on('value', (snapshot) => {
+        rankingTabelasGlobal = snapshot.val() || {};
+        console.log("✓ [Core] Tabelas do ranking atualizadas na memória RAM.");
+        
+        const telaQuadras = document.getElementById('tela-visao-quadras');
+        if (telaQuadras && telaQuadras.classList.contains('ativa')) {
+            if (typeof forcarRepinturaPlanilha === 'function') {
+                forcarRepinturaPlanilha();
+            }
+        }
+    });
+	
+	// --- 5. OUVINTE MESTRE DE INFRAESTRUTURA E STATUS DE QUADRAS ---
     console.log("🏟️ [Core] Sincronizando infraestrutura e status das quadras em tempo real...");
     database.ref(`${raizBanco}/config/Quadras`).on('value', (snapshot) => {
         configQuadrasGlobal = snapshot.val() || {};
@@ -577,9 +644,9 @@ function iniciarOuvinteMestreSaaS() {
                   
         console.log("✓ [Core] Regras operacionais atualizadas na memória RAM.");
 		
-		// 🚨 DISPARO DA COORDENAÇÃO DE MANUTENÇÃO
-        if (typeof atualizarVisualManutencaoSaaS === "function") {
-            atualizarVisualManutencaoSaaS(configRegrasGlobal.Abrir !== false);
+		// 🚨 DISPARO DA COORDENAÇÃO DE MANUTENÇÃO UNIFICADA
+        if (typeof avaliarEstadoManutencaoSaaS === "function") {
+            avaliarEstadoManutencaoSaaS();
         }
 		
 		// ====================================================================
@@ -641,6 +708,38 @@ function iniciarOuvinteMestreSaaS() {
         // ====================================================================
         if (typeof iniciarRadarDeConvitesSaaS === 'function') {
             iniciarRadarDeConvitesSaaS();
+        }
+		
+		// ====================================================================
+        // 🏆 GATILHO INJETADO: Radar de Súmulas Pendentes (Tempo Real)
+        // ====================================================================
+        if (typeof iniciarRadarSumulasPendentesSaaS === 'function') {
+            iniciarRadarSumulasPendentesSaaS();
+        }
+		
+		// ====================================================================
+        // ⚖️ GATILHO INJETADO: Radar de Contestações para o Árbitro (Tempo Real)
+        // ====================================================================
+        if (typeof iniciarRadarArbitroContestacoesSaaS === 'function') {
+            iniciarRadarArbitroContestacoesSaaS();
+        }
+		
+		// ====================================================================
+        // 🔔 GATILHO INJETADO: Ouvinte de Notificações do Jogador (Tempo Real)
+        // ====================================================================
+        if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
+            iniciarOuvinteNotificacoesJogadorSaaS();
+        }
+		
+		// ====================================================================
+        // 🟡 ATUALIZAÇÃO CIRÚRGICA DA LEGENDA (Sem repintar a grade)
+        // ====================================================================
+		const elLegendaRanking = document.getElementById('legenda-item-ranking');
+        if (elLegendaRanking) {
+            const isRankingAtivo = (configRegrasGlobal && 
+                                    configRegrasGlobal.ranking && 
+                                    configRegrasGlobal.ranking.ativo === true);
+            elLegendaRanking.style.display = isRankingAtivo ? 'inline-flex' : 'none';
         }
     });  
 
@@ -836,8 +935,15 @@ async function enviarFilaLogsAoGitHubSaaS(arrayNovosLogs) {
 // 8. LOGÍSTICA DE PRESENÇA ONLINE (SaaS)
 // ==========================================
 function sincronizarPresencaOnlineSaaS() {
-    if (!raizBanco) return;
-    
+    if (!raizBanco) return; 
+
+    // 🛑 TRAVA MESTRE: Se a arena estiver desativada pelo Console (e não for God Mode), impede qualquer registro de presença
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    if (isLicencaAtivaGlobal === false && !isGodMode) {
+        removerPresencaOnlineSaaS();
+        return;
+    }
+
     if (isGestorLogado) {
         const refPresencaGestor = database.ref(`${raizBanco}/usuariosOnline/GESTOR`);
         refPresencaGestor.set({ usuario: "Gestor Mestre", isGestor: true });
@@ -943,54 +1049,53 @@ function iniciarMonitorOciosidadeSaaS() {
 }
 
 
+// ==========================================
+// VARIAVEL DE SESSÃO: ITENS ADIADOS PELO USUÁRIO
+// ==========================================
+window.ignoradosSessaoSaaS = [];
+
+function desligarTodosRadaresSaaS() {
+    if (listenerConvitesCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerConvitesCallback);
+    if (listenerSumulasCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerSumulasCallback);
+    if (listenerArbitroCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerArbitroCallback);
+    
+    radarConvitesAtivoId = null;
+    radarSumulasAtivoId = null;
+    listenerConvitesCallback = null;
+    listenerSumulasCallback = null;
+    listenerArbitroCallback = null;
+    window.ignoradosSessaoSaaS = [];
+}
 
 // ==========================================
 // 9. RADAR DE CONVITES PENDENTES (SAAS)
 // ==========================================
 let radarConvitesAtivoId = null;
+let listenerConvitesCallback = null;
 
 function iniciarRadarDeConvitesSaaS(forcar = false) {
-    console.log(`📡 [Radar] Iniciando busca... (Modo Forçar: ${forcar})`);
-
-    if (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao === false) {
-        console.log("⚠️ [Radar] Abortado: Regra de confirmação está OFF no banco.");
-        return;
-    }
+    if (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao === false) return;
 
     const nomeLogado = localStorage.getItem('jogadorLogadoNome');
     const idLogado = localStorage.getItem('jogadorLogadoId');
 
-    console.log(`👤 [Radar] Usuário na memória: ${nomeLogado} (ID: ${idLogado})`);
-
-    if (!nomeLogado || !idLogado || isGestorLogado) {
-        console.log("⚠️ [Radar] Abortado: Falta credenciais ou é painel de Gestor.");
-        return;
-    }
-
+    if (!nomeLogado || !idLogado || isGestorLogado) return;
     if (!forcar && radarConvitesAtivoId === idLogado) return;
 
-    // 🔥 SOLUÇÃO 1: Mata o ouvinte anterior sem perguntar o nome do usuário.
-    // Isso evita o engarrafamento de memória que trava a notificação na tela.
-    if (radarConvitesAtivoId !== null) {
-        database.ref(`${raizBanco}/reservas`).off('value');
+    if (radarConvitesAtivoId !== null && listenerConvitesCallback) {
+        database.ref(`${raizBanco}/reservas`).off('value', listenerConvitesCallback);
     }
 
     radarConvitesAtivoId = idLogado;
     
-    const norm = (txt) => (txt || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-zA-Z0-9 ]/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toUpperCase();
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
 
-    const normNomeLogado = norm(nomeLogado);            
+    listenerConvitesCallback = snap => {
+        const nomeAtual = localStorage.getItem('jogadorLogadoNome');
+        const idAtual = localStorage.getItem('jogadorLogadoId');
+        if (!nomeAtual || !idAtual || isGestorLogado) return;
 
-    console.log(`📡 [Radar] Escutando Firebase para: ${normNomeLogado}`);
-
-    database.ref(`${raizBanco}/reservas`).on('value', snap => {
-        console.log("📦 [Radar] Pacote de reservas recebido do Firebase!");
+        const normNomeLogado = norm(nomeAtual);
         const todasAsReservas = snap.val() || {};
         const meusConvites = [];
         const agora = Date.now();
@@ -1001,10 +1106,12 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
 
             Object.keys(slots).forEach(slotKey => {
                 const r = slots[slotKey];
+                const chaveUnica = `${quadraKey}_${slotKey}`;
                 
                 if (!r || r.status !== 'pendente' || !r.expiraEm) return;
                 if (r.borda === undefined && r.duracao === 2) return;
                 if (r.expiraEm < agora) return;
+                if (window.ignoradosSessaoSaaS.includes(chaveUnica)) return;
 
                 const confs = r.confirmacoes || {};
                 let souEuPendente = false;
@@ -1012,54 +1119,35 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
                 const listCompleto = (r.jogadores_completo || "").split(',').map(s => norm(s));
                 const listApelidos = (r.jogadores || "").split(',').map(s => norm(s));
 
-                // 1. Busca Exata e Segura (Prioridade Máxima)
                 let idxMatch = listCompleto.findIndex(n => n === normNomeLogado);
-                if (idxMatch === -1) {
-                    idxMatch = listApelidos.findIndex(a => a === normNomeLogado);
-                }
+                if (idxMatch === -1) idxMatch = listApelidos.findIndex(a => a === normNomeLogado);
 
-                // 2. Busca Flexível de Contenção (Apenas para nomes longos e seguros)
-                if (idxMatch === -1) {
-                    idxMatch = listCompleto.findIndex(n => n.length >= 5 && (normNomeLogado.includes(n) || n.includes(normNomeLogado)));
-                }
-
-                // 3. Verifica no Objeto de Confirmações se o status é pendente (false)
                 if (idxMatch !== -1) {
                     const nomeOriginalNoBanco = (r.jogadores || "").split(',')[idxMatch].trim();
-                    
                     if (confs[nomeOriginalNoBanco] === false) {
                         souEuPendente = true;
                     } else {
-                        // Tenta buscar ignorando maiúsculas e minúsculas
                         const chavesConfs = Object.keys(confs);
                         const chaveCorrespondente = chavesConfs.find(k => norm(k) === norm(nomeOriginalNoBanco));
-                        if (chaveCorrespondente && confs[chaveCorrespondente] === false) {
-                            souEuPendente = true;
-                        }
+                        if (chaveCorrespondente && confs[chaveCorrespondente] === false) souEuPendente = true;
                     }
                 }
 
-                if (souEuPendente) {
-                    console.log(`🎯 [Radar Match!] Achou convite -> Quadra: ${quadraKey} | Slot: ${slotKey}`);
-                    meusConvites.push({ quadra: quadraKey, slotKey: slotKey, dados: r });
-                }
+                if (souEuPendente) meusConvites.push({ quadra: quadraKey, slotKey: slotKey, dados: r });
             });
         });
 
-        console.log(`📊 [Radar] Varredura concluída. Encontrados: ${meusConvites.length}`);
-
         if (meusConvites.length > 0) {
-            if (typeof renderizarGavetaConvitesSaaS === 'function') {
-                console.log("🎨 [Radar] Mandando desenhar o modal na tela...");
-                renderizarGavetaConvitesSaaS(meusConvites);
-            }
+            if (typeof renderizarGavetaConvitesSaaS === 'function') renderizarGavetaConvitesSaaS(meusConvites);
         } else {
             const modal = document.getElementById('modal-convites-entrada');
             if (modal && modal.style.display !== 'none' && typeof fecharModalConvitesEntradaSaaS === 'function') {
                 fecharModalConvitesEntradaSaaS();
             }
         }
-    });
+    };
+
+    database.ref(`${raizBanco}/reservas`).on('value', listenerConvitesCallback);
 }
 
 
@@ -1072,3 +1160,180 @@ database.ref('Clubes/SaaS_Config/versao_web').on('value', (snapshot) => {
         console.log("📱 [SaaS Version] Versão Web/iOS sincronizada: v" + versaoWebGlobal);
     }
 });
+
+
+// ==========================================
+// 11. RADAR AUTOMÁTICO DE SÚMULAS PENDENTES (SAAS)
+// ==========================================
+let radarSumulasAtivoId = null;
+let listenerSumulasCallback = null;
+
+function iniciarRadarSumulasPendentesSaaS(forcar = false) {
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+
+    // Sempre desliga o ouvinte anterior para evitar escutas zumbis
+    if (listenerSumulasCallback) {
+        database.ref(`${raizBanco}/reservas`).off('value', listenerSumulasCallback);
+        listenerSumulasCallback = null;
+    }
+
+    if (!idLogado || !nomeLogado || (typeof isGestorLogado !== 'undefined' && isGestorLogado)) return;
+    if (!forcar && radarSumulasAtivoId === idLogado) return;
+
+    radarSumulasAtivoId = idLogado;
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+
+    listenerSumulasCallback = snap => {
+        const nomeAtual = localStorage.getItem('jogadorLogadoNome');
+        const idAtual = localStorage.getItem('jogadorLogadoId');
+        if (!nomeAtual || !idAtual || isGestorLogado) return;
+
+        const normNomeLogado = norm(nomeAtual);
+        const todasReservas = snap.val() || {};
+        let sumulaPendenteTarget = null;
+
+        Object.keys(todasReservas).forEach(quadraKey => {
+            const slots = todasReservas[quadraKey];
+            if (!slots) return;
+
+            Object.keys(slots).forEach(slotKey => {
+                const r = slots[slotKey];
+                const chaveUnica = `${quadraKey}_${slotKey}`;
+                if (!r || r.statusPlacar !== 'pendente_validacao' || !r.dadosPlacar) return;
+                if (r.borda === undefined && r.duracao === 2) return; // Trava anti-duplicação de 2h
+                if (window.ignoradosSessaoSaaS.includes(chaveUnica)) return;
+
+                const autorSumula = norm(r.dadosPlacar.autorSumula || '');
+                const jogadoresComp = norm(r.jogadores_completo || '');
+                const jogadoresAp = norm(r.jogadores || '');
+
+                const souJogador = jogadoresComp.includes(normNomeLogado) || jogadoresAp.includes(normNomeLogado);
+                const souOAutor = (normNomeLogado === autorSumula);
+
+                if (souJogador && !souOAutor && !sumulaPendenteTarget) {
+                    r.quadra = quadraKey;
+                    r.slotKey = slotKey;
+                    sumulaPendenteTarget = r;
+                }
+            });
+        });
+
+        if (sumulaPendenteTarget) {
+            if (typeof abrirModalValidacaoAdversario === 'function') abrirModalValidacaoAdversario(sumulaPendenteTarget);
+        } else {
+            const modalVal = document.getElementById('modal-validacao-placar');
+            if (modalVal && modalVal.style.display !== 'none' && typeof fecharModalConfig === 'function') {
+                fecharModalConfig('modal-validacao-placar');
+            }
+        }
+    };
+
+    database.ref(`${raizBanco}/reservas`).on('value', listenerSumulasCallback);
+}
+
+// ==========================================
+// 12. RADAR DO ÁRBITRO - SÚMULAS CONTESTADAS (SAAS)
+// ==========================================
+let listenerArbitroCallback = null;
+
+function iniciarRadarArbitroContestacoesSaaS() {
+    // Sempre desliga o ouvinte anterior antes de avaliar as permissões
+    if (listenerArbitroCallback) {
+        database.ref(`${raizBanco}/reservas`).off('value', listenerArbitroCallback);
+        listenerArbitroCallback = null;
+    }
+
+    let perfisObj = {};
+    try { perfisObj = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+
+    const ehAdmin = (typeof isGestorLogado !== 'undefined' && isGestorLogado === true) || (perfisObj['Admin'] === true) || (perfisObj['Árbitro'] === true);
+    if (!ehAdmin) return;
+
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+
+    listenerArbitroCallback = snap => {
+        const idAtual = localStorage.getItem('jogadorLogadoId');
+        if (!isGestorLogado && !idAtual) return;
+
+        let perfisAtuais = {};
+        try { perfisAtuais = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+        const ehAdminAtual = (typeof isGestorLogado !== 'undefined' && isGestorLogado === true) || (perfisAtuais['Admin'] === true) || (perfisAtuais['Árbitro'] === true);
+        
+        if (!ehAdminAtual) return;
+
+        const nomeAtual = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+        const normNomeLogado = norm(nomeAtual);
+        const todasReservas = snap.val() || {};
+        const listaContestacoes = [];
+
+        Object.keys(todasReservas).forEach(quadraKey => {
+            const slots = todasReservas[quadraKey];
+            if (!slots) return;
+
+            Object.keys(slots).forEach(slotKey => {
+                const r = slots[slotKey];
+                const chaveUnica = `${quadraKey}_${slotKey}`;
+                if (!r || r.statusPlacar !== 'contestado' || !r.dadosPlacar) return;
+                if (r.borda === undefined && r.duracao === 2) return; // Trava anti-duplicação de 2h
+                if (window.ignoradosSessaoSaaS.includes(chaveUnica)) return;
+
+                const jogadoresComp = norm(r.jogadores_completo || '');
+                const jogadoresAp = norm(r.jogadores || '');
+
+                const souJogador = normNomeLogado !== "" && (jogadoresComp.includes(normNomeLogado) || jogadoresAp.includes(normNomeLogado));
+
+                if (!souJogador) {
+                    r.quadra = quadraKey;
+                    r.slotKey = slotKey;
+                    listaContestacoes.push(r);
+                }
+            });
+        });
+
+        if (listaContestacoes.length > 0) {
+            if (typeof renderizarGavetaArbitroSaaS === 'function') {
+                renderizarGavetaArbitroSaaS(listaContestacoes);
+            }
+        } else {
+            const modalArb = document.getElementById('modal-arbitro-placar');
+            if (modalArb && modalArb.style.display !== 'none' && typeof fecharModalConfig === 'function') {
+                fecharModalConfig('modal-arbitro-placar');
+            }
+        }
+    };
+
+    database.ref(`${raizBanco}/reservas`).on('value', listenerArbitroCallback);
+}
+
+
+// ==========================================
+// 13. OUVINTE DE NOTIFICAÇÕES DO JOGADOR (SAAS)
+// ==========================================
+let listenerNotificacoesCallback = null;
+
+function iniciarOuvinteNotificacoesJogadorSaaS() {
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (!idLogado || (typeof isGestorLogado !== 'undefined' && isGestorLogado)) return;
+
+    if (listenerNotificacoesCallback) {
+        database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).off('value', listenerNotificacoesCallback);
+        listenerNotificacoesCallback = null;
+    }
+
+    listenerNotificacoesCallback = snap => {
+        const notifs = snap.val();
+        if (!notifs) return;
+
+        Object.keys(notifs).forEach(keyNotif => {
+            const n = notifs[keyNotif];
+            if (n && n.mensagem) {
+                showToast(n.mensagem, n.tipo || 'info', 7000);
+                // Consome a notificação do banco para não repeti-la nos próximos acessos
+                database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes/${keyNotif}`).remove();
+            }
+        });
+    };
+
+    database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).on('value', listenerNotificacoesCallback);
+}

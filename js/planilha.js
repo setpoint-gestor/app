@@ -9,7 +9,7 @@ let modoVisualizacaoQuadras = "grade";
 let timeoutPillQuadra = null;
 
 // Variável de controle para o duplo toque no mobile
-let ultimoCliqueTituloQuadra = 0; 
+let ultimoCliqueTituloQuadra = 0;  
 
 // Variável para controlar a transição perfeita da planilha
 let primeiraCargaQuadra = true; 
@@ -18,7 +18,7 @@ let primeiraCargaQuadra = true;
 let ouvinteQuadraAtual = null;  
 
 // Trava de segurança para bloquear interações concorrentes no mesmo horário
-let horarioBloqueadoPelaTabela = null; 
+let horarioBloqueadoPelaTabela = null;   
 
 // Contador mestre para o controle elástico da gaveta de atletas no agendamento
 let contAtletas = 1; 
@@ -76,21 +76,40 @@ function abrirVisaoQuadras() {
 	
     primeiraCargaQuadra = true;  
 	
-    let apelidoMobile = "";
+    let apelidoMobile = ""; 
     let socio = "";
     const elNome = document.getElementById('header-nome');
     
     if (elNome) {
         if (isGestorLogado) {
-            const badgesHtml = `<span class="badge" style="background-color: #dc3545; margin-left: 6px; font-size: 10px; padding: 2px 6px;">Admin</span><span class="badge badge-SaaS-off" style="background-color: #dc3545; margin-left: 4px; font-size: 10px; padding: 2px 6px; display: none;">OFF</span>`;
+            // 🧠 Lógica de Identidade (Gestor vs Desenvolvedor)
+            const isGodMode = !!localStorage.getItem('god_mode_clube');
+            const txtDesktop = isGodMode ? "Desenvolvedor" : "Gestor";
+            const txtMobile = isGodMode ? "Dev" : "Gestor";
+            const txtBadge = isGodMode ? "God Mode" : "Admin";
+            const corBadge = isGodMode ? "#8b5cf6" : "#dc3545"; // Roxo Premium pro Dev, Vermelho pro Admin
+
+            // Renderiza o HTML Mestre
             elNome.innerHTML = `
                 <div class="header-user-wrapper">
                     <span class="header-user-text">
-                        Olá, <span class="nome-desktop">Gestor</span><span class="nome-mobile">Gestor</span>
+                        Olá, <span class="nome-desktop">${txtDesktop}</span><span class="nome-mobile">${txtMobile}</span>
                     </span>
-                    <div class="header-user-badges">${badgesHtml}</div>
+                    <div class="header-user-badges" id="container-badges-gestor">
+                        <span class="badge" style="background-color: ${corBadge};">${txtBadge}</span>
+                    </div>
                 </div>
             `;
+
+            // Consulta o status real da licença da arena e adiciona a Tag OFF se estiver suspensa
+            database.ref(`Clubes/${clubeAtivoId}/info_clube/ativo`).once('value').then((snapAtivo) => {
+                if (snapAtivo.val() === false) {
+                    const elBadges = document.getElementById('container-badges-gestor');
+                    if (elBadges) {
+                        elBadges.innerHTML += `<span class="badge" style="background-color: #ef4444; border: 1px solid #7f1d1d;">OFF</span>`;
+                    }
+                }
+            });
         } else {
             const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "Sócio";
             const nomePC = nomeLogado.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
@@ -113,7 +132,7 @@ function abrirVisaoQuadras() {
             let badgesHtml = '';
             const corVinculo = socio === 'visitante' ? '#f39c12' : '#3498db';
             const txtVinculo = socio === 'visitante' ? 'Staff' : (socio ? socio.charAt(0).toUpperCase() + socio.slice(1).toLowerCase() : 'Sócio');
-            badgesHtml += `<span class="badge" style="background-color: ${corVinculo}; margin-left: 6px; font-size: 10px; padding: 2px 6px;">${txtVinculo}</span>`;
+            badgesHtml += `<span class="badge" style="background-color: ${corVinculo};">${txtVinculo}</span>`;
 
             Object.keys(perfis).forEach(p => {
                 if (perfis[p] === true) {
@@ -126,12 +145,12 @@ function abrirVisaoQuadras() {
                     else if (p === 'Árbitro') { corPerfil = '#fd7e14'; abrevPerfil = 'Árbit'; }
                     else if (p === 'Manutenção') { corPerfil = '#6f42c1'; abrevPerfil = 'Manut'; }
 
-                    badgesHtml += `<span class="badge" style="background-color: ${corPerfil}; margin-left: 4px; font-size: 10px; padding: 2px 6px;">${abrevPerfil}</span>`;
+                    badgesHtml += `<span class="badge" style="background-color: ${corPerfil};">${abrevPerfil}</span>`;
                 }
             }); 
 			
-            badgesHtml += `<span class="badge badge-SaaS-off" style="background-color: #dc3545; margin-left: 4px; font-size: 10px; padding: 2px 6px; display: none;">OFF</span>`;
-
+            badgesHtml += `<span class="badge badge-SaaS-off" style="background-color: #dc3545; display: none;">OFF</span>`;
+			
             elNome.innerHTML = `
                 <div class="header-user-wrapper">
                     <span class="header-user-text">
@@ -335,6 +354,7 @@ function forcarRepinturaPlanilha() {
 // 🧠 MOTOR ORQUESTRADOR DE RENDERIZAÇÃO DA GRADE (SaaS)
 // ====================================================================
 function renderizarDadosPlanilha(reservas) {
+		
     // 1. MÓDULO INTELIGENTE: IDENTIFICA A QUADRA PARA MATRIZES FIXAS
     let quadraKey = "Quadra1";
     if (quadraSelecionadaSaaS) {
@@ -465,7 +485,6 @@ function plotarReservasAtivas(reservas) {
             const tempoRestante = r.expiraEm - agora;
 
             if (tempoRestante > 0) {
-                // Planta a bomba-relógio
                 const idAlarme = setTimeout(() => {
                     if (typeof executarFaxinaAutomaticaSaaS === 'function') {
                         executarFaxinaAutomaticaSaaS();
@@ -473,7 +492,6 @@ function plotarReservasAtivas(reservas) {
                 }, tempoRestante);
                 window.alarmesReservasPendentes.push(idAlarme);
             } else {
-                // Se o tempo já passou, dispara o faxineiro imediatamente!
                 if (typeof executarFaxinaAutomaticaSaaS === 'function') {
                     executarFaxinaAutomaticaSaaS();
                 }
@@ -481,24 +499,19 @@ function plotarReservasAtivas(reservas) {
         }
         // --- ⏰ FIM: ALARME INVISÍVEL ---
 
-        // 🎯 SHIELD DE CONTINUIDADE: Se não tem 'borda', é extensão da hora anterior!
-        // ✅ CÓDIGO NOVO (CORRIGIDO)
-		// Se não tem 'borda', é uma 2ª hora. Ela JAMAIS desenha nada sozinha!
-		if (r.borda === undefined && r.status !== 'aula_cancelada') {
-			return;
-		}
+        if (r.borda === undefined && r.status !== 'aula_cancelada') {
+            return;
+        }
         
         const cel = document.getElementById(`cel-${r.hora}-${r.dia}`);
         if (!cel) return;
 
-        // Memory Guard: Evita desenho por cima de horários fechados
         if (cel.getAttribute('data-saas-proibido') === 'true') {
             cel.setAttribute('title', `📝 Lembrete: Havia uma reserva de [${r.jogadores || 'Sócio'}] neste horário bloqueado.`);
             cel.innerHTML = ''; 
             return; 
         }
 
-        // Exceção para Aulas Canceladas
         if (r.status === 'aula_cancelada') {
             cel.innerHTML = '';
             cel.className = '';
@@ -512,27 +525,20 @@ function plotarReservasAtivas(reservas) {
         const isDark = document.body.classList.contains('dark-mode') || document.body.classList.contains('dark');
         const corBorda = isDark ? '2px solid #555' : '2px solid #666';
 
-        // ====================================================================
-        // 🔹 MÁGICA DO FORMATADOR DE NOMES (Negrito e Cores de Pendência)
-        // ====================================================================
         const confs = r.confirmacoes || {};
 
-        // Adicionamos o "index" para saber a posição do jogador na lista
         const formatarNomeAtleta = (nomeBruto, index) => {
             const nomeStr = nomeBruto.trim();
             const nomeUpper = nomeStr.toUpperCase();
             
-            // Se for string pura de grade, ignora
             if (nomeUpper === 'AULA' || nomeUpper === 'DUPLA') return nomeStr;
 
             let classes = [];
 
-            // 1. Organizador: é SEMPRE o Jogador 1 (índice 0 da lista)
             if (index === 0) {
                 classes.push("nome-organizador-grade");
             }
             
-            // 2. Busca de Pendência (Case Insensitive)
             let isPendente = false;
             Object.keys(confs).forEach(k => {
                 if (confs[k] === false && k.toUpperCase() === nomeUpper) {
@@ -544,14 +550,11 @@ function plotarReservasAtivas(reservas) {
                 classes.push("nome-pendente-grade");
             }
 
-            // Aplica a cápsula HTML se tiver alguma regra
             if (classes.length > 0) {
                 return `<span class="${classes.join(' ')}">${nomeStr}</span>`;
             }
-            return nomeStr; // Confirmado comum segue normal
+            return nomeStr;
         };
-
-        // ====================================================================
 
         if (r.jogadores && r.jogadores.toLowerCase() === 'aula') {
             cel.innerHTML = `${r.jogadores}`;
@@ -561,37 +564,67 @@ function plotarReservasAtivas(reservas) {
             cel.classList.add('celula-dupla');
         } else if (r.duracao === 2) {
             // Bloco unificado de 2 Horas
-            
             if (!cel.classList.contains('celula-dupla')) {
                 cel.classList.add('celula-ocupada');    
             }
-            cel.classList.add('celula-reserva-2h'); 
+
+            const ehRanking = (r.isRanking === true || r.tipo === 'ranking');
+
+            if (ehRanking) {
+                cel.classList.add('celula-reserva-ranking');
+            } else {
+                cel.classList.add('celula-reserva-2h'); 
+            }
             cel.classList.add('reserva-2h-topo');
             
-            // 🎯 Passamos o index para a função mágica
             const partesBrutas = (r.jogadores || '').split(', ');
             const partesFormatadas = partesBrutas.map((n, idx) => formatarNomeAtleta(n, idx));
 
-            const jogadoresMetadeCima = partesFormatadas.filter((_, idx) => idx === 0 || idx === 2).join(', ');
-            const jogadoresMetadeBaixo = partesFormatadas.filter((_, idx) => idx === 1 || idx === 3).join(', ');
+            const celNext = document.getElementById(`cel-${r.hora + 1}-${r.dia}`);
 
-            cel.innerHTML = jogadoresMetadeCima || 'Ocupado';
+            if (ehRanking) {
+                const p1 = partesFormatadas[0] || 'Desafiante';
+                const p2 = partesFormatadas[1] || 'Desafiado';
+
+                const partesBrutasOriginais = (r.jogadores || '').split(', ');
+                const tagPos1 = obterTagPosicaoRankingSaaS(partesBrutasOriginais[0]);
+                const tagPos2 = obterTagPosicaoRankingSaaS(partesBrutasOriginais[1]);
+
+                // 1ª Hora (Célula Superior)
+                cel.innerHTML = `${tagPos1}${p1}`;
+
+                // 2ª Hora (Célula Inferior): Pílula via classe CSS limpa
+                if (celNext) {
+                    celNext.innerHTML = `<span class="pilula-x-ranking">x</span>${tagPos2}${p2}`;
+                }
+            } else {
+                const jogadoresMetadeCima = partesFormatadas.filter((_, idx) => idx === 0 || idx === 2).join(', ');
+                const jogadoresMetadeBaixo = partesFormatadas.filter((_, idx) => idx === 1 || idx === 3).join(', ');
+
+                cel.innerHTML = jogadoresMetadeCima || 'Ocupado';
+
+                if (celNext) {
+                    celNext.innerHTML = jogadoresMetadeBaixo || '';
+                }
+            }
             
             cel.style.borderTop = corBorda;
             cel.style.borderLeft = corBorda;
             cel.style.borderRight = corBorda;
             cel.style.borderBottom = 'none';
 
-            const celNext = document.getElementById(`cel-${r.hora + 1}-${r.dia}`);
             if (celNext) {
-                celNext.innerHTML = jogadoresMetadeBaixo || ''; 
-                
                 if (!celNext.classList.contains('celula-dupla')) {
                     celNext.classList.add('celula-ocupada');
                 }
-                celNext.classList.add('celula-reserva-2h');
+
+                if (ehRanking) {
+                    celNext.classList.add('celula-reserva-ranking');
+                } else {
+                    celNext.classList.add('celula-reserva-2h');
+                }
+
                 celNext.classList.add('reserva-2h-baixo');
-                
                 celNext.style.borderTop = 'none';
                 celNext.style.borderLeft = corBorda;
                 celNext.style.borderRight = corBorda;
@@ -605,11 +638,20 @@ function plotarReservasAtivas(reservas) {
         } else {
             // Bloco individual de 1 Hora
             const partesBrutas = (r.jogadores || '').split(', ');
-            
-            // 🎯 Passamos o index para a função mágica
             const partesFormatadas = partesBrutas.map((n, idx) => formatarNomeAtleta(n, idx));
             
-            if (partesFormatadas.length === 4) {
+            const ehRanking = (r.isRanking === true || r.tipo === 'ranking');
+
+            if (ehRanking) {
+                const p1 = partesFormatadas[0] || 'Desafiante';
+                const p2 = partesFormatadas[1] || 'Desafiado';
+
+                const partesBrutasOriginais = (r.jogadores || '').split(', ');
+                const tagPos1 = obterTagPosicaoRankingSaaS(partesBrutasOriginais[0]);
+                const tagPos2 = obterTagPosicaoRankingSaaS(partesBrutasOriginais[1]);
+
+                cel.innerHTML = `${tagPos1}${p1}<br><span class="pilula-x-ranking-1h">x</span><br>${tagPos2}${p2}`;
+            } else if (partesFormatadas.length === 4) {
                 const linha1 = [partesFormatadas[0], partesFormatadas[1]].join(', ');
                 const linha2 = [partesFormatadas[2], partesFormatadas[3]].join(', ');
                 cel.innerHTML = `${linha1}<br>${linha2}`;
@@ -623,42 +665,28 @@ function plotarReservasAtivas(reservas) {
 
             cel.style.fontSize = '';
             cel.style.lineHeight = '';
-            cel.style.fontWeight = '';
+            cel.style.fontWeight = ''; 
 
             if (!cel.classList.contains('celula-dupla')) {
                 cel.classList.add('celula-ocupada');    
             }
-            cel.classList.add('celula-reserva-1h'); 
+
+            if (ehRanking) {
+                cel.classList.add('celula-reserva-ranking');
+            } else {
+                cel.classList.add('celula-reserva-1h'); 
+            }
+
             cel.style.border = corBorda; 
         }
         
+        // Mantém o clique ativo independente da data da reserva
         cel.onclick = () => {
             if (navigator.vibrate) navigator.vibrate(30);
             abrirMenuAcoesReservaSaaS(r.dia, r.hora, r);
         };
-
-        const hojeZero = new Date();
-        hojeZero.setHours(0, 0, 0, 0);
-        
-        const partesDataPure = r.dataCompleta.split('-');
-        const dataReservaPure = new Date(parseInt(partesDataPure[0]), parseInt(partesDataPure[1]) - 1, parseInt(partesDataPure[2]), 0, 0, 0, 0);
-
-        if (dataReservaPure < hojeZero) {
-            cel.onclick = null;
-            cel.style.cursor = 'default';
-            
-            if (r.duracao === 2) {
-                const celNext = document.getElementById(`cel-${r.hora + 1}-${r.dia}`);
-                if (celNext) {
-                    celNext.onclick = null;
-                    celNext.style.cursor = 'default';
-                }
-            }
-        }
     });
 }
-
-
 
 // ====================================================================
 // ⏱️ SUB-MÓDULO 3: NEUTRALIZAÇÃO DO PASSADO E SENSOR HOVER EM TEMPO REAL
@@ -813,6 +841,10 @@ function abrirAgendamentoSaaS(dia, hora) {
 	// 🧠 GATILHO DA REGRA DE DURAÇÃO (SaaS): Lê o banco e controla a anatomia do campo
     if (campoDuracao) {
         const regraDuracao = (configRegrasGlobal && configRegrasGlobal.DuracaoPermitida) ? configRegrasGlobal.DuracaoPermitida : "1_2";
+        const isRankingAtivo = (typeof configRegrasGlobal !== 'undefined' && 
+                                configRegrasGlobal && 
+                                configRegrasGlobal.ranking && 
+                                configRegrasGlobal.ranking.ativo !== false);
         const valorAnterior = campoDuracao.value;
         
         // 1. Limpa o select
@@ -821,20 +853,28 @@ function abrirAgendamentoSaaS(dia, hora) {
         // 2. A opção de 1 Hora sempre é a base
         campoDuracao.innerHTML += '<option value="1">1 hora</option>';
         
-        // 3. O Campo Camaleão: Muda de formato baseado na regra
+        // 3. Libera 2 Horas se permitido pelas regras
         if (regraDuracao === "1_2") {
             campoDuracao.innerHTML += '<option value="2">2 horas</option>';
+        }
+
+        // 4. Libera a opção de Ranking se o módulo estiver ativo
+        if (isRankingAtivo) {
+            campoDuracao.innerHTML += '<option value="ranking" id="opt-duracao-ranking">Ranking</option>';
+        }
+
+        // 5. Habilita ou trava o campo conforme opções disponíveis
+        if (regraDuracao === "1_2" || isRankingAtivo) {
             campoDuracao.disabled = false;
-            campoDuracao.style.appearance = ''; // Garante que a setinha apareça
+            campoDuracao.style.appearance = ''; // Garante a setinha no dropdown
             campoDuracao.style.webkitAppearance = '';
         } else {
-            // Trava o campo e ativa a cor cinza do CSS (.saas-field:disabled)
             campoDuracao.disabled = true;
-            campoDuracao.style.appearance = 'none'; // Truque para apagar a setinha do dropdown
+            campoDuracao.style.appearance = 'none'; // Apaga a setinha do dropdown
             campoDuracao.style.webkitAppearance = 'none';
         }
         
-        // 4. Mantém o valor selecionado antes (se ainda existir) ou força 1 hora
+        // 6. Mantém o valor selecionado antes (se ainda existir) ou força 1 hora
         if (valorAnterior && campoDuracao.querySelector(`option[value="${valorAnterior}"]`)) {
             campoDuracao.value = valorAnterior;
         } else {
@@ -938,14 +978,20 @@ function abrirAgendamentoSaaS(dia, hora) {
     campoJogador1.value = nomeLogado;
 
     
-
-		// --- FUNÇÃO INTERNA REATIVA: Sincronização Dinâmica de Horários e Duração ---
-		// --- FUNÇÃO INTERNA REATIVA: Sincronização Dinâmica de Horários e Duração ---
 		// --- FUNÇÃO INTERNA REATIVA: Sincronização Dinâmica de Horários e Duração ---
 		const atualizarHorariosDisponiveisSaaS = () => {
 			const diaSel = parseInt(campoDia.value) || 1;
-			const duracaoSel = parseInt(campoDuracao.value) || 1;
-			const duracaoReal = campoDuracao.value === '3-piramide' ? 2 : duracaoSel;
+			const valDuracao = campoDuracao ? campoDuracao.value : "1";
+			const duracaoSel = parseInt(valDuracao, 10) || 1;
+			
+			// 🏆 Duração dinâmica do Ranking definida pelo Gestor (Padrão: 2h)
+			const duracaoRankingConfig = (typeof configRegrasGlobal !== 'undefined' && 
+										  configRegrasGlobal && configRegrasGlobal.ranking && 
+										  configRegrasGlobal.ranking.duracaoPartida !== undefined) 
+										  ? parseInt(configRegrasGlobal.ranking.duracaoPartida, 10) 
+										  : 2;
+
+			const duracaoReal = (valDuracao === 'ranking' || valDuracao === '3-piramide') ? duracaoRankingConfig : duracaoSel;
 			
 			let existeSequenciaNoDia = false;
 
@@ -1063,9 +1109,12 @@ function abrirAgendamentoSaaS(dia, hora) {
 					celSeguinte.classList.contains('celula-bloqueada')
 				) : true;
 
-				const limiteFisicoExcedido = (horaFoco + 2 > 23);
+				const limiteFisicoExcedido = (horaFoco + duracaoReal > 23); // 🏆 Usa a duração real aqui
 				const op2h = campoDuracao.querySelector('option[value="2"]');
 				const opPiramide = campoDuracao.querySelector('option[value="3-piramide"]');
+				const opRanking = campoDuracao.querySelector('option[value="ranking"]');
+				
+				const rankingExige2h = (duracaoRankingConfig === 2);
 
 				const deveOcultarOpcoesLongas = (horarioBloqueadoPelaTabela !== null && horarioBloqueadoPelaTabela !== undefined)
 					? (seguinteOcupada || limiteFisicoExcedido) 
@@ -1074,12 +1123,15 @@ function abrirAgendamentoSaaS(dia, hora) {
 				if (deveOcultarOpcoesLongas) {
 					if (op2h) op2h.style.display = 'none';
 					if (opPiramide) opPiramide.style.display = 'none';
-					if (campoDuracao.value === '2' || campoDuracao.value === '3-piramide') {
+					if (opRanking && rankingExige2h) opRanking.style.display = 'none'; // Só oculta se exigir 2h
+					
+					if (campoDuracao.value === '2' || campoDuracao.value === '3-piramide' || (campoDuracao.value === 'ranking' && rankingExige2h)) {
 						campoDuracao.value = '1';
 						setTimeout(() => { atualizarHorariosDisponiveisSaaS(); }, 0);
 					}
 				} else {
 					if (op2h) op2h.style.display = 'block';
+					if (opRanking) opRanking.style.display = 'block';
 					if (opPiramide) {
 						opPiramide.style.display = (typeof piramideAtivaGlobal !== 'undefined' && piramideAtivaGlobal) ? 'block' : 'none';
 					}
@@ -1127,6 +1179,7 @@ function abrirAgendamentoSaaS(dia, hora) {
 				campoHora.value = "";
 			}
 			atualizarHorariosDisponiveisSaaS();
+            aplicarFiltroRankingModalSaaS(); // 🏆 Gatilho do Módulo de Ranking
 		};
 		
 		campoHora.onchange = atualizarHorariosDisponiveisSaaS;
@@ -1234,11 +1287,18 @@ function obterListaProibidosSaaS(selAtual) {
     return proibidos;
 }
 
+
 /**
  * INTELECÇÃO CAMALEÃO + FILTRO EXCLUSIVO: Altera o texto e oculta duplicados dinamicamente
  */
 function alternarTextoOpcoesSaaS(sel, exibirCompleto) {
     if (!jogadoresGlobal || Object.keys(jogadoresGlobal).length === 0) return;
+
+    // 🛡️ TRAVA DO RANKING: Se for o modo de duelo, aborta a formatação camaleão para preservar a numeração ("1º - ")
+    const campoDuracao = document.getElementById('saas-duracao') || document.getElementById('saas-duracao-reserva');
+    if (campoDuracao && campoDuracao.value === 'ranking') {
+        return; 
+    }
     
     const proibidos = obterListaProibidosSaaS(sel);
     
@@ -1267,6 +1327,7 @@ function alternarTextoOpcoesSaaS(sel, exibirCompleto) {
     });
 }
 
+
 /**
  * MOTOR ELÁSTICO DE ATLETAS: Constrói as linhas, ordena de A a Z e amarra os gatilhos
  */
@@ -1289,24 +1350,11 @@ function adicionarJogadorSaaS() {
         contAtletas++;
         
         const div = document.createElement('div'); 
-        div.className = 'saas-row'; 
-        div.style.margin = '0';
-        div.style.width = '100%';
-        div.style.display = 'flex';
-        div.style.alignItems = 'center';
+        div.className = 'saas-row saas-row-atleta'; 
         
         const sel = document.createElement('select'); 
-        sel.className = 'saas-field';
-        
-        // ==========================================================
-        // ✨ CORREÇÃO: Vincula o ID dinâmico esperado pelo Harvester
-        // ==========================================================
-        sel.id = `saas-jogador${contAtletas}`;
-        // ==========================================================
-
-        sel.style.width = '0px';
-        sel.style.flex = '1';
-        sel.style.maxWidth = '100%';
+        sel.className = 'saas-field saas-field-atleta';
+        sel.id = `saas-jogador${contAtletas}`; // 👈 Adicione esta linha aqui!
         sel.innerHTML = '<option value="">Selecionar Atleta ' + contAtletas + '...</option>';
         
         const proibidos = obterListaProibidosSaaS(sel);
@@ -1413,6 +1461,145 @@ window.fecharModalConfig = function(idModal) {
 function handleConvidadoSelectSaaS(el) {}
 
 
+// ====================================================================
+// 🏆 MOTOR DE RANKING: FILTRO INTELIGENTE E EXIBIÇÃO DE ADVERSÁRIOS
+// ====================================================================
+function aplicarFiltroRankingModalSaaS() {
+    const campoDuracao = document.getElementById('saas-duracao') || document.getElementById('saas-duracao-reserva');
+    const container = document.getElementById('jogadoresContainerSaaS');
+    const btnAdd = document.getElementById('btn-add-atleta-SaaS');
+    
+    if (!campoDuracao || !container) return;
+
+    const isRanking = (campoDuracao.value === 'ranking');
+
+    if (isRanking) {
+        while (container.querySelectorAll('.saas-row-atleta').length < 1) {
+            adicionarJogadorSaaS();
+        }
+        const rows = container.querySelectorAll('.saas-row-atleta');
+        for (let i = 1; i < rows.length; i++) {
+            rows[i].remove();
+        }
+        resetContadorAtletasSaaS();
+        contAtletas = 2;
+
+        if (btnAdd) btnAdd.style.display = 'none';
+
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+        const dadosLogado = (typeof jogadoresGlobal !== 'undefined' && idLogado) ? jogadoresGlobal[idLogado] : null;
+        const selJ2 = document.getElementById('saas-jogador2');
+        if (!selJ2) return;
+
+        if (!dadosLogado || !dadosLogado.participaRanking) {
+            selJ2.innerHTML = '<option value="">Você não participa do Ranking</option>';
+            selJ2.disabled = true;
+            return;
+        }
+
+        // Leitura Síncrona da RAM
+        const chaveTabela = `${dadosLogado.classe}_${dadosLogado.genero}`; 
+        const listaIdsRanking = rankingTabelasGlobal[chaveTabela] || [];
+
+        selJ2.innerHTML = '<option value="">Selecionar Desafiado...</option>';
+        selJ2.disabled = false;
+
+        const idsArray = Array.isArray(listaIdsRanking) ? listaIdsRanking : Object.values(listaIdsRanking);
+
+        idsArray.forEach((idAtleta, idx) => {
+            if (idAtleta !== idLogado && jogadoresGlobal && jogadoresGlobal[idAtleta]) {
+                const atleta = jogadoresGlobal[idAtleta];
+                
+                let apelidoLimpo = (atleta.apelido || atleta.nomeCompleto || "").trim();
+                apelidoLimpo = apelidoLimpo.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+                
+                const posicaoVisual = (idx + 1) + "º";
+
+                const opt = document.createElement('option');
+                opt.value = idAtleta;
+                opt.textContent = `${posicaoVisual} - ${apelidoLimpo}`;
+                selJ2.appendChild(opt);
+            }
+        });
+
+    } else {
+        const selJ2 = document.getElementById('saas-jogador2');
+        if (selJ2) {
+            selJ2.disabled = false;
+            
+            const idSelecionadoAntes = selJ2.value;
+            selJ2.innerHTML = '<option value="">Selecionar Atleta 2...</option>';
+            
+            if (Object.keys(jogadoresGlobal).length > 0) {
+                const atletasOrdenadosSaaS = Object.keys(jogadoresGlobal)
+                    .map(id => ({ id: id, ...jogadoresGlobal[id] }))
+                    .sort((a, b) => {
+                        const nomeA = (a.nomeCompleto || "").trim().toLowerCase();
+                        const nomeB = (b.nomeCompleto || "").trim().toLowerCase();
+                        return nomeA.localeCompare(nomeB, 'pt-BR'); 
+                    });
+
+                atletasOrdenadosSaaS.forEach(atleta => {
+                    const id = atleta.id;
+                    if (atleta && atleta.ativo !== false) {
+                        const textoAbreviado = expurgarEAbreviarNomeSaaS(atleta.nomeCompleto, atleta.apelido);
+                        selJ2.innerHTML += '<option value="' + id + '">' + textoAbreviado + '</option>';
+                    }
+                });
+            } else {
+                selJ2.innerHTML += '<option value="convidado">Convidado / Avulso</option>';
+            }
+
+            if (idSelecionadoAntes && selJ2.querySelector(`option[value="${idSelecionadoAntes}"]`)) {
+                selJ2.value = idSelecionadoAntes;
+            }
+        }
+        
+        if (btnAdd) {
+            btnAdd.style.display = 'inline-flex';
+            btnAdd.style.opacity = '1';
+            btnAdd.style.pointerEvents = 'auto';
+        }
+    }
+}
+
+
+// ====================================================================
+// 🏆 AUXILIAR DE POSIÇÃO DO RANKING (LEITURA SÍNCRONA EM RAM)
+// ====================================================================
+function obterTagPosicaoRankingSaaS(nomeOuApelido) {
+    if (!nomeOuApelido || !jogadoresGlobal || !rankingTabelasGlobal) return "";
+
+    const nomeUpper = nomeOuApelido.trim().toUpperCase();
+
+    // Busca o ID do atleta no banco local da RAM
+    const idAtleta = Object.keys(jogadoresGlobal).find(id => {
+        const j = jogadoresGlobal[id];
+        if (!j) return false;
+        const nomeComp = (j.nomeCompleto || "").trim().toUpperCase();
+        const apelido = (j.apelido || "").trim().toUpperCase();
+        return nomeComp === nomeUpper || apelido === nomeUpper;
+    });
+
+    if (!idAtleta) return "";
+
+    const atleta = jogadoresGlobal[idAtleta];
+    if (!atleta || !atleta.classe || !atleta.genero) return "";
+
+    const chaveTabela = `${atleta.classe}_${atleta.genero}`;
+    const tabela = rankingTabelasGlobal[chaveTabela];
+
+    if (!tabela) return "";
+
+    const idsArray = Array.isArray(tabela) ? tabela : Object.values(tabela);
+    const idx = idsArray.indexOf(idAtleta);
+
+    if (idx !== -1) {
+        return `<span class="pos-tag">${idx + 1}º</span>`;
+    }
+
+    return "";
+}
 
 // ====================================================================
 // MÓDULO DE GRAVAÇÃO ATÔMICA DE RESERVAS (SaaS) - COM TRANSAÇÕES E ROLLBACK
@@ -1497,8 +1684,23 @@ function validarEAgendarPartidaSaas() {
     const selectDia = document.getElementById('saas-dia') || document.getElementById('saas-dia-reserva');
     const selectHora = document.getElementById('saas-hora') || document.getElementById('saas-hora-reserva');
     
+    const valorDuracaoRaw = selectDuracao ? selectDuracao.value : "1";
+    const ehPartidaRanking = (valorDuracaoRaw === "ranking");
+    
+    // 🏆 Leitura dinâmica da duração do ranking
+    const duracaoRankingConfig = (typeof configRegrasGlobal !== 'undefined' && 
+                                  configRegrasGlobal && 
+                                  configRegrasGlobal.ranking && 
+                                  configRegrasGlobal.ranking.duracaoPartida !== undefined) 
+                                  ? parseInt(configRegrasGlobal.ranking.duracaoPartida, 10) 
+                                  : 2;
+
+    const duracaoHoras = ehPartidaRanking ? duracaoRankingConfig : (parseInt(valorDuracaoRaw, 10) || 1);
+
     const pacote = {
-        duracao: selectDuracao ? parseInt(selectDuracao.value) : 1,
+        duracao: duracaoHoras,
+        isRanking: ehPartidaRanking,
+        tipo: ehPartidaRanking ? "ranking" : "comum",
         dia: selectDia ? parseInt(selectDia.value) : 1,
         hora: selectHora ? parseInt(selectHora.value) : 6,
         quadraAlvo: "Quadra - 1",
@@ -1645,8 +1847,8 @@ function validarEAgendarPartidaSaas() {
         const strHoje = `${hojeObj.getFullYear()}-${String(hojeObj.getMonth() + 1).padStart(2, '0')}-${String(hojeObj.getDate()).padStart(2, '0')}`;
         const reservaParaHoje = (pacote.dataCompletaFormato === strHoje);
 
-        // Se a regra estiver ON, houver mais de 1 jogador E a reserva NÃO for para hoje, nasce PENDENTE
-        if (exigenciaAtiva && listaApelidos.length > 1 && !reservaParaHoje) {
+        // 🏆 AJUSTE REALIZADO: Partidas de Ranking NUNCA entram como pendentes (!pacote.isRanking)
+        if (exigenciaAtiva && listaApelidos.length > 1 && !reservaParaHoje && !pacote.isRanking) {
             statusFinal = "pendente";
             timestampExpiracao = Date.now() + (prazoHoras * 60 * 60 * 1000);
             
@@ -1659,7 +1861,7 @@ function validarEAgendarPartidaSaas() {
                 }
             }
         } else {
-            // Se a regra for OFF, for jogo individual, OU o jogo for hoje: tudo nasce CONFIRMADO
+            // Se a regra for OFF, for jogo individual, for hoje OU for Ranking: tudo nasce CONFIRMADO
             statusFinal = "confirmada";
             listaApelidos.forEach(apelido => {
                 objetoConfirmacoes[apelido] = true;
@@ -1674,6 +1876,8 @@ function validarEAgendarPartidaSaas() {
             dia: pacote.dia,
             hora: pacote.hora,
             duracao: pacote.duracao,
+            isRanking: pacote.isRanking || false,
+            tipo: pacote.tipo || "comum",
             organizador: organizadorPrincipal,          
             jogadores: stringApelidosExibicao,          
             jogadores_completo: stringCompletosExibicao,
@@ -1798,15 +2002,12 @@ function abrirMapaQuadrasMobile() {
             const termo = inputBusca ? inputBusca.value.toLowerCase().trim() : '';
 
             // Sincroniza classes de visibilidade inteligente
-            //if (window.modoVisualizacaoQuadras === 'grade') {
-			if (modoVisualizacaoQuadras === 'grade') {
-                grid.style.setProperty('grid-template-columns', 'repeat(4, 1fr)', 'important');
+            if (modoVisualizacaoQuadras === 'grade') {
                 if (modal) {
                     modal.classList.add('modal-modo-grade');
                     modal.classList.remove('modal-modo-lista');
                 }
             } else {
-                grid.style.setProperty('grid-template-columns', '50px 1fr', 'important');
                 if (modal) {
                     modal.classList.add('modal-modo-lista');
                     modal.classList.remove('modal-modo-grade'); 
@@ -2244,7 +2445,10 @@ function abrirSheetPerfil() {
     let clubeExibicao = "Arena";
 
     if (isGestorLogado) {
-        nomeExibicao = "Gestor"; 
+        // Assume identidade correta na gaveta
+        const isGodMode = !!localStorage.getItem('god_mode_clube');
+        nomeExibicao = isGodMode ? "Desenvolvedor" : "Gestor"; 
+        
         const txtClubeDOM = document.getElementById('txt-nome-clube');
         clubeExibicao = (txtClubeDOM && txtClubeDOM.textContent !== "Carregando...") 
             ? txtClubeDOM.textContent 
@@ -2261,7 +2465,7 @@ function abrirSheetPerfil() {
         elClube.textContent = clubeExibicao;
 
         // 💉 INJEÇÃO DA VERSÃO NATIVA (Opção A - Abaixo do Vínculo)
-        let elVersao = document.getElementById('sheet-versao-app');
+        let elVersao = document.getElementById('sheet-versao-app'); 
         if (!elVersao) {
             elVersao = document.createElement('div');
             elVersao.id = 'sheet-versao-app'; // O ID serve de âncora para a estilização do config.css
@@ -2295,20 +2499,27 @@ function fecharSheetPerfil(event) {
     sheet.classList.remove('ativa');
     
     setTimeout(() => {
-        sheet.classList.remove('visivel'); 
+        sheet.classList.remove('visivel');  
     }, 300);
 }
  
 function deslogarJogadorSaaS() {
     fecharSheetPerfil();
     
-    showPrompt('Sair da Conta', 'Tem certeza que deseja deslogar? Você precisará selecionar seu nome e inserir sua senha no próximo acesso.', () => {
-        localStorage.removeItem('jogadorLogadoId');
-        localStorage.removeItem('jogadorLogadoNome');
-        
-        showToast('Sessão encerrada.', 'success');
-        
-        setTimeout(() => location.reload(), 500); 
+    showPrompt('Sair da Conta', 'Tem certeza que deseja deslogar?', () => {
+        // 🛡️ DESLIGA TODOS OS RADARES ANTES DE LIMPAR A MEMÓRIA
+        if (typeof desligarTodosRadaresSaaS === 'function') {
+            desligarTodosRadaresSaaS();
+        }
+
+        if (isGestorLogado || localStorage.getItem('god_mode_clube')) {
+            fazerLogout();
+        } else {
+            localStorage.removeItem('jogadorLogadoId');
+            localStorage.removeItem('jogadorLogadoNome');
+            showToast('Sessão encerrada.', 'success');
+            setTimeout(() => window.location.href = window.location.pathname, 500); 
+        }
     });
 }
 
@@ -2346,19 +2557,45 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
         };
     }
 
-    // 2. Vincula o botão "Excluir" (Apenas quem pode alterar)
-    const btnExcluir = document.getElementById('btn-saas-excluir-reserva');
+    // 2. Vincula o botão "Editar Reserva" (Inteligente e Oculto no Ranking)
+    const btnEditar = document.getElementById('btn-saas-editar-reserva');
+    const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
+    const duracaoReserva = parseInt(dadosReserva.duracao) || 1;
 
-    if (podeAlterar) {
+    if (btnEditar) {
+		if (ehRanking) {
+			// O setProperty com 'important' derruba o !important do .btn-universal
+			btnEditar.style.setProperty('display', 'none', 'important');
+		} else {
+			btnEditar.style.setProperty('display', 'flex', 'important');
+			btnEditar.classList.remove('btn-edit-1h', 'btn-edit-2h');
+			
+			if (duracaoReserva === 2) {
+				btnEditar.classList.add('btn-edit-2h');
+			} else {
+				btnEditar.classList.add('btn-edit-1h');
+			}
+		}
+	}
+
+    // 3. Vincula o botão "Excluir" (Apenas quem pode alterar E se não houver placar lançado)
+    const btnExcluir = document.getElementById('btn-saas-excluir-reserva');
+    const temPlacarLancado = !!(dadosReserva.dadosPlacar || (dadosReserva.statusPlacar && dadosReserva.statusPlacar !== 'sem_placar'));
+
+    if (podeAlterar && !temPlacarLancado) {
         modal.classList.remove('saas-modo-leitura');
         if (btnExcluir) {
+            btnExcluir.style.removeProperty('display');
             btnExcluir.onclick = () => {
                 fecharMenuAcoesReservaSaaS();
-                solicitarExclusaoReservaSaaS(dia, hora, dadosReserva);
+                solicitarExclusaoReservaSaaS(dia, hora, dadosReserva); 
             };
         }
     } else {
-        modal.classList.add('saas-modo-leitura');
+        if (!podeAlterar) modal.classList.add('saas-modo-leitura');
+        if (btnExcluir && temPlacarLancado) {
+            btnExcluir.style.setProperty('display', 'none', 'important');
+        }
     }
 
     // Mapeamento de dias para montagem do subtítulo
@@ -2376,6 +2613,13 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
         setTimeout(() => {
             content.style.transform = 'translateY(0)';
         }, 10);
+    }
+	
+	// ========================================================
+    // 🏆 INJEÇÃO: LIGA O GATILHO DA SÚMULA NO MENU DE RESERVA
+    // ========================================================
+    if (typeof configurarGatilhoSumulaRanking === 'function') {
+        configurarGatilhoSumulaRanking(dadosReserva);
     }
 }
 
@@ -2450,6 +2694,7 @@ function formatarNomeExibicaoDetalhes(nomeBruto) {
     return formatadas.join(' ');
 }
 
+
 function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
     if (!dadosReserva) return;
 
@@ -2466,94 +2711,290 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
     const hInicio = String(hora).padStart(2, '0') + ":00";
     const hFim = String(hora + duracao).padStart(2, '0') + ":00";
 
-    // 1. Cabeçalho Reativo (1-hora-detalhes vs 2-horas-detalhes)
+    const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
+
+    // 1. Cabeçalho Reativo (1-hora vs 2-horas vs Ranking)
     const header = document.getElementById('detalhes-header');
     const icone = document.getElementById('detalhes-icone-horario');
     if (header) {
-        header.className = `card-header-detalhes ${duracao === 2 ? 'header-2h' : 'header-1h'}`;
+        if (ehRanking) {
+            header.className = 'card-header-detalhes header-ranking';
+        } else {
+            header.className = `card-header-detalhes ${duracao === 2 ? 'header-2h' : 'header-1h'}`;
+        }
     }
     if (icone) {
-        icone.textContent = duracao === 2 ? 'schedule' : 'event';
+        icone.textContent = ehRanking ? 'emoji_events' : (duracao === 2 ? 'schedule' : 'event');
     }
 
     // 2. Textos de Quadra e Horário
     document.getElementById('detalhes-txt-quadra').textContent = quadraSelecionadaSaaS || "Quadra";
     document.getElementById('detalhes-texto-data-hora').textContent = `${nomeDia}${dataFormatada} • ${hInicio} - ${hFim}`;
 
-    // 3. Bloco Organizador com Formatação Title Case
-    const orgNomeBruto = dadosReserva.organizador || "Sócio";
-    let orgVinculo = "Sócio Titular";
-
-    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) {
-        const idOrg = Object.keys(jogadoresGlobal).find(k => jogadoresGlobal[k].nomeCompleto === orgNomeBruto);
-        if (idOrg && jogadoresGlobal[idOrg].socio) {
-            const s = jogadoresGlobal[idOrg].socio.toLowerCase();
-            orgVinculo = s === 'dependente' ? 'Sócio Dependente' : (s === 'visitante' ? 'Staff' : 'Sócio Titular');
-        }
-    }
-
-    const orgNomeFormatado = formatarNomeExibicaoDetalhes(orgNomeBruto);
-
-    document.getElementById('detalhes-txt-org-nome').textContent = orgNomeFormatado;
-    document.getElementById('detalhes-txt-org-sub').textContent = `Organizador • ${orgVinculo}`;
-
-    // 4. Lista de Jogadores com Fonte Normal (Sem Negrito)
+    const orgBox = document.querySelector('#modal-ver-detalhes .info-box-detalhes');
     const containerJogadores = document.getElementById('detalhes-lista-jogadores');
-    containerJogadores.innerHTML = '';
+    const tituloJogadores = containerJogadores.previousElementSibling;
 
-    const stringJogadores = dadosReserva.jogadores_completo || dadosReserva.jogadores || "";
-    const listaJogadores = stringJogadores.split(',').map(n => n.trim()).filter(n => n.length > 0);
-    const listaApelidosParaBusca = (dadosReserva.jogadores || "").split(',').map(n => n.trim());
+    if (ehRanking) {
+        // ================================================================
+        // BIFURCAÇÃO MESTRE (RANKING): TABELA ATP DE RESULTADOS
+        // ================================================================
+        
+        // 3. Bloco Organizador (Oculto no formato Ranking)
+        if (orgBox) orgBox.style.display = 'none';
 
-    let temPendente = false; // 🔹 Sensor para ligar o relógio
+        // 4. Lista de Jogadores (Substituída pela Tabela ATP)
+        if (tituloJogadores) tituloJogadores.style.display = 'none';
+        if (intervaloDetalhesSaaS) clearInterval(intervaloDetalhesSaaS);
 
-    listaJogadores.forEach((jNome, index) => {
-        const nomeFormatado = formatarNomeExibicaoDetalhes(jNome);
-        const apelidoDesteJogador = listaApelidosParaBusca[index] || jNome;
+        const stPlacar = dadosReserva.statusPlacar || 'sem_placar';
+        let htmlRanking = '';
 
-        let statusTexto = "Confirmado";
-        let statusClasseDot = "confirmed-dot"; 
-        let statusClasseTxt = "txt-confirmed";
+        if (stPlacar === 'consolidado') {
+            htmlRanking += `<div class="status-panel panel-finalizada">Finalizada</div>`;
+        } else if (stPlacar === 'pendente_validacao') {
+            htmlRanking += `<div class="status-panel panel-pendente">Pendente de Validação</div>`;
+        } else if (stPlacar === 'sem_placar') {
+            htmlRanking += `<div class="status-panel panel-aguardando">Aguardando Placar</div>`;
+        } else if (stPlacar === 'anulado') {
+            htmlRanking += `<div class="status-panel panel-anulada">Súmula Anulada</div>`;
+        } else if (stPlacar === 'contestado') {
+            htmlRanking += `<div class="status-panel panel-pendente" style="background:#fef2f2; color:#dc2626; border-color:#fecaca;">Contestada (Em Análise)</div>`;
+        }
 
-        let isPendente = false;
-        if (dadosReserva.confirmacoes) {
-            Object.keys(dadosReserva.confirmacoes).forEach(chaveNoBanco => {
-                if (dadosReserva.confirmacoes[chaveNoBanco] === false) {
-                    if (chaveNoBanco.toUpperCase() === apelidoDesteJogador.toUpperCase() || 
-                        chaveNoBanco.toUpperCase() === jNome.toUpperCase()) {
-                        isPendente = true;
-                        temPendente = true; // 🔹 Opa! Achamos um pendente!
-                    }
+        const nomesApelidos = (dadosReserva.jogadores || '').split(',').map(s => s.trim());
+        const nomesCompletos = (dadosReserva.jogadores_completo || '').split(',').map(s => s.trim());
+        
+        const j1Completo = nomesCompletos[0] || nomesApelidos[0] || "Desafiante";
+        const j2Completo = nomesCompletos[1] || nomesApelidos[1] || "Desafiado";
+        
+        const j1Exibicao = formatarNomeExibicaoDetalhes(j1Completo);
+        const j2Exibicao = formatarNomeExibicaoDetalhes(j2Completo);
+
+        const getPos = (nome) => {
+            const tag = obterTagPosicaoRankingSaaS(nome);
+            const match = tag.match(/>(\d+)º</);
+            return match ? match[1] : "";
+        };
+        const posJ1 = getPos(nomesApelidos[0]);
+        const posJ2 = getPos(nomesApelidos[1]);
+
+        let classNomeJ1 = '', classNomeJ2 = '';
+        let setaJ1 = '', setaJ2 = '';
+        let s1J1 = '-', s2J1 = '-', s3J1 = '-';
+        let s1J2 = '-', s2J2 = '-', s3J2 = '-';
+        let classS1J1 = '', classS2J1 = '', classS3J1 = '';
+        let classS1J2 = '', classS2J2 = '', classS3J2 = '';
+        let jogouSet3 = false; // Flag para decidir se o 3º set aparece na tabela
+
+        const dp = dadosReserva.dadosPlacar;
+        const temPlacar = !!dp && (stPlacar === 'consolidado' || stPlacar === 'pendente_validacao' || stPlacar === 'contestado' || stPlacar === 'anulado');
+        const showWinner = (stPlacar === 'consolidado' || stPlacar === 'pendente_validacao');
+
+        if (temPlacar && dp.parciais) {
+            const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+            const vencedorOficial = norm(dp.vencedor || "");
+            
+            if (showWinner) {
+                if (vencedorOficial === norm(j1Completo) || vencedorOficial === norm(nomesApelidos[0])) {
+                    classNomeJ1 = 'match-winner';
+                    setaJ1 = '<div class="winner-arrow">◀</div>';
+                } else if (vencedorOficial === norm(j2Completo) || vencedorOficial === norm(nomesApelidos[1])) {
+                    classNomeJ2 = 'match-winner';
+                    setaJ2 = '<div class="winner-arrow">◀</div>';
                 }
-            });
+            }
+
+            const fmtSet = (pts, tb) => {
+                if (pts === undefined || pts === null || pts === "") return '-';
+                if (tb !== undefined && tb !== null && tb !== "") return `${pts}<sup>${tb}</sup>`;
+                return pts;
+            };
+
+            const calcSetWinner = (p1, p2, tb1, tb2) => {
+                const n1 = parseInt(p1), n2 = parseInt(p2);
+                if (isNaN(n1) || isNaN(n2)) return 0;
+                if (n1 > n2) return 1;
+                if (n2 > n1) return 2;
+                const t1 = parseInt(tb1), t2 = parseInt(tb2);
+                if (!isNaN(t1) && !isNaN(t2)) {
+                    if (t1 > t2) return 1;
+                    if (t2 > t1) return 2;
+                }
+                return 0;
+            };
+
+            const p = dp.parciais;
+            if (p.set1 && p.set1.j1 !== "") {
+                s1J1 = fmtSet(p.set1.j1, p.set1.tbJ1);
+                s1J2 = fmtSet(p.set1.j2, p.set1.tbJ2);
+                const w1 = calcSetWinner(p.set1.j1, p.set1.j2, p.set1.tbJ1, p.set1.tbJ2);
+                if(showWinner && w1===1) classS1J1 = 'set-winner'; else if(showWinner && w1===2) classS1J2 = 'set-winner';
+            }
+            if (p.set2 && p.set2.j1 !== "") {
+                s2J1 = fmtSet(p.set2.j1, p.set2.tbJ1);
+                s2J2 = fmtSet(p.set2.j2, p.set2.tbJ2);
+                const w2 = calcSetWinner(p.set2.j1, p.set2.j2, p.set2.tbJ1, p.set2.tbJ2);
+                if(showWinner && w2===1) classS2J1 = 'set-winner'; else if(showWinner && w2===2) classS2J2 = 'set-winner';
+            }
+            if (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "") {
+                jogouSet3 = true;
+                s3J1 = fmtSet(p.set3.j1, p.set3.tbJ1);
+                s3J2 = fmtSet(p.set3.j2, p.set3.tbJ2);
+                const w3 = calcSetWinner(p.set3.j1, p.set3.j2, p.set3.tbJ1, p.set3.tbJ2);
+                if(showWinner && w3===1) classS3J1 = 'set-winner'; else if(showWinner && w3===2) classS3J2 = 'set-winner';
+            }
         }
 
-        if (isPendente) {
-            statusTexto = "Pendente";
-            statusClasseDot = "pending-dot";
-            statusClasseTxt = "txt-pending";
-        }
+        // Variáveis condicionais para ocultar a coluna do 3º Set
+        const thSet3 = jogouSet3 ? `<th class="col-score">3</th>` : ``;
+        const tdSet3J1 = jogouSet3 ? `<td class="col-score atp-score ${classS3J1}">${s3J1}</td>` : ``;
+        const tdSet3J2 = jogouSet3 ? `<td class="col-score atp-score ${classS3J2}">${s3J2}</td>` : ``;
 
-        const row = document.createElement('div');
-        row.className = 'player-row-detalhes';
-        row.innerHTML = `
-            <span style="font-size: 13.5px;"><span class="status-dot-detalhes ${statusClasseDot}"></span>${nomeFormatado}</span>
-            <span class="${statusClasseTxt}">${statusTexto}</span>
+        htmlRanking += `
+            <table class="atp-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th class="col-score">1</th>
+                        <th class="col-score">2</th>
+                        ${thSet3}
+                        <th class="col-arrow"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <span class="atp-pos">${posJ1}</span>
+                            <span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>
+                        </td>
+                        <td class="col-score atp-score ${classS1J1}">${s1J1}</td>
+                        <td class="col-score atp-score ${classS2J1}">${s2J1}</td>
+                        ${tdSet3J1}
+                        <td class="col-arrow">${setaJ1}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="atp-pos">${posJ2}</span>
+                            <span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>
+                        </td>
+                        <td class="col-score atp-score ${classS1J2}">${s1J2}</td>
+                        <td class="col-score atp-score ${classS2J2}">${s2J2}</td>
+                        ${tdSet3J2}
+                        <td class="col-arrow">${setaJ2}</td>
+                    </tr>
+                </tbody>
+            </table>
         `;
-        containerJogadores.appendChild(row);
-    });
 
-    // 🔹 MÁGICA: Injeta o relógio na linha do título "JOGADORES"
-    const tituloDOM = containerJogadores.previousElementSibling;
-    if (tituloDOM) {
-        if (temPendente && dadosReserva.expiraEm) {
-            tituloDOM.innerHTML = `JOGADORES <span id="badge-timer-detalhes" data-expira="${dadosReserva.expiraEm}">Calculando...</span>`;
-            tituloDOM.classList.add('titulo-jogadores-flex');
-            iniciarRelogioDetalhesSaaS(); // Liga o motor
-        } else {
-            tituloDOM.innerHTML = `JOGADORES`;
-            tituloDOM.classList.remove('titulo-jogadores-flex');
-            if (intervaloDetalhesSaaS) clearInterval(intervaloDetalhesSaaS);
+        // Rodapé dinâmico com tratamento de Data e Autor
+        if (stPlacar === 'anulado') {
+            const arbNome = formatarNomeExibicaoDetalhes(dp?.arbitroResponsavel || 'Árbitro');
+            htmlRanking += `<div class="motivo-anulacao">Anulada por ${arbNome}: "${dp?.motivoAnulacao || 'Decisão da arbitragem'}"</div>`;
+        }
+        if (temPlacar || stPlacar === 'anulado') {
+            const autorFormatado = formatarNomeExibicaoDetalhes(dp?.autorSumula || 'Sistema');
+            let dataLancamentoStr = dp?.dataHoraLancamento || '';
+            
+            // Verifica se a data é um timestamp numérico e converte
+            if (dataLancamentoStr && !isNaN(dataLancamentoStr)) {
+                const d = new Date(parseInt(dataLancamentoStr));
+                if (!isNaN(d.getTime())) {
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const min = String(d.getMinutes()).padStart(2, '0');
+                    dataLancamentoStr = `${dd}/${mm}/${yyyy}, ${hh}:${min}`;
+                }
+            }
+            
+            htmlRanking += `<div class="audit-text">Informado por: ${autorFormatado} em ${dataLancamentoStr}.</div>`;
+        }
+
+        containerJogadores.innerHTML = htmlRanking;
+
+    } else {
+        // ================================================================
+        // COMPORTAMENTO PADRÃO: RESERVAS COMUNS E AULAS
+        // ================================================================
+        
+        if (orgBox) orgBox.style.removeProperty('display');
+        if (tituloJogadores) tituloJogadores.style.removeProperty('display');
+
+        // 3. Bloco Organizador com Formatação Title Case
+        const orgNomeBruto = dadosReserva.organizador || "Sócio";
+        let orgVinculo = "Sócio Titular";
+
+        if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) {
+            const idOrg = Object.keys(jogadoresGlobal).find(k => jogadoresGlobal[k].nomeCompleto === orgNomeBruto);
+            if (idOrg && jogadoresGlobal[idOrg].socio) {
+                const s = jogadoresGlobal[idOrg].socio.toLowerCase();
+                orgVinculo = s === 'dependente' ? 'Sócio Dependente' : (s === 'visitante' ? 'Staff' : 'Sócio Titular');
+            }
+        }
+
+        const orgNomeFormatado = formatarNomeExibicaoDetalhes(orgNomeBruto);
+
+        document.getElementById('detalhes-txt-org-nome').textContent = orgNomeFormatado;
+        document.getElementById('detalhes-txt-org-sub').textContent = `Organizador • ${orgVinculo}`;
+
+        // 4. Lista de Jogadores com Fonte Normal (Sem Negrito)
+        containerJogadores.innerHTML = '';
+
+        const stringJogadores = dadosReserva.jogadores_completo || dadosReserva.jogadores || "";
+        const listaJogadores = stringJogadores.split(',').map(n => n.trim()).filter(n => n.length > 0);
+        const listaApelidosParaBusca = (dadosReserva.jogadores || "").split(',').map(n => n.trim());
+
+        let temPendente = false; // 🔹 Sensor para ligar o relógio
+
+        listaJogadores.forEach((jNome, index) => {
+            const nomeFormatado = formatarNomeExibicaoDetalhes(jNome);
+            const apelidoDesteJogador = listaApelidosParaBusca[index] || jNome;
+
+            let statusTexto = "Confirmado";
+            let statusClasseDot = "confirmed-dot"; 
+            let statusClasseTxt = "txt-confirmed";
+
+            let isPendente = false;
+            if (dadosReserva.confirmacoes) {
+                Object.keys(dadosReserva.confirmacoes).forEach(chaveNoBanco => {
+                    if (dadosReserva.confirmacoes[chaveNoBanco] === false) {
+                        if (chaveNoBanco.toUpperCase() === apelidoDesteJogador.toUpperCase() || 
+                            chaveNoBanco.toUpperCase() === jNome.toUpperCase()) {
+                            isPendente = true;
+                            temPendente = true; // 🔹 Opa! Achamos um pendente!
+                        }
+                    }
+                });
+            }
+
+            if (isPendente) {
+                statusTexto = "Pendente";
+                statusClasseDot = "pending-dot";
+                statusClasseTxt = "txt-pending";
+            }
+
+            const row = document.createElement('div');
+            row.className = 'player-row-detalhes';
+            row.innerHTML = `
+                <span><span class="status-dot-detalhes ${statusClasseDot}"></span>${nomeFormatado}</span>
+                <span class="${statusClasseTxt}">${statusTexto}</span>
+            `;
+            containerJogadores.appendChild(row);
+        });
+
+        // 🔹 MÁGICA: Injeta o relógio na linha do título "JOGADORES"
+        if (tituloJogadores) {
+            if (temPendente && dadosReserva.expiraEm) {
+                tituloJogadores.innerHTML = `JOGADORES <span id="badge-timer-detalhes" data-expira="${dadosReserva.expiraEm}">Calculando...</span>`;
+                tituloJogadores.classList.add('titulo-jogadores-flex');
+                iniciarRelogioDetalhesSaaS(); // Liga o motor
+            } else {
+                tituloJogadores.innerHTML = `JOGADORES`;
+                tituloJogadores.classList.remove('titulo-jogadores-flex');
+                if (intervaloDetalhesSaaS) clearInterval(intervaloDetalhesSaaS);
+            }
         }
     }
 
@@ -2561,7 +3002,6 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
     const modal = document.getElementById('modal-ver-detalhes');
     if (modal) modal.style.display = 'flex';
 }
-
    
 
 function iniciarRelogioDetalhesSaaS() {
@@ -2591,7 +3031,7 @@ function iniciarRelogioDetalhesSaaS() {
             const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const segundos = Math.floor((diff % (1000 * 60)) / 1000);
             
-            badge.innerHTML = `<i class="material-icons" style="font-size:13px; margin-right:4px;">timer</i> ${String(horas).padStart(2, '0')}h ${String(minutos).padStart(2, '0')}m ${String(segundos).padStart(2, '0')}s`;
+            badge.innerHTML = `<i class="material-icons">timer</i> ${String(horas).padStart(2, '0')}h ${String(minutos).padStart(2, '0')}m ${String(segundos).padStart(2, '0')}s`;
         }
     };
 
@@ -3042,7 +3482,7 @@ function renderizarListaUsuariosOnlineSaaS() {
     const filtrados = chavesOnline.filter(key => key !== 'GESTOR' && !saasUsuariosOnlineCache[key].isGestor);
 
     if (filtrados.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #888; font-size: 13.5px; margin: 15px 0; font-style: italic;">Nenhum atleta online no momento.</p>';
+        container.innerHTML = '<p class="SaaS-lista-vazia">Nenhum atleta online no momento.</p>';
         return;
     }
 
@@ -3214,10 +3654,20 @@ function iniciarRelogioConvitesSaaS() {
 }
 
 
-function fecharModalConvitesEntradaSaaS() {
+function fecharModalConvitesEntradaSaaS(adiarSessao = false) {
     const modal = document.getElementById('modal-convites-entrada'); 
     if (!modal) return;
     
+    if (adiarSessao) {
+        const cards = document.querySelectorAll('#lista-convites-container .convite-item');
+        cards.forEach(card => {
+            const idBruto = card.id.replace('convite-card-', ''); // quadra-slotKey
+            if (idBruto && !window.ignoradosSessaoSaaS.includes(idBruto)) {
+                window.ignoradosSessaoSaaS.push(idBruto);
+            }
+        });
+    }
+
     modal.classList.remove('ativa');
     setTimeout(() => {
         modal.style.display = 'none';
@@ -3247,10 +3697,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
     // 2. Feedback Visual Imediato (Optimistic UI)
     const card = document.getElementById(`convite-card-${quadraChave}-${slotKey}`);
     if (card) {
-        card.style.opacity = '0.4';
-        card.style.pointerEvents = 'none';
-        card.style.transform = 'scale(0.98)';
-        card.style.transition = 'all 0.2s';
+        card.classList.add('convite-processando');
     }
 
     const caminhoKey1 = `${raizBanco}/reservas/${quadraChave}/${slotKey}`;
@@ -3450,9 +3897,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
         console.error("❌ [Transação de Convite] Falha ao processar:", err);
         showToast("Erro ao comunicar com o servidor. Tente novamente.", "error");
         if (card) {
-            card.style.opacity = '1';
-            card.style.pointerEvents = 'auto';
-            card.style.transform = 'scale(1)';
+            card.classList.remove('convite-processando');
         }
     });
 }
@@ -3461,9 +3906,8 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
 
 function concluirEfeitoCardSaaS(cardElement) {
     if (cardElement) {
-        // Transição suave para o card sumir
-        cardElement.style.transform = 'translateX(100%)';
-        cardElement.style.opacity = '0';
+        // Transição suave para o card sumir via classe CSS
+        cardElement.classList.add('convite-saindo');
         setTimeout(() => {
             cardElement.remove();
             avaliarGavetaVaziaSaaS();
