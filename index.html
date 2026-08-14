@@ -1804,7 +1804,8 @@
             <div id="lista-convites-container">
             </div>
 
-            <button class="btn-label-cancel" onclick="fecharModalConvitesEntradaSaaS()">Responder Depois</button>
+            <button class="btn-label-cancel" onclick="fecharModalConvitesEntradaSaaS(true)">Responder Depois</button>
+			
         </div>
     </div>
 	
@@ -2411,7 +2412,7 @@
 				<h3 id="val-txt-titulo">1 Placar Pendente</h3>
 			</div>
 
-			<!-- Cartão de Aprovação do Placar -->
+			<!-- Cartão de Aprovação do Placar --> 
 			<div class="convite-item">
 				<div class="convite-header">
 					<span id="val-txt-data-horario" class="convite-data">Carregando...</span>
@@ -2436,12 +2437,32 @@
 				</div>
 			</div>
 
-			<button class="btn-label-cancel" onclick="fecharModalConfig('modal-validacao-placar')">Responder Depois</button>
+			<button class="btn-label-cancel" onclick="adiarValidacaoAdversarioSaaS()">Responder Depois</button>
+			
+		</div>
+	</div>
+	
+	<!-- ======================================================== -->
+	<!-- 🏆 NOVO COMPONENTE: PAINEL DO ÁRBITRO (SÚMULA CONTESTADA) -->
+	<!-- ======================================================== -->
+	<div id="modal-arbitro-placar" class="modal-form-overlay">
+		<div class="bottom-sheet-mock">
+			
+			<div class="acoes-header-text">
+				<i class="material-icons">gavel</i>
+				<h3 id="arb-txt-titulo">1 Súmula Contestada</h3>
+			</div>
+
+			<!-- Container onde as contestações serão injetadas via JS -->
+			<div id="lista-arbitro-container">
+			</div>
+
+			<button class="btn-label-cancel" onclick="adiarDecisaoArbitroSaaS()">Decidir Depois</button>
 		</div>
 	</div>
 	
 	<script src="js/core.js?v=4"></script> 
-    <script src="js/autenticacao.js?v=4"></script>  
+    <script src="js/autenticacao.js?v=4"></script>   
     <script src="js/cadastro.js?v=4"></script>
     <script src="js/quadras.js?v=4"></script>
     <script src="js/planilha.js?v=4"></script>
