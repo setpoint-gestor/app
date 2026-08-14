@@ -19,5 +19,92 @@
     "jogadores": "Ronaldo Taborda Costa",
     "jogadores_completo": "Ronaldo Taborda Costa",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-14T10:05:32.839Z",
+    "dataLocal": "14/08/2026, 07:05:32",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "GUGU",
+    "quadra": "Quadra 1",
+    "horario": "21:00 - 22:00",
+    "duracao": "1 Hora",
+    "data": "04-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Ronaldo Taborda Costa",
+    "confirmacoes": {
+      "Ronaldo Taborda Costa": true
+    },
+    "jogadores": "Ronaldo Taborda Costa",
+    "jogadores_completo": "Ronaldo Taborda Costa",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 21
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-14T10:05:32.839Z",
+    "dataLocal": "14/08/2026, 07:05:32",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "GUGU",
+    "quadra": "Quadra 1",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "05-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Ronaldo Taborda Costa",
+    "confirmacoes": {
+      "Gustavo": true,
+      "Ronaldo Taborda Costa": true
+    },
+    "jogadores": "Ronaldo Taborda Costa, Gustavo",
+    "jogadores_completo": "Ronaldo Taborda Costa, GUSTAVO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 7
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 8
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-14T10:05:32.840Z",
+    "dataLocal": "14/08/2026, 07:05:32",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "GUGU",
+    "quadra": "Quadra 1",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "06-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Ronaldo Taborda Costa",
+    "confirmacoes": {
+      "Ronaldo Taborda Costa": true
+    },
+    "jogadores": "Ronaldo Taborda Costa",
+    "jogadores_completo": "Ronaldo Taborda Costa",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 7
+      }
+    ]
   }
 ]
