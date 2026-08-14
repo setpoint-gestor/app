@@ -12,7 +12,7 @@
 #app-header {
     width: 100%; 
     height: 35px;
-    background: linear-gradient(to bottom, #ffffff 0%, #e8e8e8 100%);  
+    background: linear-gradient(to bottom, #ffffff 0%, #e8e8e8 100%);   
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
@@ -69,6 +69,7 @@
     font-weight: bold !important;       /* 5. Garante o destaque correto do crachá */
     display: inline-flex !important;
     align-items: center !important;
+    margin-left: 5px !important;        /* 6. Espaçamento unificado no CSS */
 }
 
 .header-avatar {
@@ -417,8 +418,12 @@
 }
 
 .celula-dupla {
-    background-color: var(--bg-celula-dupla) !important;
+    background-color: var(--bg-celula-dupla) !important; 
     color: var(--txt-celula-tabela) !important;
+}
+
+.celula-reserva-ranking {
+    background-color: var(--bg-reserva-ranking) !important; /* 🟡 Puxa o amarelo do global.css */ 
 }
 
 
@@ -610,6 +615,15 @@ body.dark-mode .busca-mapa-icone {
     gap: 12px !important;
     padding: 2px !important;         
     box-sizing: border-box;
+}
+
+/* Layout Responsivo do Grid conforme o modo ativo (Grade x Lista) */
+.modal-modo-grade #grid-numerico-quadras {
+    grid-template-columns: repeat(4, 1fr) !important;
+}
+
+.modal-modo-lista #grid-numerico-quadras {
+    grid-template-columns: 50px 1fr !important;
 }
 
 .btn-quadra-grade, .btn-quadra-num, .btn-quadra-nome {
@@ -1104,6 +1118,20 @@ body.dark-mode .add-atleta {
 }
 
 
+/* Linhas e Seletores Dinâmicos de Atletas Adicionais */
+.saas-row-atleta {
+    margin: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.saas-field-atleta {
+    width: 0px !important;
+    flex: 1 !important;
+    max-width: 100% !important;
+}
+
 
 /* ======================================================== */
 /* 14. ESTADOS CONTEXTUAIS REATIVOS DAS QUADRAS             */
@@ -1354,8 +1382,12 @@ body.dark-mode.sistema-SaaS-off #tabelaQuadra {
 }
 
 /* Gradição Cromática Premium */
+.btn-ranking-gold { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; }
+.btn-ranking-gold.btn-bloqueado { background: #f1f5f9 !important; color: #94a3b8 !important; box-shadow: none !important; cursor: not-allowed !important; border: 1px solid #e2e8f0 !important; }
 .btn-view { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; }
 .btn-edit { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%) !important; }
+.btn-edit-1h { background: var(--gradiente-1-hora-detalhes) !important; }
+.btn-edit-2h { background: var(--gradiente-2-horas-detalhes) !important; }
 .btn-delete { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important; }
 
 /* AJUSTE 2: Divisor pontilhado com margem vertical reduzida de 6px para 4px */
@@ -1709,6 +1741,18 @@ body.dark-mode .divisor-SaaS-linha {
 body.dark-mode .btn-saas-label-cancel { color: #64748b !important; }
 body.dark-mode .btn-saas-label-cancel:active { color: #cbd5e1 !important; }
 
+/* Mensagem de Estado Vazio da Gaveta */
+.SaaS-lista-vazia {
+    text-align: center;
+    color: #888;
+    font-size: 13.5px;
+    margin: 15px 0;
+    font-style: italic;
+}
+
+body.dark-mode .SaaS-lista-vazia {
+    color: #94a3b8;
+}
 
 /* ======================================================== */
 /* 20. ALONGAMENTO DA PÍLULA DE TOAST (MOBILE)              */
@@ -1768,6 +1812,11 @@ body.dark-mode .btn-saas-label-cancel:active { color: #cbd5e1 !important; }
 /* 🔵 Cabeçalho 2 Horas */
 #modal-ver-detalhes .card-header-detalhes.header-2h {
     background: var(--gradiente-2-horas-detalhes);
+}
+
+/* 🟡 Cabeçalho Ranking */
+#modal-ver-detalhes .card-header-detalhes.header-ranking {
+    background: var(--gradiente-ranking-detalhes);
 }
 
 #modal-ver-detalhes .court-title-detalhes {
@@ -1872,6 +1921,15 @@ body.dark-mode #badge-timer-detalhes {
     color: #fbbf24;
 }
 
+/* Ajustes Finos de Tipografia e Ícone da Modal Detalhes */
+#modal-ver-detalhes .player-row-detalhes > span:first-child {
+    font-size: 13.5px;
+}
+
+#badge-timer-detalhes .material-icons {
+    font-size: 13px;
+    margin-right: 4px;
+}
 
 /* ======================================================== */
 /* 22. COMPONENTE: MODAL DE CONVITES PENDENTES (POP-UP)     */
@@ -2013,6 +2071,20 @@ body.dark-mode .convite-item {
 body.dark-mode .convite-data, body.dark-mode .convite-info strong { color: #f8fafc !important; }
 body.dark-mode .convite-info { color: #cbd5e1 !important; }
 
+/* Estados de Processamento e Saída dos Convites */
+.convite-item.convite-processando {
+    opacity: 0.4 !important;
+    pointer-events: none !important;
+    transform: scale(0.98) !important;
+    transition: all 0.2s ease !important;
+}
+
+.convite-item.convite-saindo {
+    transform: translateX(100%) !important;
+    opacity: 0 !important;
+    transition: all 0.2s ease !important;
+}
+
 
 /* ======================================================== */
 /* 23. FORMATAÇÃO RICA DOS NOMES NA GRADE (ORGANIZADOR/STATUS) */
@@ -2035,4 +2107,70 @@ body.dark-mode .nome-pendente-grade {
     /* Como a célula continua colorida no modo escuro, mantemos um tom escuro/forte */
     color: #9a3412 !important; /* Ferrugem mais fechado/marrom para contraste absoluto */
     text-shadow: none !important;
+}
+
+/* ======================================================== */
+/* 24. PÍLULA 'X' DO RANKING (CORREÇÃO DE ESPECIFICIDADE)   */
+/* ======================================================== */
+
+/* O seletor com #tabelaQuadra garante que a célula do ranking ganhe do overflow: hidden geral */
+#tabelaQuadra td.celula-reserva-ranking {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+/* Pílula para bloco de 2 Horas */
+#tabelaQuadra td .pilula-x-ranking {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fef08a;
+    color: #854d0e;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 12px;
+    z-index: 30;
+    pointer-events: none;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+}
+
+/* Pílula para bloco de 1 Hora (Visual idêntico à de 2 Horas) */
+#tabelaQuadra td .pilula-x-ranking-1h {
+    background-color: #fef08a !important;
+    color: #854d0e !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    padding: 1px 6px !important;
+    border-radius: 10px !important;
+    line-height: 1 !important;
+    display: inline-block !important;
+    margin: 2px 0 !important;
+    vertical-align: middle !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18) !important;
+}
+
+
+
+/* 🏷️ PÍLULA DA POSIÇÃO NO RANKING (EX: 23º / 24º) */
+#tabelaQuadra td .pos-tag {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: #854d0e !important;
+    background: rgba(255, 255, 255, 0.75) !important;
+    padding: 1px 4px !important;
+    border-radius: 4px !important;
+    margin-right: 3px !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    line-height: 1 !important;
+}
+
+/* Mantém o selo branco e nítido mesmo com o fundo da tabela escuro */
+body.dark-mode #tabelaQuadra td .pos-tag {
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: #854d0e !important;
 }

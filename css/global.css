@@ -7,6 +7,7 @@
     --bg-celula-bloqueada: #f2f2f2;
     --bg-reserva-1h: lightgreen;       /* 🟢 Verde oficial para reservas de 1h */
     --bg-reserva-2h: lightblue;        /* 🔵 Azul oficial para reservas de 2h */
+	--bg-reserva-ranking: #FFEB99;     /* 🟡 Amarelo oficial para reservas de ranking */
     --bg-celula-aula: lightcoral;
     --bg-celula-dupla: #f2f2f2;        /* ⚙️ Mantido o cinza para o horário de duplas administrativo */
     --txt-celula-tabela: #000000;
@@ -14,6 +15,8 @@
 	/* 🎨 Gradientes Inteligentes para a Tela "Ver Detalhes" */
     --gradiente-1-hora-detalhes: linear-gradient(135deg, #36b359 0%, #50c870 100%);
     --gradiente-2-horas-detalhes: linear-gradient(135deg, #2b95c6 0%, #4eb2de 100%);
+    --gradiente-ranking-detalhes: linear-gradient(135deg, #f0ac0e 0%, #f9d85c 100%);
+	
 }
 
 body.dark-mode {
@@ -21,6 +24,7 @@ body.dark-mode {
     --bg-celula-bloqueada: #252525;
     --bg-reserva-1h: lightgreen;          /* 🟢 Sintonizado exatamente com o Modo Claro */
     --bg-reserva-2h: lightblue;           /* 🔵 Sintonizado exatamente com o Modo Claro */
+	--bg-reserva-ranking: #FFEB99;        /* 🟡 Mesma cor amarela suave do modo claro */
     --bg-celula-aula: lightcoral !important;    
     --bg-celula-dupla: #252525;   
     --txt-celula-tabela: #ffffff !important;   /* Forçado para branco para dar leitura perfeita nos fundos escuros */
@@ -517,7 +521,7 @@ body.dark-mode #tela-manutencao p {
 /* 3. Escurece o botão "Voltar ao Início" */
 body.dark-mode #tela-manutencao .btn-cinza {
     background-color: #333333 !important;
-    color: #f8fafc !important;
+    color: #f8fafc !important; 
 }
 
 
@@ -645,4 +649,86 @@ body.dark-mode,
 
 body.dark-mode .faixa-manutencao-SaaS {
     border-bottom-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+/* ======================================================== */
+/* PÍLULA GOD MODE NO DASHBOARD DE GESTOR                   */
+/* ======================================================== */
+#badge-godmode-dash {
+    margin-top: 4px;
+}
+
+.badge.badge-godmode {
+    background-color: #8b5cf6;
+    color: #ffffff;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+/* ======================================================== */
+/* BANNER DE DICA DE INSTALAÇÃO SAFARI/IOS                  */
+/* ======================================================== */
+.banner-dica-ios {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: #ffffff;
+    padding: 14px 18px;
+    border-radius: 14px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+    z-index: 99999;
+    font-size: 13.5px;
+    line-height: 1.4;
+    font-weight: 500;
+    text-align: left;
+    max-width: 90%;
+    width: 360px;
+    cursor: pointer;
+    border: 1px solid #334155;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.banner-ios-fechar {
+    font-size: 14px;
+    opacity: 0.7;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 4px 8px;
+    border-radius: 20px;
+}
+
+
+/* ======================================================== */
+/* CANVAS DA ANIMAÇÃO DE FUMAÇA (SISTEMA EM MANUTENÇÃO)     */
+/* ======================================================== */
+.canvas-fumaca-saas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99999;
+    pointer-events: none;
+}
+
+/* ======================================================== */
+/* ESPAÇAMENTO DE LEITURA DAS PÍLULAS DE TOAST              */
+/* ======================================================== */
+.toast span {
+    letter-spacing: 0.3px;
+}
+
+/* Cor do Ícone de Sol do Gestor no Modo Escuro */
+body.dark-mode #btn-tema-gestor {
+    color: #f1c40f !important;
 }
