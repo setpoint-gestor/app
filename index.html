@@ -412,7 +412,7 @@
                         <input type="checkbox" id="check-vip-quadra">
                         <span class="slider-premium"></span>
                     </label>
-                </div>
+                </div> 
             </div>
 
             <div class="input-group">
@@ -1865,6 +1865,75 @@
 										<option value="2" selected>2 horas</option>
 									</select>
 								</div>
+								
+								<!-- Quem pode arbitrar (Card Envelopado Recolhível) -->
+								<div class="card-agendar-box" id="box-quem-pode-arbitrar">
+									<div class="acordeao-trigger-row" onclick="event.stopPropagation(); toggleGavetaQuemPodeArbitrar();">
+										<div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+											<i class="material-icons" style="color: var(--cor-primaria); font-size: 22px;">how_to_reg</i>
+											<div class="ctrl-text">
+												<span class="ctrl-title">Quem pode arbitrar</span>
+												<span class="ctrl-desc">Habilite quem pode decidir as contestações</span>
+											</div>
+										</div>
+										<div class="coluna-acao-direita">
+											<span class="badge-contador" id="lbl-badge-contador-arbitrar">1 liberado</span>
+											<i class="material-icons icon-seta-acordeao">expand_more</i>
+										</div>
+									</div>
+
+									<div class="sub-drawer-box">
+										<div class="sub-list-box">
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Árbitros</span>
+													<span class="sub-item-desc">Oficial de arbitragem</span>
+												</div>
+												<span class="badge-contador" style="background: rgba(46, 139, 87, 0.15); color: var(--cor-primaria, #2E8B57); font-size: 11px;">Padrão</span>
+											</div>
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Gestor</span>
+													<span class="sub-item-desc">Gestor principal da arena</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-arbitrar-gestor" class="chk-arbitrar-item" onchange="atualizarBadgeQuemPodeArbitrar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Administradores</span>
+													<span class="sub-item-desc">Perfis com permissão de Admin</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-arbitrar-admin" class="chk-arbitrar-item" onchange="atualizarBadgeQuemPodeArbitrar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Professores</span>
+													<span class="sub-item-desc">Instrutores e professores cadastrados</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-arbitrar-professor" class="chk-arbitrar-item" onchange="atualizarBadgeQuemPodeArbitrar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+											<div class="sub-list-row">
+												<div class="sub-item-info">
+													<span class="sub-item-title">Desenvolvedor</span>
+													<span class="sub-item-desc">Suporte técnico e God Mode</span>
+												</div>
+												<label class="switch">
+													<input type="checkbox" id="regra-arbitrar-dev" class="chk-arbitrar-item" onchange="atualizarBadgeQuemPodeArbitrar()">
+													<span class="slider"></span>
+												</label>
+											</div>
+										</div>
+									</div>
+								</div>																
 
 								<div class="ctrl-row">
 									<div class="ctrl-text">
