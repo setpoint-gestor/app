@@ -19,7 +19,7 @@ function abrirModuloJogadores() {
     ajustarTextosBotoesResponsivos(); // Ajusta os rótulos de acordo com o tamanho da tela
 
     if (!listenersJogadoresAtivos && raizBanco) {
-        listenersJogadoresAtivos = true;
+        listenersJogadoresAtivos = true; 
         
         database.ref(`${raizBanco}/config/Perfis`).on('value', (snap) => {
             perfisConfigGlobal = snap.val() || {
@@ -146,7 +146,7 @@ function renderizarCardsJogadores() {
             <div class="player-avatar">${extrairIniciais(nomeReal)}</div>
             <div class="player-info">
                 <h4 class="player-name">${capitalizarNome(nomeReal)}</h4>
-                <div style="font-size: 13px; color: #7f8c8d; margin-bottom: 5px;">Aka: ${capitalizarNome(dados.apelido)}</div>
+                <div style="font-size: 13px; color: #7f8c8d; margin-bottom: 5px;">Apelido: ${capitalizarNome(dados.apelido)}</div>
                 <div class="player-badges">${badgesHtml}</div>
             </div>
             <div class="kebab-container">
@@ -299,8 +299,14 @@ async function salvarJogador() {
     const classe = document.getElementById('inp-classe-jog').value; 
     const isAtivo = document.getElementById('check-ativo-jog').checked;
 
+    const whatsLimpo = whatsapp.replace(/\D/g, '');
+
     if (!nomeRaw || !apelidoRaw || !whatsapp) {
         return showToast("Nome, Apelido e WhatsApp são obrigatórios.", 'warning');
+    }
+
+    if (whatsLimpo.length !== 11) {
+        return showToast("Digite um WhatsApp do jogador válido com DDD (ex: 41999998888).", "warning");
     }
     
     apelidoRaw = apelidoRaw.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());

@@ -1424,10 +1424,10 @@ function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
         mensagem = "🟢 Arbitragem: O resultado da sua partida contestada foi MANTIDO e homologado.";
     } else if (tipoDecisao === 'editado') {
         tipoToast = "warning";
-        mensagem = `🟡 Arbitragem: O placar da sua partida foi CORRIGIDO. Novo resultado: ${detalhe}`;
+        mensagem = `🟡 Arbitragem: O placar da sua partida foi CORRIGIDO.<br>Novo resultado: ${detalhe}`;
     } else if (tipoDecisao === 'anulado') {
         tipoToast = "error";
-        mensagem = `🔴 Arbitragem: A sua partida foi ANULADA. Motivo: ${detalhe}`;
+        mensagem = `🔴 Arbitragem: A sua partida foi ANULADA.<br>Motivo: ${detalhe}`;
     }
 
     const payloadNotif = {

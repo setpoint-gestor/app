@@ -2846,7 +2846,6 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             }
         }
 
-        // Variáveis condicionais para ocultar a coluna do 3º Set
         const thSet3 = jogouSet3 ? `<th class="col-score">3</th>` : ``;
         const tdSet3J1 = jogouSet3 ? `<td class="col-score atp-score ${classS3J1}">${s3J1}</td>` : ``;
         const tdSet3J2 = jogouSet3 ? `<td class="col-score atp-score ${classS3J2}">${s3J2}</td>` : ``;
@@ -2887,16 +2886,23 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             </table>
         `;
 
-        // Rodapé dinâmico com tratamento de Data e Autor
+        // 🎯 AQUI ESTÁ A MÁGICA DAS CORES: Laranja para Editado, Verde para Homologado (Mantido)
         if (stPlacar === 'anulado') {
             const arbNome = formatarNomeExibicaoDetalhes(dp?.arbitroResponsavel || 'Árbitro');
             htmlRanking += `<div class="motivo-anulacao">Anulada por ${arbNome}: "${dp?.motivoAnulacao || 'Decisão da arbitragem'}"</div>`;
+        } else if (stPlacar === 'consolidado' && dp?.arbitroResponsavel) {
+            const arbNome = formatarNomeExibicaoDetalhes(dp.arbitroResponsavel);
+            const isEditado = (dp.decisaoArbitro === 'editado_pelo_arbitro');
+            const textoAcaoArbitro = isEditado ? "Editado" : "Homologado";
+            const corHex = isEditado ? "#d97706" : "#059669"; // Laranja (editado) ou Verde (homologado)
+            
+            htmlRanking += `<div class="motivo-anulacao" style="color: ${corHex};">${textoAcaoArbitro} pela arbitragem por ${arbNome}</div>`;
         }
+
         if (temPlacar || stPlacar === 'anulado') {
             const autorFormatado = formatarNomeExibicaoDetalhes(dp?.autorSumula || 'Sistema');
             let dataLancamentoStr = dp?.dataHoraLancamento || '';
             
-            // Verifica se a data é um timestamp numérico e converte
             if (dataLancamentoStr && !isNaN(dataLancamentoStr)) {
                 const d = new Date(parseInt(dataLancamentoStr));
                 if (!isNaN(d.getTime())) {
@@ -2946,7 +2952,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const listaJogadores = stringJogadores.split(',').map(n => n.trim()).filter(n => n.length > 0);
         const listaApelidosParaBusca = (dadosReserva.jogadores || "").split(',').map(n => n.trim());
 
-        let temPendente = false; // 🔹 Sensor para ligar o relógio
+        let temPendente = false; 
 
         listaJogadores.forEach((jNome, index) => {
             const nomeFormatado = formatarNomeExibicaoDetalhes(jNome);
@@ -2963,7 +2969,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                         if (chaveNoBanco.toUpperCase() === apelidoDesteJogador.toUpperCase() || 
                             chaveNoBanco.toUpperCase() === jNome.toUpperCase()) {
                             isPendente = true;
-                            temPendente = true; // 🔹 Opa! Achamos um pendente!
+                            temPendente = true; 
                         }
                     }
                 });
@@ -2984,12 +2990,11 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             containerJogadores.appendChild(row);
         });
 
-        // 🔹 MÁGICA: Injeta o relógio na linha do título "JOGADORES"
         if (tituloJogadores) {
             if (temPendente && dadosReserva.expiraEm) {
                 tituloJogadores.innerHTML = `JOGADORES <span id="badge-timer-detalhes" data-expira="${dadosReserva.expiraEm}">Calculando...</span>`;
                 tituloJogadores.classList.add('titulo-jogadores-flex');
-                iniciarRelogioDetalhesSaaS(); // Liga o motor
+                iniciarRelogioDetalhesSaaS(); 
             } else {
                 tituloJogadores.innerHTML = `JOGADORES`;
                 tituloJogadores.classList.remove('titulo-jogadores-flex');
@@ -3002,6 +3007,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
     const modal = document.getElementById('modal-ver-detalhes');
     if (modal) modal.style.display = 'flex';
 }
+
    
 
 function iniciarRelogioDetalhesSaaS() {

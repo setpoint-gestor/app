@@ -277,7 +277,18 @@ function cadastrarNovoClube() {
     const whatsapp = document.getElementById('cad-whatsapp').value.trim();
     const senha = document.getElementById('cad-senha').value;
 
-    if (!nomeClube || !codigoClube || !email || !senha) return showToast('Preencha os campos obrigatórios.', 'warning');
+    // Extrai apenas os números para validação
+    const whatsLimpo = whatsapp.replace(/\D/g, '');
+
+    if (!nomeClube || !codigoClube || !email || !senha) {
+        return showToast('Preencha os campos obrigatórios.', 'warning');
+    }
+
+    // Trava de Segurança: Exige exatamente 11 dígitos (DDD + 9 números)
+    if (whatsLimpo.length !== 11) {
+        return showToast('Digite um WhatsApp válido com DDD (ex: 41999998888).', 'warning');
+    }
+	
     if (senha.length < 6) return showToast('A senha deve ter pelo menos 6 caracteres.', 'warning');
 
     database.ref(`Clubes/${codigoClube}`).once('value').then((snapshot) => {
@@ -379,17 +390,95 @@ function verificarCodigoClube() {
 
 function carregarDropdownLoginsSocio() {
     database.ref(`${raizBanco}/jogadores`).once('value').then((snapshot) => {
+        const select = document.getElementById('jogadorSelect');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Selecione seu nome...</option>';
+        let qtdAtletas = 0;
+
         if (snapshot.exists()) {
             const jogs = snapshot.val();
-            const select = document.getElementById('jogadorSelect');
-            select.innerHTML = '<option value="">Selecione seu nome...</option>';
-            
-            Object.entries(jogs).sort((a,b) => (a[1].nomeCompleto||"").localeCompare(b[1].nomeCompleto||"")).forEach(([id, j]) => {
-                if(j.ativo !== false) {
-                    select.innerHTML += `<option value="${id}">${j.nomeCompleto}</option>`;
-                }
-            });
+            Object.entries(jogs)
+                .sort((a, b) => (a[1].nomeCompleto || "").localeCompare(b[1].nomeCompleto || ""))
+                .forEach(([id, j]) => {
+                    if (j.ativo !== false) {
+                        qtdAtletas++;
+                        select.innerHTML += `<option value="${id}">${j.nomeCompleto}</option>`;
+                    }
+                });
         }
+
+        // Zero State: Se não houver nenhum atleta ativo no clube
+        if (qtdAtletas === 0) {
+            trocarTabJogadorLogin('solicitar', true);
+        } else {
+            trocarTabJogadorLogin('login', false);
+        }
+    });
+}
+
+function trocarTabJogadorLogin(abaTarget, arenaVazia = false) {
+    const btnLogin = document.getElementById('btn-tab-login');
+    const btnSolicitar = document.getElementById('btn-tab-solicitar');
+    const subLogin = document.getElementById('subtab-jogador-login');
+    const subSolicitar = document.getElementById('subtab-jogador-solicitar');
+    const subtitulo = document.getElementById('subtitulo-jogador-login');
+    const txtWhats = document.getElementById('txt-msg-solicitar-whats');
+
+    if (!subLogin || !subSolicitar) return;
+
+    if (arenaVazia) {
+        if (btnLogin) btnLogin.style.display = 'none';
+        if (btnSolicitar) btnSolicitar.style.display = 'none';
+        if (subtitulo) subtitulo.textContent = "Arena em fase de cadastro.";
+        if (txtWhats) {
+            txtWhats.innerHTML = "<b>Esta arena é novidade por aqui!</b><br>Nenhum atleta foi cadastrado ainda. Seja o primeiro a solicitar seu acesso com a secretaria.";
+        }
+        subLogin.style.display = 'none';
+        subSolicitar.style.display = 'block';
+        return;
+    }
+
+    if (btnLogin) btnLogin.style.display = 'block';
+    if (btnSolicitar) btnSolicitar.style.display = 'block';
+    if (subtitulo) subtitulo.textContent = "Selecione seu nome e digite a senha.";
+    if (txtWhats) {
+        txtWhats.innerHTML = "Ainda não encontra seu nome na lista?<br>Fale com a recepção para solicitar a liberação do seu acesso.";
+    }
+
+    if (abaTarget === 'solicitar') {
+        if (btnLogin) btnLogin.classList.remove('active');
+        if (btnSolicitar) btnSolicitar.classList.add('active');
+        subLogin.style.display = 'none';
+        subSolicitar.style.display = 'block';
+    } else {
+        if (btnLogin) btnLogin.classList.add('active');
+        if (btnSolicitar) btnSolicitar.classList.remove('active');
+        subLogin.style.display = 'block';
+        subSolicitar.style.display = 'none';
+    }
+}
+
+function solicitarCadastroWhats() {
+    if (!clubeAtivoId) return showToast('Clube não identificado.', 'warning');
+
+    database.ref(`Clubes/${clubeAtivoId}/info_clube`).once('value').then(snap => {
+        const info = snap.val() || {};
+        const whatsRaw = info.whatsapp || '';
+        const nomeClube = info.nome || 'Clube';
+        const numLimpo = whatsRaw.replace(/\D/g, '');
+
+        if (!numLimpo) {
+            return showToast('O WhatsApp da secretaria não foi cadastrado.', 'warning');
+        }
+
+        const numFinal = numLimpo.startsWith('55') ? numLimpo : '55' + numLimpo;
+        const msg = encodeURIComponent(`Olá! Sou sócio da arena ${nomeClube} e gostaria de solicitar meu primeiro acesso no app SetPoint.`);
+        
+        window.open(`https://wa.me/${numFinal}?text=${msg}`, '_blank');
+    }).catch(err => {
+        console.error("Erro ao buscar WhatsApp do clube:", err);
+        showToast("Erro ao conectar com a secretaria.", "error");
     });
 }
 
@@ -462,7 +551,7 @@ function fazerLoginJogador() {
 
 
 
-// ==========================================
+// ========================================== 
 // 4. FUNÇÕES DE SAÍDA (LOGOUT)
 // ==========================================
 function fazerLogout() { 

@@ -22,7 +22,7 @@ let quadraConvidadosAtual = '';  // Armazena a string da quadra ativa em ediçã
  * Altera de escopo entre as abas originais da tela mestre (Arena / Quadras)
  */
 function mudarEscopoConfig(escopoTarget) {
-    if (navigator.vibrate) navigator.vibrate(30); 
+    if (navigator.vibrate) navigator.vibrate(30);  
 
     document.getElementById('btn-escopo-arena').classList.remove('ativa');
     document.getElementById('btn-escopo-quadras').classList.remove('ativa');
@@ -1885,6 +1885,11 @@ function salvarGradeConvidadosSaas() {
     const nRecebedor = document.getElementById('select-recebedor-convidado').value;
     const nChavePix = document.getElementById('txt-chave-pix-convidado').value;
     const nWhatsapp = document.getElementById('txt-whatsapp-convidado').value;
+	// Validação estrita do WhatsApp de Convidados (DDD + 9 dígitos)
+    const whatsLimpo = nWhatsapp.replace(/\D/g, '');
+    if (nWhatsapp.trim() !== "" && whatsLimpo.length !== 11) {
+        return showToast("Digite um WhatsApp válido com DDD (ex: 41999998888).", "warning");
+    }
 
     // Sincroniza os dados textuais para dentro do carrinho local
     carrinhoConvidados.Taxa = nTaxa;
