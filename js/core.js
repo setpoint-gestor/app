@@ -156,7 +156,7 @@ function processarFilaToastsSaaS() {
             
             // Destranca a porta e chama a próxima mensagem da fila (se houver)
             window.toastAtivoSaaS = false;
-            processarFilaToastsSaaS();
+            processarFilaToastsSaaS(); 
             
         }, 300); 
     };
@@ -1270,6 +1270,7 @@ function iniciarRadarSumulasPendentesSaaS(forcar = false) {
     database.ref(`${raizBanco}/reservas`).on('value', listenerSumulasCallback);
 }
 
+
 // ==========================================
 // 12. RADAR DO ÁRBITRO - SÚMULAS CONTESTADAS (SAAS)
 // ==========================================
@@ -1282,11 +1283,8 @@ function iniciarRadarArbitroContestacoesSaaS() {
         listenerArbitroCallback = null;
     }
 
-    let perfisObj = {};
-    try { perfisObj = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
-
-    const ehAdmin = (typeof isGestorLogado !== 'undefined' && isGestorLogado === true) || (perfisObj['Admin'] === true) || (perfisObj['Árbitro'] === true);
-    if (!ehAdmin) return;
+    // 🛡️ Trava Mestre: Se o perfil não tiver permissão para arbitrar, mata o radar na hora
+    if (typeof podeArbitrarRankingSaaS === 'function' && !podeArbitrarRankingSaaS()) return;
 
     const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
 
@@ -1294,11 +1292,8 @@ function iniciarRadarArbitroContestacoesSaaS() {
         const idAtual = localStorage.getItem('jogadorLogadoId');
         if (!isGestorLogado && !idAtual) return;
 
-        let perfisAtuais = {};
-        try { perfisAtuais = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
-        const ehAdminAtual = (typeof isGestorLogado !== 'undefined' && isGestorLogado === true) || (perfisAtuais['Admin'] === true) || (perfisAtuais['Árbitro'] === true);
-        
-        if (!ehAdminAtual) return;
+        // 🛡️ Re-checagem em tempo real dentro do callback
+        if (typeof podeArbitrarRankingSaaS === 'function' && !podeArbitrarRankingSaaS()) return;
 
         const nomeAtual = (localStorage.getItem('jogadorLogadoNome') || '').trim();
         const normNomeLogado = norm(nomeAtual);

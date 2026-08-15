@@ -45,17 +45,12 @@ function configurarGatilhoSumulaRanking(reserva) {
     const jogadoresAp = norm(reserva.jogadores || '');
     const souJogador = normNomeLogado !== "" && (jogadoresComp.includes(normNomeLogado) || jogadoresAp.includes(normNomeLogado));
 
-    let perfisObj = {};
-    try { perfisObj = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
-    const ehArbitro = perfisObj['Árbitro'] === true;
-    const ehGestorOuGod = (typeof isGestorLogado !== 'undefined' && isGestorLogado === true);
-
-    // 🛑 STATUS CONTESTADO (Apenas Árbitro, Gestor Mestre ou God Mode resolvem contestações de terceiros)
+    // 🛑 STATUS CONTESTADO (Apenas quem tiver permissão em "Quem Pode Arbitrar" resolve contestações)
     if (statusPlacar === 'contestado') {
         if (souJogador) {
             btnGatilho.style.setProperty('display', 'none', 'important');
             return;
-        } else if (ehArbitro || ehGestorOuGod) {
+        } else if (podeArbitrarRankingSaaS()) {
             btnGatilho.style.setProperty('display', 'flex', 'important');
             btnGatilho.classList.remove('btn-bloqueado');
             const spanTexto = btnGatilho.querySelector('span');
@@ -126,6 +121,7 @@ function configurarGatilhoSumulaRanking(reserva) {
 }
 
 
+
 /**
  * Função Auxiliar: Converte Data (YYYY-MM-DD) e Hora Inteira do sistema em Timestamp real
  */
@@ -141,16 +137,48 @@ function converterDataHoraParaTimestamp(dataYMD, horaInteira) {
     return dataIso.getTime();
 }
 
+
+/**
+ * Guardião de Permissão: Avalia se o usuário ativo pode resolver contestações do Ranking
+ */
+function podeArbitrarRankingSaaS() {
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.permiteArbitrar) 
+                 ? configRegrasGlobal.ranking.permiteArbitrar 
+                 : {};
+
+    // 1. Gestor Mestre da Arena (Sua decisão é ESTRITA e EXCLUSIVA pela chave Gestor)
+    if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+        return conf.Gestor === true;
+    }
+
+    let perfisObj = {};
+    try { perfisObj = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+
+    // 2. Árbitros (Padrão nativo do sistema)
+    if (perfisObj['Árbitro'] === true) return true;
+
+    // 3. Desenvolvedor / God Mode
+    const isGod = !!localStorage.getItem('god_mode_clube');
+    if (conf.Dev === true && isGod) return true;
+
+    // 4. Administradores (Aplicado a atletas com perfil Admin)
+    if (conf.Admin === true && perfisObj['Admin'] === true) return true;
+
+    // 5. Professores
+    if (conf.Professor === true && perfisObj['Professor'] === true) return true;
+
+    return false;
+}
+
+
 function verificarAcessoSocioRanking(reserva) {
     if (!reserva) return false; 
 
     // 1. Gestor Mestre do Clube ou God Mode
     if (typeof isGestorLogado !== 'undefined' && isGestorLogado) return true;
 
-    // 2. Perfil de Árbitro
-    let perfisObj = {};
-    try { perfisObj = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
-    if (perfisObj['Árbitro'] === true) return true;
+    // 2. Perfis com permissão de arbitragem liberada nas configurações
+    if (typeof podeArbitrarRankingSaaS === 'function' && podeArbitrarRankingSaaS()) return true;
 
     // 3. Jogadores ou Organizador da Partida
     const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim().toUpperCase();
@@ -1350,27 +1378,29 @@ function adiarDecisaoArbitroSaaS() {
     fecharModalConfig('modal-arbitro-placar');
 }
 
+
 /* ======================================================== */
 /* NOTIFICAÇÃO DE DECISÃO DA ARBITRAGEM AOS ATLETAS         */
 /* ======================================================== */
 function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
     if (!reserva || !raizBanco) return;
 
-    // Tratamento robusto para vírgulas com ou sem espaços
-    const partesApelidos = (reserva.jogadores || '').split(',').map(s => s.trim());
-    const partesCompleto = (reserva.jogadores_completo || '').split(',').map(s => s.trim());
+    // 🛡️ Filtro Blindado: Remove acentos, caracteres especiais e espaços extras
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+
+    const partesApelidos = (reserva.jogadores || '').split(',').map(s => norm(s));
+    const partesCompleto = (reserva.jogadores_completo || '').split(',').map(s => norm(s));
 
     const termosBusca = [...partesCompleto, ...partesApelidos].filter(t => t.length > 0);
     const idsParaNotificar = [];
 
     if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) {
-        termosBusca.forEach(termo => {
-            const normTermo = termo.toUpperCase();
+        termosBusca.forEach(normTermo => {
             const idEncontrado = Object.keys(jogadoresGlobal).find(id => {
                 const j = jogadoresGlobal[id];
                 if (!j) return false;
-                const nc = (j.nomeCompleto || '').trim().toUpperCase();
-                const ap = (j.apelido || '').trim().toUpperCase();
+                const nc = norm(j.nomeCompleto);
+                const ap = norm(j.apelido);
                 return nc === normTermo || ap === normTermo;
             });
             if (idEncontrado && !idsParaNotificar.includes(idEncontrado)) {
@@ -1386,7 +1416,7 @@ function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
         return;
     }
 
-    let tipoToast = "info";
+    let tipoToast = "info"; 
     let mensagem = "";
 
     if (tipoDecisao === 'mantido') {

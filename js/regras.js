@@ -34,7 +34,7 @@ const dicSubNomesAgendar = {
 	Professor: "Agendamento: Professores",
 	Staff: "Agendamento: Staff / Manutenção",
 	Convidado: "Agendamento: Convidados"
-};
+}; 
 
 /**
  * ========================================================
@@ -965,6 +965,33 @@ function atualizarBadgeQuemPodeAgendar() {
 
 /**
  * ========================================================
+ * 10.B. GAVETA: QUEM PODE ARBITRAR (CONTROLE REATIVO)
+ * ========================================================
+ */
+function toggleGavetaQuemPodeArbitrar() {
+    if (navigator.vibrate) navigator.vibrate(20);
+    const cardBox = document.getElementById('box-quem-pode-arbitrar');
+    if (cardBox) cardBox.classList.toggle('aberto');
+}
+
+function atualizarBadgeQuemPodeArbitrar() {
+    const chks = document.querySelectorAll('.chk-arbitrar-item');
+    let marcados = 1; // Árbitros é o padrão nativo e já começa valendo 1
+
+    chks.forEach(c => {
+        if (c.checked) marcados++;
+    });
+
+    const badge = document.getElementById('lbl-badge-contador-arbitrar');
+    if (badge) {
+        badge.textContent = marcados === 1 ? "1 liberado" : `${marcados} liberados`;
+        badge.style.background = "rgba(46, 139, 87, 0.15)";
+        badge.style.color = "var(--cor-primaria, #2E8B57)";
+    }
+}
+
+/**
+ * ========================================================
  * 11. GAVETA: DINÂMICA & CONFIRMAÇÕES (CONTROLE REATIVO)
  * ========================================================
  */
@@ -1011,6 +1038,14 @@ function abrirModalConfigRanking() {
     document.getElementById('select-ranking-genero').value = conf.divisaoGenero || "separado";
 	// 🏆 Nova Duração da Partida de Ranking (Padrão: 2 horas)
     document.getElementById('saas-ranking-duracao').value = String(conf.duracaoPartida !== undefined ? conf.duracaoPartida : 2);
+
+    // ⚖️ Carrega as permissões de quem pode arbitrar
+    const arbitrarObj = conf.permiteArbitrar || {};
+    document.getElementById('regra-arbitrar-gestor').checked = arbitrarObj.Gestor === true;
+    document.getElementById('regra-arbitrar-admin').checked = arbitrarObj.Admin === true;
+    document.getElementById('regra-arbitrar-professor').checked = arbitrarObj.Professor === true;
+    document.getElementById('regra-arbitrar-dev').checked = arbitrarObj.Dev === true;
+    atualizarBadgeQuemPodeArbitrar();
 
     // ABA 2: Tipo de Torneio (Modelo Mestre)
     document.getElementById('select-ranking-modelo').value = conf.modeloAtivo || "piramide";
@@ -1129,6 +1164,13 @@ function salvarConfigRankingSaas() {
         ativo: document.getElementById('regra-ranking-ativo').checked,
         divisaoGenero: document.getElementById('select-ranking-genero').value,
 		duracaoPartida: parseInt(document.getElementById('saas-ranking-duracao').value) || 2,
+        permiteArbitrar: {
+            Arbitro: true,
+            Gestor: document.getElementById('regra-arbitrar-gestor').checked,
+            Admin: document.getElementById('regra-arbitrar-admin').checked,
+            Professor: document.getElementById('regra-arbitrar-professor').checked,
+            Dev: document.getElementById('regra-arbitrar-dev').checked
+        },
         modeloAtivo: document.getElementById('select-ranking-modelo').value,
         maxJogosSemana: parseInt(document.getElementById('select-ranking-max-jogos').value) || 2,
         prazoInatividadeDias: parseInt(document.getElementById('select-ranking-prazo-inatividade').value) || 15,
