@@ -15,7 +15,7 @@
 	/* 🎨 Gradientes Inteligentes para a Tela "Ver Detalhes" */
     --gradiente-1-hora-detalhes: linear-gradient(135deg, #36b359 0%, #50c870 100%);
     --gradiente-2-horas-detalhes: linear-gradient(135deg, #2b95c6 0%, #4eb2de 100%);
-    --gradiente-ranking-detalhes: linear-gradient(135deg, #f0ac0e 0%, #f9d85c 100%);
+    --gradiente-ranking-detalhes: linear-gradient(135deg, #f0ac0e 0%, #f9d85c 100%); 
 	
 }
 
@@ -731,4 +731,77 @@ body.dark-mode .faixa-manutencao-SaaS {
 /* Cor do Ícone de Sol do Gestor no Modo Escuro */
 body.dark-mode #btn-tema-gestor {
     color: #f1c40f !important;
+}
+
+/* ==========================================
+   ABAS DE LOGIN E SUPORTE WHATSAPP
+   ========================================== */
+.tabs-login {
+    display: flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.tab-item {
+    flex: 1;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-item.active {
+    background: #ffffff;
+    color: var(--cor-escura, #1e293b);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.card-ajuda-whats {
+    background: #f0fdf4;
+    border: 1px dashed #86efac;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.btn-whats {
+    background-color: #25D366 !important;
+    color: #ffffff !important;
+    margin-top: 8px;
+    border: none;
+}
+
+.btn-whats:hover {
+    background-color: #1eb954 !important;
+}
+
+/* Compatibilidade com o Modo Escuro */
+body.dark-mode .tabs-login {
+    background: #121212 !important;
+}
+
+body.dark-mode .tab-item {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .tab-item.active {
+    background: #252525 !important;
+    color: #ffffff !important;
+}
+
+body.dark-mode .card-ajuda-whats {
+    background: rgba(37, 211, 102, 0.08) !important;
+    border-color: rgba(37, 211, 102, 0.3) !important;
+}
+
+body.dark-mode .card-ajuda-whats p {
+    color: #4ade80 !important;
 }
