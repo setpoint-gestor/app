@@ -80,13 +80,36 @@
     <div id="tela-jogador-login" class="tela-app"> 
         <div class="container-central">
             <h2 id="nome-clube-encontrado">Carregando Clube...</h2>
-            <p style="color: #666; font-size: 14px;">Selecione seu nome e digite a senha.</p>
-            <select id="jogadorSelect" class="input-app">
-                <option value="">Selecione seu nome...</option>
-            </select>
-            <input type="password" id="acesso_user" class="input-app" placeholder="Digite sua senha" style="text-align: center;" autocomplete="new-password">
-			<button class="btn-app btn-jogador" onclick="fazerLoginJogador()">Entrar</button>
-            <button class="btn-app btn-link" style="color: #888;" onclick="trocarDeClubeJogador()">Trocar de Clube</button>
+            <p id="subtitulo-jogador-login" style="color: #666; font-size: 14px; margin-bottom: 15px;">Selecione seu nome e digite a senha.</p>
+
+            <!-- Abas do Login -->
+            <div class="tabs-login" id="container-tabs-login">
+                <button type="button" id="btn-tab-login" class="tab-item active" onclick="trocarTabJogadorLogin('login')">Já tenho Login</button>
+                <button type="button" id="btn-tab-solicitar" class="tab-item" onclick="trocarTabJogadorLogin('solicitar')">Novo Cadastro</button>
+            </div>
+
+            <!-- Conteúdo Aba 1: Já tenho Login -->
+            <div id="subtab-jogador-login">
+                <select id="jogadorSelect" class="input-app">
+                    <option value="">Selecione seu nome...</option>
+                </select>
+                <input type="password" id="acesso_user" class="input-app" placeholder="Digite sua senha" style="text-align: center;" autocomplete="new-password">
+                <button type="button" class="btn-app btn-jogador" onclick="fazerLoginJogador()">Entrar</button>
+            </div>
+
+            <!-- Conteúdo Aba 2: Solicitar Cadastro / WhatsApp -->
+            <div id="subtab-jogador-solicitar" style="display: none;">
+                <div class="card-ajuda-whats">
+                    <p id="txt-msg-solicitar-whats" style="margin: 0 0 10px 0; font-size: 13px; color: #166534; line-height: 1.6;">
+                        Fale diretamente com a secretaria para liberar seu primeiro acesso no app.
+                    </p>
+                    <button type="button" class="btn-app btn-whats" onclick="solicitarCadastroWhats()">
+                        <i class="material-icons">chat</i> Falar no WhatsApp
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" class="btn-app btn-link" style="color: #888; margin-top: 15px;" onclick="trocarDeClubeJogador()">Trocar de Clube</button>
         </div>
     </div>
 
@@ -110,7 +133,7 @@
 			<input type="text" id="cad-nome-clube" class="input-app" placeholder="Nome do Clube (Ex: Arena Olímpica)">
 			<input type="text" id="cad-codigo-clube" class="input-app" placeholder="Crie um Código (Ex: OLIMPICO10)" style="text-transform: uppercase;">
 			<input type="email" id="cad-email" class="input-app" placeholder="Seu E-mail (Admin)">
-			<input type="tel" id="cad-whatsapp" class="input-app" placeholder="WhatsApp / Celular (Ex: 41999998888)">
+			<input type="tel" id="cad-whatsapp" class="input-app" placeholder="WhatsApp com DDD (00) 00000-0000" maxlength="15" oninput="mascaraTelefoneSaaS(this)">
 			<input type="password" id="cad-senha" class="input-app" placeholder="Crie uma Senha (mín. 6 caracteres)">
 			<button class="btn-app btn-gestor" onclick="cadastrarNovoClube()">Finalizar Cadastro</button>
 			<button class="btn-app btn-link" onclick="navegarApp('tela-gestor-login')">Já tenho conta</button>
@@ -239,7 +262,7 @@
             <div style="display: flex; gap: 10px;">
                 <div class="input-group" style="flex: 1;">
                     <label>WhatsApp / Celular *</label>
-                    <input type="text" id="inp-whats-jog" placeholder="(XX) XXXXX-XXXX" maxlength="15" required>
+                    <input type="tel" id="inp-whats-jog" placeholder="(00) 00000-0000" maxlength="15" oninput="mascaraTelefoneSaaS(this)" required>
                 </div>
                 <div class="input-group" style="flex: 1;">
                     <label>E-mail (Opcional)</label>
@@ -1882,7 +1905,7 @@
 										</div>
 									</div>
 
-									<div class="sub-drawer-box">
+									<div class="sub-drawer-box"> 
 										<div class="sub-list-box">
 											<div class="sub-list-row">
 												<div class="sub-item-info">
