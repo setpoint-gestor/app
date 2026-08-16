@@ -11,6 +11,11 @@
 let partidaRankingEmFoco = null;
 let regrasSessaoRanking = null; // Guardará o configRegrasGlobal.ranking.sumula
 
+let modoWOAtivoSaaS = false;
+let vencedorWOSaaS = null;
+let nomeVencedorWOSaaS = "";
+let motivoCustomizadoWOSaaS = "";
+
 /**
  * ========================================================
  * 1. GATILHO DA SÚMULA: REGRAS DE VISIBILIDADE E ESTADOS
@@ -305,6 +310,8 @@ function limparCamposSumulaRanking() {
 /* 2. O ECOSSISTEMA DE TELAS (ABERTURA E UI DINÂMICA)       */
 /* ======================================================== */
 function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false) {
+    desativarModoWOSaaS();
+
     limparCamposSumulaRanking();
 
     partidaRankingEmFoco = reserva;
@@ -340,10 +347,14 @@ function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false)
     if (elJ1) elJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
     if (elJ2) elJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
 
-    // 🎨 ADAPTAÇÃO VISUAL DO CABEÇALHO E BOTÃO
+    // 🎨 ADAPTAÇÃO VISUAL DO CABEÇALHO, BOTÃO E MENU KEBAB
     const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
     const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
     const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    const btnKebab = document.querySelector('#modal-sumula-ranking button[onclick*="toggleKebabSumulaSaaS"]');
+    const menuKebab = document.getElementById('menu-excecoes-sumula');
+
+    if (menuKebab) menuKebab.classList.remove('ativo');
 
     const statusPlacar = reserva.statusPlacar || 'sem_placar';
 
@@ -351,22 +362,26 @@ function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false)
         if (elTituloHeader) elTituloHeader.innerHTML = '⚖️ Edição de Súmula';
         if (elSubtituloHeader) elSubtituloHeader.textContent = 'Modo de Arbitragem • Ajuste de Resultado';
         if (btnSalvar) { btnSalvar.textContent = 'Atualizar e Consolidar Placar'; btnSalvar.style.display = 'block'; }
+        if (btnKebab) btnKebab.style.display = 'inline-flex';
     } else if (statusPlacar === 'anulado') {
         if (elTituloHeader) elTituloHeader.innerHTML = '🔴 Súmula Anulada';
         const motivo = reserva.dadosPlacar?.motivoAnulacao || "Anulada pela arbitragem";
         const juiz = reserva.dadosPlacar?.arbitroResponsavel || "Árbitro";
         if (elSubtituloHeader) elSubtituloHeader.textContent = `Anulada por ${juiz}: "${motivo}"`;
         if (btnSalvar) btnSalvar.style.display = 'none';
+        if (btnKebab) btnKebab.style.display = 'none';
     } else if (modoLeitura || statusPlacar === 'consolidado') {
         if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula Consolidada';
         if (elSubtituloHeader) elSubtituloHeader.textContent = 'Resultado homologado no ranking';
         if (btnSalvar) btnSalvar.style.display = 'none';
+        if (btnKebab) btnKebab.style.display = 'none';
     } else {
         if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
         const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
         const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
         if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
         if (btnSalvar) { btnSalvar.textContent = 'Salvar Súmula'; btnSalvar.style.display = 'block'; }
+        if (btnKebab) btnKebab.style.display = 'inline-flex';
     }
 
     adaptarRenderizacaoMatematica(regrasSessaoRanking);
@@ -413,6 +428,55 @@ function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false)
 
     if (modoLeitura && btnSalvar) {
         btnSalvar.disabled = true;
+    }
+
+    // 🚩 DETECÇÃO E EXIBIÇÃO DE W.O. EM MODO LEITURA / VER PLACAR
+    const dadosPlacar = reserva.dadosPlacar || {};
+    const eWO = dadosPlacar.isWO || (dadosPlacar.placarFormatado && dadosPlacar.placarFormatado.includes("W.O."));
+
+    if (eWO) {
+        modoWOAtivoSaaS = true;
+
+        const subNormal = document.getElementById('subpainel-normal-sumula');
+        const subWO = document.getElementById('subpainel-wo-sumula');
+        if (subNormal) subNormal.style.display = 'none';
+        if (subWO) subWO.style.display = 'block';
+
+        const elWOJ1 = document.getElementById('sumula-wo-nome-j1');
+        const elWOJ2 = document.getElementById('sumula-wo-nome-j2');
+        if (elWOJ1) elWOJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+        if (elWOJ2) elWOJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+
+        // Marca o atleta vencedor em verde
+        if (dadosPlacar.vencedorCodigo) {
+            selecionarVencedorWOSaaS(dadosPlacar.vencedorCodigo);
+        }
+
+        // Sincroniza o motivo gravado
+        const elMotivo = document.getElementById('select-motivo-wo');
+        if (elMotivo && dadosPlacar.motivoWO) {
+            let achou = false;
+            for (let i = 0; i < elMotivo.options.length; i++) {
+                if (elMotivo.options[i].text.trim().toLowerCase() === dadosPlacar.motivoWO.trim().toLowerCase()) {
+                    elMotivo.selectedIndex = i;
+                    achou = true;
+                    break;
+                }
+            }
+            if (!achou) {
+                elMotivo.value = 'outros';
+                motivoCustomizadoWOSaaS = dadosPlacar.motivoWO;
+            }
+        }
+
+        // Se for apenas visualização ("Ver Placar"), trava cliques e controles
+        if (modoLeitura || statusPlacar === 'consolidado') {
+            const cardJ1 = document.getElementById('card-wo-j1');
+            const cardJ2 = document.getElementById('card-wo-j2');
+            if (cardJ1) cardJ1.onclick = null;
+            if (cardJ2) cardJ2.onclick = null;
+            if (elMotivo) elMotivo.disabled = true;
+        }
     }
 }
 
@@ -769,7 +833,21 @@ function abrirModalValidacaoAdversario(reserva) {
     if (elQuadraModelo) elQuadraModelo.textContent = `${nomeQuadra} • Ranking ${nomesModelos[modeloAtivo] || "Oficial"}`;
     if (elVencedor) elVencedor.textContent = nomeVencedor;
     if (elPerdedor) elPerdedor.textContent = nomePerdedor;
-    if (elPlacar) elPlacar.textContent = dados.placarFormatado || "--";
+    if (elPlacar) {
+		if (dados.isWO || (dados.placarFormatado && dados.placarFormatado.includes("W.O."))) {
+			const txtMotivo = dados.motivoWO || "Não informado";
+			elPlacar.innerHTML = `
+				<div style="line-height: 1.2;">
+					W.O.
+					<span style="display: block; font-size: 12px; color: #64748b; font-weight: 500; margin-top: 4px;">
+						(Motivo: ${txtMotivo})
+					</span>
+				</div>
+			`;
+		} else {
+			elPlacar.textContent = dados.placarFormatado || "--";
+		}
+	}
 
     // 4. Disparo do Cronômetro de 24h
     iniciarRelogioValidacaoSaaS(dados.expiraValidacaoAt);
@@ -894,6 +972,7 @@ function abrirPainelArbitroSaaS(reserva) {
     console.log("Abre a gaveta com status 'Contestado' com botões: Manter, Editar, Anular (Fase 3).");
 }
 
+
 function salvarSumulaSaaS() {
     if (!partidaRankingEmFoco || !raizBanco) {
         showToast("Erro ao identificar a partida. Tente novamente.", "error");
@@ -903,66 +982,93 @@ function salvarSumulaSaaS() {
     const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
     if (btnSalvar && btnSalvar.disabled) return;
 
-    const getVal = (id) => {
-        const el = document.getElementById(id);
-        if (!el || el.value === "" || el.value === undefined) return NaN;
-        return parseInt(el.value, 10);
-    };
-
-    // 1. Leitura dos Parciais
-    const s1j1 = getVal('inp-s1-j1'), s1j2 = getVal('inp-s1-j2');
-    const tb1j1 = getVal('inp-tb1-j1'), tb1j2 = getVal('inp-tb1-j2');
-
-    const s2j1 = getVal('inp-s2-j1'), s2j2 = getVal('inp-s2-j2');
-    const tb2j1 = getVal('inp-tb2-j1'), tb2j2 = getVal('inp-tb2-j2');
-
-    const s3j1 = getVal('inp-s3-j1'), s3j2 = getVal('inp-s3-j2');
-    const tb3j1 = getVal('inp-tb3-j1'), tb3j2 = getVal('inp-tb3-j2');
-
-    // 2. Extração dos Jogadores e Vencedor
+    // 1. EXTRAÇÃO DE JOGADORES
     const partesJogadores = (partidaRankingEmFoco.jogadores || '').split(', ');
     const infoJ1 = buscarInfoJogador(partesJogadores[0] || "");
     const infoJ2 = buscarInfoJogador(partesJogadores[1] || "");
-
     const nomeJ1 = capitalizarNome(infoJ1.nomeCompleto || partesJogadores[0]);
     const nomeJ2 = capitalizarNome(infoJ2.nomeCompleto || partesJogadores[1]);
 
-    const txtVencedorDOM = document.getElementById('label-vencedor-sumula');
-    const nomeVencedor = txtVencedorDOM ? txtVencedorDOM.textContent.trim() : "";
-    const vencedorCodigo = (nomeVencedor.toLowerCase() === nomeJ1.toLowerCase()) ? "J1" : "J2";
+    let nomeVencedor = "";
+    let vencedorCodigo = "";
+    let placarFormatado = "";
+    let parciais = {};
+    let isWO = false;
+    let motivoWO = "";
 
-    // 3. Formatação da String do Placar
-    const formatarSetStr = (g1, g2, tb1, tb2) => {
-        if (isNaN(g1) || isNaN(g2)) return null;
-        if (!isNaN(tb1) && !isNaN(tb2)) {
-            const perdedorTb = (g1 > g2) ? tb2 : tb1; 
-            return `${g1}/${g2}(${perdedorTb})`;
+    // 2. BIFURCAÇÃO DE DADOS (W.O. vs PLACAR NORMAL)
+    if (modoWOAtivoSaaS) {
+        if (!vencedorWOSaaS) {
+            showToast("Selecione o atleta vencedor por W.O.", "warning");
+            return;
         }
-        return `${g1}/${g2}`;
-    };
+		
+        const elMotivo = document.getElementById('select-motivo-wo');
+        const valMotivo = elMotivo ? elMotivo.value : "";
 
-    const partesPlacar = [];
-    const parciais = {};
+        if (valMotivo === 'outros') {
+            if (!motivoCustomizadoWOSaaS) {
+                showToast("Por favor, especifique o motivo do W.O.", "warning");
+                return;
+            }
+            motivoWO = `Outros: ${motivoCustomizadoWOSaaS}`;
+        } else {
+            motivoWO = elMotivo ? elMotivo.options[elMotivo.selectedIndex].text : "Ausência";
+        }
+        
+        isWO = true;
+		vencedorCodigo = vencedorWOSaaS;
+		nomeVencedor = nomeVencedorWOSaaS;
+		placarFormatado = `W.O. (${motivoWO})`;
+    } else {
+        // Leitura normal de sets
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            if (!el || el.value === "" || el.value === undefined) return NaN;
+            return parseInt(el.value, 10);
+        };
 
-    if (!isNaN(s1j1) && !isNaN(s1j2)) {
-        partesPlacar.push(formatarSetStr(s1j1, s1j2, tb1j1, tb1j2));
-        parciais.set1 = { j1: s1j1, j2: s1j2, tbJ1: isNaN(tb1j1) ? null : tb1j1, tbJ2: isNaN(tb1j2) ? null : tb1j2 };
+        const s1j1 = getVal('inp-s1-j1'), s1j2 = getVal('inp-s1-j2');
+        const tb1j1 = getVal('inp-tb1-j1'), tb1j2 = getVal('inp-tb1-j2');
+        const s2j1 = getVal('inp-s2-j1'), s2j2 = getVal('inp-s2-j2');
+        const tb2j1 = getVal('inp-tb2-j1'), tb2j2 = getVal('inp-tb2-j2');
+        const s3j1 = getVal('inp-s3-j1'), s3j2 = getVal('inp-s3-j2');
+        const tb3j1 = getVal('inp-tb3-j1'), tb3j2 = getVal('inp-tb3-j2');
+
+        const txtVencedorDOM = document.getElementById('label-vencedor-sumula');
+        nomeVencedor = txtVencedorDOM ? txtVencedorDOM.textContent.trim() : "";
+        vencedorCodigo = (nomeVencedor.toLowerCase() === nomeJ1.toLowerCase()) ? "J1" : "J2";
+
+        const formatarSetStr = (g1, g2, tb1, tb2) => {
+            if (isNaN(g1) || isNaN(g2)) return null;
+            if (!isNaN(tb1) && !isNaN(tb2)) {
+                const perdedorTb = (g1 > g2) ? tb2 : tb1; 
+                return `${g1}/${g2}(${perdedorTb})`;
+            }
+            return `${g1}/${g2}`;
+        };
+
+        const partesPlacar = [];
+        if (!isNaN(s1j1) && !isNaN(s1j2)) {
+            partesPlacar.push(formatarSetStr(s1j1, s1j2, tb1j1, tb1j2));
+            parciais.set1 = { j1: s1j1, j2: s1j2, tbJ1: isNaN(tb1j1) ? null : tb1j1, tbJ2: isNaN(tb1j2) ? null : tb1j2 };
+        }
+        if (!isNaN(s2j1) && !isNaN(s2j2)) {
+            partesPlacar.push(formatarSetStr(s2j1, s2j2, tb2j1, tb2j2));
+            parciais.set2 = { j1: s2j1, j2: s2j2, tbJ1: isNaN(tb2j1) ? null : tb2j1, tbJ2: isNaN(tb2j2) ? null : tb2j2 };
+        }
+        if (!isNaN(s3j1) && !isNaN(s3j2)) {
+            partesPlacar.push(formatarSetStr(s3j1, s3j2, tb3j1, tb3j2));
+            parciais.set3 = { j1: s3j1, j2: s3j2, tbJ1: isNaN(tb3j1) ? null : tb3j1, tbJ2: isNaN(tb3j2) ? null : tb3j2 };
+        }
+
+        placarFormatado = partesPlacar.join(' ');
     }
 
-    if (!isNaN(s2j1) && !isNaN(s2j2)) {
-        partesPlacar.push(formatarSetStr(s2j1, s2j2, tb2j1, tb2j2));
-        parciais.set2 = { j1: s2j1, j2: s2j2, tbJ1: isNaN(tb2j1) ? null : tb2j1, tbJ2: isNaN(tb2j2) ? null : tb2j2 };
-    }
-
-    if (!isNaN(s3j1) && !isNaN(s3j2)) {
-        partesPlacar.push(formatarSetStr(s3j1, s3j2, tb3j1, tb3j2));
-        parciais.set3 = { j1: s3j1, j2: s3j2, tbJ1: isNaN(tb3j1) ? null : tb3j1, tbJ2: isNaN(tb3j2) ? null : tb3j2 };
-    }
-
-    const placarFormatado = partesPlacar.join(' ');
+    // 3. PERSISTÊNCIA ÚNICA NO BANCO DE DADOS
     const ehContestado = (partidaRankingEmFoco.statusPlacar === 'contestado');
+    const ehGestorOuArbitro = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || podeArbitrarRankingSaaS();
 
-    // 4. Função interna de Persistência no Firebase
     const executarGravacaoBanco = () => {
         if (navigator.vibrate) navigator.vibrate(40);
 
@@ -975,11 +1081,13 @@ function salvarSumulaSaaS() {
         const agora = Date.now();
         const prazoHorasAutoconf = (regrasSessaoRanking && regrasSessaoRanking.prazoAutoconf) || 24;
 
-        // Se for arbitragem de jogo contestado, já entra direto como CONSOLIDADO
-        const statusNovo = ehContestado ? "consolidado" : "pendente_validacao";
+        // Gestor/Árbitro ou jogo contestado aplicam 'consolidado' direto
+        const statusNovo = (ehGestorOuArbitro || ehContestado) ? "consolidado" : "pendente_validacao";
 
         const dadosPlacar = {
             statusPlacar: statusNovo,
+            isWO: isWO,
+            motivoWO: motivoWO,
             vencedor: nomeVencedor,
             vencedorCodigo: vencedorCodigo,
             placarFormatado: placarFormatado,
@@ -1022,13 +1130,14 @@ function salvarSumulaSaaS() {
 
         database.ref(raizBanco).update(updates)
         .then(() => {
-            const msgSucesso = ehContestado 
-                ? "Placar corrigido e homologado com sucesso!" 
-                : "Súmula enviada para validação do adversário!";
+            const msgSucesso = isWO 
+                ? (ehGestorOuArbitro ? "W.O. confirmado e homologado!" : "W.O. registrado! Enviado para validação.")
+                : (ehContestado ? "Placar corrigido e homologado com sucesso!" : "Súmula enviada para validação do adversário!");
+            
             showToast(msgSucesso, "success");
-			if (ehContestado) {
-				notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'editado', placarFormatado);
-			}
+            if (ehContestado) {
+                notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'editado', placarFormatado);
+            }
             fecharModalConfig('modal-sumula-ranking');
         })
         .catch(err => {
@@ -1038,15 +1147,25 @@ function salvarSumulaSaaS() {
         .finally(() => {
             if (btnSalvar) {
                 btnSalvar.disabled = false;
-                btnSalvar.textContent = ehContestado ? "Atualizar e Consolidar Placar" : "Salvar Súmula";
+                btnSalvar.textContent = modoWOAtivoSaaS ? "Confirmar e Enviar W.O." : (ehContestado ? "Atualizar e Consolidar Placar" : "Salvar Súmula");
             }
         });
     };
 
-    // 5. BIFURCAÇÃO: Exibe modal comparativo se for Edição do Árbitro
+    // 4. CONFIRMAÇÃO DE PROMPT SE FOR EDIÇÃO DE ÁRBITRO
     if (ehContestado) {
-        const placarAntigoStr = partidaRankingEmFoco.dadosPlacar?.placarFormatado || "--";
+        let placarAntigoStr = partidaRankingEmFoco.dadosPlacar?.placarFormatado || "--";
+        if (partidaRankingEmFoco.dadosPlacar?.isWO || (placarAntigoStr && placarAntigoStr.includes("W.O."))) {
+            const motAntigo = partidaRankingEmFoco.dadosPlacar?.motivoWO || "Ausência";
+            placarAntigoStr = `W.O. (${motAntigo})`;
+        }
+
         const vencedorAntigoStr = partidaRankingEmFoco.dadosPlacar?.vencedor || "--";
+
+        let placarNovoStr = placarFormatado;
+        if (isWO) {
+            placarNovoStr = `W.O. (${motivoWO})`;
+        }
 
         const htmlPrompt = `
             <div style="text-align: left; font-size: 14px; line-height: 1.5; color: #334155;">
@@ -1058,7 +1177,7 @@ function salvarSumulaSaaS() {
 
                 <div style="background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
                     <strong style="color: #166534; display: block; font-size: 12px; text-transform: uppercase;">Novo Placar (Sua Edição)</strong>
-                    <span style="color: #14532d; font-weight: 800; font-size: 18px;">${placarFormatado}</span>
+                    <span style="color: #14532d; font-weight: 800; font-size: 18px;">${placarNovoStr}</span>
                     <span style="display: block; font-size: 12.5px; color: #15803d; font-weight: 700;">Vencedor: ${nomeVencedor}</span>
                 </div>
 
@@ -1086,14 +1205,252 @@ function toggleKebabSumulaSaaS(event) {
     if (menu) menu.classList.toggle('ativo');
 }
 
+function toggleModoLiveSumula(chk) {
+    if (chk.checked) {
+        showToast("Em breve: Transmissão e pontuação ponto a ponto ao vivo!", "info");
+        setTimeout(() => {
+            chk.checked = false;
+        }, 1200);
+    }
+}
+
 function declararWoSumulaSaaS() {
-    showToast("Declarar W.O. selecionado.", "warning");
+    if (!partidaRankingEmFoco) return;
+
+    // 🛑 TRAVA RIGOROSA DE TOLERÂNCIA DE W.O.
+    const toleranciaMinutos = (regrasSessaoRanking && regrasSessaoRanking.toleranciaWO !== undefined) 
+        ? parseInt(regrasSessaoRanking.toleranciaWO, 10) 
+        : 15;
+
+    const horaInicioPartida = converterDataHoraParaTimestamp(partidaRankingEmFoco.dataCompleta, partidaRankingEmFoco.hora);
+    const horaLiberaWO = horaInicioPartida + (toleranciaMinutos * 60 * 1000);
+    const agora = Date.now();
+
+    // Bloqueia a abertura se ainda não atingiu o horário do jogo + tolerância
+    if (agora < horaLiberaWO) {
+        const dataLibera = new Date(horaLiberaWO);
+        const hFim = String(dataLibera.getHours()).padStart(2, '0');
+        const mFim = String(dataLibera.getMinutes()).padStart(2, '0');
+
+        showToast(`O W.O. só pode ser declarado após a tolerância de ${toleranciaMinutos} min (às ${hFim}:${mFim}).`, "warning");
+        return;
+    }
+
+    const menu = document.getElementById('menu-excecoes-sumula');
+    if (menu) menu.classList.remove('ativo');
+
+    modoWOAtivoSaaS = true;
+
+    // Alterna a exibição dos subpainéis
+    const subNormal = document.getElementById('subpainel-normal-sumula');
+    const subWO = document.getElementById('subpainel-wo-sumula');
+    if (subNormal) subNormal.style.display = 'none';
+    if (subWO) subWO.style.display = 'block';
+
+    // Atualiza o cabeçalho do modal
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    if (elTituloHeader) elTituloHeader.innerHTML = '🚩 Declaração de W.O.';
+    if (elSubtituloHeader) elSubtituloHeader.textContent = 'Registro de Ausência / Impossibilidade';
+
+    // Preenche o nome dos atletas nos cards de W.O. com formatação inteligente
+    if (partidaRankingEmFoco) {
+        const partesApelidos = (partidaRankingEmFoco.jogadores || '').split(', ');
+        const partesCompleto = (partidaRankingEmFoco.jogadores_completo || '').split(', ');
+
+        const apelidoJ1 = partesApelidos[0] || "Desafiante";
+        const apelidoJ2 = partesApelidos[1] || "Desafiado";
+
+        let nomeCompletoJ1 = partesCompleto[0] || "";
+        let nomeCompletoJ2 = partesCompleto[1] || "";
+
+        if (!nomeCompletoJ1 || nomeCompletoJ1.trim().toLowerCase() === apelidoJ1.trim().toLowerCase()) {
+            const info = buscarInfoJogador(apelidoJ1);
+            if (info.nomeCompleto) nomeCompletoJ1 = info.nomeCompleto;
+        }
+        if (!nomeCompletoJ2 || nomeCompletoJ2.trim().toLowerCase() === apelidoJ2.trim().toLowerCase()) {
+            const info = buscarInfoJogador(apelidoJ2);
+            if (info.nomeCompleto) nomeCompletoJ2 = info.nomeCompleto;
+        }
+
+        const elWOJ1 = document.getElementById('sumula-wo-nome-j1');
+        const elWOJ2 = document.getElementById('sumula-wo-nome-j2');
+
+        if (elWOJ1) elWOJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+        if (elWOJ2) elWOJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+    }
+
+    // Configura o botão do rodapé
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Confirmar e Enviar W.O.';
+        btnSalvar.style.backgroundColor = '#dc2626';
+        btnSalvar.disabled = true;
+    }
+
+    resetarSelecaoWOSaaS();
+}
+
+function desativarModoWOSaaS() {
+    modoWOAtivoSaaS = false;
+
+    // Destrava interações dos cards e do seletor de motivos
+    const cardJ1 = document.getElementById('card-wo-j1');
+    const cardJ2 = document.getElementById('card-wo-j2');
+    const selectMotivo = document.getElementById('select-motivo-wo');
+
+    if (cardJ1) cardJ1.onclick = () => selecionarVencedorWOSaaS('J1');
+    if (cardJ2) cardJ2.onclick = () => selecionarVencedorWOSaaS('J2');
+    if (selectMotivo) selectMotivo.disabled = false;
+
+    const subNormal = document.getElementById('subpainel-normal-sumula');
+    const subWO = document.getElementById('subpainel-wo-sumula');
+    if (subNormal) subNormal.style.display = 'block';
+    if (subWO) subWO.style.display = 'none';
+
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
+    
+    if (partidaRankingEmFoco) {
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
+        if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Salvar Súmula';
+        btnSalvar.style.backgroundColor = 'var(--cor-primaria, #28a745)';
+        btnSalvar.disabled = true;
+    }
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = '--';
+    
+    const boxVencedor = document.querySelector('#modal-sumula-ranking .vencedor-box');
+    if (boxVencedor) boxVencedor.classList.remove('wo-ativo');
+}
+
+
+function selecionarVencedorWOSaaS(codigo) {
+    if (!partidaRankingEmFoco) return;
+
+    vencedorWOSaaS = codigo;
+
+    const partesApelidos = (partidaRankingEmFoco.jogadores || '').split(', ');
+    const partesCompleto = (partidaRankingEmFoco.jogadores_completo || '').split(', ');
+
+    const infoJ1 = buscarInfoJogador(partesApelidos[0] || "");
+    const infoJ2 = buscarInfoJogador(partesApelidos[1] || "");
+
+    nomeVencedorWOSaaS = (codigo === 'J1') 
+        ? capitalizarNome(infoJ1.nomeCompleto || partesCompleto[0] || partesApelidos[0])
+        : capitalizarNome(infoJ2.nomeCompleto || partesCompleto[1] || partesApelidos[1]);
+
+    const cardJ1 = document.getElementById('card-wo-j1');
+    const cardJ2 = document.getElementById('card-wo-j2');
+    const tagJ1 = document.getElementById('tag-wo-j1');
+    const tagJ2 = document.getElementById('tag-wo-j2');
+
+    if (cardJ1) cardJ1.classList.remove('selecionado');
+    if (cardJ2) cardJ2.classList.remove('selecionado');
+    if (tagJ1) tagJ1.textContent = 'Selecionar';
+    if (tagJ2) tagJ2.textContent = 'Selecionar';
+
+    if (codigo === 'J1') {
+        if (cardJ1) cardJ1.classList.add('selecionado');
+        if (tagJ1) tagJ1.textContent = 'Vencedor';
+    } else {
+        if (cardJ2) cardJ2.classList.add('selecionado');
+        if (tagJ2) tagJ2.textContent = 'Vencedor';
+    }
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = nomeVencedorWOSaaS;
+
+    const boxVencedor = document.querySelector('#modal-sumula-ranking .vencedor-box');
+    if (boxVencedor) boxVencedor.classList.remove('wo-ativo');
+	
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) btnSalvar.disabled = false;
+}
+
+function resetarSelecaoWOSaaS() {
+    const selectMotivo = document.getElementById('select-motivo-wo');
+    if (selectMotivo) selectMotivo.selectedIndex = 0;
+    motivoCustomizadoWOSaaS = "";
+
+    vencedorWOSaaS = null;
+    nomeVencedorWOSaaS = "";
+
+    const cardJ1 = document.getElementById('card-wo-j1');
+    const cardJ2 = document.getElementById('card-wo-j2');
+    const tagJ1 = document.getElementById('tag-wo-j1');
+    const tagJ2 = document.getElementById('tag-wo-j2');
+
+    if (cardJ1) cardJ1.classList.remove('selecionado');
+    if (cardJ2) cardJ2.classList.remove('selecionado');
+    if (tagJ1) tagJ1.textContent = 'Selecionar';
+    if (tagJ2) tagJ2.textContent = 'Selecionar';
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = '--';
+
+    const boxVencedor = document.querySelector('#modal-sumula-ranking .vencedor-box');
+    if (boxVencedor) boxVencedor.classList.remove('wo-ativo');
+}
+
+function tratarSelecaoMotivoWOSaaS(valor) {
+    if (valor === 'outros') {
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <p style="margin: 0 0 10px 0;">Informe a justificativa do W.O.:</p>
+                <input type="text" id="inp-motivo-outros-popup" class="input-app" placeholder="Ex: Problema de saúde, viagem..." style="width: 100%; box-sizing: border-box; font-size: 14px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+            </div>
+        `;
+
+        showPrompt("Motivo do W.O.", htmlPrompt, () => {
+            const elInp = document.getElementById('inp-motivo-outros-popup');
+            const txt = elInp ? elInp.value.trim() : "";
+            if (txt) {
+                motivoCustomizadoWOSaaS = txt;
+            } else {
+                showToast("Nenhuma justificativa digitada.", "warning");
+                document.getElementById('select-motivo-wo').selectedIndex = 0;
+                motivoCustomizadoWOSaaS = "";
+            }
+        }, () => {
+            document.getElementById('select-motivo-wo').selectedIndex = 0;
+            motivoCustomizadoWOSaaS = "";
+        });
+    } else {
+        motivoCustomizadoWOSaaS = "";
+    }
+}
+
+function clicarBotaoVoltarSumulaSaaS() {
+    const stPlacar = partidaRankingEmFoco ? (partidaRankingEmFoco.statusPlacar || 'sem_placar') : 'sem_placar';
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    const ehModoLeitura = (stPlacar === 'consolidado' || stPlacar === 'anulado' || (btnSalvar && btnSalvar.style.display === 'none'));
+
+    // Se estiver em modo de leitura (Ver Placar), fecha o modal diretamente
+    if (ehModoLeitura) {
+        fecharModalConfig('modal-sumula-ranking');
+        return;
+    }
+
+    // Se estiver lançando um W.O. novo, volta para a tela de preenchimento dos sets
+    if (modoWOAtivoSaaS) {
+        desativarModoWOSaaS();
+    } else {
+        fecharModalConfig('modal-sumula-ranking');
+    }
 }
 
 function declararDesistenciaSumulaSaaS() {
     showToast("Declarar Desistência selecionado.", "warning");
 }
-
 
 /* ======================================================== */
 /* 5. AÇÕES DO PAINEL DO ÁRBITRO (FASING - ARBITRAGEM)      */
@@ -1145,6 +1502,13 @@ function renderizarGavetaArbitroSaaS(listaContestacoes) {
             }
         }
 
+        // Formatação condicional do placar / motivo de W.O.
+        let txtResultado = dados.placarFormatado || "--";
+        if (dados.isWO || (dados.placarFormatado && dados.placarFormatado.includes("W.O."))) {
+            const motivoWO = dados.motivoWO || "Ausência";
+            txtResultado = `W.O. (${motivoWO})`;
+        }
+
         const cardHtml = `
             <div class="convite-item" style="margin-bottom: 15px;">
                 <div class="convite-header">
@@ -1156,9 +1520,9 @@ function renderizarGavetaArbitroSaaS(listaContestacoes) {
                     <span>${nomeQuadra} • Ranking ${nomesModelos[modeloAtivo] || "Oficial"}</span><br>
                     
                     <div class="box-placar">
-                        <span class="vencedor-txt">${nomeVencedor}</span> lançou vitória contra <span class="perdedor-txt">${nomePerdedor}</span>
-                        <strong class="placar-numeros">${dados.placarFormatado || "--"}</strong>
-                        <div class="motivo-recusa">
+                        <span><span class="vencedor-txt">${nomeVencedor}</span> lançou vitória contra <span class="perdedor-txt">${nomePerdedor}</span></span>
+                        <strong class="placar-numeros" style="display: block; margin-top: 6px;">${txtResultado}</strong>
+                        <div class="motivo-recusa" style="margin-top: 8px;">
                             <i class="material-icons" style="font-size: 14px;">front_hand</i> 
                             <span>${nomePerdedor}</span> recusou este placar.
                         </div>
@@ -1175,9 +1539,7 @@ function renderizarGavetaArbitroSaaS(listaContestacoes) {
         container.innerHTML += cardHtml;
     });
 
-    // Guarda a lista ativa de contestações na memória global para os botões acionarem o item correto
     window.contestacoesAbertasSaaS = listaContestacoes;
-
     modalArb.style.display = 'flex';
 }
 

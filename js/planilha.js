@@ -2790,12 +2790,42 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const dp = dadosReserva.dadosPlacar;
         const temPlacar = !!dp && (stPlacar === 'consolidado' || stPlacar === 'pendente_validacao' || stPlacar === 'contestado' || stPlacar === 'anulado');
         const showWinner = (stPlacar === 'consolidado' || stPlacar === 'pendente_validacao');
+        const isWO = !!dp && (dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O.")));
 
-        if (temPlacar && dp.parciais) {
+        // 🚩 BIFURCAÇÃO W.O.: Layout sem colunas numéricas de sets (Com nome do vencedor em negrito)
+        if (isWO) {
             const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
             const vencedorOficial = norm(dp.vencedor || "");
-            
+            const j1EhVencedor = (dp.vencedorCodigo === 'J1') || (vencedorOficial === norm(j1Completo)) || (vencedorOficial === norm(nomesApelidos[0]));
+
+            htmlRanking += `
+                <table class="atp-table">
+                    <tbody>
+                        <tr>
+                            <td>
+                                <span class="atp-pos">${posJ1}</span>
+                                <span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${j1EhVencedor ? 'W.O.' : ''}</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <span class="atp-pos">${posJ2}</span>
+                                <span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${!j1EhVencedor ? 'W.O.' : ''}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="text-align: center; font-style: italic; color: #64748b; font-size: 13px; margin-top: 10px; margin-bottom: 4px;">
+                    Motivo: ${dp.motivoWO || 'Não informado'}
+                </div>
+            `;
+        } else if (temPlacar && dp.parciais) {
             if (showWinner) {
+                const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                const vencedorOficial = norm(dp.vencedor || "");
+
                 if (vencedorOficial === norm(j1Completo) || vencedorOficial === norm(nomesApelidos[0])) {
                     classNomeJ1 = 'match-winner';
                     setaJ1 = '<div class="winner-arrow">◀</div>';
@@ -2844,49 +2874,49 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                 const w3 = calcSetWinner(p.set3.j1, p.set3.j2, p.set3.tbJ1, p.set3.tbJ2);
                 if(showWinner && w3===1) classS3J1 = 'set-winner'; else if(showWinner && w3===2) classS3J2 = 'set-winner';
             }
+
+            const thSet3 = jogouSet3 ? `<th class="col-score">3</th>` : ``;
+            const tdSet3J1 = jogouSet3 ? `<td class="col-score atp-score ${classS3J1}">${s3J1}</td>` : ``;
+            const tdSet3J2 = jogouSet3 ? `<td class="col-score atp-score ${classS3J2}">${s3J2}</td>` : ``;
+
+            htmlRanking += `
+                <table class="atp-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th class="col-score">1</th>
+                            <th class="col-score">2</th>
+                            ${thSet3}
+                            <th class="col-arrow"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <span class="atp-pos">${posJ1}</span>
+                                <span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>
+                            </td>
+                            <td class="col-score atp-score ${classS1J1}">${s1J1}</td>
+                            <td class="col-score atp-score ${classS2J1}">${s2J1}</td>
+                            ${tdSet3J1}
+                            <td class="col-arrow">${setaJ1}</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <span class="atp-pos">${posJ2}</span>
+                                <span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>
+                            </td>
+                            <td class="col-score atp-score ${classS1J2}">${s1J2}</td>
+                            <td class="col-score atp-score ${classS2J2}">${s2J2}</td>
+                            ${tdSet3J2}
+                            <td class="col-arrow">${setaJ2}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
         }
 
-        const thSet3 = jogouSet3 ? `<th class="col-score">3</th>` : ``;
-        const tdSet3J1 = jogouSet3 ? `<td class="col-score atp-score ${classS3J1}">${s3J1}</td>` : ``;
-        const tdSet3J2 = jogouSet3 ? `<td class="col-score atp-score ${classS3J2}">${s3J2}</td>` : ``;
-
-        htmlRanking += `
-            <table class="atp-table">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th class="col-score">1</th>
-                        <th class="col-score">2</th>
-                        ${thSet3}
-                        <th class="col-arrow"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <span class="atp-pos">${posJ1}</span>
-                            <span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>
-                        </td>
-                        <td class="col-score atp-score ${classS1J1}">${s1J1}</td>
-                        <td class="col-score atp-score ${classS2J1}">${s2J1}</td>
-                        ${tdSet3J1}
-                        <td class="col-arrow">${setaJ1}</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <span class="atp-pos">${posJ2}</span>
-                            <span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>
-                        </td>
-                        <td class="col-score atp-score ${classS1J2}">${s1J2}</td>
-                        <td class="col-score atp-score ${classS2J2}">${s2J2}</td>
-                        ${tdSet3J2}
-                        <td class="col-arrow">${setaJ2}</td>
-                    </tr>
-                </tbody>
-            </table>
-        `;
-
-        // 🎯 AQUI ESTÁ A MÁGICA DAS CORES: Laranja para Editado, Verde para Homologado (Mantido)
+        // 🎯 MÁGICA DAS CORES: Laranja para Editado, Verde para Homologado
         if (stPlacar === 'anulado') {
             const arbNome = formatarNomeExibicaoDetalhes(dp?.arbitroResponsavel || 'Árbitro');
             htmlRanking += `<div class="motivo-anulacao">Anulada por ${arbNome}: "${dp?.motivoAnulacao || 'Decisão da arbitragem'}"</div>`;
@@ -2894,9 +2924,9 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             const arbNome = formatarNomeExibicaoDetalhes(dp.arbitroResponsavel);
             const isEditado = (dp.decisaoArbitro === 'editado_pelo_arbitro');
             const textoAcaoArbitro = isEditado ? "Editado" : "Homologado";
-            const corHex = isEditado ? "#d97706" : "#059669"; // Laranja (editado) ou Verde (homologado)
+            const corHex = isEditado ? "#d97706" : "#059669";
             
-            htmlRanking += `<div class="motivo-anulacao" style="color: ${corHex};">${textoAcaoArbitro} pela arbitragem por ${arbNome}</div>`;
+            htmlRanking += `<div class="motivo-anulacao" style="color: ${corHex};">${textoAcaoArbitro} pela arbitragem: ${arbNome}</div>`;
         }
 
         if (temPlacar || stPlacar === 'anulado') {
@@ -2945,7 +2975,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         document.getElementById('detalhes-txt-org-nome').textContent = orgNomeFormatado;
         document.getElementById('detalhes-txt-org-sub').textContent = `Organizador • ${orgVinculo}`;
 
-        // 4. Lista de Jogadores com Fonte Normal (Sem Negrito)
+        // 4. Lista de Jogadores
         containerJogadores.innerHTML = '';
 
         const stringJogadores = dadosReserva.jogadores_completo || dadosReserva.jogadores || "";

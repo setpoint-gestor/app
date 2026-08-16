@@ -1082,7 +1082,9 @@ function abrirModalConfigRanking() {
     
     document.getElementById('select-ranking-max-jogos').value = String(conf.maxJogosSemana !== undefined ? conf.maxJogosSemana : 2);
     document.getElementById('select-ranking-prazo-autoconf').value = String(sum.prazoAutoconf !== undefined ? sum.prazoAutoconf : 24);
+	document.getElementById('select-ranking-tolerancia-wo').value = String(sum.toleranciaWO !== undefined ? sum.toleranciaWO : 15);
     document.getElementById('select-ranking-prazo-inatividade').value = String(conf.prazoInatividadeDias !== undefined ? conf.prazoInatividadeDias : 15);
+	
 
     // ABA 4: Taxa de Inscrição & PIX
     const cobrarTaxa = fin.cobrarTaxa === true;
@@ -1159,6 +1161,9 @@ function toggleBlocoFinanceiroRankingSaaS(isAtivo) {
  */
 function salvarConfigRankingSaas() {
     if (navigator.vibrate) navigator.vibrate(40); 
+	
+	const elTolWO = parseInt(document.getElementById('select-ranking-tolerancia-wo').value, 10);
+	const elPrazoConf = parseInt(document.getElementById('select-ranking-prazo-autoconf').value, 10);
 
     const payloadRanking = {
         ativo: document.getElementById('regra-ranking-ativo').checked,
@@ -1197,13 +1202,13 @@ function salvarConfigRankingSaas() {
             prazoRodada: parseInt(document.getElementById('select-ranking-grupos-prazo-rodada').value) || 7,
             estouroPrazo: document.getElementById('select-ranking-grupos-estouro').value
         },
-        sumula: {
-            formatoPartida: document.getElementById('select-ranking-formato-partida').value,
-            decisaoTerceiroSet: document.getElementById('select-ranking-decisao-3set').value,
-            vantagemGames: document.getElementById('select-ranking-vantagem-games').value,
-            
-            prazoAutoconf: parseInt(document.getElementById('select-ranking-prazo-autoconf').value) || 24
-        },
+		sumula: {
+			formatoPartida: document.getElementById('select-ranking-formato-partida').value,
+			decisaoTerceiroSet: document.getElementById('select-ranking-decisao-3set').value,
+			vantagemGames: document.getElementById('select-ranking-vantagem-games').value,
+			prazoAutoconf: isNaN(elPrazoConf) ? 24 : elPrazoConf,
+			toleranciaWO: isNaN(elTolWO) ? 15 : elTolWO
+		},
         financeiro: {
             cobrarTaxa: document.getElementById('regra-ranking-cobrar-taxa').checked,
             valorTaxa: document.getElementById('txt-ranking-valor-taxa').value.trim(),
