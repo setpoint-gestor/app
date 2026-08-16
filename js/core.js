@@ -972,6 +972,8 @@ async function enviarFilaLogsAoGitHubSaaS(arrayNovosLogs) {
 // ==========================================
 // 8. LOGÍSTICA DE PRESENÇA ONLINE (SaaS)
 // ==========================================
+let intervaloHeartbeatSaaS = null;
+
 function sincronizarPresencaOnlineSaaS() {
     if (!raizBanco) return; 
 
@@ -982,9 +984,11 @@ function sincronizarPresencaOnlineSaaS() {
         return;
     }
 
+    const agora = Date.now();
+
     if (isGestorLogado) {
         const refPresencaGestor = database.ref(`${raizBanco}/usuariosOnline/GESTOR`);
-        refPresencaGestor.set({ usuario: "Gestor Mestre", isGestor: true });
+        refPresencaGestor.set({ usuario: "Gestor Mestre", isGestor: true, lastSeen: agora });
         refPresencaGestor.onDisconnect().remove();
     } else {
         const idJogadorLogado = localStorage.getItem('jogadorLogadoId');
@@ -992,10 +996,26 @@ function sincronizarPresencaOnlineSaaS() {
         
         if (idJogadorLogado && nomeJogadorLogado) {
             const refPresencaAtleta = database.ref(`${raizBanco}/usuariosOnline/${idJogadorLogado}`);
-            refPresencaAtleta.set({ usuario: nomeJogadorLogado, id: idJogadorLogado });
+            refPresencaAtleta.set({ usuario: nomeJogadorLogado, id: idJogadorLogado, lastSeen: agora });
             refPresencaAtleta.onDisconnect().remove();
         }
     }
+
+    // ⏱️ HEARTBEAT: Atualiza o sinal de vida a cada 2 minutos
+    if (intervaloHeartbeatSaaS) clearInterval(intervaloHeartbeatSaaS);
+    intervaloHeartbeatSaaS = setInterval(() => {
+        if (!usuarioEstaOciosoSaaS && raizBanco) {
+            const agoraLoop = Date.now();
+            if (isGestorLogado) {
+                database.ref(`${raizBanco}/usuariosOnline/GESTOR/lastSeen`).set(agoraLoop);
+            } else {
+                const idLogado = localStorage.getItem('jogadorLogadoId');
+                if (idLogado) {
+                    database.ref(`${raizBanco}/usuariosOnline/${idLogado}/lastSeen`).set(agoraLoop);
+                }
+            }
+        }
+    }, 2 * 60 * 1000);
 
     // 🦾 GATILHO INJETADO: Ativa o monitor de ausência/ociosidade
     if (typeof iniciarMonitorOciosidadeSaaS === 'function') {
@@ -1014,6 +1034,10 @@ const TEMPO_OCIOSIDADE_MS = 5 * 60 * 1000; // ⏱️ Calibrado para 5 minutos de
  * Remove a presença do banco imediatamente quando o usuário se ausenta
  */
 function removerPresencaOnlineSaaS() {
+    if (intervaloHeartbeatSaaS) {
+        clearInterval(intervaloHeartbeatSaaS);
+        intervaloHeartbeatSaaS = null;
+    }
     if (!raizBanco) return;
     if (isGestorLogado) {
         database.ref(`${raizBanco}/usuariosOnline/GESTOR`).remove();

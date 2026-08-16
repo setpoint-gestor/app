@@ -3515,7 +3515,15 @@ function renderizarListaUsuariosOnlineSaaS() {
     container.innerHTML = '';
 
     const chavesOnline = Object.keys(saasUsuariosOnlineCache || {});
-    const filtrados = chavesOnline.filter(key => key !== 'GESTOR' && !saasUsuariosOnlineCache[key].isGestor);
+    const agora = Date.now();
+    const TOLERANCIA_GHOST_MS = 5 * 60 * 1000;
+
+    const filtrados = chavesOnline.filter(key => {
+        const usr = saasUsuariosOnlineCache[key];
+        if (key === 'GESTOR' || usr.isGestor) return false;
+        if (usr.lastSeen && (agora - usr.lastSeen > TOLERANCIA_GHOST_MS)) return false;
+        return true;
+    });
 
     if (filtrados.length === 0) {
         container.innerHTML = '<p class="SaaS-lista-vazia">Nenhum atleta online no momento.</p>';
