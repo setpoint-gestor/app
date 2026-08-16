@@ -2278,6 +2278,20 @@
 										<option value="48">48 horas</option>
 									</select>
 								</div>
+								
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Tolerância para W.O.</span>
+										<span class="ctrl-desc">Tempo de espera após o horário da partida.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-tolerancia-wo">
+										<option value="0">Sem tolerância</option>
+										<option value="5">5 minutos</option>
+										<option value="10">10 minutos</option>
+										<option value="15" selected>15 minutos</option>
+										<option value="30">30 minutos</option>
+									</select>
+								</div>
 
 								<div class="ctrl-row">
 									<div class="ctrl-text">
@@ -2412,71 +2426,109 @@
 				</div>
 				
 				<div class="botoes-topo">
-					<!-- Menu Kebab -->
-					<div class="kebab-container" style="display: flex; align-items: center; transform: translateY(-13px);">
-						<button class="btn-header-icon" onclick="toggleKebabSumulaSaaS(event)">
-							<i class="material-icons">more_vert</i>
-						</button>
-						<!-- Dropdown com Exceções -->
-						<div id="menu-excecoes-sumula" class="dropdown-saas-menu">
-							<button class="item-excluir-saas" onclick="declararWoSumulaSaaS()"><i class="material-icons">flag</i> Declarar W.O.</button>
-							<button class="item-excluir-saas" onclick="declararDesistenciaSumulaSaaS()"><i class="material-icons">sick</i> Desistência</button>
-						</div>
-					</div>
+					<!-- Botão 3 Pontos -->
+					<button class="btn-header-icon" onclick="toggleKebabSumulaSaaS(event)">
+						<i class="material-icons">more_vert</i>
+					</button>
 
-					<!-- Setinha de Voltar -->
-					<button class="btn-header-icon" onclick="fecharModalConfig('modal-sumula-ranking')">
+					<!-- Botão Voltar -->
+					<button class="btn-header-icon" onclick="clicarBotaoVoltarSumulaSaaS()">
 						<i class="material-icons">arrow_back</i>
 					</button>
+
+					<!-- Dropdown Kebab Estilo iOS (Visão 2.5 + Toggle Live) -->
+					<div id="menu-excecoes-sumula" class="dropdown-saas-menu var-2-5">
+						<div class="item-menu-live">
+							<div class="icon-wrap-live"><i class="material-icons">sensors</i></div>
+							<span class="lbl-live">Placar ao Vivo</span>
+							<label class="switch-mini">
+								<input type="checkbox" id="chk-modo-live-sumula" onchange="toggleModoLiveSumula(this)">
+								<span class="slider-mini"></span> 
+							</label>
+						</div>
+						<div class="divider-sumula"></div>
+						<button type="button" class="item-sumula-opt" onclick="declararWoSumulaSaaS()">
+							<div class="icon-wrap-opt"><i class="material-icons">flag</i></div>
+							<span>Declarar W.O.</span>
+						</button>
+						<div class="divider-sumula"></div>
+						<button type="button" class="item-sumula-opt danger" onclick="declararDesistenciaSumulaSaaS()">
+							<div class="icon-wrap-opt danger"><i class="material-icons">sick</i></div>
+							<span>Desistência</span>
+						</button>
+					</div>
 				</div>
 			</div>
 
 			<!-- CORPO DO MODAL -->
 			<div class="body-detalhes">
 				
-				<!-- CABEÇALHO DOS NÚMEROS (1, 2, 3) -->
-				<div class="cabecalho-sets">
-					<div class="numeros-sets">
-						<span id="head-set-1">1</span>
-						<span id="head-set-2">2</span>
-						<span id="head-set-3">3</span>
+				<!-- SUBPAINEL 1: PLACAR NORMAL (Faltava esta div envolvendo o placar) -->
+				<div id="subpainel-normal-sumula">
+					<div class="cabecalho-sets">
+						<div class="numeros-sets">
+							<span id="head-set-1">1</span>
+							<span id="head-set-2">2</span>
+							<span id="head-set-3">3</span>
+						</div>
+					</div>
+
+					<div class="linha-atleta-placar">
+						<div class="nome-jogador" id="sumula-nome-j1">Desafiante</div>
+						<div class="container-inputs">
+							<div class="input-wrapper" id="wrap-s1-j1">
+								<input type="number" id="inp-s1-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+								<input type="number" id="inp-tb1-j1" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+							</div>
+							<div class="input-wrapper" id="wrap-s2-j1">
+								<input type="number" id="inp-s2-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+								<input type="number" id="inp-tb2-j1" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+							</div>
+							<div class="input-wrapper" id="wrap-s3-j1">
+								<input type="number" id="inp-s3-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+							</div>
+						</div>
+					</div>
+
+					<div class="linha-atleta-placar">
+						<div class="nome-jogador" id="sumula-nome-j2">Desafiado</div>
+						<div class="container-inputs">
+							<div class="input-wrapper" id="wrap-s1-j2">
+								<input type="number" id="inp-s1-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+								<input type="number" id="inp-tb1-j2" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+							</div>
+							<div class="input-wrapper" id="wrap-s2-j2">
+								<input type="number" id="inp-s2-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+								<input type="number" id="inp-tb2-j2" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+							</div>
+							<div class="input-wrapper" id="wrap-s3-j2">
+								<input type="number" id="inp-s3-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+							</div>
+						</div>
 					</div>
 				</div>
 
-				<!-- CARD BRANCO: JOGADOR 1 -->
-				<div class="linha-atleta-placar">
-					<div class="nome-jogador" id="sumula-nome-j1">Desafiante</div>
-					<div class="container-inputs">
-						<div class="input-wrapper" id="wrap-s1-j1">
-							<input type="number" id="inp-s1-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
-							<input type="number" id="inp-tb1-j1" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
+				<!-- SUBPAINEL 2: DECLARAÇÃO DE W.O. -->
+				<div id="subpainel-wo-sumula" style="display: none;">
+					<span class="secao-label-wo">1. Selecione o Vencedor por W.O.</span>
+					<div class="atletas-grid-wo">
+						<div class="card-atleta-wo" id="card-wo-j1" onclick="selecionarVencedorWOSaaS('J1')">
+							<span class="nome" id="sumula-wo-nome-j1">Desafiante</span>
+							<span class="tag-status" id="tag-wo-j1">Selecionar</span>
 						</div>
-						<div class="input-wrapper" id="wrap-s2-j1">
-							<input type="number" id="inp-s2-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
-							<input type="number" id="inp-tb2-j1" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
-						</div>
-						<div class="input-wrapper" id="wrap-s3-j1">
-							<input type="number" id="inp-s3-j1" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
+						<div class="card-atleta-wo" id="card-wo-j2" onclick="selecionarVencedorWOSaaS('J2')">
+							<span class="nome" id="sumula-wo-nome-j2">Desafiado</span>
+							<span class="tag-status" id="tag-wo-j2">Selecionar</span>
 						</div>
 					</div>
-				</div>
 
-				<!-- CARD BRANCO: JOGADOR 2 -->
-				<div class="linha-atleta-placar">
-					<div class="nome-jogador" id="sumula-nome-j2">Desafiado</div>
-					<div class="container-inputs">
-						<div class="input-wrapper" id="wrap-s1-j2">
-							<input type="number" id="inp-s1-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
-							<input type="number" id="inp-tb1-j2" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
-						</div>
-						<div class="input-wrapper" id="wrap-s2-j2">
-							<input type="number" id="inp-s2-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
-							<input type="number" id="inp-tb2-j2" class="input-tiebreak" min="0" max="99" style="display:none;" onkeyup="acionarArbitroInvisivelSaaS()">
-						</div>
-						<div class="input-wrapper" id="wrap-s3-j2">
-							<input type="number" id="inp-s3-j2" class="input-placar" min="0" max="99" onkeyup="acionarArbitroInvisivelSaaS()">
-						</div>
-					</div>
+					<span class="secao-label-wo">2. Motivo da Ocorrência</span>
+					<select class="select-motivo-wo" id="select-motivo-wo" onchange="tratarSelecaoMotivoWOSaaS(this.value)">
+						<option value="ausencia">Ausência / Não comparecimento</option>
+						<option value="atraso">Atraso superior à tolerância (15 min)</option>
+						<option value="impossibilidade">Aviso prévio de impossibilidade</option>
+						<option value="outros">Outros (especificar...)</option>
+					</select>
 				</div>
 
 				<!-- CARD BRANCO: VENCEDOR -->
@@ -2485,6 +2537,7 @@
 				</div>
 				
 			</div>
+
 
 			<!-- RODAPÉ BRANCO FIXO COM BOTÃO -->
 			<div class="sumula-footer">
