@@ -551,8 +551,17 @@
                     
                     const onlineObj = sistemas.usuariosOnline || {};
                     let qtdOnline = 0;
+                    const agoraConsole = Date.now();
+                    const TOLERANCIA_CONSOLE_MS = 5 * 60 * 1000;
+
                     Object.keys(onlineObj).forEach(key => {
-                        if (key !== 'GESTOR' && !onlineObj[key].isGestor) qtdOnline++;
+                        if (key !== 'GESTOR' && !onlineObj[key].isGestor) {
+                            const usr = onlineObj[key];
+                            // Contabiliza apenas se tiver enviado sinal de vida nos últimos 5 minutos
+                            if (!usr.lastSeen || (agoraConsole - usr.lastSeen <= TOLERANCIA_CONSOLE_MS)) {
+                                qtdOnline++;
+                            }
+                        }
                     });
 
                     let statusBadge = '';
