@@ -16,6 +16,14 @@ let vencedorWOSaaS = null;
 let nomeVencedorWOSaaS = "";
 let motivoCustomizadoWOSaaS = "";
 
+let modoRETAtivoSaaS = false;
+let desistenteRETSaaS = null; // 'J1' ou 'J2'
+let nomeDesistenteRETSaaS = "";
+let motivoRETSaaS = "";
+let motivoCustomizadoRETSaaS = "";
+
+let eModoArbitroAtivoSumula = false;
+
 /**
  * ========================================================
  * 1. GATILHO DA SÚMULA: REGRAS DE VISIBILIDADE E ESTADOS
@@ -310,7 +318,10 @@ function limparCamposSumulaRanking() {
 /* 2. O ECOSSISTEMA DE TELAS (ABERTURA E UI DINÂMICA)       */
 /* ======================================================== */
 function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false) {
+	eModoArbitroAtivoSumula = !!eEdicaoArbitro; // Guarda o estado do Árbitro
+	
     desativarModoWOSaaS();
+    desativarModoRETSaaS();
 
     limparCamposSumulaRanking();
 
@@ -430,7 +441,7 @@ function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false)
         btnSalvar.disabled = true;
     }
 
-    // 🚩 DETECÇÃO E EXIBIÇÃO DE W.O. EM MODO LEITURA / VER PLACAR
+    // 🚩 LEITURA DO PLACAR
     const dadosPlacar = reserva.dadosPlacar || {};
     const eWO = dadosPlacar.isWO || (dadosPlacar.placarFormatado && dadosPlacar.placarFormatado.includes("W.O."));
 
@@ -447,12 +458,10 @@ function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false)
         if (elWOJ1) elWOJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
         if (elWOJ2) elWOJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
 
-        // Marca o atleta vencedor em verde
         if (dadosPlacar.vencedorCodigo) {
             selecionarVencedorWOSaaS(dadosPlacar.vencedorCodigo);
         }
 
-        // Sincroniza o motivo gravado
         const elMotivo = document.getElementById('select-motivo-wo');
         if (elMotivo && dadosPlacar.motivoWO) {
             let achou = false;
@@ -469,10 +478,54 @@ function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false)
             }
         }
 
-        // Se for apenas visualização ("Ver Placar"), trava cliques e controles
         if (modoLeitura || statusPlacar === 'consolidado') {
             const cardJ1 = document.getElementById('card-wo-j1');
             const cardJ2 = document.getElementById('card-wo-j2');
+            if (cardJ1) cardJ1.onclick = null;
+            if (cardJ2) cardJ2.onclick = null;
+            if (elMotivo) elMotivo.disabled = true;
+        }
+    }
+	
+    // 🚩 DETECÇÃO E EXIBIÇÃO DE RET EM MODO LEITURA / VER PLACAR
+    const eRET = dadosPlacar.isRET || (dadosPlacar.placarFormatado && dadosPlacar.placarFormatado.includes("(RET)"));
+
+    if (eRET) {
+        modoRETAtivoSaaS = true;
+
+        const subNormal = document.getElementById('subpainel-normal-sumula');
+        const subRET = document.getElementById('subpainel-ret-sumula');
+        if (subNormal) subNormal.style.display = 'block';
+        if (subRET) subRET.style.display = 'block';
+
+        const elRETJ1 = document.getElementById('sumula-ret-nome-j1');
+        const elRETJ2 = document.getElementById('sumula-ret-nome-j2');
+        if (elRETJ1) elRETJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+        if (elRETJ2) elRETJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+
+        if (dadosPlacar.desistenteCodigo) {
+            selecionarDesistenteRETSaaS(dadosPlacar.desistenteCodigo);
+        }
+
+        const elMotivo = document.getElementById('select-motivo-ret');
+        if (elMotivo && dadosPlacar.motivoRET) {
+            let achou = false;
+            for (let i = 0; i < elMotivo.options.length; i++) {
+                if (elMotivo.options[i].text.trim().toLowerCase() === dadosPlacar.motivoRET.trim().toLowerCase()) {
+                    elMotivo.selectedIndex = i;
+                    achou = true;
+                    break;
+                }
+            }
+            if (!achou) {
+                elMotivo.value = 'outros';
+                motivoCustomizadoRETSaaS = dadosPlacar.motivoRET;
+            }
+        }
+
+        if (modoLeitura || statusPlacar === 'consolidado') {
+            const cardJ1 = document.getElementById('card-ret-j1');
+            const cardJ2 = document.getElementById('card-ret-j2');
             if (cardJ1) cardJ1.onclick = null;
             if (cardJ2) cardJ2.onclick = null;
             if (elMotivo) elMotivo.disabled = true;
@@ -833,21 +886,29 @@ function abrirModalValidacaoAdversario(reserva) {
     if (elQuadraModelo) elQuadraModelo.textContent = `${nomeQuadra} • Ranking ${nomesModelos[modeloAtivo] || "Oficial"}`;
     if (elVencedor) elVencedor.textContent = nomeVencedor;
     if (elPerdedor) elPerdedor.textContent = nomePerdedor;
-    if (elPlacar) {
-		if (dados.isWO || (dados.placarFormatado && dados.placarFormatado.includes("W.O."))) {
-			const txtMotivo = dados.motivoWO || "Não informado";
-			elPlacar.innerHTML = `
-				<div style="line-height: 1.2;">
-					W.O.
-					<span style="display: block; font-size: 12px; color: #64748b; font-weight: 500; margin-top: 4px;">
-						(Motivo: ${txtMotivo})
-					</span>
-				</div>
-			`;
-		} else {
-			elPlacar.textContent = dados.placarFormatado || "--";
-		}
-	}
+    
+	if (elPlacar) {
+        if (dados.isWO || (dados.placarFormatado && dados.placarFormatado.includes("W.O."))) {
+            const txtMotivo = dados.motivoWO || "Não informado";
+            elPlacar.innerHTML = `
+                W.O.
+                <span class="txt-motivo-wo">(Motivo: ${txtMotivo})</span>
+            `;
+        } else if (dados.isRET || (dados.placarFormatado && dados.placarFormatado.includes("RET"))) {
+            const txtMotivoRET = dados.motivoRET || "Não informado";
+            const placarLimpo = (dados.placarFormatado || "").replace(/\s*\(?RET\)?/gi, "").trim();
+            const placarComBadge = placarLimpo 
+                ? `<span class="placar-com-badge"><span>${placarLimpo}</span><span class="badge-ret">RET</span></span>` 
+                : `<span class="badge-ret">RET</span>`;
+
+            elPlacar.innerHTML = `
+                ${placarComBadge}
+                <span class="txt-motivo-ret">(Desistência: ${txtMotivoRET})</span>
+            `;
+        } else {
+            elPlacar.textContent = dados.placarFormatado || "--";
+        }
+    }
 
     // 4. Disparo do Cronômetro de 24h
     iniciarRelogioValidacaoSaaS(dados.expiraValidacaoAt);
@@ -996,13 +1057,17 @@ function salvarSumulaSaaS() {
     let isWO = false;
     let motivoWO = "";
 
-    // 2. BIFURCAÇÃO DE DADOS (W.O. vs PLACAR NORMAL)
+    let isRET = false;
+    let motivoRET = "";
+    let desistenteCodigo = "";
+
+    // 2. BIFURCAÇÃO DE DADOS (W.O. vs RET vs PLACAR NORMAL)
     if (modoWOAtivoSaaS) {
         if (!vencedorWOSaaS) {
             showToast("Selecione o atleta vencedor por W.O.", "warning");
             return;
         }
-		
+        
         const elMotivo = document.getElementById('select-motivo-wo');
         const valMotivo = elMotivo ? elMotivo.value : "";
 
@@ -1017,11 +1082,11 @@ function salvarSumulaSaaS() {
         }
         
         isWO = true;
-		vencedorCodigo = vencedorWOSaaS;
-		nomeVencedor = nomeVencedorWOSaaS;
-		placarFormatado = `W.O. (${motivoWO})`;
+        vencedorCodigo = vencedorWOSaaS;
+        nomeVencedor = nomeVencedorWOSaaS;
+        placarFormatado = `W.O. (${motivoWO})`;
     } else {
-        // Leitura normal de sets
+        // Leitura de sets parciais
         const getVal = (id) => {
             const el = document.getElementById(id);
             if (!el || el.value === "" || el.value === undefined) return NaN;
@@ -1034,10 +1099,6 @@ function salvarSumulaSaaS() {
         const tb2j1 = getVal('inp-tb2-j1'), tb2j2 = getVal('inp-tb2-j2');
         const s3j1 = getVal('inp-s3-j1'), s3j2 = getVal('inp-s3-j2');
         const tb3j1 = getVal('inp-tb3-j1'), tb3j2 = getVal('inp-tb3-j2');
-
-        const txtVencedorDOM = document.getElementById('label-vencedor-sumula');
-        nomeVencedor = txtVencedorDOM ? txtVencedorDOM.textContent.trim() : "";
-        vencedorCodigo = (nomeVencedor.toLowerCase() === nomeJ1.toLowerCase()) ? "J1" : "J2";
 
         const formatarSetStr = (g1, g2, tb1, tb2) => {
             if (isNaN(g1) || isNaN(g2)) return null;
@@ -1062,7 +1123,36 @@ function salvarSumulaSaaS() {
             parciais.set3 = { j1: s3j1, j2: s3j2, tbJ1: isNaN(tb3j1) ? null : tb3j1, tbJ2: isNaN(tb3j2) ? null : tb3j2 };
         }
 
-        placarFormatado = partesPlacar.join(' ');
+        if (modoRETAtivoSaaS) {
+            if (!desistenteRETSaaS) {
+                showToast("Selecione o atleta que desistiu da partida.", "warning");
+                return;
+            }
+
+            const elMotivoRET = document.getElementById('select-motivo-ret');
+            const valMotivoRET = elMotivoRET ? elMotivoRET.value : "";
+
+            if (valMotivoRET === 'outros') {
+                if (!motivoCustomizadoRETSaaS) {
+                    showToast("Por favor, especifique o motivo da desistência.", "warning");
+                    return;
+                }
+                motivoRET = `Outros: ${motivoCustomizadoRETSaaS}`;
+            } else {
+                motivoRET = elMotivoRET ? elMotivoRET.options[elMotivoRET.selectedIndex].text : "Lesão";
+            }
+
+            isRET = true;
+            desistenteCodigo = desistenteRETSaaS;
+            vencedorCodigo = (desistenteRETSaaS === 'J1') ? "J2" : "J1";
+            nomeVencedor = (vencedorCodigo === 'J1') ? nomeJ1 : nomeJ2;
+            placarFormatado = partesPlacar.length > 0 ? `${partesPlacar.join(' ')} (RET)` : "RET";
+        } else {
+            const txtVencedorDOM = document.getElementById('label-vencedor-sumula');
+            nomeVencedor = txtVencedorDOM ? txtVencedorDOM.textContent.trim() : "";
+            vencedorCodigo = (nomeVencedor.toLowerCase() === nomeJ1.toLowerCase()) ? "J1" : "J2";
+            placarFormatado = partesPlacar.join(' ');
+        }
     }
 
     // 3. PERSISTÊNCIA ÚNICA NO BANCO DE DADOS
@@ -1088,6 +1178,9 @@ function salvarSumulaSaaS() {
             statusPlacar: statusNovo,
             isWO: isWO,
             motivoWO: motivoWO,
+            isRET: isRET,                       
+            desistenteCodigo: desistenteCodigo, 
+            motivoRET: motivoRET,               
             vencedor: nomeVencedor,
             vencedorCodigo: vencedorCodigo,
             placarFormatado: placarFormatado,
@@ -1196,13 +1289,98 @@ function salvarSumulaSaaS() {
 }
 
 
+
 /* ======================================================== */
-/* 🛠️ AUXILIARES DO MENU KEBAB DA SÚMULA                     */
+/* 🛠️ AVALIADOR INTELIGENTE DE ESTADOS DO MENU KEBAB        */
 /* ======================================================== */
+function atualizarEstadoKebabSumulaSaaS() {
+    const btnWO = document.querySelector('#menu-excecoes-sumula button[onclick*="declararWoSumulaSaaS"]');
+    const btnRET = document.querySelector('#menu-excecoes-sumula button[onclick*="declararDesistenciaSumulaSaaS"]');
+    const itemLive = document.querySelector('#menu-excecoes-sumula .item-menu-live');
+    const chkLive = document.querySelector('#menu-excecoes-sumula .switch-mini input');
+
+    if (!btnWO || !btnRET) return;
+
+    // Detecta se a janela está aberta no Modo de Arbitragem
+    const ehArbitragem = eModoArbitroAtivoSumula || (partidaRankingEmFoco && partidaRankingEmFoco.statusPlacar === 'contestado');
+
+    // 1. Controle do Placar ao Vivo
+    if (ehArbitragem) {
+        if (chkLive) { chkLive.disabled = true; chkLive.checked = false; }
+        if (itemLive) {
+            itemLive.classList.add('desabilitado');
+            itemLive.onclick = (e) => {
+                e.stopPropagation();
+                showToast("Transmissão ao vivo indisponível no modo de arbitragem.", "warning");
+            };
+        }
+    } else {
+        if (chkLive) chkLive.disabled = false;
+        if (itemLive) {
+            itemLive.classList.remove('desabilitado');
+            itemLive.onclick = null;
+        }
+    }
+
+    // 2. Controle de W.O. e Desistência (RET)
+    if (ehArbitragem) {
+        // Árbitro tem poder total para declarar W.O. ou RET sobre qualquer placar
+        btnWO.classList.remove('desabilitado');
+        btnWO.onclick = () => declararWoSumulaSaaS();
+
+        btnRET.classList.remove('desabilitado');
+        btnRET.onclick = () => declararDesistenciaSumulaSaaS();
+
+    } else {
+        // Regra Padrão para Atletas
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            if (!el || el.value === "" || el.value === undefined) return NaN;
+            return parseInt(el.value, 10);
+        };
+
+        const s1j1 = getVal('inp-s1-j1'), s1j2 = getVal('inp-s1-j2');
+        const s2j1 = getVal('inp-s2-j1'), s2j2 = getVal('inp-s2-j2');
+        const s3j1 = getVal('inp-s3-j1'), s3j2 = getVal('inp-s3-j2');
+
+        const temAlgumGame = (!isNaN(s1j1) && s1j1 > 0) || (!isNaN(s1j2) && s1j2 > 0) ||
+                             (!isNaN(s2j1) && s2j1 > 0) || (!isNaN(s2j2) && s2j2 > 0) ||
+                             (!isNaN(s3j1) && s3j1 > 0) || (!isNaN(s3j2) && s3j2 > 0);
+
+        const txtVencedor = document.getElementById('label-vencedor-sumula');
+        const jogoFinalizado = txtVencedor && txtVencedor.textContent.trim() !== "--" && txtVencedor.textContent.trim() !== "";
+
+        if (jogoFinalizado) {
+            btnWO.classList.add('desabilitado');
+            btnWO.onclick = () => showToast("Partida já finalizada por placar.", "warning");
+
+            btnRET.classList.add('desabilitado');
+            btnRET.onclick = () => showToast("Partida já finalizada por placar.", "warning");
+
+        } else if (temAlgumGame) {
+            btnWO.classList.add('desabilitado');
+            btnWO.onclick = () => showToast("W.O. só é permitido antes do início da contagem de games.", "warning");
+
+            btnRET.classList.remove('desabilitado');
+            btnRET.onclick = () => declararDesistenciaSumulaSaaS();
+
+        } else {
+            btnWO.classList.remove('desabilitado');
+            btnWO.onclick = () => declararWoSumulaSaaS();
+
+            btnRET.classList.add('desabilitado');
+            btnRET.onclick = () => showToast("Desistência (RET) exige ao menos 1 game em andamento.", "warning");
+        }
+    }
+}
+
 function toggleKebabSumulaSaaS(event) {
     event.stopPropagation();
     const menu = document.getElementById('menu-excecoes-sumula');
-    if (menu) menu.classList.toggle('ativo');
+    if (menu) {
+        atualizarEstadoKebabSumulaSaaS();
+        menu.classList.toggle('ativo');
+    }
 }
 
 function toggleModoLiveSumula(chk) {
@@ -1250,7 +1428,7 @@ function declararWoSumulaSaaS() {
     // Atualiza o cabeçalho do modal
     const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
     const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
-    if (elTituloHeader) elTituloHeader.innerHTML = '🚩 Declaração de W.O.';
+    if (elTituloHeader) elTituloHeader.innerHTML = 'Declaração de W.O.';
     if (elSubtituloHeader) elSubtituloHeader.textContent = 'Registro de Ausência / Impossibilidade';
 
     // Preenche o nome dos atletas nos cards de W.O. com formatação inteligente
@@ -1425,7 +1603,7 @@ function tratarSelecaoMotivoWOSaaS(valor) {
             motivoCustomizadoWOSaaS = "";
         });
     } else {
-        motivoCustomizadoWOSaaS = "";
+        motivoCustomizadoWOSaaS = ""; 
     }
 }
 
@@ -1434,22 +1612,212 @@ function clicarBotaoVoltarSumulaSaaS() {
     const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
     const ehModoLeitura = (stPlacar === 'consolidado' || stPlacar === 'anulado' || (btnSalvar && btnSalvar.style.display === 'none'));
 
-    // Se estiver em modo de leitura (Ver Placar), fecha o modal diretamente
     if (ehModoLeitura) {
         fecharModalConfig('modal-sumula-ranking');
         return;
     }
 
-    // Se estiver lançando um W.O. novo, volta para a tela de preenchimento dos sets
     if (modoWOAtivoSaaS) {
         desativarModoWOSaaS();
+    } else if (modoRETAtivoSaaS) {
+        desativarModoRETSaaS();
     } else {
         fecharModalConfig('modal-sumula-ranking');
     }
 }
 
 function declararDesistenciaSumulaSaaS() {
-    showToast("Declarar Desistência selecionado.", "warning");
+    if (!partidaRankingEmFoco) return;
+
+    const menu = document.getElementById('menu-excecoes-sumula');
+    if (menu) menu.classList.remove('ativo');
+
+    modoWOAtivoSaaS = false;
+    modoRETAtivoSaaS = true;
+
+    // Esconde os demais subpainéis e exibe EXCLUSIVAMENTE o subpainel do RET (idêntico ao W.O.)
+    const subNormal = document.getElementById('subpainel-normal-sumula');
+    const subWO = document.getElementById('subpainel-wo-sumula');
+    const subRET = document.getElementById('subpainel-ret-sumula');
+
+    if (subNormal) subNormal.style.display = 'none'; // <-- Esconde os inputs de placar em cima
+    if (subWO) subWO.style.display = 'none';
+    if (subRET) subRET.style.display = 'block';
+
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    if (elTituloHeader) elTituloHeader.innerHTML = 'Declaração de Desistência';
+    if (elSubtituloHeader) elSubtituloHeader.textContent = 'Informe os placares parciais e o atleta que desistiu';
+
+    if (partidaRankingEmFoco) {
+        const partesApelidos = (partidaRankingEmFoco.jogadores || '').split(', ');
+        const partesCompleto = (partidaRankingEmFoco.jogadores_completo || '').split(', ');
+
+        const apelidoJ1 = partesApelidos[0] || "Desafiante";
+        const apelidoJ2 = partesApelidos[1] || "Desafiado";
+
+        let nomeCompletoJ1 = partesCompleto[0] || "";
+        let nomeCompletoJ2 = partesCompleto[1] || "";
+
+        if (!nomeCompletoJ1 || nomeCompletoJ1.trim().toLowerCase() === apelidoJ1.trim().toLowerCase()) {
+            const info = buscarInfoJogador(apelidoJ1);
+            if (info.nomeCompleto) nomeCompletoJ1 = info.nomeCompleto;
+        }
+        if (!nomeCompletoJ2 || nomeCompletoJ2.trim().toLowerCase() === apelidoJ2.trim().toLowerCase()) {
+            const info = buscarInfoJogador(apelidoJ2);
+            if (info.nomeCompleto) nomeCompletoJ2 = info.nomeCompleto;
+        }
+
+        const elRETJ1 = document.getElementById('sumula-ret-nome-j1');
+        const elRETJ2 = document.getElementById('sumula-ret-nome-j2');
+
+        if (elRETJ1) elRETJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+        if (elRETJ2) elRETJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Confirmar e Enviar Desistência';
+        btnSalvar.style.backgroundColor = '#dc2626';
+        btnSalvar.disabled = true;
+    }
+
+    resetarSelecaoRETSaaS();
+}
+
+
+function selecionarDesistenteRETSaaS(codigo) {
+    if (!partidaRankingEmFoco) return;
+
+    desistenteRETSaaS = codigo; // 'J1' ou 'J2' (quem desistiu)
+    const vencedorCodigo = (codigo === 'J1') ? 'J2' : 'J1';
+
+    const partesApelidos = (partidaRankingEmFoco.jogadores || '').split(', ');
+    const partesCompleto = (partidaRankingEmFoco.jogadores_completo || '').split(', ');
+
+    const infoJ1 = buscarInfoJogador(partesApelidos[0] || "");
+    const infoJ2 = buscarInfoJogador(partesApelidos[1] || "");
+
+    nomeDesistenteRETSaaS = (codigo === 'J1') 
+        ? capitalizarNome(infoJ1.nomeCompleto || partesCompleto[0] || partesApelidos[0])
+        : capitalizarNome(infoJ2.nomeCompleto || partesCompleto[1] || partesApelidos[1]);
+
+    const nomeVencedor = (vencedorCodigo === 'J1')
+        ? capitalizarNome(infoJ1.nomeCompleto || partesCompleto[0] || partesApelidos[0])
+        : capitalizarNome(infoJ2.nomeCompleto || partesCompleto[1] || partesApelidos[1]);
+
+    const cardJ1 = document.getElementById('card-ret-j1');
+    const cardJ2 = document.getElementById('card-ret-j2');
+    const tagJ1 = document.getElementById('tag-ret-j1');
+    const tagJ2 = document.getElementById('tag-ret-j2');
+
+    if (cardJ1) cardJ1.classList.remove('desistente-selecionado');
+    if (cardJ2) cardJ2.classList.remove('desistente-selecionado');
+    if (tagJ1) tagJ1.textContent = 'Selecionar';
+    if (tagJ2) tagJ2.textContent = 'Selecionar';
+
+    if (codigo === 'J1') {
+        if (cardJ1) cardJ1.classList.add('desistente-selecionado');
+        if (tagJ1) tagJ1.textContent = 'Desistiu (RET)';
+    } else {
+        if (cardJ2) cardJ2.classList.add('desistente-selecionado');
+        if (tagJ2) tagJ2.textContent = 'Desistiu (RET)';
+    }
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = nomeVencedor;
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) btnSalvar.disabled = false;
+}
+
+function resetarSelecaoRETSaaS() {
+    const selectMotivo = document.getElementById('select-motivo-ret');
+    if (selectMotivo) selectMotivo.selectedIndex = 0;
+    motivoCustomizadoRETSaaS = "";
+
+    desistenteRETSaaS = null;
+    nomeDesistenteRETSaaS = "";
+
+    const cardJ1 = document.getElementById('card-ret-j1');
+    const cardJ2 = document.getElementById('card-ret-j2');
+    const tagJ1 = document.getElementById('tag-ret-j1');
+    const tagJ2 = document.getElementById('tag-ret-j2');
+
+    if (cardJ1) cardJ1.classList.remove('desistente-selecionado');
+    if (cardJ2) cardJ2.classList.remove('desistente-selecionado');
+    if (tagJ1) tagJ1.textContent = 'Selecionar';
+    if (tagJ2) tagJ2.textContent = 'Selecionar';
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = '--';
+}
+
+function desativarModoRETSaaS() {
+    modoRETAtivoSaaS = false;
+
+    const cardJ1 = document.getElementById('card-ret-j1');
+    const cardJ2 = document.getElementById('card-ret-j2');
+    const selectMotivo = document.getElementById('select-motivo-ret');
+
+    if (cardJ1) cardJ1.onclick = () => selecionarDesistenteRETSaaS('J1');
+    if (cardJ2) cardJ2.onclick = () => selecionarDesistenteRETSaaS('J2');
+    if (selectMotivo) selectMotivo.disabled = false;
+
+    // 1. Reexibe o painel normal de sets e esconde o subpainel de desistência
+    const subNormal = document.getElementById('subpainel-normal-sumula');
+    const subRET = document.getElementById('subpainel-ret-sumula');
+    if (subNormal) subNormal.style.display = 'block';
+    if (subRET) subRET.style.display = 'none';
+
+    // 2. Restaura o título e o subtítulo originais do cabeçalho
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
+    
+    if (partidaRankingEmFoco) {
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
+        if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
+    }
+
+    // 3. Restaura o texto e a cor padrão do botão do rodapé
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Salvar Súmula';
+        btnSalvar.style.backgroundColor = 'var(--cor-primaria, #28a745)';
+        btnSalvar.disabled = true;
+    }
+
+    resetarSelecaoRETSaaS();
+}
+
+function tratarSelecaoMotivoRETSaaS(valor) {
+    if (valor === 'outros') {
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <p style="margin: 0 0 10px 0;">Informe a justificativa da desistência:</p>
+                <input type="text" id="inp-motivo-ret-outros-popup" class="input-app" placeholder="Ex: Cãibra forte no 2º set..." style="width: 100%; box-sizing: border-box; font-size: 14px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+            </div>
+        `;
+
+        showPrompt("Motivo da Desistência", htmlPrompt, () => {
+            const elInp = document.getElementById('inp-motivo-ret-outros-popup');
+            const txt = elInp ? elInp.value.trim() : "";
+            if (txt) {
+                motivoCustomizadoRETSaaS = txt;
+            } else {
+                showToast("Nenhuma justificativa digitada.", "warning");
+                document.getElementById('select-motivo-ret').selectedIndex = 0;
+                motivoCustomizadoRETSaaS = "";
+            }
+        }, () => {
+            document.getElementById('select-motivo-ret').selectedIndex = 0;
+            motivoCustomizadoRETSaaS = "";
+        });
+    } else {
+        motivoCustomizadoRETSaaS = "";
+    }
 }
 
 /* ======================================================== */
@@ -1502,11 +1870,18 @@ function renderizarGavetaArbitroSaaS(listaContestacoes) {
             }
         }
 
-        // Formatação condicional do placar / motivo de W.O.
+        // Formatação condicional do placar / motivo de W.O. e RET
         let txtResultado = dados.placarFormatado || "--";
         if (dados.isWO || (dados.placarFormatado && dados.placarFormatado.includes("W.O."))) {
             const motivoWO = dados.motivoWO || "Ausência";
             txtResultado = `W.O. (${motivoWO})`;
+        } else if (dados.isRET || (dados.placarFormatado && dados.placarFormatado.includes("RET"))) {
+            const motivoRET = dados.motivoRET || "Desistência";
+            const placarTxt = dados.placarFormatado || "RET";
+            txtResultado = `
+                <span>${placarTxt}</span>
+                <span class="txt-motivo-wo">Motivo: ${motivoRET}</span>
+            `;
         }
 
         const cardHtml = `

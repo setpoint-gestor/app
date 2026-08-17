@@ -14,7 +14,7 @@ let confeteJaDisparado = false;
 // 2. INICIALIZAÇÃO DO MÓDULO AND ABAS
 // ==========================================
 function abrirModuloJogadores() {
-    navegarApp('tela-sub-jogadores');   
+    navegarApp('tela-sub-jogadores');    
     mudarAbaJogadores('consulta'); 
     ajustarTextosBotoesResponsivos(); // Ajusta os rótulos de acordo com o tamanho da tela
 
@@ -214,6 +214,15 @@ function renderizarCheckboxesPerfis() {
     });
 }
 
+// Função auxiliar de alternância visual do ranking
+function toggleCamposRankingSaaS(ativo) {
+    const box = document.getElementById('container-campos-ranking-jog');
+    if (box) {
+        box.style.opacity = ativo ? '1' : '0.4';
+        box.style.pointerEvents = ativo ? 'auto' : 'none';
+    }
+}
+
 function abrirFormularioNovoJogador() {
     modoEdicao = false;
     document.getElementById('chave-edicao-jog').value = "";
@@ -224,8 +233,12 @@ function abrirFormularioNovoJogador() {
     document.getElementById('inp-whats-jog').value = ""; 
     document.getElementById('inp-email-jog').value = "";
     document.getElementById('inp-socio-jog').value = "titular"; 
+    document.getElementById('inp-genero-jog').value = "NAO_INFORMAR";
+    document.getElementById('check-participa-ranking-jog').checked = true;
     document.getElementById('inp-classe-jog').value = "";
     
+    toggleCamposRankingSaaS(true);
+
     document.querySelectorAll('input[name="perfisDinamicos"]').forEach(c => c.checked = false);
     
     document.getElementById('check-ativo-jog').checked = true; 
@@ -244,8 +257,14 @@ function abrirFormularioEdicao(idFirebase, dados) {
     document.getElementById('inp-whats-jog').value = dados.whatsapp || "";
     document.getElementById('inp-email-jog').value = dados.email || "";
     document.getElementById('inp-socio-jog').value = dados.socio || "titular";
+    document.getElementById('inp-genero-jog').value = dados.genero || "NAO_INFORMAR";
+    
+    const participaRanking = (dados.participaRanking !== false);
+    document.getElementById('check-participa-ranking-jog').checked = participaRanking;
     document.getElementById('inp-classe-jog').value = dados.classe || "";
     
+    toggleCamposRankingSaaS(participaRanking);
+
     document.querySelectorAll('input[name="perfisDinamicos"]').forEach(c => {
         c.checked = !!(dados.perfis && dados.perfis[c.value]);
     });
@@ -256,6 +275,138 @@ function abrirFormularioEdicao(idFirebase, dados) {
     atualizarFaixaStatus();
     document.getElementById('modal-form-jogador').style.display = 'flex';
 }
+
+
+/* ======================================================== */
+/* 🏆 AUXILIAR DE SINCRONIZAÇÃO AUTOMÁTICA COM O RANKING    */
+/* ======================================================== */
+async function sincronizarJogadorRankingSaaS(idJogador, dados) {
+    if (!raizBanco || !idJogador) return;
+
+    try {
+        // 1. Busca configurações gerais do ranking
+        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+        const configRanking = snapConfig.val() || {};
+        const modoGenero = configRanking.divisaoGenero || 'separado';
+
+        // 2. Determina a chave da tabela (ex: B_MASCULINO, B_FEMININO ou B_UNIFICADO)
+        const classe = (dados.classe || 'A').toUpperCase();
+        let generoKey = (dados.genero || 'MASCULINO').toUpperCase();
+        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+        const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+        const refTabelas = `${raizBanco}/ranking/tabelas`;
+
+        // 3. Lê as tabelas atuais para remover o jogador de categorias antigas se mudou de classe/gênero
+        const snapTabelas = await database.ref(refTabelas).once('value');
+        const tabelasAtuais = snapTabelas.val() || {};
+
+        let tabelasModificadas = false;
+
+        Object.keys(tabelasAtuais).forEach(nomeTab => {
+            if (Array.isArray(tabelasAtuais[nomeTab])) {
+                const idx = tabelasAtuais[nomeTab].indexOf(idJogador);
+                if (idx !== -1) {
+                    if (!dados.participaRanking || nomeTab !== chaveTabela) {
+                        tabelasAtuais[nomeTab].splice(idx, 1);
+                        tabelasModificadas = true;
+                    }
+                }
+            }
+        });
+
+        // 4. Se participa do ranking, insere ao final da tabela correta caso ainda não esteja nela
+        if (dados.participaRanking) {
+            if (!tabelasAtuais[chaveTabela]) {
+                tabelasAtuais[chaveTabela] = [];
+            }
+            if (!tabelasAtuais[chaveTabela].includes(idJogador)) {
+                tabelasAtuais[chaveTabela].push(idJogador);
+                tabelasModificadas = true;
+            }
+        }
+
+        // 5. Atualiza o banco caso tenha alteração
+        if (tabelasModificadas) {
+            await database.ref(refTabelas).set(tabelasAtuais);
+        }
+
+    } catch (e) {
+        console.error("Erro ao sincronizar jogador no ranking:", e);
+    }
+}
+
+async function salvarJogador() {
+    const nomeRaw = document.getElementById('inp-nome-jog').value.trim().toUpperCase(); 
+    let apelidoRaw = document.getElementById('inp-apelido-jog').value.trim();
+    const niver = document.getElementById('inp-niver-jog').value.trim(); 
+    const whatsapp = document.getElementById('inp-whats-jog').value.trim();
+    const email = document.getElementById('inp-email-jog').value.trim().toLowerCase(); 
+    const socio = document.getElementById('inp-socio-jog').value;
+    const genero = document.getElementById('inp-genero-jog').value;
+    const participaRanking = document.getElementById('check-participa-ranking-jog').checked;
+    const classe = document.getElementById('inp-classe-jog').value; 
+    const isAtivo = document.getElementById('check-ativo-jog').checked;
+
+    const whatsLimpo = whatsapp.replace(/\D/g, '');
+
+    if (!nomeRaw || !apelidoRaw || !whatsapp) {
+        return showToast("Nome, Apelido e WhatsApp são obrigatórios.", 'warning');
+    }
+
+    if (whatsLimpo.length !== 11) {
+        return showToast("Digite um WhatsApp do jogador válido com DDD (ex: 41999998888).", "warning");
+    }
+    
+    apelidoRaw = apelidoRaw.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+
+    const perfisObj = {};
+    document.querySelectorAll('input[name="perfisDinamicos"]:checked').forEach(c => perfisObj[c.value] = true);
+    
+    const dadosSalvar = { 
+        nomeCompleto: nomeRaw, 
+        apelido: apelidoRaw, 
+        socio, 
+        genero,
+        participaRanking,
+        classe, 
+        niver, 
+        whatsapp, 
+        email, 
+        ativo: isAtivo, 
+        perfis: perfisObj 
+    };
+    
+    const refJogadores = `${raizBanco}/jogadores`;
+
+    if (modoEdicao) {
+        const idEdicao = document.getElementById('chave-edicao-jog').value;
+        if (jogadoresGlobal[idEdicao] && jogadoresGlobal[idEdicao].senha) {
+            dadosSalvar.senha = jogadoresGlobal[idEdicao].senha;
+        }
+        
+        try { 
+            await database.ref(`${refJogadores}/${idEdicao}`).update(dadosSalvar); 
+            await sincronizarJogadorRankingSaaS(idEdicao, dadosSalvar);
+            showToast("Cadastro atualizado!", "success"); 
+            fecharFormularioJogador(); 
+        } catch(e) { 
+            showToast("Erro ao atualizar.", "error"); 
+        }
+    } else {
+        try { 
+            const novaRef = database.ref(refJogadores).push();
+            await novaRef.set(dadosSalvar); 
+            await sincronizarJogadorRankingSaaS(novaRef.key, dadosSalvar);
+            showToast("Jogador cadastrado!", "success"); 
+            fecharFormularioJogador(); 
+            document.getElementById('busca-jogador').value = ""; 
+        } catch(e) { 
+            showToast("Erro ao cadastrar.", "error"); 
+        }
+    }
+}
+
 
 function fecharFormularioJogador() { 
     document.getElementById('modal-form-jogador').style.display = 'none'; 
@@ -288,70 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }); 
     }
 });
-
-async function salvarJogador() {
-    const nomeRaw = document.getElementById('inp-nome-jog').value.trim().toUpperCase(); 
-    let apelidoRaw = document.getElementById('inp-apelido-jog').value.trim();
-    const niver = document.getElementById('inp-niver-jog').value.trim(); 
-    const whatsapp = document.getElementById('inp-whats-jog').value.trim();
-    const email = document.getElementById('inp-email-jog').value.trim().toLowerCase(); 
-    const socio = document.getElementById('inp-socio-jog').value;
-    const classe = document.getElementById('inp-classe-jog').value; 
-    const isAtivo = document.getElementById('check-ativo-jog').checked;
-
-    const whatsLimpo = whatsapp.replace(/\D/g, '');
-
-    if (!nomeRaw || !apelidoRaw || !whatsapp) {
-        return showToast("Nome, Apelido e WhatsApp são obrigatórios.", 'warning');
-    }
-
-    if (whatsLimpo.length !== 11) {
-        return showToast("Digite um WhatsApp do jogador válido com DDD (ex: 41999998888).", "warning");
-    }
-    
-    apelidoRaw = apelidoRaw.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-
-    const perfisObj = {};
-    document.querySelectorAll('input[name="perfisDinamicos"]:checked').forEach(c => perfisObj[c.value] = true);
-    
-    const dadosSalvar = { 
-        nomeCompleto: nomeRaw, 
-        apelido: apelidoRaw, 
-        socio, 
-        classe, 
-        niver, 
-        whatsapp, 
-        email, 
-        ativo: isAtivo, 
-        perfis: perfisObj 
-    };
-    
-    const refJogadores = `${raizBanco}/jogadores`;
-
-    if (modoEdicao) {
-        const idEdicao = document.getElementById('chave-edicao-jog').value;
-        if (jogadoresGlobal[idEdicao] && jogadoresGlobal[idEdicao].senha) {
-            dadosSalvar.senha = jogadoresGlobal[idEdicao].senha;
-        }
-        
-        try { 
-            await database.ref(`${refJogadores}/${idEdicao}`).update(dadosSalvar); 
-            showToast("Cadastro atualizado!", "success"); 
-            fecharFormularioJogador(); 
-        } catch(e) { 
-            showToast("Erro ao atualizar.", "error"); 
-        }
-    } else {
-        try { 
-            await database.ref(refJogadores).push().set(dadosSalvar); 
-            showToast("Jogador cadastrado!", "success"); 
-            fecharFormularioJogador(); 
-            document.getElementById('busca-jogador').value = ""; 
-        } catch(e) { 
-            showToast("Erro ao cadastrar.", "error"); 
-        }
-    }
-}
 
 async function bloquearJogadorRapido(id, statusAtual) { 
     try { 

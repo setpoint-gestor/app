@@ -794,17 +794,26 @@ function iniciarOuvinteMestreSaaS() {
 		}
 	});
 
-	// PARTE 2: Escuta Ativa e Orquestração de Visibilidade dos Badges
+	// PARTE 2: Escuta Ativa e Orquestração de Visibilidade dos Badges (Com Filtro Anti-Fantasma)
 	database.ref(`${raizBanco}/usuariosOnline`).on('value', (snapshot) => {
 		saasUsuariosOnlineCache = snapshot.val() || {}; 
 		
 		let totalOnlineSocio = 0;
+		const agora = Date.now();
+		const TOLERANCIA_GHOST_MS = 5 * 60 * 1000; // 5 minutos sem sinal de vida
 		
-		// Aplica o Filtro de Isenção: Ignora estritamente a conta mestre do Gestor
+		// Aplica o Filtro de Isenção e Descarte de Fantasmas
 		Object.keys(saasUsuariosOnlineCache).forEach(key => {
-			if (key === "GESTOR" || saasUsuariosOnlineCache[key].isGestor === true) {
+			const usr = saasUsuariosOnlineCache[key];
+			if (key === "GESTOR" || usr.isGestor === true) {
 				return;
 			}
+
+			// Filtro Anti-Fantasma: se o sinal de vida for mais antigo que 5 min, desconsidera
+			if (usr.lastSeen && (agora - usr.lastSeen > TOLERANCIA_GHOST_MS)) {
+				return;
+			}
+
 			totalOnlineSocio++;
 		});
 
@@ -857,7 +866,7 @@ function iniciarOuvinteMestreSaaS() {
 		}
 	});	
 
-} 
+}
 
 
 
@@ -1234,14 +1243,14 @@ function iniciarRadarSumulasPendentesSaaS(forcar = false) {
     const idLogado = localStorage.getItem('jogadorLogadoId');
     const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
 
+    if (!idLogado || !nomeLogado || (typeof isGestorLogado !== 'undefined' && isGestorLogado)) return;
+    if (!forcar && radarSumulasAtivoId === idLogado && listenerSumulasCallback !== null) return;
+
     // Sempre desliga o ouvinte anterior para evitar escutas zumbis
     if (listenerSumulasCallback) {
         database.ref(`${raizBanco}/reservas`).off('value', listenerSumulasCallback);
         listenerSumulasCallback = null;
     }
-
-    if (!idLogado || !nomeLogado || (typeof isGestorLogado !== 'undefined' && isGestorLogado)) return;
-    if (!forcar && radarSumulasAtivoId === idLogado) return;
 
     radarSumulasAtivoId = idLogado;
     const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();

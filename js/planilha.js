@@ -563,10 +563,8 @@ function plotarReservasAtivas(reservas) {
             cel.innerHTML = `${r.jogadores}`;
             cel.classList.add('celula-dupla');
         } else if (r.duracao === 2) {
-            // Bloco unificado de 2 Horas
-            if (!cel.classList.contains('celula-dupla')) {
-                cel.classList.add('celula-ocupada');    
-            }
+            // Bloco unificado de 2 Horas - Garante que ambas as células sejam marcadas como ocupadas
+            cel.classList.add('celula-ocupada');
 
             const ehRanking = (r.isRanking === true || r.tipo === 'ranking');
 
@@ -613,15 +611,20 @@ function plotarReservasAtivas(reservas) {
             cel.style.borderRight = corBorda;
             cel.style.borderBottom = 'none';
 
+            // Garante cursor pointer e clique na 1ª Célula (Topo)
+            cel.style.cursor = 'pointer';
+            cel.onclick = () => {
+                if (navigator.vibrate) navigator.vibrate(30);
+                abrirMenuAcoesReservaSaaS(r.dia, r.hora, r); 
+            };
+
             if (celNext) {
-                if (!celNext.classList.contains('celula-dupla')) {
-                    celNext.classList.add('celula-ocupada');
-                }
+                celNext.classList.add('celula-ocupada');
 
                 if (ehRanking) {
                     celNext.classList.add('celula-reserva-ranking');
                 } else {
-                    celNext.classList.add('celula-reserva-2h');
+                    celNext.classList.add('celula-reserva-2h'); 
                 }
 
                 celNext.classList.add('reserva-2h-baixo');
@@ -630,12 +633,14 @@ function plotarReservasAtivas(reservas) {
                 celNext.style.borderRight = corBorda;
                 celNext.style.borderBottom = corBorda;
                 
+                // Garante cursor pointer e clique na 2ª Célula (Baixo)
+                celNext.style.cursor = 'pointer';
                 celNext.onclick = () => {
                     if (navigator.vibrate) navigator.vibrate(30);
                     abrirMenuAcoesReservaSaaS(r.dia, r.hora, r); 
                 };
             }
-        } else {
+        } else { 
             // Bloco individual de 1 Hora
             const partesBrutas = (r.jogadores || '').split(', ');
             const partesFormatadas = partesBrutas.map((n, idx) => formatarNomeAtleta(n, idx));
@@ -2785,12 +2790,12 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         let s1J2 = '-', s2J2 = '-', s3J2 = '-';
         let classS1J1 = '', classS2J1 = '', classS3J1 = '';
         let classS1J2 = '', classS2J2 = '', classS3J2 = '';
-        let jogouSet3 = false; // Flag para decidir se o 3º set aparece na tabela
 
         const dp = dadosReserva.dadosPlacar;
         const temPlacar = !!dp && (stPlacar === 'consolidado' || stPlacar === 'pendente_validacao' || stPlacar === 'contestado' || stPlacar === 'anulado');
         const showWinner = (stPlacar === 'consolidado' || stPlacar === 'pendente_validacao');
         const isWO = !!dp && (dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O.")));
+        const isRET = !!dp && (dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET")));
 
         // 🚩 BIFURCAÇÃO W.O.: Layout sem colunas numéricas de sets (Com nome do vencedor em negrito)
         if (isWO) {
@@ -2822,18 +2827,31 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                 </div>
             `;
         } else if (temPlacar && dp.parciais) {
-            if (showWinner) {
-                const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-                const vencedorOficial = norm(dp.vencedor || "");
+            const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
-                if (vencedorOficial === norm(j1Completo) || vencedorOficial === norm(nomesApelidos[0])) {
-                    classNomeJ1 = 'match-winner';
-                    setaJ1 = '<div class="winner-arrow">◀</div>';
-                } else if (vencedorOficial === norm(j2Completo) || vencedorOficial === norm(nomesApelidos[1])) {
-                    classNomeJ2 = 'match-winner';
-                    setaJ2 = '<div class="winner-arrow">◀</div>';
+            if (showWinner) {
+                if (isRET) {
+                    if (dp.desistenteCodigo === 'J1') {
+                        classNomeJ2 = 'match-winner';
+                        setaJ2 = '<div class="winner-arrow">◀</div>';
+                    } else if (dp.desistenteCodigo === 'J2') {
+                        classNomeJ1 = 'match-winner';
+                        setaJ1 = '<div class="winner-arrow">◀</div>';
+                    }
+                } else {
+                    const vencedorOficial = norm(dp.vencedor || "");
+                    if (vencedorOficial === norm(j1Completo) || vencedorOficial === norm(nomesApelidos[0])) {
+                        classNomeJ1 = 'match-winner';
+                        setaJ1 = '<div class="winner-arrow">◀</div>';
+                    } else if (vencedorOficial === norm(j2Completo) || vencedorOficial === norm(nomesApelidos[1])) {
+                        classNomeJ2 = 'match-winner';
+                        setaJ2 = '<div class="winner-arrow">◀</div>';
+                    }
                 }
             }
+
+            const tagRetJ1 = (isRET && dp.desistenteCodigo === 'J1') ? '<span class="badge-ret" style="margin-left: 6px;">RET</span>' : '';
+            const tagRetJ2 = (isRET && dp.desistenteCodigo === 'J2') ? '<span class="badge-ret" style="margin-left: 6px;">RET</span>' : '';
 
             const fmtSet = (pts, tb) => {
                 if (pts === undefined || pts === null || pts === "") return '-';
@@ -2844,49 +2862,82 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             const calcSetWinner = (p1, p2, tb1, tb2) => {
                 const n1 = parseInt(p1), n2 = parseInt(p2);
                 if (isNaN(n1) || isNaN(n2)) return 0;
-                if (n1 > n2) return 1;
-                if (n2 > n1) return 2;
+
                 const t1 = parseInt(tb1), t2 = parseInt(tb2);
                 if (!isNaN(t1) && !isNaN(t2)) {
                     if (t1 > t2) return 1;
                     if (t2 > t1) return 2;
                 }
+
+                // 1. Set Tradicional (Concluído em 6x0..6x4, 7x5 ou 7x6)
+                if ((n1 === 6 && n2 <= 4) || (n1 === 7 && (n2 === 5 || n2 === 6))) return 1;
+                if ((n2 === 6 && n1 <= 4) || (n2 === 7 && (n1 === 5 || n1 === 6))) return 2;
+
+                // 2. Set Curto (Concluído em 4x0..4x2, 5x3 ou 5x4)
+                if ((n1 === 4 && n2 <= 2) || (n1 === 5 && (n2 === 3 || n2 === 4))) return 1;
+                if ((n2 === 4 && n1 <= 2) || (n2 === 5 && (n1 === 3 || n1 === 4))) return 2;
+
+                // 3. Pro-Set (Concluído em 8x0..8x6, 9x7 ou 9x8)
+                if ((n1 === 8 && n2 <= 6) || (n1 === 9 && (n2 === 7 || n2 === 8))) return 1;
+                if ((n2 === 8 && n1 <= 6) || (n2 === 9 && (n1 === 7 || n1 === 8))) return 2;
+
+                // 4. Super Tie-break do 3º Set (Concluído em 10+ pontos com diferença >= 2)
+                if (n1 >= 10 && n1 - n2 >= 2) return 1;
+                if (n2 >= 10 && n2 - n1 >= 2) return 2;
+
+                // Set incompleto / interrompido por desistência (ex: 3x1, 5x2, 2x1)
                 return 0;
             };
 
-            const p = dp.parciais;
-            if (p.set1 && p.set1.j1 !== "") {
+            const p = dp.parciais || {};
+            const temSet1 = (p.set1 && p.set1.j1 !== undefined && p.set1.j1 !== null && p.set1.j1 !== "");
+            const temSet2 = (p.set2 && p.set2.j1 !== undefined && p.set2.j1 !== null && p.set2.j1 !== "");
+            const temSet3 = (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "");
+
+            let thSetsHtml = '';
+            if (temSet1) thSetsHtml += `<th class="col-score">1</th>`;
+            if (temSet2) thSetsHtml += `<th class="col-score">2</th>`;
+            if (temSet3) thSetsHtml += `<th class="col-score">3</th>`;
+
+            let tdSetsJ1Html = '';
+            let tdSetsJ2Html = '';
+
+            if (temSet1) {
                 s1J1 = fmtSet(p.set1.j1, p.set1.tbJ1);
                 s1J2 = fmtSet(p.set1.j2, p.set1.tbJ2);
                 const w1 = calcSetWinner(p.set1.j1, p.set1.j2, p.set1.tbJ1, p.set1.tbJ2);
-                if(showWinner && w1===1) classS1J1 = 'set-winner'; else if(showWinner && w1===2) classS1J2 = 'set-winner';
+                if (showWinner && w1 === 1) classS1J1 = 'set-winner';
+                else if (showWinner && w1 === 2) classS1J2 = 'set-winner';
+                tdSetsJ1Html += `<td class="col-score atp-score ${classS1J1}">${s1J1}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classS1J2}">${s1J2}</td>`;
             }
-            if (p.set2 && p.set2.j1 !== "") {
+
+            if (temSet2) {
                 s2J1 = fmtSet(p.set2.j1, p.set2.tbJ1);
                 s2J2 = fmtSet(p.set2.j2, p.set2.tbJ2);
                 const w2 = calcSetWinner(p.set2.j1, p.set2.j2, p.set2.tbJ1, p.set2.tbJ2);
-                if(showWinner && w2===1) classS2J1 = 'set-winner'; else if(showWinner && w2===2) classS2J2 = 'set-winner';
+                if (showWinner && w2 === 1) classS2J1 = 'set-winner';
+                else if (showWinner && w2 === 2) classS2J2 = 'set-winner';
+                tdSetsJ1Html += `<td class="col-score atp-score ${classS2J1}">${s2J1}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classS2J2}">${s2J2}</td>`;
             }
-            if (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "") {
-                jogouSet3 = true;
+
+            if (temSet3) {
                 s3J1 = fmtSet(p.set3.j1, p.set3.tbJ1);
                 s3J2 = fmtSet(p.set3.j2, p.set3.tbJ2);
                 const w3 = calcSetWinner(p.set3.j1, p.set3.j2, p.set3.tbJ1, p.set3.tbJ2);
-                if(showWinner && w3===1) classS3J1 = 'set-winner'; else if(showWinner && w3===2) classS3J2 = 'set-winner';
+                if (showWinner && w3 === 1) classS3J1 = 'set-winner';
+                else if (showWinner && w3 === 2) classS3J2 = 'set-winner';
+                tdSetsJ1Html += `<td class="col-score atp-score ${classS3J1}">${s3J1}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classS3J2}">${s3J2}</td>`;
             }
-
-            const thSet3 = jogouSet3 ? `<th class="col-score">3</th>` : ``;
-            const tdSet3J1 = jogouSet3 ? `<td class="col-score atp-score ${classS3J1}">${s3J1}</td>` : ``;
-            const tdSet3J2 = jogouSet3 ? `<td class="col-score atp-score ${classS3J2}">${s3J2}</td>` : ``;
 
             htmlRanking += `
                 <table class="atp-table">
                     <thead>
                         <tr>
                             <th></th>
-                            <th class="col-score">1</th>
-                            <th class="col-score">2</th>
-                            ${thSet3}
+                            ${thSetsHtml}
                             <th class="col-arrow"></th>
                         </tr>
                     </thead>
@@ -2895,21 +2946,47 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                             <td>
                                 <span class="atp-pos">${posJ1}</span>
                                 <span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>
+                                ${tagRetJ1}
                             </td>
-                            <td class="col-score atp-score ${classS1J1}">${s1J1}</td>
-                            <td class="col-score atp-score ${classS2J1}">${s2J1}</td>
-                            ${tdSet3J1}
+                            ${tdSetsJ1Html}
                             <td class="col-arrow">${setaJ1}</td>
                         </tr>
                         <tr>
                             <td>
                                 <span class="atp-pos">${posJ2}</span>
                                 <span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>
+                                ${tagRetJ2}
                             </td>
-                            <td class="col-score atp-score ${classS1J2}">${s1J2}</td>
-                            <td class="col-score atp-score ${classS2J2}">${s2J2}</td>
-                            ${tdSet3J2}
+                            ${tdSetsJ2Html}
                             <td class="col-arrow">${setaJ2}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+
+            if (isRET && dp.motivoRET) {
+                htmlRanking += `
+                    <div style="text-align: center; font-style: italic; color: #64748b; font-size: 13px; margin-top: 10px; margin-bottom: 4px;">
+                        Motivo: ${dp.motivoRET}
+                    </div>
+                `;
+            }
+        } else {
+            // Partida sem placar lançado (Aguardando Placar)
+            htmlRanking += `
+                <table class="atp-table">
+                    <tbody>
+                        <tr>
+                            <td>
+                                <span class="atp-pos">${posJ1}</span>
+                                <span class="atp-name">${j1Exibicao}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <span class="atp-pos">${posJ2}</span>
+                                <span class="atp-name">${j2Exibicao}</span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -3037,7 +3114,6 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
     const modal = document.getElementById('modal-ver-detalhes');
     if (modal) modal.style.display = 'flex';
 }
-
    
 
 function iniciarRelogioDetalhesSaaS() {
@@ -3512,7 +3588,7 @@ function fecharJanelaOnlineSaaS(event) {
 function renderizarListaUsuariosOnlineSaaS() {
     const container = document.getElementById('lista-online-SaaS');
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = ''; 
 
     const chavesOnline = Object.keys(saasUsuariosOnlineCache || {});
     const agora = Date.now();
