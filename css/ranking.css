@@ -378,14 +378,15 @@ body.dark-mode .btn-ranking-action { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); 
     z-index: 14000 !important;
 }
 
+
 #modal-sumula-ranking .modal-card-detalhes {
     background: #f4f6f8 !important;
     width: 92%;
     max-width: 440px; 
-    height: 480px; /* Trava o modal no tamanho exato da tela padrão */
+    min-height: 480px; /* Garante o tamanho padrão fixo para casos normais */
+    max-height: 90vh;  /* Permite crescer apenas no caso excepcional do RET */
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     border-radius: 16px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     border: 1px solid #e2e8f0;
@@ -558,6 +559,12 @@ body.dark-mode .btn-ranking-action { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); 
 }
 
 #modal-sumula-ranking .item-sumula-opt:hover { background: #f1f5f9 !important; }
+
+#modal-sumula-ranking .item-sumula-opt.desabilitado {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    filter: grayscale(1);
+}
 
 #modal-sumula-ranking .icon-wrap-opt {
     width: 26px;
@@ -1240,16 +1247,88 @@ body.dark-mode .winner-arrow { color: #f8fafc; }
     color: #dc2626 !important;
 }
 
-/* Modo Escuro */
+.txt-motivo-wo {
+    display: block;
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+/* Modo Escuro - W.O. */
 body.dark-mode #modal-sumula-ranking .card-atleta-wo {
     background: #262626 !important;
     border-color: #333333;
 }
+
 body.dark-mode #modal-sumula-ranking .card-atleta-wo .nome {
     color: #f8fafc;
 }
+
 body.dark-mode #modal-sumula-ranking .select-motivo-wo {
     background: #262626;
     border-color: #444444;
     color: #f8fafc;
+}
+
+body.dark-mode .txt-motivo-wo {
+    color: #94a3b8;
+}
+
+/* ======================================================== */
+/* 12. ESTILOS DO SUBPAINEL DE DESISTÊNCIA (RET)           */
+/* ======================================================== */
+.badge-ret {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transform: translateY(-1px);
+}
+
+.placar-com-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    vertical-align: middle;
+}
+
+#modal-sumula-ranking .card-atleta-wo.desistente-selecionado {
+    border-color: #dc2626 !important;
+    background: #fef2f2 !important;
+}
+
+#modal-sumula-ranking .card-atleta-wo.desistente-selecionado .tag-status {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+.txt-motivo-ret {
+    display: block;
+    font-size: 13px;
+    color: #dc2626;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* Modo Escuro - DESISTÊNCIA (RET) */
+body.dark-mode #modal-sumula-ranking .card-atleta-wo.desistente-selecionado {
+    border-color: #ef4444 !important;
+    background: #450a0a !important;
+}
+
+body.dark-mode #modal-sumula-ranking .card-atleta-wo.desistente-selecionado .nome {
+    color: #f8fafc !important;
+}
+
+body.dark-mode .txt-motivo-ret {
+    color: #ef4444;
 }
