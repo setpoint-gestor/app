@@ -245,10 +245,12 @@
                 <input type="checkbox" id="check-ativo-jog" class="checkbox-status" title="Desmarque para inativar o jogador" checked onchange="atualizarFaixaStatus()">
             </div>
             <input type="hidden" id="chave-edicao-jog" value="">
+            
             <div class="input-group">
                 <label>Nome Completo *</label>
                 <input type="text" id="inp-nome-jog" placeholder="Ex: Ronaldo Taborda" required>
             </div>
+            
             <div style="display: flex; gap: 10px;">
                 <div class="input-group" style="flex: 1;">
                     <label>Apelido *</label>
@@ -259,6 +261,7 @@
                     <input type="text" id="inp-niver-jog" placeholder="DD/MM/AAAA" maxlength="10">
                 </div>
             </div>
+            
             <div style="display: flex; gap: 10px;">
                 <div class="input-group" style="flex: 1;">
                     <label>WhatsApp / Celular *</label>
@@ -269,8 +272,9 @@
                     <input type="email" id="inp-email-jog" placeholder="Ex: jogador@email.com">
                 </div>
             </div>
+            
             <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex: 2;">
+                <div class="input-group" style="flex: 1;">
                     <label>Vínculo</label>
                     <select id="inp-socio-jog">
                         <option value="titular">Titular</option>
@@ -279,22 +283,51 @@
                     </select>
                 </div>
                 <div class="input-group" style="flex: 1;">
-                    <label>Classe</label>
-                    <select id="inp-classe-jog">
-                        <option value="">Nenhuma</option>
-                        <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+                    <label>Gênero</label>
+                    <select id="inp-genero-jog">
+                        <option value="MASCULINO">Masculino</option>
+                        <option value="FEMININO">Feminino</option>
+                        <option value="NAO_INFORMAR" selected>Prefiro não informar</option>
                     </select>
                 </div>
             </div>
+
+            <!-- BLOCO ENVELOPADO: MÓDULO RANKING -->
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px 14px; margin-top: 10px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 13px; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px;">
+                        🏆 Módulo Ranking
+                    </span>
+                    <label class="switch-mini" style="margin: 0;">
+                        <input type="checkbox" id="check-participa-ranking-jog" checked onchange="toggleCamposRankingSaaS(this.checked)">
+                        <span class="slider-mini"></span>
+                    </label>
+                </div>
+                
+                <div id="container-campos-ranking-jog" style="margin-top: 10px;">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="color: #166534;">Classe / Categoria</label>
+                        <select id="inp-classe-jog">
+                            <option value="">Nenhuma</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MANTIDO INTACTO -->
             <div class="input-group" style="margin-top: 15px;">
                 <label>Perfis & Permissões Especiais</label>
                 <div id="roles-grid-container" class="roles-grid">
                     <span style="font-size:12px; color:#888;">Carregando perfis do banco...</span>
                 </div>
             </div>
+
             <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="button" class="btn-app btn-cinza" style="margin: 0; padding: 12px;" onclick="fecharFormularioJogador()">Cancelar</button>
-                <button type="button" class="btn-app btn-jogador" style="margin: 0; padding: 12px; background-color: #28a745;" onclick="salvarJogador()">Salvar Jogador</button>
+                <button type="button" class="btn-app btn-cinza" style="margin: 0; padding: 12px; flex: 1;" onclick="fecharFormularioJogador()">Cancelar</button>
+                <button type="button" class="btn-app btn-jogador" style="margin: 0; padding: 12px; flex: 1; background-color: #28a745;" onclick="salvarJogador()">Salvar Jogador</button>
             </div>
         </div>
     </div>
@@ -2291,7 +2324,7 @@
 										<option value="15" selected>15 minutos</option>
 										<option value="30">30 minutos</option>
 									</select>
-								</div>
+								</div> 
 
 								<div class="ctrl-row">
 									<div class="ctrl-text">
@@ -2527,6 +2560,29 @@
 						<option value="ausencia">Ausência / Não comparecimento</option>
 						<option value="atraso">Atraso superior à tolerância (15 min)</option>
 						<option value="impossibilidade">Aviso prévio de impossibilidade</option>
+						<option value="outros">Outros (especificar...)</option>
+					</select>
+				</div> 
+				
+				<!-- SUBPAINEL 3: DECLARAÇÃO DE DESISTÊNCIA (RET) -->
+				<div id="subpainel-ret-sumula" style="display: none;">
+					<span class="secao-label-wo">1. Selecione o Atleta que Desistiu</span>
+					<div class="atletas-grid-wo">
+						<div class="card-atleta-wo" id="card-ret-j1" onclick="selecionarDesistenteRETSaaS('J1')">
+							<span class="nome" id="sumula-ret-nome-j1">Desafiante</span>
+							<span class="tag-status" id="tag-ret-j1">Selecionar</span>
+						</div>
+						<div class="card-atleta-wo" id="card-ret-j2" onclick="selecionarDesistenteRETSaaS('J2')">
+							<span class="nome" id="sumula-ret-nome-j2">Desafiado</span>
+							<span class="tag-status" id="tag-ret-j2">Selecionar</span>
+						</div>
+					</div>
+
+					<span class="secao-label-wo">2. Motivo da Desistência</span>
+					<select class="select-motivo-wo" id="select-motivo-ret" onchange="tratarSelecaoMotivoRETSaaS(this.value)">
+						<option value="lesao">Lesão / Contusão muscular</option>
+						<option value="mal_estar">Mal-estar / Exaustão física</option>
+						<option value="imprevisto">Imprevisto pessoal</option>
 						<option value="outros">Outros (especificar...)</option>
 					</select>
 				</div>
