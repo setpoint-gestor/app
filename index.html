@@ -240,95 +240,103 @@
 
     <div id="modal-form-jogador" class="modal-form-overlay">
         <div class="modal-form-content">
+            
+            <!-- 1. CABEÇALHO FIXO -->
             <div id="faixa-status-jog" class="faixa-status faixa-verde">
                 <span id="titulo-form-jog">Novo Cadastro</span>
                 <input type="checkbox" id="check-ativo-jog" class="checkbox-status" title="Desmarque para inativar o jogador" checked onchange="atualizarFaixaStatus()">
             </div>
-            <input type="hidden" id="chave-edicao-jog" value="">
-            
-            <div class="input-group">
-                <label>Nome Completo *</label>
-                <input type="text" id="inp-nome-jog" placeholder="Ex: Ronaldo Taborda" required>
-            </div>
-            
-            <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex: 1;">
-                    <label>Apelido *</label>
-                    <input type="text" id="inp-apelido-jog" placeholder="Ex: Rone" required>
-                </div>
-                <div class="input-group" style="flex: 1;">
-                    <label>Nascimento (Data)</label>
-                    <input type="text" id="inp-niver-jog" placeholder="DD/MM/AAAA" maxlength="10">
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex: 1;">
-                    <label>WhatsApp / Celular *</label>
-                    <input type="tel" id="inp-whats-jog" placeholder="(00) 00000-0000" maxlength="15" oninput="mascaraTelefoneSaaS(this)" required>
-                </div>
-                <div class="input-group" style="flex: 1;">
-                    <label>E-mail (Opcional)</label>
-                    <input type="email" id="inp-email-jog" placeholder="Ex: jogador@email.com">
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex: 1;">
-                    <label>Vínculo</label>
-                    <select id="inp-socio-jog">
-                        <option value="titular">Titular</option>
-                        <option value="dependente">Dependente</option>
-                        <option value="visitante">Staff</option>
-                    </select>
-                </div>
-                <div class="input-group" style="flex: 1;">
-                    <label>Gênero</label>
-                    <select id="inp-genero-jog">
-                        <option value="MASCULINO">Masculino</option>
-                        <option value="FEMININO">Feminino</option>
-                        <option value="NAO_INFORMAR" selected>Prefiro não informar</option>
-                    </select>
-                </div>
-            </div>
 
-            <!-- BLOCO ENVELOPADO: MÓDULO RANKING -->
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px 14px; margin-top: 10px; margin-bottom: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 13px; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px;">
-                        🏆 Módulo Ranking
-                    </span>
-                    <label class="switch-mini" style="margin: 0;">
-                        <input type="checkbox" id="check-participa-ranking-jog" checked onchange="toggleCamposRankingSaaS(this.checked)">
-                        <span class="slider-mini"></span>
-                    </label>
+            <!-- 2. CORPO ROLÁVEL COM DENSIDADE COMPACTA -->
+            <div class="modal-form-body">
+                <input type="hidden" id="chave-edicao-jog" value="">
+                
+                <div class="input-group">
+                    <label>Nome Completo *</label>
+                    <input type="text" id="inp-nome-jog" placeholder="Ex: Ronaldo Taborda" required>
                 </div>
                 
-                <div id="container-campos-ranking-jog" style="margin-top: 10px;">
-                    <div class="input-group" style="margin-bottom: 0;">
-                        <label style="color: #166534;">Classe / Categoria</label>
-                        <select id="inp-classe-jog">
-                            <option value="">Nenhuma</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
+                <div style="display: flex; gap: 10px;">
+                    <div class="input-group" style="flex: 1;">
+                        <label>Apelido *</label>
+                        <input type="text" id="inp-apelido-jog" placeholder="Ex: Rone" required>
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Nascimento (Data)</label>
+                        <input type="text" id="inp-niver-jog" placeholder="DD/MM/AAAA" maxlength="10">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <div class="input-group" style="flex: 1;">
+                        <label>WhatsApp / Celular *</label>
+                        <input type="tel" id="inp-whats-jog" placeholder="(00) 00000-0000" maxlength="15" oninput="mascaraTelefoneSaaS(this)" required>
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>E-mail (Opcional)</label>
+                        <input type="email" id="inp-email-jog" placeholder="Ex: jogador@email.com">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <div class="input-group" style="flex: 1;">
+                        <label>Vínculo</label>
+                        <select id="inp-socio-jog">
+                            <option value="titular">Titular</option>
+                            <option value="dependente">Dependente</option>
+                            <option value="visitante">Staff</option>
                         </select>
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Gênero</label>
+                        <select id="inp-genero-jog">
+                            <option value="MASCULINO">Masculino</option>
+                            <option value="FEMININO">Feminino</option>
+                            <option value="NAO_INFORMAR" selected>Prefiro não informar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- BLOCO ENVELOPADO: MÓDULO RANKING -->
+                <div class="bloco-ranking-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px;">
+                            🏆 Módulo Ranking
+                        </span>
+                        <label class="switch-mini" style="margin: 0;">
+                            <input type="checkbox" id="check-participa-ranking-jog" checked onchange="toggleCamposRankingSaaS(this.checked)">
+                            <span class="slider-mini"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="container-campos-ranking-jog" style="margin-top: 8px;">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="color: #166534;">Classe / Categoria</label>
+                            <select id="inp-classe-jog">
+                                <option value="">Nenhuma</option>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PERFIS & PERMISSÕES -->
+                <div class="input-group" style="margin-top: 5px; margin-bottom: 0;">
+                    <label>Perfis & Permissões Especiais</label>
+                    <div id="roles-grid-container" class="roles-grid">
+                        <span style="font-size:12px; color:#888;">Carregando perfis do banco...</span>
                     </div>
                 </div>
             </div>
 
-            <!-- MANTIDO INTACTO -->
-            <div class="input-group" style="margin-top: 15px;">
-                <label>Perfis & Permissões Especiais</label>
-                <div id="roles-grid-container" class="roles-grid">
-                    <span style="font-size:12px; color:#888;">Carregando perfis do banco...</span>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <!-- 3. RODAPÉ FIXO DE BOTÕES -->
+            <div class="modal-form-footer">
                 <button type="button" class="btn-app btn-cinza" style="margin: 0; padding: 12px; flex: 1;" onclick="fecharFormularioJogador()">Cancelar</button>
                 <button type="button" class="btn-app btn-jogador" style="margin: 0; padding: 12px; flex: 1; background-color: #28a745;" onclick="salvarJogador()">Salvar Jogador</button>
             </div>
+
         </div>
     </div>
 	
