@@ -1255,5 +1255,38 @@
         "hora": 14
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-18T16:25:33.894Z",
+    "dataLocal": "18/08/2026, 13:25:33",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "14:00 - 16:00",
+    "duracao": "2 Horas",
+    "data": "14-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JOAO FRANCISCO DA SILVA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Joao Francisco": true
+    },
+    "jogadores": "Joao Francisco, Adriano Feitosa",
+    "jogadores_completo": "JOAO FRANCISCO DA SILVA, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 14
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 15
+      }
+    ]
   }
 ]
