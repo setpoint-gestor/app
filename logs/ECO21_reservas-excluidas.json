@@ -1060,5 +1060,27 @@
     "jogadores": "Adriano Feitosa, Ana Francisca",
     "jogadores_completo": "ADRIANO GOMES FEITOSA, ANA FRANCISCA SANTOS",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-08-19T22:08:26.203Z",
+    "dataLocal": "19/08/2026, 19:08:26",
+    "autor": "JOAO FRANCISCO DA SILVA",
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "motivo": "Convite recusado por Joao Francisco. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "20-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Ana Julia": false
+    },
+    "jogadores": "Adriano Feitosa, Ana Julia",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ANA JULIA MARTINS",
+    "slotsExcluidos": []
   }
 ]
