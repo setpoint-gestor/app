@@ -1158,5 +1158,27 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-08-19T22:17:32.863Z",
+    "dataLocal": "19/08/2026, 19:17:32",
+    "autor": "ANA JULIA MARTINS",
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "motivo": "Convite recusado por Ana Julia. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "clube": "ECO21",
+    "quadra": "Quadra 6 - Nokak Djokovic",
+    "horario": "14:00 - 16:00",
+    "duracao": "2 Horas",
+    "data": "20-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Joao Francisco": false
+    },
+    "jogadores": "Adriano Feitosa, Joao Francisco",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, JOAO FRANCISCO DA SILVA",
+    "slotsExcluidos": []
   }
 ]
