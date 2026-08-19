@@ -297,12 +297,13 @@ async function sincronizarJogadorRankingSaaS(idJogador, dados) {
         const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
         const refTabelas = `${raizBanco}/ranking/tabelas`;
 
-        // 3. Lê as tabelas atuais para remover o jogador de categorias antigas se mudou de classe/gênero
+        // 3. Lê as tabelas atuais do banco
         const snapTabelas = await database.ref(refTabelas).once('value');
         const tabelasAtuais = snapTabelas.val() || {};
 
         let tabelasModificadas = false;
 
+        // 4. Faxina: Se o atleta desativou o ranking ou mudou de classe/gênero, remove da tabela antiga
         Object.keys(tabelasAtuais).forEach(nomeTab => {
             if (Array.isArray(tabelasAtuais[nomeTab])) {
                 const idx = tabelasAtuais[nomeTab].indexOf(idJogador);
@@ -315,18 +316,7 @@ async function sincronizarJogadorRankingSaaS(idJogador, dados) {
             }
         });
 
-        // 4. Se participa do ranking, insere ao final da tabela correta caso ainda não esteja nela
-        if (dados.participaRanking) {
-            if (!tabelasAtuais[chaveTabela]) {
-                tabelasAtuais[chaveTabela] = [];
-            }
-            if (!tabelasAtuais[chaveTabela].includes(idJogador)) {
-                tabelasAtuais[chaveTabela].push(idJogador);
-                tabelasModificadas = true;
-            }
-        }
-
-        // 5. Atualiza o banco caso tenha alteração
+        // 5. Atualiza o banco caso tenha havido remoção de categoria antiga
         if (tabelasModificadas) {
             await database.ref(refTabelas).set(tabelasAtuais);
         }
@@ -335,6 +325,7 @@ async function sincronizarJogadorRankingSaaS(idJogador, dados) {
         console.error("Erro ao sincronizar jogador no ranking:", e);
     }
 }
+
 
 async function salvarJogador() {
     const nomeRaw = document.getElementById('inp-nome-jog').value.trim().toUpperCase(); 

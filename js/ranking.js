@@ -979,6 +979,10 @@ function confirmarPlacarAdversarioSaaS() {
     .then(() => {
         showToast("Placar confirmado com sucesso! O ranking será atualizado.", "success");
         if (intervaloTimerValidacao) clearInterval(intervaloTimerValidacao);
+		
+		// 🔔 NOTIFICAÇÃO AO AUTOR DA SÚMULA
+        notificarAutorSumulaSaaS(partidaRankingEmFoco, 'confirmado');
+		
         fecharModalConfig('modal-validacao-placar');
     })
     .catch(err => {
@@ -1021,6 +1025,10 @@ function recusarPlacarAdversarioSaaS() {
     .then(() => {
         showToast("Súmula contestada! Encaminhada para a arbitragem.", "warning");
         if (intervaloTimerValidacao) clearInterval(intervaloTimerValidacao);
+		
+		// 🔔 NOTIFICAÇÃO AO AUTOR DA SÚMULA
+        notificarAutorSumulaSaaS(partidaRankingEmFoco, 'recusado');
+		
         fecharModalConfig('modal-validacao-placar');
     })
     .catch(err => {
@@ -1823,9 +1831,6 @@ function tratarSelecaoMotivoRETSaaS(valor) {
 /* ======================================================== */
 /* 5. AÇÕES DO PAINEL DO ÁRBITRO (FASING - ARBITRAGEM)      */
 /* ======================================================== */
-/* ======================================================== */
-/* RENDERIZAÇÃO DA GAVETA DO ÁRBITRO (LISTA & INDIVIDUAL)   */
-/* ======================================================== */
 
 // Renderiza uma lista com 1 ou mais contestações na gaveta do árbitro
 function renderizarGavetaArbitroSaaS(listaContestacoes) {
@@ -2122,7 +2127,6 @@ function adiarDecisaoArbitroSaaS() {
 function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
     if (!reserva || !raizBanco) return;
 
-    // 🛡️ Filtro Blindado: Remove acentos, caracteres especiais e espaços extras
     const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
 
     const partesApelidos = (reserva.jogadores || '').split(',').map(s => norm(s));
@@ -2146,36 +2150,115 @@ function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
         });
     }
 
-    console.log("🔔 [Arbitragem] Enviar notificação para IDs:", idsParaNotificar);
+    if (idsParaNotificar.length === 0) return;
 
-    if (idsParaNotificar.length === 0) {
-        console.warn("⚠️ [Arbitragem] Nenhum ID de jogador localizado para notificar.");
-        return;
-    }
+    let categoria = "geral";
+    if (tipoDecisao === 'mantido') categoria = "homologado_arb";
+    else if (tipoDecisao === 'editado') categoria = "ajustado_arb";
+    else if (tipoDecisao === 'anulado') categoria = "anulado_arb";
 
-    let tipoToast = "info"; 
-    let mensagem = "";
-
-    if (tipoDecisao === 'mantido') {
-        tipoToast = "success";
-        mensagem = "🟢 Arbitragem: O resultado da sua partida contestada foi MANTIDO e homologado.";
-    } else if (tipoDecisao === 'editado') {
-        tipoToast = "warning";
-        mensagem = `🟡 Arbitragem: O placar da sua partida foi CORRIGIDO.<br>Novo resultado: ${detalhe}`;
-    } else if (tipoDecisao === 'anulado') {
-        tipoToast = "error";
-        mensagem = `🔴 Arbitragem: A sua partida foi ANULADA.<br>Motivo: ${detalhe}`;
-    }
+    const partesApelidosOrig = (reserva.jogadores || '').split(',');
+    const partesCompletoOrig = (reserva.jogadores_completo || '').split(',');
+    const adversarioNome = partesApelidosOrig.length > 1 ? partesApelidosOrig[1].trim() : (partesCompletoOrig.length > 1 ? partesCompletoOrig[1].trim() : 'seu adversário');
 
     const payloadNotif = {
-        tipo: tipoToast,
-        mensagem: mensagem,
+        categoria: categoria,
+        detalhe: detalhe,
+        adversario: adversarioNome,
         timestamp: Date.now()
     };
 
     idsParaNotificar.forEach(idJogador => {
-        database.ref(`${raizBanco}/jogadores/${idJogador}/notificacoes`).push(payloadNotif)
-            .then(() => console.log(`✅ [Arbitragem] Notificação entregue no nó do jogador: ${idJogador}`))
-            .catch(err => console.error(`❌ [Arbitragem] Erro ao notificar jogador ${idJogador}:`, err));
+        database.ref(`${raizBanco}/jogadores/${idJogador}/notificacoes`).push(payloadNotif);
     });
+}
+
+function notificarAutorSumulaSaaS(reserva, categoria) {
+    if (!reserva || !raizBanco || !reserva.dadosPlacar) return;
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+
+    const autorSumulaNorm = norm(reserva.dadosPlacar.autorSumula || '');
+    const nomeConfirmadorNorm = norm(localStorage.getItem('jogadorLogadoNome') || '');
+
+    if (!autorSumulaNorm) return;
+
+    const idAutor = Object.keys(jogadoresGlobal || {}).find(id => {
+        const j = jogadoresGlobal[id];
+        if (!j) return false;
+        return norm(j.nomeCompleto) === autorSumulaNorm || norm(j.apelido) === autorSumulaNorm;
+    });
+
+    if (idAutor) {
+        const confirmadorAtleta = Object.values(jogadoresGlobal || {}).find(j => norm(j.nomeCompleto) === nomeConfirmadorNorm || norm(j.apelido) === nomeConfirmadorNorm);
+        const nomeConfirmadorFormatado = confirmadorAtleta ? (confirmadorAtleta.apelido || confirmadorAtleta.nomeCompleto) : (localStorage.getItem('jogadorLogadoNome') || 'Adversário');
+
+        const payload = {
+            categoria: categoria,
+            adversario: nomeConfirmadorFormatado,
+            timestamp: Date.now()
+        };
+
+        database.ref(`${raizBanco}/jogadores/${idAutor}/notificacoes`).push(payload);
+    }
+}
+
+// ==========================================
+// 6. AÇÕES DO SÓCIO: CONFIRMAÇÃO DE INSCRIÇÃO NO RANKING
+// ==========================================
+
+async function aceitarConviteRankingSocioSaaS() {
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (!idLogado || !raizBanco) return;
+
+    if (navigator.vibrate) navigator.vibrate(30);
+    showToast("Processando sua inscrição no ranking...", "info");
+
+    try {
+        const atleta = jogadoresGlobal[idLogado] || {};
+        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+        const configRanking = snapConfig.val() || {};
+        const modoGenero = configRanking.divisaoGenero || 'separado';
+
+        const classe = (atleta.classe || 'A').toUpperCase();
+        let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
+        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+        const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+        const refTabelaCat = `${raizBanco}/ranking/tabelas/${chaveTabela}`;
+
+        const snapTabela = await database.ref(refTabelaCat).once('value');
+        let listaAtletas = snapTabela.exists() ? snapTabela.val() : [];
+
+        if (!Array.isArray(listaAtletas)) listaAtletas = [];
+
+        if (!listaAtletas.includes(idLogado)) {
+            listaAtletas.push(idLogado);
+            await database.ref(refTabelaCat).set(listaAtletas);
+        }
+
+        await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
+
+        showToast("Inscrição confirmada com sucesso! Bem-vindo ao Ranking.", "success");
+        fecharModalNotificacoes();
+
+    } catch (err) {
+        console.error("Erro ao aceitar convite do ranking:", err);
+        showToast("Erro ao confirmar inscrição no banco de dados.", "error");
+    }
+}
+
+async function recusarConviteRankingSocioSaaS() {
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (!idLogado || !raizBanco) return;
+
+    if (navigator.vibrate) navigator.vibrate(20);
+
+    try {
+        await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
+        showToast("Convite recusado.", "info");
+        fecharModalNotificacoes();
+    } catch (err) {
+        console.error("Erro ao recusar convite:", err);
+        showToast("Erro ao atualizar status do convite.", "error");
+    }
 }

@@ -1233,8 +1233,223 @@ function abrirVisualizacaoRankingSaaS() {
 }
 
 function dispararConvitesTemporadaSaaS() {
-    showToast("Ação de convites massivos (Será conectada na Etapa 3).", "info");
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    showToast("Verificando status da temporada...", "info");
+
+    // 1. Checa se já existe um lote de convites ativo no banco
+    database.ref(`${raizBanco}/convites_ranking`).once('value').then((snapConvites) => {
+        const dadosConvite = snapConvites.exists() ? snapConvites.val() : null;
+
+        if (dadosConvite && dadosConvite.status === "aberto") {
+            // JÁ EXISTE TEMPORADA ABERTA: Exibe o Modal de Decisão Inteligente (Repescagem vs Reiniciar)
+            exibirModalDecisaoRepescagemSaaS(dadosConvite);
+        } else {
+            // NENHUMA TEMPORADA ABERTA: Abre o modal de escolha inicial (Livre vs Herdada)
+            exibirModalInicialDisparoTemporadaSaaS();
+        }
+    }).catch((err) => {
+        console.error("Erro ao checar temporada:", err);
+        exibirModalInicialDisparoTemporadaSaaS();
+    });
 }
+
+// MODAL 1: Escolha Inicial (Quando NÃO há temporada aberta)
+function exibirModalInicialDisparoTemporadaSaaS() {
+    const msgHTML = `
+        <div class="prompt-ranking-container">
+            <p class="prompt-ranking-desc">Você está prestes a abrir as inscrições para uma nova temporada do Ranking. Como deseja organizar a fila inicial?</p>
+
+            <div class="prompt-ranking-options">
+                <label class="prompt-ranking-card">
+                    <input type="radio" name="rd_ordem_ranking" value="livre" class="prompt-ranking-radio" checked>
+                    <div>
+                        <strong class="prompt-ranking-title">Inscrição Livre (Estaca Zero)</strong>
+                        <span class="prompt-ranking-sub">Quem aceitar o convite primeiro no aplicativo, entra nas primeiras posições da tabela.</span>
+                    </div>
+                </label>
+
+                <label class="prompt-ranking-card">
+                    <input type="radio" name="rd_ordem_ranking" value="herdada" class="prompt-ranking-radio">
+                    <div>
+                        <strong class="prompt-ranking-title">Herdar Classificação Anterior</strong>
+                        <span class="prompt-ranking-sub">Usa a posição final da última temporada como ordem de largada (Cabeças de Chave).</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+    `;
+
+    showPrompt("Disparar Convites da Temporada", msgHTML, () => {
+        const radios = document.getElementsByName('rd_ordem_ranking');
+        let tipoOrdemEscolhida = 'livre';
+        
+        for (let r of radios) {
+            if (r.checked) {
+                tipoOrdemEscolhida = r.value;
+                break;
+            }
+        }
+        
+        processarDisparoTemporadaFirebase(tipoOrdemEscolhida);
+    });
+}
+
+// MODAL 2: Decisão Inteligente (Quando JÁ EXISTE temporada aberta)
+function exibirModalDecisaoRepescagemSaaS(dadosConviteAtual) {
+    const msgHTML = `
+        <div class="prompt-ranking-container">
+            <p class="prompt-ranking-desc">Já existem convites ativos para a temporada em andamento. O que você deseja fazer?</p>
+
+            <div class="prompt-ranking-options">
+                <!-- OPÇÃO A: Repescagem de Novos Atletas -->
+                <label class="prompt-ranking-card">
+                    <input type="radio" name="rd_acao_temporada" value="repescagem" class="prompt-ranking-radio" checked>
+                    <div>
+                        <strong class="prompt-ranking-title">Repescagem (Apenas Novos Atletas)</strong>
+                        <span class="prompt-ranking-sub">Dispara convites SOMENTE para sócios recém-cadastrados que ainda não estão no ranking.</span>
+                    </div>
+                </label>
+
+                <!-- OPÇÃO B: Reiniciar Geral -->
+                <label class="prompt-ranking-card">
+                    <input type="radio" name="rd_acao_temporada" value="reiniciar" class="prompt-ranking-radio">
+                    <div>
+                        <strong class="prompt-ranking-title">Reiniciar Geral (Nova Temporada)</strong>
+                        <span class="prompt-ranking-sub">Cancela o lote atual e dispara convites do zero para TODOS os atletas habilitados.</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+    `;
+
+    showPrompt("Temporada em Andamento", msgHTML, () => {
+        const radios = document.getElementsByName('rd_acao_temporada');
+        let acaoEscolhida = 'repescagem';
+        
+        for (let r of radios) {
+            if (r.checked) {
+                acaoEscolhida = r.value;
+                break;
+            }
+        }
+
+        if (acaoEscolhida === 'repescagem') {
+            processarRepescagemNovosAtletasSaaS(dadosConviteAtual);
+        } else {
+            // Se optou por reiniciar geral, abre a escolha inicial de ordenação
+            exibirModalInicialDisparoTemporadaSaaS();
+        }
+    });
+}
+
+// REPESCAGEM: Anexa apenas novos inscritos sem apagar a fila existente
+function processarRepescagemNovosAtletasSaaS(dadosConviteAtual) {
+    showToast("Verificando novos atletas no cadastro...", "info");
+
+    // Consulta atletas e tabelas em paralelo
+    Promise.all([
+        database.ref(`${raizBanco}/jogadores`).once('value'),
+        database.ref(`${raizBanco}/ranking/tabelas`).once('value')
+    ]).then(([snapJogadores, snapTabelas]) => {
+        if (!snapJogadores.exists()) {
+            return showToast("Nenhum atleta localizado no cadastro.", "warning");
+        }
+
+        const todosJogadores = snapJogadores.val();
+        const todasTabelas = snapTabelas.exists() ? snapTabelas.val() : {};
+        const pendentesAtuais = dadosConviteAtual.pendentes || {};
+
+        // Mapeia IDs de quem JÁ ESTÁ em alguma tabela do ranking
+        const idsJaInseridos = new Set();
+        Object.keys(todasTabelas).forEach(categoriaKey => {
+            const listaIds = todasTabelas[categoriaKey];
+            if (Array.isArray(listaIds)) {
+                listaIds.forEach(id => idsJaInseridos.add(id));
+            }
+        });
+
+        // Filtra apenas quem tem participaRanking === true, mas NÃO está pendente nem nas tabelas
+        const novosPendentesUpdate = {};
+        let totalNovos = 0;
+
+        Object.keys(todosJogadores).forEach(id => {
+            const j = todosJogadores[id];
+            if (j.participaRanking === true) {
+                const jaEstaPendente = pendentesAtuais[id] === true;
+                const jaEstaNaTabela = idsJaInseridos.has(id);
+
+                if (!jaEstaPendente && !jaEstaNaTabela) {
+                    novosPendentesUpdate[id] = true;
+                    totalNovos++;
+                }
+            }
+        });
+
+        if (totalNovos === 0) {
+            return showToast("Todos os atletas do ranking já possuem convite ou estão inscritos.", "info");
+        }
+
+        // Grava apenas as novas chaves no nó pendentes via .update()
+        database.ref(`${raizBanco}/convites_ranking/pendentes`).update(novosPendentesUpdate).then(() => {
+            showToast(`Repescagem concluída! ${totalNovos} novo(s) atleta(s) convidado(s).`, "success");
+        }).catch((err) => {
+            console.error("Erro na repescagem:", err);
+            showToast("Erro ao atualizar convites no banco de dados.", "error");
+        });
+
+    }).catch((err) => {
+        console.error("Erro ao ler dados para repescagem:", err);
+        showToast("Erro de leitura no banco de dados.", "error");
+    });
+}
+
+function processarDisparoTemporadaFirebase(tipoOrdem) {
+    showToast("Buscando atletas inscritos no ranking...", "info");
+
+    database.ref(`${raizBanco}/jogadores`).once('value').then((snap) => {
+        if (!snap.exists()) {
+            showToast("Nenhum jogador encontrado no cadastro do clube.", "warning");
+            return;
+        }
+
+        const todosJogadores = snap.val();
+        const pendentesMap = {};
+        let totalInscritos = 0;
+
+        Object.keys(todosJogadores).forEach(id => {
+            if (todosJogadores[id].participaRanking === true) {
+                pendentesMap[id] = true;
+                totalInscritos++;
+            }
+        });
+
+        if (totalInscritos === 0) {
+            showToast("Nenhum atleta possui a opção 'Participa do Ranking' ativa na ficha.", "warning");
+            return;
+        }
+
+        const anoAtual = new Date().getFullYear();
+        const temporadaData = {
+            temporadaId: `${anoAtual}_T${Date.now()}`,
+            dataAbertura: Date.now(),
+            tipoOrdenacao: tipoOrdem,
+            status: "aberto",
+            pendentes: pendentesMap
+        };
+
+        database.ref(`${raizBanco}/convites_ranking`).set(temporadaData).then(() => {
+            showToast(`Convites disparados com sucesso para ${totalInscritos} atleta(s)!`, "success");
+        }).catch((err) => {
+            console.error("Erro ao gravar convites:", err);
+            showToast("Erro ao gravar convites no banco de dados.", "error");
+        });
+    }).catch((err) => {
+        console.error("Erro na leitura de jogadores:", err);
+        showToast("Erro ao acessar a base de atletas.", "error");
+    });
+}
+
 
 function solicitarResetRankingSaaS() {
     showToast("Ação de zerar classificação (Será conectada na Etapa 5).", "info");

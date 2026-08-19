@@ -1680,7 +1680,7 @@ function validarAntiMonopolioSaaS(listaNomesCompletos, listaApelidos, todasReser
 // ====================================================================
 
 function validarEAgendarPartidaSaas() {
-    if (navigator.vibrate) navigator.vibrate(40);
+    if (navigator.vibrate) navigator.vibrate(40); 
 
     // ----------------------------------------------------
     // 1. A COLETA (Montagem do Pacote de Dados da UI)
@@ -1899,12 +1899,17 @@ function validarEAgendarPartidaSaas() {
         const caminhoKey1 = `${raizBanco}/reservas/${pacote.quadraAlvo}/${chaveReservaLimpa}`;
         const caminhoKey2 = `${raizBanco}/reservas/${pacote.quadraAlvo}/${pacote.dia}_${pacote.hora + 1}`;
 
+        let key1Committed = false; // 🛡️ Trava de segurança para o Rollback
+
         return database.ref(caminhoKey1).transaction(currentData => {
             if (currentData === null || currentData.status === 'aula_cancelada') return objetoReservaReferencia;
             return; // Aborta se tiver colisão
         })
         .then(result1 => {
             if (!result1.committed) throw new Error("COLISAO_HORARIO_MESTRE");
+            
+            key1Committed = true; // 1ª hora foi salva no Firebase
+
             if (pacote.duracao === 1) return true;
 
             const objetoReservaReferencia2 = { ...objetoReservaReferencia, hora: pacote.hora + 1 };
@@ -1916,7 +1921,7 @@ function validarEAgendarPartidaSaas() {
             })
             .then(result2 => {
                 if (!result2.committed) {
-                    return database.ref(caminhoKey1).remove().then(() => { throw new Error("COLISAO_HORARIO_SEQUENCIAL"); });
+                    throw new Error("COLISAO_HORARIO_SEQUENCIAL");
                 }
                 return true;
             });
@@ -1926,7 +1931,18 @@ function validarEAgendarPartidaSaas() {
         showToast("Agendamento confirmado com sucesso!", "success");
         if (typeof fecharModalConfig === 'function') fecharModalConfig('modal-agendamento'); 
     })
-    .catch(err => {
+    .catch(async err => {
+        // 🧹 ROLLBACK AUTOMÁTICO DE SEGURANÇA:
+        // Se a 1ª hora foi gravada mas a 2ª hora falhou por qualquer motivo (queda de rede, timeout ou colisão), limpa a 1ª hora do banco
+        if (key1Committed && pacote.duracao === 2) {
+            try {
+                await database.ref(caminhoKey1).remove();
+                console.log("🧹 [Rollback] 1ª hora removida com sucesso para evitar reserva pela metade.");
+            } catch (e) {
+                console.error("Erro ao executar rollback no banco:", e);
+            }
+        }
+
         // Controle de falhas inteligente
         if (err.message === "VALIDACAO_FALHOU") {
             // O Toast de aviso já foi emitido pelo fiscal, morre silenciosamente.
@@ -3313,12 +3329,13 @@ function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo) {
     });
 }
 
+
 /**
  * Motor de Faxina Automatizada (Fase 7 - Sobrevivência de Quórum): 
  * 1. Limpa dias antigos.
  * 2. Caça convites pendentes vencidos e APLICA A REGRA DE QUÓRUM.
  *    - Se tiver quórum, expulsa apenas os pendentes e salva a reserva.
- *    - Se não tiver quórum, exclui a reserva inteira.
+ *    - Se não tiver quórum, exclui a reserva inteira e notifica o organizador.
  * 3. RESGATA logs que falharam por queda de internet no GitHub.
  */
 function executarFaxinaAutomaticaSaaS() {
@@ -3331,7 +3348,7 @@ function executarFaxinaAutomaticaSaaS() {
     linhaDeCorte.setDate(hoje.getDate() - DiasParaExibir); 
     const agoraMs = Date.now(); 
     
-    // 🔥 Agora fazemos DUAS consultas ao Firebase ao mesmo tempo: Reservas + Fila de Falhas
+    // 🔥 Consulta simultânea: Reservas + Fila de Falhas
     Promise.all([
         database.ref(`${raizBanco}/reservas`).once('value'),
         database.ref(`${raizBanco}/logs_pendentes`).once('value')
@@ -3350,7 +3367,6 @@ function executarFaxinaAutomaticaSaaS() {
             chavesPendentes.forEach(key => {
                 filaLogsPremium.push(logsPendentesObj[key]);
             });
-            // Apaga a fila no Firebase
             updatePayload['logs_pendentes'] = null; 
         }
 
@@ -3428,7 +3444,7 @@ function executarFaxinaAutomaticaSaaS() {
                             }
                         });
                         
-                        // Garante que o Organizador (índice 0) é contado caso ocorra erro no confs
+                        // O Organizador (índice 0) é sempre confirmado
                         if (idx === 0) isConfirmed = true;
 
                         if (isConfirmed) {
@@ -3438,7 +3454,6 @@ function executarFaxinaAutomaticaSaaS() {
                         }
                     });
 
-                    // Define se a reserva atingiu o mínimo para sobreviver
                     const sobreviveuAoQuorum = conviteExpirou && !passouDoPrazoDeExibicao && (qtdConfirmados >= quorumExigido);
 
                     const pathNode1 = `reservas/${quadraChave}/${slotKey}`;
@@ -3461,7 +3476,7 @@ function executarFaxinaAutomaticaSaaS() {
                         rAtualizada.jogadores = novosApelidos;
                         rAtualizada.jogadores_completo = novosCompletos;
                         rAtualizada.confirmacoes = newConfs;
-                        delete rAtualizada.expiraEm; // Desarma a bomba no banco
+                        delete rAtualizada.expiraEm; 
 
                         updatePayload[pathNode1] = rAtualizada;
                         chavesPuladas.add(slotKey);
@@ -3474,9 +3489,8 @@ function executarFaxinaAutomaticaSaaS() {
                             chavesPuladas.add(proximaChave);
                         }
 
-                        // Log Riquíssimo de Auditoria
                         const logEviccao = {
-							origem: "sistema",
+                            origem: "sistema",
                             timestamp: new Date().toISOString(),
                             dataLocal: new Date().toLocaleString('pt-BR'),
                             autor: "Rotina Automática de Sistema",
@@ -3487,12 +3501,12 @@ function executarFaxinaAutomaticaSaaS() {
                             horario: `${String(horaReserva).padStart(2, '0')}:00 - ${String(horaReserva + duracaoReserva).padStart(2, '0')}:00`,
                             duracao: duracaoReserva === 1 ? "1 Hora" : "2 Horas",
                             data: r.dataCompleta ? r.dataCompleta.split('-').reverse().join('-') : "",
-                            statusNoMomentoDaExclusao: "confirmada", // Virou confirmada
+                            statusNoMomentoDaExclusao: "confirmada",
                             organizadorDaReserva: r.organizador || "Não Informado",
                             confirmacoes: newConfs,
                             jogadores: novosApelidos,
                             jogadores_completo: novosCompletos,
-                            slotsExcluidos: [] // Nenhuma hora foi excluída fisicamente
+                            slotsExcluidos: []
                         };
                         filaLogsPremium.push(logEviccao);
                         totalPartidasLimpas++;
@@ -3512,12 +3526,39 @@ function executarFaxinaAutomaticaSaaS() {
                             chavesPuladas.add(proximaChave);
                         }
 
+                        // 🔔 NOTIFICAÇÃO AO ORGANIZADOR (CANCELA POR FALTA DE QUÓRUM EXPOSIÇÃO TEMPO)
+                        if (conviteExpirou && r.organizador) {
+                            const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+                            const orgNorm = norm(r.organizador);
+
+                            const idOrg = Object.keys(jogadoresGlobal || {}).find(id => {
+                                const j = jogadoresGlobal[id];
+                                return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
+                            });
+
+                            if (idOrg) {
+                                const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+                                const nomeDia = diasSemana[diaReserva] || "Dia";
+                                const hInicio = String(horaReserva).padStart(2, '0') + ":00";
+                                const hFim = String(horaReserva + duracaoReserva).padStart(2, '0') + ":00";
+                                const quadraTexto = nomeQuadraAmigavel.toLowerCase().startsWith('quadra') ? nomeQuadraAmigavel.toLowerCase() : `quadra ${nomeQuadraAmigavel}`;
+
+                                const keyNotif = database.ref().push().key;
+                                const payloadNotif = {
+                                    categoria: "cancelado_quorum",
+                                    detalhe: `${nomeDia}, das ${hInicio} às ${hFim} hs, na ${quadraTexto}`,
+                                    timestamp: Date.now()
+                                };
+                                updatePayload[`jogadores/${idOrg}/notificacoes/${keyNotif}`] = payloadNotif;
+                            }
+                        }
+
                         const motivoLog = conviteExpirou 
                             ? `Convite expirado (Cancelada por falta de quórum: Exigido ${quorumExigido}, Confirmado(s) ${qtdConfirmados})` 
                             : `Limpeza automática por decurso do prazo de exibição (${DiasParaExibir}d)`;
 
                         const logReciboAutomático = {
-							origem: "sistema", 
+                            origem: "sistema", 
                             timestamp: new Date().toISOString(),
                             dataLocal: new Date().toLocaleString('pt-BR'),
                             autor: "Rotina Automática de Sistema",
@@ -3543,7 +3584,7 @@ function executarFaxinaAutomaticaSaaS() {
             });
         });
 
-        // 🚀 DISPARO FINAL: Executa se limpamos/atualizamos alguma reserva OU se resgatamos algum log pendente
+        // 🚀 DISPARO FINAL
         if (totalPartidasLimpas > 0 || chavesPendentes.length > 0) {
             console.log(`🤖 [SaaS Faxina] Captura finalizada. Despachando lote para o Firebase...`);
             
@@ -3569,7 +3610,6 @@ function executarFaxinaAutomaticaSaaS() {
         console.error("❌ [SaaS Faxina] Falha ao ler dados para triagem:", err);
     });
 }
-
 
 // ====================================================================
 // 11. MOTOR DE PRESENÇA ONLINE GAVETA MATTE
@@ -3796,6 +3836,7 @@ function fecharModalConvitesEntradaSaaS(adiarSessao = false) {
     if (intervaloConvitesSaaS) clearInterval(intervaloConvitesSaaS);
 }
 
+
 // ----------------------------------------------------
 // FASE 5: O MOTOR DE TRANSAÇÕES ATÔMICAS (RESPOSTAS COM LOGS)
 // ----------------------------------------------------
@@ -3925,12 +3966,45 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
         const dia = parseInt(partes[0]);
         const hora = parseInt(partes[1]); 
 
+        // Monta dados do Organizador e do detalhe da partida para notificação
+        let idOrg = null;
+        let detalheFormatado = "";
+
+        if (dadosReservaAntes && dadosReservaAntes.organizador) {
+            const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+            const orgNorm = norm(dadosReservaAntes.organizador);
+
+            idOrg = Object.keys(jogadoresGlobal || {}).find(id => {
+                const j = jogadoresGlobal[id];
+                return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
+            });
+
+            const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+            const nomeDia = diasSemana[dia] || "Dia";
+            const duracaoRes = parseInt(dadosReservaAntes.duracao) || 1;
+            const hInicio = String(hora).padStart(2, '0') + ":00";
+            const hFim = String(hora + duracaoRes).padStart(2, '0') + ":00";
+            const quadraTexto = nomeQuadraAmigavel.toLowerCase().startsWith('quadra') ? nomeQuadraAmigavel.toLowerCase() : `quadra ${nomeQuadraAmigavel}`;
+            detalheFormatado = `${nomeDia}, das ${hInicio} às ${hFim} hs, na ${quadraTexto}`;
+        }
+
         // ====================================================
         // CENÁRIO 1: A RESERVA FOI CANCELADA (FALTA DE QUÓRUM)
         // ====================================================
         if (!reservaAtualizada) {
             const caminhoKey2 = `${raizBanco}/reservas/${quadraChave}/${dia}_${hora + 1}`;
             database.ref(caminhoKey2).remove(); // Apaga o segundo slot de 2h se existir
+
+            // 🔔 NOTIFICAÇÃO AO ORGANIZADOR (RESERVA CANCELADA POR RECUSA)
+            if (idOrg && !aceitou) {
+                const payloadNotif = {
+                    categoria: "cancelado_quorum",
+                    adversario: apelidoBusca,
+                    detalhe: detalheFormatado,
+                    timestamp: Date.now()
+                };
+                database.ref(`${raizBanco}/jogadores/${idOrg}/notificacoes`).push(payloadNotif);
+            }
 
             // 📝 MONTA E DESPACHA O LOG DE EXCLUSÃO PARA O GITHUB
             if (dadosReservaAntes && !aceitou) {
@@ -3941,7 +4015,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                 }
 
                 const logRecusaCancelamento = {
-					origem: "sistema",
+                    origem: "sistema",
                     timestamp: new Date().toISOString(),
                     dataLocal: new Date().toLocaleString('pt-BR'),
                     autor: "Rotina Automática de Sistema",
@@ -3971,7 +4045,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
         }
 
         // ====================================================
-        // CENÁRIO 2: A RESERVA SOBREVIVEU (QUÓRUM MANTIDO)
+        // CENÁRIO 2 E 3: RESERVA SOBREVIVEU (MANTIDA OU CONFIRMADA)
         // ====================================================
         if (reservaAtualizada.duracao === 2) {
             const caminhoKey2 = `${raizBanco}/reservas/${quadraChave}/${dia}_${hora + 1}`;
@@ -3982,12 +4056,34 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
             database.ref(caminhoKey2).set(reserva2);
         }
 
+        // 🔔 NOTIFICAÇÃO AO ORGANIZADOR
+        if (idOrg) {
+            if (!aceitou) {
+                // CENÁRIO 2: RECUSADO MAS MANTIDO
+                const payloadNotif = {
+                    categoria: "convite_recusado",
+                    adversario: apelidoBusca,
+                    detalhe: detalheFormatado,
+                    timestamp: Date.now()
+                };
+                database.ref(`${raizBanco}/jogadores/${idOrg}/notificacoes`).push(payloadNotif);
+            } else if (reservaAtualizada.status === "confirmada" && dadosReservaAntes && dadosReservaAntes.status === "pendente") {
+                // CENÁRIO 3: TODOS CONFIRMARAM (A reserva era pendente e passou para confirmada)
+                const payloadNotif = {
+                    categoria: "partida_confirmada",
+                    detalhe: detalheFormatado,
+                    timestamp: Date.now()
+                };
+                database.ref(`${raizBanco}/jogadores/${idOrg}/notificacoes`).push(payloadNotif);
+            }
+        }
+
         // 📝 MONTA E DESPACHA O LOG DE REMOÇÃO PARCIAL PARA O GITHUB
         if (!aceitou && dadosReservaAntes) {
             const duracao = parseInt(reservaAtualizada.duracao) || 1;
 
             const logRecusaParcial = {
-				origem: "manual", 
+                origem: "manual", 
                 timestamp: new Date().toISOString(),
                 dataLocal: new Date().toLocaleString('pt-BR'),
                 autor: nomeCompletoBusca,
@@ -4021,7 +4117,6 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
         }
     });
 }
-
 
 
 function concluirEfeitoCardSaaS(cardElement) {

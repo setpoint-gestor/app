@@ -452,6 +452,10 @@ function navegarApp(idDestino) {
 			if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
 				iniciarOuvinteNotificacoesJogadorSaaS();
 			}
+			// 🔔 RADAR SILENCIOSO DO RANKING
+            if (typeof iniciarRadarConviteRankingSilenciosoSaaS === 'function') {
+                iniciarRadarConviteRankingSilenciosoSaaS(true);
+            }
         }, 300);
     }
 }
@@ -767,6 +771,11 @@ function iniciarOuvinteMestreSaaS() {
         // ====================================================================
         if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
             iniciarOuvinteNotificacoesJogadorSaaS();
+        }
+		
+		// 🔔 GATILHO INJETADO: Radar Silencioso do Convite do Ranking (Sininho)
+        if (typeof iniciarRadarConviteRankingSilenciosoSaaS === 'function') {
+            iniciarRadarConviteRankingSilenciosoSaaS();
         }
 		
 		// ====================================================================
@@ -1129,12 +1138,15 @@ function desligarTodosRadaresSaaS() {
     if (listenerConvitesCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerConvitesCallback);
     if (listenerSumulasCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerSumulasCallback);
     if (listenerArbitroCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerArbitroCallback);
+    if (listenerRankingCallback) database.ref(`${raizBanco}/convites_ranking`).off('value', listenerRankingCallback);
     
     radarConvitesAtivoId = null;
     radarSumulasAtivoId = null;
+    radarRankingAtivoId = null;
     listenerConvitesCallback = null;
     listenerSumulasCallback = null;
     listenerArbitroCallback = null;
+    listenerRankingCallback = null;
     window.ignoradosSessaoSaaS = [];
 }
 
@@ -1377,6 +1389,7 @@ function iniciarRadarArbitroContestacoesSaaS() {
 // 13. OUVINTE DE NOTIFICAÇÕES DO JOGADOR (SAAS)
 // ==========================================
 let listenerNotificacoesCallback = null;
+let qtdNotificacoesAnterior = null;
 
 function iniciarOuvinteNotificacoesJogadorSaaS() {
     const idLogado = localStorage.getItem('jogadorLogadoId');
@@ -1388,18 +1401,95 @@ function iniciarOuvinteNotificacoesJogadorSaaS() {
     }
 
     listenerNotificacoesCallback = snap => {
-        const notifs = snap.val();
-        if (!notifs) return;
+        const idAtual = localStorage.getItem('jogadorLogadoId');
+        if (!idAtual || isGestorLogado) return;
 
-        Object.keys(notifs).forEach(keyNotif => {
-            const n = notifs[keyNotif];
-            if (n && n.mensagem) {
-                showToast(n.mensagem, n.tipo || 'info', 7000);
-                // Consome a notificação do banco para não repeti-la nos próximos acessos
-                database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes/${keyNotif}`).remove();
+        const notifs = snap.exists() ? snap.val() : {};
+        const qtdNotifs = Object.keys(notifs).length;
+        const temRanking = window.temConviteRankingPendenteSocio === true ? 1 : 0;
+
+        // O total é a soma real das notificações no banco + o convite do ranking pendente
+        const total = qtdNotifs + temRanking;
+
+        const badge = document.getElementById('notificacao-badge');
+        const containerBadge = badge ? badge.parentElement : null;
+
+        if (total > 0) {
+            if (badge) {
+                badge.textContent = String(total);
+                badge.style.display = "flex";
             }
-        });
+            if (containerBadge) containerBadge.style.display = "flex";
+
+            // 1. Dispara o Toast no boot ao abrir o app
+            if (qtdNotificacoesAnterior === null) {
+                if (typeof dispararToastNotificacoesEntradaSaaS === 'function') {
+                    dispararToastNotificacoesEntradaSaaS(total);
+                }
+            } 
+            // 2. Dispara em tempo real se uma nova notificação chegar enquanto online
+            else if (qtdNotifs > qtdNotificacoesAnterior) {
+                const novasChegadas = qtdNotifs - qtdNotificacoesAnterior;
+                if (typeof dispararToastNotificacoesEntradaSaaS === 'function') {
+                    dispararToastNotificacoesEntradaSaaS(novasChegadas);
+                }
+            }
+        } else {
+            if (badge) {
+                badge.textContent = "0";
+                badge.style.display = "none";
+            }
+        }
+
+        qtdNotificacoesAnterior = qtdNotifs;
+
+        const modal = document.getElementById('modal-central-notificacoes');
+        if (modal && modal.style.display === 'flex') {
+            if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
+                renderizarListaNotificacoesSocioSaaS();
+            }
+        }
     };
 
     database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).on('value', listenerNotificacoesCallback);
+}
+
+
+// ==========================================
+// 14. RADAR SILENCIOSO DO RANKING (SAAS)
+// ==========================================
+let radarRankingAtivoId = null;
+let listenerRankingCallback = null;
+
+function iniciarRadarConviteRankingSilenciosoSaaS(forcar = false) {
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (!idLogado || (typeof isGestorLogado !== 'undefined' && isGestorLogado)) return;
+    if (!forcar && radarRankingAtivoId === idLogado && listenerRankingCallback !== null) return;
+
+    if (listenerRankingCallback) {
+        database.ref(`${raizBanco}/convites_ranking`).off('value', listenerRankingCallback);
+        listenerRankingCallback = null;
+    }
+
+    radarRankingAtivoId = idLogado;
+
+    listenerRankingCallback = snap => {
+        const idAtual = localStorage.getItem('jogadorLogadoId');
+        if (!idAtual || isGestorLogado) return;
+
+        const dadosConvite = snap.exists() ? snap.val() : null;
+
+        if (dadosConvite && dadosConvite.status === 'aberto' && dadosConvite.pendentes && dadosConvite.pendentes[idAtual] === true) {
+            window.temConviteRankingPendenteSocio = true;
+            window.dadosTemporadaRankingAtiva = dadosConvite;
+        } else {
+            window.temConviteRankingPendenteSocio = false;
+        }
+
+        if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
+            iniciarOuvinteNotificacoesJogadorSaaS();
+        }
+    };
+
+    database.ref(`${raizBanco}/convites_ranking`).on('value', listenerRankingCallback);
 }

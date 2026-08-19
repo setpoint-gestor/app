@@ -634,10 +634,6 @@ window.addEventListener('load', verificarDirecionamentoSite);
 
 
 
-
-// ==========================================
-// 6. OCULTA BOTÕES DE FECHAR NO PWA / WEB
-// ==========================================
 // ==========================================
 // 6. OCULTA BOTÕES DE FECHAR NO PWA (iOS)
 // ==========================================
@@ -661,3 +657,245 @@ function aplicarRegrasInterfacePWA() {
 }
 
 window.addEventListener('load', aplicarRegrasInterfacePWA);
+
+
+// ==========================================
+// 7. CENTRAL DE NOTIFICAÇÕES & RADAR DO SININHO (SÓCIO)
+// ==========================================
+
+// A. Abertura e Fechamento do Modal Central
+function abrirModalNotificacoes() {
+    const modal = document.getElementById('modal-central-notificacoes');
+    if (modal) {
+        modal.style.display = 'flex';
+        
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+
+        // 1. Renderiza a lista na tela com os dados atuais
+        renderizarListaNotificacoesSocioSaaS();
+
+        // 2. Consome e apaga as notificações passivas do Firebase (Súmulas e Arbitragem)
+        if (idLogado && raizBanco) {
+            database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).remove();
+        }
+    }
+}
+
+function fecharModalNotificacoes(e) {
+    if (e && e.target && !e.target.classList.contains('modal-overlay-notif') && !e.target.classList.contains('btn-voltar-icon')) {
+        return;
+    }
+    const modal = document.getElementById('modal-central-notificacoes');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+
+// B. Renderiza as Notificações dentro da Central
+function renderizarListaNotificacoesSocioSaaS() {
+    const container = document.getElementById('container-lista-notificacoes-socio');
+    const txtSubtitulo = document.getElementById('txt-contador-subtitulo');
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    const atleta = (jogadoresGlobal && jogadoresGlobal[idLogado]) ? jogadoresGlobal[idLogado] : {};
+
+    if (!container) return;
+
+    let htmlCards = '';
+    let totalPendencias = 0;
+
+    // 1. Convite do Ranking
+    if (window.temConviteRankingPendenteSocio === true) {
+        totalPendencias++;
+        const classeAtleta = (atleta.classe || 'A').toUpperCase();
+        const generoAtleta = (atleta.genero === 'FEMININO') ? 'Feminino' : 'Masculino';
+
+        htmlCards += `
+            <div class="card-notif-item ranking">
+                <div class="notif-header-linha">
+                    <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
+                    <span class="notif-tempo">Novo Lote</span>
+                </div>
+                <h4 class="notif-titulo" style="text-align: center;">Convite da Temporada</h4>
+                <div class="notif-desc">
+                    <div style="text-align: left;">
+                        A arena abriu as inscrições do Ranking.<br>
+                        Sua categoria cadastrada é <b>Classe ${classeAtleta} (${generoAtleta})</b>.
+                    </div>
+                    <div style="text-align: center; margin-top: 12px; font-weight: 500;">
+                        Deseja confirmar sua participação?
+                    </div>
+                </div>
+                <div class="btn-grupo-notif">
+                    <button class="btn-sub-action btn-ok" onclick="aceitarConviteRankingSocioSaaS()">Aceitar e Entrar</button>
+                    <button class="btn-sub-action btn-no" onclick="recusarConviteRankingSocioSaaS()">Recusar</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // 2. Notificações Salvas no Banco (Súmulas, Arbitragem e Reservas)
+    if (atleta.notificacoes && typeof atleta.notificacoes === 'object') {
+        const keysNotif = Object.keys(atleta.notificacoes);
+        totalPendencias += keysNotif.length;
+
+        keysNotif.forEach(keyNotif => {
+            const n = atleta.notificacoes[keyNotif];
+            const categoria = n.categoria || 'geral';
+
+            if (categoria === 'confirmado') {
+                htmlCards += `
+                    <div class="card-notif-item confirmado">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <h4 class="notif-titulo" style="text-align: center;">Resultado confirmado.</h4>
+                        <div class="notif-desc">
+                            ${n.adversario || 'O adversário'} confirmou o resultado informado por você.
+                        </div>
+                    </div>
+                `;
+            } else if (categoria === 'recusado') {
+                htmlCards += `
+                    <div class="card-notif-item recusado">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <h4 class="notif-titulo" style="text-align: center;">Resultado recusado.</h4>
+                        <div class="notif-desc">
+                            ${n.adversario || 'O adversário'} não concordou com o placar.<br>
+                            O jogo foi encaminhado para a arbitragem decidir.
+                        </div>
+                    </div>
+                `;
+            } else if (categoria === 'homologado_arb') {
+                htmlCards += `
+                    <div class="card-notif-item homologado-arb">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <h4 class="notif-titulo" style="text-align: center;">Placar Homologado pela Arbitragem</h4>
+                        <div class="notif-desc">
+                            O árbitro analisou a contestação e manteve o resultado oficial da partida.
+                            <div class="box-destaque-resultado">
+                                <b>Resultado:</b> ${n.detalhe || '--'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (categoria === 'ajustado_arb') {
+                htmlCards += `
+                    <div class="card-notif-item ajustado-arb">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <h4 class="notif-titulo" style="text-align: center;">Placar ajustado pela Arbitragem</h4>
+                        <div class="notif-desc">
+                            O árbitro analisou e alterou o resultado oficial da partida.
+                            <div class="box-destaque-resultado">
+                                <b>Resultado:</b> ${n.detalhe || '--'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (categoria === 'anulado_arb') {
+                htmlCards += `
+                    <div class="card-notif-item anulado-arb">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <h4 class="notif-titulo" style="text-align: center;">Placar anulado pela Arbitragem</h4>
+                        <div class="notif-desc">
+                            A sua partida contra ${n.adversario || 'seu adversário'} foi anulada pela arbitragem
+                            <div class="box-destaque-resultado">
+                                <b>Motivo:</b> ${n.detalhe || 'Decisão da arbitragem.'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (categoria === 'cancelado_quorum') {
+                htmlCards += `
+                    <div class="card-notif-item cancelado" style="border-left: 4px solid #ef4444; background: #fef2f2;">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag" style="background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;">📅 Agendamento</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <h4 class="notif-titulo" style="text-align: center;">Reserva cancelada.</h4>
+                        <div class="notif-desc">
+                            ${n.adversario ? `<b>${n.adversario}</b> recusou o convite.<br><br>` : ''}A sua reserva de <b>${n.detalhe || 'horário pendente'}</b> foi cancelada por falta de quórum.
+                        </div>
+                    </div>
+                `;
+            } else if (categoria === 'convite_recusado') {
+                htmlCards += `
+                    <div class="card-notif-item recusado" style="border-left: 4px solid #ef4444; background: #fef2f2;">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag" style="background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;">📅 Agendamento</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <h4 class="notif-titulo" style="text-align: center;">Convite recusado.</h4>
+                        <div class="notif-desc">
+                            <b>${n.adversario || 'Um convidado'}</b> recusou o convite para a partida de <b>${n.detalhe || 'horário pendente'}</b>.<br><br>O atleta foi removido e a reserva segue mantida.
+                        </div>
+                    </div>
+                `;
+            } else if (categoria === 'partida_confirmada') {
+                htmlCards += `
+                    <div class="card-notif-item confirmado" style="border-left: 4px solid #22c55e; background: #f0fdf4;">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag" style="background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;">📅 Agendamento</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <h4 class="notif-titulo" style="text-align: center;">Partida confirmada!</h4>
+                        <div class="notif-desc">
+                            Todos os convidados confirmaram presença para a partida de <b>${n.detalhe || 'horário agendado'}</b>.
+                        </div>
+                    </div>
+                `;
+            } else {
+                htmlCards += `
+                    <div class="card-notif-item ranking">
+                        <div class="notif-header-linha">
+                            <span class="notif-tag tag-gold">🔔 Notificação</span>
+                            <span class="notif-tempo">Recente</span>
+                        </div>
+                        <div class="notif-desc">
+                            ${n.mensagem || n.texto || ''}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    // Subtítulo e Estado Vazio
+    if (totalPendencias === 0) {
+        htmlCards = `<p style="text-align: center; color: #888; margin-top: 30px; font-size: 14px;">Nenhuma notificação no momento.</p>`;
+        if (txtSubtitulo) txtSubtitulo.textContent = "Sua caixa de entrada está limpa";
+    } else {
+        if (txtSubtitulo) {
+            txtSubtitulo.textContent = totalPendencias === 1 
+                ? "1 pendência não lida" 
+                : `${totalPendencias} pendências não lidas`;
+        }
+    }
+
+    container.innerHTML = htmlCards;
+}
+
+
+// C. Dispara o Toast Informativo ao abrir o App quando houver pendências
+function dispararToastNotificacoesEntradaSaaS(total) {
+    if (!total || total <= 0) return;
+    
+    const mensagem = total === 1 
+        ? "🔔 Você possui 1 nova notificação." 
+        : `🔔 Você possui ${total} novas notificações.`;
+        
+    showToast(mensagem, "info", 4000);
+}
