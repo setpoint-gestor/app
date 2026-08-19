@@ -972,5 +972,38 @@
         "hora": 11
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-19T21:50:01.694Z",
+    "dataLocal": "19/08/2026, 18:50:01",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "motivo": "Convite recusado por Joao Francisco. Reserva cancelada por falta de quórum mínimo.",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "21-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Joao Francisco": false
+    },
+    "jogadores": "Adriano Feitosa, Joao Francisco",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, JOAO FRANCISCO DA SILVA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 4",
+        "dia": 5,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 4",
+        "dia": 5,
+        "hora": 7
+      }
+    ]
   }
 ]
