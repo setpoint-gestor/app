@@ -23,7 +23,7 @@
 
     <style>
         :root {
-            --bg-dark: #0f172a;
+            --bg-dark: #0f172a;  
             --bg-card: #1e293b;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
@@ -757,6 +757,23 @@
             modal.style.display = 'flex';
         }
 		
+		// ==========================================
+        // SENSOR DE FOCO: FAXINA DE FANTASMAS (ANTI-CONGELAMENTO)
+        // ==========================================
+        document.addEventListener('visibilitychange', () => {
+            // Se o usuário voltou para a tela E o painel mestre estiver aberto
+            if (!document.hidden && document.getElementById('tela-dashboard').style.display === 'block') {
+                
+                // 1. Desliga o "rádio" antigo para não duplicar o eco
+                db.ref('Clubes').off('value'); 
+                
+                // 2. Refaz a chamada, forçando a matemática do relógio a rodar novamente
+                carregarArenasRealTime();
+                
+                console.log("👁️ Tela em foco: Dados e cronômetros atualizados à força!");
+            }
+        });
+		
     </script>
 	
     <!-- PWA: Registro do Service Worker para liberar Tela Cheia no Android -->
@@ -769,5 +786,7 @@
             });
         }
     </script>
+	
+	
 </body>
 </html>
