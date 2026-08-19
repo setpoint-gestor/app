@@ -1332,3 +1332,56 @@ body.dark-mode #modal-sumula-ranking .card-atleta-wo.desistente-selecionado .nom
 body.dark-mode .txt-motivo-ret {
     color: #ef4444;
 }
+
+/* ======================================================== */
+/* 13. PROMPT DE CONVITES DA TEMPORADA                      */
+/* ======================================================== */
+.prompt-ranking-container {
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #334155;
+}
+
+.prompt-ranking-desc {
+    margin: 0 0 15px 0;
+}
+
+.prompt-ranking-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.prompt-ranking-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #f8fafc;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.prompt-ranking-radio {
+    margin-top: 2px;
+    accent-color: var(--cor-primaria, #2E8B57);
+}
+
+.prompt-ranking-title {
+    color: #1e293b;
+    font-size: 14px;
+    display: block;
+}
+
+.prompt-ranking-sub {
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* Modo Escuro */
+body.dark-mode .prompt-ranking-container { color: #cbd5e1; }
+body.dark-mode .prompt-ranking-card { background: #252525; border-color: #333333; }
+body.dark-mode .prompt-ranking-title { color: #f8fafc; }
+body.dark-mode .prompt-ranking-sub { color: #94a3b8; }

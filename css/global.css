@@ -805,3 +805,201 @@ body.dark-mode .card-ajuda-whats {
 body.dark-mode .card-ajuda-whats p {
     color: #4ade80 !important;
 }
+
+/* ======================================================== */
+/* 🔔 MODAL CENTRAL DE NOTIFICAÇÕES (SÓCIO / SISTEMA)       */
+/* ======================================================== */
+
+.modal-overlay-notif {
+    position: fixed;
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(3px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.modal-notif-card {
+    background: #ffffff;
+    width: 100%;
+    max-width: 440px;
+    border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: zoomInNotif 0.2s ease;
+    box-sizing: border-box;
+}
+
+@keyframes zoomInNotif { 
+    from { opacity: 0; transform: scale(0.95); } 
+    to { opacity: 1; transform: scale(1); } 
+}
+
+/* Cabeçalho do Modal */
+.header-painel-notif {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.header-painel-notif h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--cor-escura, #1e293b);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-painel-notif .subtitulo {
+    font-size: 13px;
+    color: #888;
+    display: block;
+    margin-top: 2px;
+}
+
+.btn-voltar-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--cor-escura, #1e293b);
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.btn-voltar-icon:hover {
+    background: #f1f5f9;
+}
+
+/* Corpo Rolável */
+.body-notif-scroll {
+    padding: 16px 20px;
+    max-height: 65vh;
+    overflow-y: auto;
+    background: #f8fafc;
+    box-sizing: border-box;
+}
+
+/* Cards Individuais */
+.card-notif-item {
+    background: white;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    text-align: left;
+    position: relative;
+}
+
+.card-notif-item:last-child {
+    margin-bottom: 0;
+}
+
+.card-notif-item.ranking {
+    border-left: 4px solid #f59e0b;
+    background: #fffbeb;
+}
+
+.card-notif-item.mural {
+    border-left: 4px solid #3b82f6;
+}
+
+.card-notif-item.sumula {
+    border-left: 4px solid #10b981;
+}
+
+.notif-header-linha {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.notif-tag {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.tag-gold { background: #fef3c7; color: #b45309; }
+.tag-blue { background: #dbeafe; color: #1d4ed8; }
+.tag-green { background: #d1fae5; color: #047857; }
+
+.notif-tempo {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.notif-titulo {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cor-escura, #1e293b);
+    margin: 0 0 4px 0;
+}
+
+.notif-desc {
+    font-size: 12.5px;
+    color: #64748b;
+    line-height: 1.4;
+    margin: 0 0 10px 0;
+}
+
+/* Botões de Ação */
+.btn-grupo-notif {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.btn-sub-action {
+    flex: 1;
+    padding: 9px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    transition: opacity 0.2s;
+}
+
+.btn-sub-action:active {
+    opacity: 0.8;
+}
+
+.btn-ok { background: var(--cor-primaria, #2E8B57); color: white; }
+.btn-no { background: #fee2e2; color: #dc2626; }
+
+/* Suporte ao Modo Escuro */
+body.dark-mode .modal-notif-card { background: #1e1e1e !important; border-color: #333333; }
+body.dark-mode .header-painel-notif { background: #1e1e1e !important; border-bottom-color: #333333; }
+body.dark-mode .header-painel-notif h2 { color: #f8fafc !important; }
+body.dark-mode .header-painel-notif .subtitulo { color: #94a3b8 !important; }
+body.dark-mode .btn-voltar-icon { color: #cbd5e1 !important; }
+body.dark-mode .body-notif-scroll { background: #121212 !important; }
+body.dark-mode .card-notif-item { background: #1e1e1e !important; border-color: #333333; }
+body.dark-mode .card-notif-item.ranking { background: #2a2012 !important; }
+body.dark-mode .notif-titulo { color: #f8fafc !important; }
+body.dark-mode .notif-desc { color: #cbd5e1 !important; }
