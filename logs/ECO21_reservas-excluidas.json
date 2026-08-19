@@ -939,5 +939,38 @@
         "hora": 19
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-19T21:40:40.833Z",
+    "dataLocal": "19/08/2026, 18:40:40",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "motivo": "Convite recusado por Joao Francisco. Reserva cancelada por falta de quórum mínimo.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "20-08-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Joao Francisco": false
+    },
+    "jogadores": "Adriano Feitosa, Joao Francisco",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, JOAO FRANCISCO DA SILVA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 11
+      }
+    ]
   }
 ]
