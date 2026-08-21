@@ -526,11 +526,16 @@
 				<span class="header-user" id="header-nome">Olá, Sócio</span>
 			</div>
             <div class="header-right">
-			    <!-- 🎯 ADICIONADO: CONTADOR DE USUÁRIOS ONLINE SAAS (EXCLUSIVO GESTOR/ADMIN) -->
+			    <!-- 🎯 CONTADOR DE USUÁRIOS ONLINE SAAS -->
                 <div id="saas-online-container" class="notificacao-container" style="display: none;" onclick="abrirJanelaOnlineSaaS()" title="Usuários Online">
                     <i class="material-icons">people</i>
                     <span id="saas-online-badge" class="badge-SaaS-online" style="display: none;">0</span>
                 </div>
+                <!-- 🏆 BOTÃO DO LEADERBOARD (RANKING) -->
+                <div id="container-btn-trofeu-ranking" class="notificacao-container" onclick="abrirLeaderboardSaaS()" title="Tabela do Ranking" style="cursor: pointer;">
+                    <i class="material-icons" style="color: #f59e0b;">emoji_events</i>
+                </div>
+                <!-- 🔔 SININHO DE NOTIFICAÇÕES -->
                 <div class="notificacao-container" onclick="abrirModalNotificacoes()" style="cursor: pointer;">
 					<i class="material-icons">notifications</i>
 					<span id="notificacao-badge" class="badge-vermelho" style="display: none;">0</span>
@@ -2676,7 +2681,7 @@
 	<div id="modal-central-notificacoes" class="modal-overlay-notif" onclick="fecharModalNotificacoes(event)" style="display: none;">
 		<div class="modal-notif-card" onclick="event.stopPropagation()">
 			
-			<!-- 1. CABEÇALHO PADRÃO DO SISTEMA -->
+			<!-- 1. CABEÇALHO PADRÃO DO SISTEMA --> 
 			<div class="header-painel-notif">
 				<div>
 					<h2>🔔 Notificações</h2>
@@ -2692,6 +2697,44 @@
 			<!-- 2. CORPO ROLÁVEL DE NOTIFICAÇÕES (INJETADO DINAMICAMENTE VIA JS) -->
 			<div class="body-notif-scroll" id="container-lista-notificacoes-socio">
 				<p style="text-align: center; color: #888; margin-top: 20px;">Nenhuma notificação no momento.</p>
+			</div>
+
+		</div>
+	</div>
+	
+	<!-- ======================================================== -->
+	<!-- 🏆 GAVETA RESPONSIVA DO LEADERBOARD / CLASSIFICAÇÃO     -->
+	<!-- ======================================================== -->
+	<div id="sheet-leaderboard-ranking" class="bottom-sheet-overlay" onclick="fecharLeaderboardSaaS(event)">
+		<div class="bottom-sheet-content sheet-leaderboard-content" onclick="event.stopPropagation()">
+			<div class="sheet-drag-handle"></div>
+			
+			<div class="sheet-header-box">
+				<div style="display: flex; justify-content: space-between; align-items: center;">
+					<h3 class="sheet-SaaS-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+						<i class="material-icons" style="color: #f59e0b;">emoji_events</i>
+						<span>Tabela de Classificação</span>
+					</h3>
+					<button type="button" class="btn-voltar-icon" onclick="fecharLeaderboardSaaS()" title="Voltar">
+						<i class="material-icons">arrow_back</i>
+					</button>
+				</div>
+				<p id="txt-subtitulo-leaderboard" class="sheet-SaaS-subtitle" style="margin-top: 4px;">Ranking Oficial do Clube</p>
+			</div>
+
+			<!-- Seletor Enxuto Lado a Lado (Opção 3) -->
+			<div class="dropdowns-leaderboard-container">
+				<select id="select-leaderboard-classe" class="select-leaderboard-filtro" onchange="trocarClasseLeaderboardSaaS(this.value)">
+					<!-- Opções injetadas via JS -->
+				</select>
+				<select id="select-leaderboard-genero" class="select-leaderboard-filtro" onchange="trocarGeneroLeaderboardSaaS(this.value)">
+					<!-- Opções injetadas via JS -->
+				</select>
+			</div>
+
+			<!-- Lista de Classificação do Ranking -->
+			<div id="body-leaderboard-scroll" class="body-leaderboard-list">
+				<p style="text-align: center; color: #888; margin-top: 30px;">Carregando posições...</p>
 			</div>
 
 		</div>
