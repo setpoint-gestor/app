@@ -1,36 +1,5 @@
 [
   {
-    "origem": "manual",
-    "timestamp": "2026-08-14T09:38:59.581Z",
-    "dataLocal": "14/08/2026, 06:38:59",
-    "autor": "ADRIANO GOMES FEITOSA",
-    "acao": "EXCLUSÃO_AGENDAMENTO",
-    "motivo": "Excluído via Painel pelo Usuário",
-    "clube": "ECO21",
-    "quadra": "Quadra 4 - Roger Federer",
-    "horario": "08:00 - 10:00",
-    "duracao": "2 Horas",
-    "data": "14-08-2026",
-    "statusNoMomentoDaExclusao": "confirmada",
-    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
-    "confirmacoes": {
-      "Adriano Feitosa": true,
-      "Joao Maria": true
-    },
-    "jogadores": "Adriano Feitosa, Joao Maria",
-    "jogadores_completo": "ADRIANO GOMES FEITOSA, JOAO MARIA SOBRINHO",
-    "slotsExcluidos": [
-      {
-        "dia": 5,
-        "hora": 8
-      },
-      {
-        "dia": 5,
-        "hora": 9
-      }
-    ]
-  },
-  {
     "origem": "sistema",
     "timestamp": "2026-08-16T09:11:27.070Z",
     "dataLocal": "16/08/2026, 06:11:27",
