@@ -2254,11 +2254,354 @@ async function recusarConviteRankingSocioSaaS() {
     if (navigator.vibrate) navigator.vibrate(20);
 
     try {
+        // 1. Remove da lista de pendentes do convite
         await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
-        showToast("Convite recusado.", "info");
+
+        // 2. Varre as tabelas do ranking e remove o atleta de qualquer categoria
+        const refTabelas = `${raizBanco}/ranking/tabelas`;
+        const snapTabelas = await database.ref(refTabelas).once('value');
+        
+        if (snapTabelas.exists()) {
+            const tabelasAtuais = snapTabelas.val() || {};
+            let tabelasModificadas = false;
+
+            Object.keys(tabelasAtuais).forEach(nomeTab => {
+                if (Array.isArray(tabelasAtuais[nomeTab])) {
+                    const idx = tabelasAtuais[nomeTab].indexOf(idLogado);
+                    if (idx !== -1) {
+                        tabelasAtuais[nomeTab].splice(idx, 1);
+                        tabelasModificadas = true; 
+                    }
+                }
+            });
+
+            if (tabelasModificadas) {
+                await database.ref(refTabelas).set(tabelasAtuais);
+            }
+        }
+
+        showToast("Convite recusado. Seu nome foi removido do ranking.", "info");
         fecharModalNotificacoes();
     } catch (err) {
         console.error("Erro ao recusar convite:", err);
         showToast("Erro ao atualizar status do convite.", "error");
     }
+}
+
+/* ======================================================== */
+/* 7. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO (PASSO 4.1)      */
+/* ======================================================== */
+
+// Abertura da Gaveta de Classificação
+function abrirLeaderboardSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const sheet = document.getElementById('sheet-leaderboard-ranking');
+    if (!sheet) return;
+
+    sheet.style.display = 'flex';
+    setTimeout(() => sheet.classList.add('ativa'), 10);
+
+    // Carrega e desenha as abas/tabelas da categoria ativa
+    if (typeof renderizarLeaderboardSaaS === 'function') {
+        renderizarLeaderboardSaaS();
+    }
+}
+
+// Fechamento da Gaveta
+function fecharLeaderboardSaaS(e) {
+    const sheet = document.getElementById('sheet-leaderboard-ranking');
+    if (!sheet) return;
+
+    if (e && e.target && !e.target.classList.contains('bottom-sheet-overlay')) {
+        return;
+    }
+
+    sheet.classList.remove('ativa');
+    setTimeout(() => {
+        sheet.style.display = 'none';
+    }, 250);
+}
+
+// Vincula a ação de "Ver Tabela" do Painel do Gestor à mesma gaveta
+function abrirVisualizacaoRankingSaaS() {
+    fecharModalConfig('modal-config-ranking');
+    abrirLeaderboardSaaS();
+}
+
+
+/* ======================================================== */
+/* 8. MOTOR DO LEADERBOARD / RENDERIZAÇÃO DINÂMICA (PASSO 4.3) */
+/* ======================================================== */
+
+let abaClasseAtivaSaaS = 'B';
+let abaGeneroAtivaSaaS = 'MASCULINO';
+
+async function renderizarLeaderboardSaaS() {
+    const selectClasse = document.getElementById('select-leaderboard-classe');
+    const selectGenero = document.getElementById('select-leaderboard-genero');
+    const bodyList = document.getElementById('body-leaderboard-scroll');
+    const txtSub = document.getElementById('txt-subtitulo-leaderboard');
+
+    if (!bodyList) return;
+
+    bodyList.innerHTML = '<p style="text-align: center; color: #888; margin-top: 30px;">Carregando classificação...</p>';
+
+    try {
+        // 1. Lê as configurações do ranking e pontuação do Firebase
+        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+        const configRanking = snapConfig.val() || {};
+
+        const modelo = configRanking.modeloAtivo || 'piramide';
+        const divGenero = configRanking.divisaoGenero || 'separado';
+        const ptsVit = parseInt(configRanking.barragem?.pontosVitoria) || 3;
+        const ptsDer = parseInt(configRanking.barragem?.pontosDerrota) || 1;
+
+        if (txtSub) {
+            const nomesModelos = { piramide: 'Pirâmide (Escada)', barragem: 'Barragem (Pontos)', grupos: 'Grupos (Chaves)' };
+            txtSub.textContent = `Ranking Oficial do Clube • Modelo ${nomesModelos[modelo] || 'Oficial'}`;
+        }
+
+        // 2. Popula os Selects de Filtro
+        const classesAvulsa = ['A', 'B', 'C'];
+        if (selectClasse) {
+            selectClasse.innerHTML = classesAvulsa.map(cls => `
+                <option value="${cls}" ${cls === abaClasseAtivaSaaS ? 'selected' : ''}>Classe ${cls}</option>
+            `).join('');
+        }
+
+        if (selectGenero) {
+            if (divGenero === 'unificado') {
+                selectGenero.innerHTML = `<option value="UNIFICADO" selected>Geral / Unificado</option>`;
+                selectGenero.disabled = true;
+                abaGeneroAtivaSaaS = 'UNIFICADO';
+            } else {
+                selectGenero.disabled = false;
+                selectGenero.innerHTML = `
+                    <option value="MASCULINO" ${abaGeneroAtivaSaaS === 'MASCULINO' ? 'selected' : ''}>Masculino</option>
+                    <option value="FEMININO" ${abaGeneroAtivaSaaS === 'FEMININO' ? 'selected' : ''}>Feminino</option>
+                `;
+            }
+        }
+
+        // 3. Busca inscritos e histórico de partidas finalizadas
+        const chaveTabela = (divGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
+        const snapTabela = await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).once('value');
+        const listaIDs = snapTabela.exists() ? snapTabela.val() : [];
+
+        if (!Array.isArray(listaIDs) || listaIDs.length === 0) {
+            bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum atleta inscrito nesta categoria.</p>';
+            return;
+        }
+
+        const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
+        const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
+
+        // 4. Mapeamento de estatísticas por atleta
+        const estatisticas = {};
+        listaIDs.forEach(id => {
+            estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+        });
+
+        Object.values(partidasGlobal).forEach(partida => {
+            if (partida.status === 'finalizada' && partida.categoria === chaveTabela) {
+                const p1 = partida.jogador1Id;
+                const p2 = partida.jogador2Id;
+                const vitorioso = partida.vencedorId;
+
+                const gamesP1 = parseInt(partida.gamesP1) || 0;
+                const gamesP2 = parseInt(partida.gamesP2) || 0;
+
+                if (estatisticas[p1]) {
+                    estatisticas[p1].j++;
+                    estatisticas[p1].sg += (gamesP1 - gamesP2);
+                    if (vitorioso === p1) {
+                        estatisticas[p1].v++;
+                        estatisticas[p1].pts += ptsVit;
+                    } else {
+                        estatisticas[p1].d++;
+                        estatisticas[p1].pts += ptsDer;
+                    }
+                }
+
+                if (estatisticas[p2]) {
+                    estatisticas[p2].j++;
+                    estatisticas[p2].sg += (gamesP2 - gamesP1);
+                    if (vitorioso === p2) {
+                        estatisticas[p2].v++;
+                        estatisticas[p2].pts += ptsVit;
+                    } else {
+                        estatisticas[p2].d++;
+                        estatisticas[p2].pts += ptsDer;
+                    }
+                }
+            }
+        });
+
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+
+        // ========================================================
+        // 🏆 MODELO 1: PIRÂMIDE (ESCADA DE DESAFIOS)
+        // ========================================================
+        if (modelo === 'piramide') {
+            let htmlList = `
+                <div class="box-dica-leaderboard">
+                    💡 <b>Modelo Pirâmide:</b> Exibe a posição ordinal. As posições destacadas em laranja estão dentro do seu limite de desafio (até 2 acima).
+                </div>
+            `;
+            const idxLogado = listaIDs.indexOf(idLogado);
+
+            listaIDs.forEach((idAtleta, index) => {
+                const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+                const pos = index + 1;
+                const nomeAtleta = atleta.nomeCompleto || atleta.apelido || 'Atleta do Ranking';
+
+                const ehVoce = (idAtleta === idLogado);
+                const noAlcance = (idxLogado !== -1 && index < idxLogado && index >= idxLogado - 2);
+
+                let classeCard = 'item-leaderboard-piramide';
+                if (ehVoce) classeCard += ' voce';
+                else if (noAlcance) classeCard += ' alcance-desafio';
+
+                htmlList += `
+                    <div class="${classeCard}">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-weight: 800; font-size: 13px; color: #64748b; width: 24px;">${pos}º</span>
+                            <div>
+                                <strong style="font-size: 14px; color: #1e293b; display: block;">${nomeAtleta} ${ehVoce ? '(Você)' : ''}</strong>
+                                <span style="font-size: 11px; color: #64748b;">${pos === 1 ? 'Líder da Categoria' : (noAlcance ? 'Alcance direto de desafio' : 'Atleta Inscrito')}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            bodyList.innerHTML = htmlList;
+
+        // ========================================================
+        // 🏆 MODELO 2: BARRAGEM (ORDENAÇÃO POR PONTOS & SALDO)
+        // ========================================================
+        } else if (modelo === 'barragem') {
+            // Ordena atletas por PTS (desc), SG (desc) e Vitórias (desc)
+            listaIDs.sort((a, b) => {
+                const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+                const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+                if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+                if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                return stB.v - stA.v;
+            });
+
+            let htmlTable = `
+                <div class="box-dica-leaderboard">
+                    💡 <b>Modelo Barragem:</b> Pontos corridos. Vitória = ${ptsVit} pts, Derrota = ${ptsDer} pt. Saldo de Games desempata a classificação.
+                </div>
+
+                <table class="tabela-leaderboard-barragem">
+                    <thead>
+                        <tr>
+                            <th style="width: 35px;">POS</th>
+                            <th style="text-align: left; padding-left: 8px;">ATLETA</th>
+                            <th style="width: 25px;">J</th>
+                            <th style="width: 25px;">V</th>
+                            <th style="width: 25px;">D</th>
+                            <th style="width: 35px;">SG</th>
+                            <th style="width: 40px;">PTS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            listaIDs.forEach((idAtleta, index) => {
+                const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+                const st = estatisticas[idAtleta] || { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+                const pos = index + 1;
+                const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
+                const ehVoce = (idAtleta === idLogado);
+
+                const sinalSG = st.sg > 0 ? `+${st.sg}` : st.sg;
+
+                htmlTable += `
+                    <tr class="${ehVoce ? 'voce' : ''}" style="${ehVoce ? 'background: #f0fdf4;' : ''}">
+                        <td><b>${pos}º</b></td>
+                        <td style="text-align: left; padding-left: 8px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">${nomeAtleta} ${ehVoce ? '(Você)' : ''}</td>
+                        <td>${st.j}</td>
+                        <td>${st.v}</td>
+                        <td>${st.d}</td>
+                        <td style="color: ${st.sg > 0 ? '#16a34a' : (st.sg < 0 ? '#dc2626' : '#64748b')}; font-weight: 700;">${sinalSG}</td>
+                        <td><span class="badge-pts-leaderboard">${st.pts}</span></td>
+                    </tr>
+                `;
+            });
+
+            htmlTable += `</tbody></table>`;
+            bodyList.innerHTML = htmlTable;
+
+        // ========================================================
+        // 🏆 MODELO 3: GRUPOS (FASE DE CHAVES)
+        // ========================================================
+        } else if (modelo === 'grupos') {
+            const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo) || 4;
+            let htmlGrupos = `
+                <div class="box-dica-leaderboard">
+                    💡 <b>Modelo Grupos:</b> Atletas divididos em chaves. Os melhores colocados avançam de fase.
+                </div>
+            `;
+            let numGrupo = 1;
+
+            for (let i = 0; i < listaIDs.length; i += tamanhoGrupo) {
+                const membrosChave = listaIDs.slice(i, i + tamanhoGrupo);
+
+                membrosChave.sort((a, b) => {
+                    const stA = estatisticas[a] || { pts: 0, sg: 0 };
+                    const stB = estatisticas[b] || { pts: 0, sg: 0 };
+                    if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+                    return stB.sg - stA.sg;
+                });
+
+                htmlGrupos += `
+                    <div class="card-leaderboard-grupo">
+                        <div class="header-leaderboard-grupo">
+                            <span>GRUPO ${numGrupo}</span>
+                            <span>Fase de Chaves</span>
+                        </div>
+                `;
+
+                membrosChave.forEach((idAtleta, idx) => {
+                    const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+                    const st = estatisticas[idAtleta] || { pts: 0 };
+                    const posInterna = idx + 1;
+                    const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
+                    const ehVoce = (idAtleta === idLogado);
+
+                    htmlGrupos += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; ${ehVoce ? 'background: #f0fdf4;' : ''}">
+                            <div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
+                                <b>${posInterna}º</b> ${nomeAtleta} ${ehVoce ? '(Você)' : ''}
+                            </div>
+                            <span style="font-size: 12px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
+                        </div>
+                    `;
+                });
+
+                htmlGrupos += `</div>`;
+                numGrupo++;
+            }
+
+            bodyList.innerHTML = htmlGrupos;
+        }
+
+    } catch (err) {
+        console.error("❌ Erro ao renderizar Leaderboard:", err);
+        bodyList.innerHTML = '<p style="text-align: center; color: #ef4444; margin-top: 30px;">Erro ao carregar a classificação.</p>';
+    }
+}
+
+function trocarClasseLeaderboardSaaS(cls) {
+    abaClasseAtivaSaaS = cls;
+    renderizarLeaderboardSaaS();
+}
+
+function trocarGeneroLeaderboardSaaS(gen) {
+    abaGeneroAtivaSaaS = gen;
+    renderizarLeaderboardSaaS();
 }
