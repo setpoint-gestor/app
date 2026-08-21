@@ -1335,7 +1335,7 @@ body.dark-mode .txt-motivo-ret {
 
 /* ======================================================== */
 /* 13. PROMPT DE CONVITES DA TEMPORADA                      */
-/* ======================================================== */
+/* ======================================================== */ 
 .prompt-ranking-container {
     text-align: left;
     font-size: 14px;
@@ -1385,3 +1385,164 @@ body.dark-mode .prompt-ranking-container { color: #cbd5e1; }
 body.dark-mode .prompt-ranking-card { background: #252525; border-color: #333333; }
 body.dark-mode .prompt-ranking-title { color: #f8fafc; }
 body.dark-mode .prompt-ranking-sub { color: #94a3b8; }
+
+
+/* ======================================================== */
+/* 14. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO (#sheet-leaderboard-ranking) */
+/* ======================================================== */
+#sheet-leaderboard-ranking .sheet-leaderboard-content {
+    max-width: 500px !important;
+    margin: 0 auto !important;
+    border-radius: 24px 24px 0 0 !important;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 768px) {
+    #sheet-leaderboard-ranking {
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    #sheet-leaderboard-ranking .sheet-leaderboard-content {
+        border-radius: 20px !important;
+        max-height: 90vh !important;
+    }
+}
+
+/* Container de Filtros Lado a Lado (Opção 3) */
+.dropdowns-leaderboard-container {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.select-leaderboard-filtro {
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    background: #f8fafc;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px top 50%;
+    background-size: 10px auto;
+}
+
+.select-leaderboard-filtro:focus {
+    border-color: var(--cor-primaria, #2E8B57);
+    background-color: #ffffff;
+}
+
+/* Ocultação da Barra de Rolagem Visual mantendo a Rolagem */
+.body-leaderboard-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 12px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.body-leaderboard-list::-webkit-scrollbar {
+    display: none;
+}
+
+/* Card Dica Informativa */
+.box-dica-leaderboard {
+    background: #e0f2fe;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 12px;
+    color: #0369a1;
+    margin-bottom: 15px;
+    line-height: 1.4;
+    text-align: left;
+}
+
+/* 1. Estilos Pirâmide */
+.item-leaderboard-piramide {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.item-leaderboard-piramide.voce {
+    border: 2px solid #28a745;
+    background: #f0fdf4;
+}
+
+.item-leaderboard-piramide.alcance-desafio {
+    border: 1px solid #fdba74;
+    background: #fff7ed;
+}
+
+/* 2. Estilos Barragem */
+.tabela-leaderboard-barragem {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.tabela-leaderboard-barragem th {
+    font-size: 10px;
+    font-weight: 800;
+    color: #94a3b8;
+    padding: 8px 4px;
+    border-bottom: 2px solid #e2e8f0;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.tabela-leaderboard-barragem td {
+    padding: 10px 4px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: center;
+    font-weight: 500;
+}
+
+.badge-pts-leaderboard {
+    background: #dcfce7;
+    color: #15803d;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 800;
+}
+
+/* 3. Estilos Grupos */
+.card-leaderboard-grupo {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.header-leaderboard-grupo {
+    background: #f1f5f9;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #475569;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Modo Escuro */
+body.dark-mode .select-leaderboard-filtro {
+    background-color: #262626;
+    border-color: #444444;
+    color: #f8fafc;
+}
