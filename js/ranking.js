@@ -980,6 +980,9 @@ function confirmarPlacarAdversarioSaaS() {
         showToast("Placar confirmado com sucesso! O ranking será atualizado.", "success");
         if (intervaloTimerValidacao) clearInterval(intervaloTimerValidacao);
 		
+		// 🔔 DISPARO DO MOTOR DE RANKING (PIRÂMIDE)
+        processarResultadoRankingSaaS(partidaRankingEmFoco);
+		
 		// 🔔 NOTIFICAÇÃO AO AUTOR DA SÚMULA
         notificarAutorSumulaSaaS(partidaRankingEmFoco, 'confirmado');
 		
@@ -1236,9 +1239,20 @@ function salvarSumulaSaaS() {
                 : (ehContestado ? "Placar corrigido e homologado com sucesso!" : "Súmula enviada para validação do adversário!");
             
             showToast(msgSucesso, "success");
+
             if (ehContestado) {
                 notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'editado', placarFormatado);
             }
+
+            // 🎯 Sincroniza os dados do novo placar na memória em tempo real
+            partidaRankingEmFoco.statusPlacar = statusNovo;
+            partidaRankingEmFoco.dadosPlacar = dadosPlacar;
+
+            // 🔔 Dispara o motor de ranking com o vencedor atualizado pelo Árbitro
+            if (statusNovo === "consolidado") {
+                processarResultadoRankingSaaS(partidaRankingEmFoco);
+            }
+
             fecharModalConfig('modal-sumula-ranking');
         })
         .catch(err => {
@@ -2397,8 +2411,10 @@ async function renderizarLeaderboardSaaS() {
         const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
         const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
 
-        // 4. Mapeamento de estatísticas por atleta
+        // 4. Mapeamento de estatísticas e confrontos diretos por atleta
         const estatisticas = {};
+        const confrontosDiretos = {};
+
         listaIDs.forEach(id => {
             estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
         });
@@ -2411,6 +2427,10 @@ async function renderizarLeaderboardSaaS() {
 
                 const gamesP1 = parseInt(partida.gamesP1) || 0;
                 const gamesP2 = parseInt(partida.gamesP2) || 0;
+
+                // Registra confronto direto entre atletas
+                confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
+                confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
 
                 if (estatisticas[p1]) {
                     estatisticas[p1].j++;
@@ -2534,16 +2554,19 @@ async function renderizarLeaderboardSaaS() {
             });
 
             htmlTable += `</tbody></table>`;
-            bodyList.innerHTML = htmlTable;
+            bodyList.innerHTML = htmlTable; 
 
         // ========================================================
-        // 🏆 MODELO 3: GRUPOS (FASE DE CHAVES)
+        // 🏆 MODELO 3: GRUPOS (OPÇÃO 3 VISUAL - LINHA DUPLA & PÍLULAS)
         // ========================================================
         } else if (modelo === 'grupos') {
             const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo) || 4;
+            const classificadosQtd = parseInt(configRanking.grupos?.classificadosGrupo) || 2;
+            const criterioDesempate = configRanking.grupos?.criterioDesempate || 'games_confronto_sorteio';
+
             let htmlGrupos = `
                 <div class="box-dica-leaderboard">
-                    💡 <b>Modelo Grupos:</b> Atletas divididos em chaves. Os melhores colocados avançam de fase.
+                    💡 <b>Modelo Grupos:</b> Atletas divididos em chaves. Os ${classificadosQtd} primeiros colocados avançam com a tag de Zona de Classificação.
                 </div>
             `;
             let numGrupo = 1;
@@ -2552,10 +2575,22 @@ async function renderizarLeaderboardSaaS() {
                 const membrosChave = listaIDs.slice(i, i + tamanhoGrupo);
 
                 membrosChave.sort((a, b) => {
-                    const stA = estatisticas[a] || { pts: 0, sg: 0 };
-                    const stB = estatisticas[b] || { pts: 0, sg: 0 };
+                    const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+                    const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+
                     if (stB.pts !== stA.pts) return stB.pts - stA.pts;
-                    return stB.sg - stA.sg;
+
+                    if (criterioDesempate === 'confronto_games') {
+                        const vencedorDireto = confrontosDiretos[`${a}_vs_${b}`];
+                        if (vencedorDireto) return vencedorDireto === a ? -1 : 1;
+                        if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                    } else {
+                        if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                        const vencedorDireto = confrontosDiretos[`${a}_vs_${b}`];
+                        if (vencedorDireto) return vencedorDireto === a ? -1 : 1;
+                    }
+
+                    return stB.v - stA.v;
                 });
 
                 htmlGrupos += `
@@ -2568,17 +2603,36 @@ async function renderizarLeaderboardSaaS() {
 
                 membrosChave.forEach((idAtleta, idx) => {
                     const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-                    const st = estatisticas[idAtleta] || { pts: 0 };
+                    const st = estatisticas[idAtleta] || { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
                     const posInterna = idx + 1;
                     const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
                     const ehVoce = (idAtleta === idLogado);
+                    const isClassificado = posInterna <= classificadosQtd;
+
+                    // Ativa a pílula de confronto se houver empate de pontos no grupo e o atleta venceu o duelo direto
+                    const temEmpatePontos = membrosChave.some(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts && st.pts > 0);
+                    let exibeConfronto = false;
+                    if (temEmpatePontos) {
+                        const outrosEmpatados = membrosChave.filter(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts);
+                        exibeConfronto = outrosEmpatados.some(outroId => confrontosDiretos[`${idAtleta}_vs_${outroId}`] === idAtleta);
+                    }
+
+                    const sinalSG = st.sg > 0 ? `+${st.sg}` : st.sg;
 
                     htmlGrupos += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; ${ehVoce ? 'background: #f0fdf4;' : ''}">
-                            <div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
-                                <b>${posInterna}º</b> ${nomeAtleta} ${ehVoce ? '(Você)' : ''}
+                        <div class="item-membro-grupo ${isClassificado ? 'classificado' : ''}" style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; ${ehVoce ? 'background: #f0fdf4;' : ''}">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
+                                    <b>${posInterna}º</b> ${nomeAtleta} ${ehVoce ? '(Você)' : ''}
+                                    ${isClassificado ? '<span class="badge-classificado">Classificado</span>' : ''}
+                                </div>
+                                <span style="font-size: 14px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
                             </div>
-                            <span style="font-size: 12px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
+                            <div style="display: flex; gap: 6px;">
+                                <span class="micro-pill destaque">SG ${sinalSG}</span>
+                                <span class="micro-pill">${st.v}V - ${st.d}D</span>
+                                ${exibeConfronto ? '<span class="micro-pill">Confronto ⚔️</span>' : ''}
+                            </div>
                         </div>
                     `;
                 });
@@ -2596,6 +2650,7 @@ async function renderizarLeaderboardSaaS() {
     }
 }
 
+
 function trocarClasseLeaderboardSaaS(cls) {
     abaClasseAtivaSaaS = cls;
     renderizarLeaderboardSaaS();
@@ -2604,4 +2659,489 @@ function trocarClasseLeaderboardSaaS(cls) {
 function trocarGeneroLeaderboardSaaS(gen) {
     abaGeneroAtivaSaaS = gen;
     renderizarLeaderboardSaaS();
+}
+
+
+/* ======================================================== */
+/* AUXILIAR: RESOLUÇÃO ROBUSTA DE ID DE ATLETA              */
+/* ======================================================== */
+function obterIdJogadorPorTextoSaaS(textoNomeOuApelido) {
+    if (!textoNomeOuApelido || typeof jogadoresGlobal === 'undefined' || !jogadoresGlobal) return null;
+    const norm = (txt) => (txt || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+
+    const alvo = norm(textoNomeOuApelido);
+    if (!alvo) return null;
+
+    return Object.keys(jogadoresGlobal).find(id => {
+        const j = jogadoresGlobal[id];
+        if (!j) return false;
+        return norm(j.nomeCompleto) === alvo || norm(j.apelido) === alvo;
+    }) || null;
+}
+
+/* ======================================================== */
+/* 9. ENGINE DE PROCESSAMENTO DE RESULTADOS DO RANKING       */
+/* ======================================================== */
+
+/* 9.1 ROTEADOR GERAL DE PROCESSAMENTO */
+async function processarResultadoRankingSaaS(reservaConsolidada) {
+    if (!reservaConsolidada || !raizBanco) return;
+
+    try {
+        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+        const configRanking = snapConfig.val() || {};
+        const modeloAtivo = configRanking.modeloAtivo || 'piramide';
+
+        if (modeloAtivo === 'piramide') {
+            await processarResultadoPiramideSaaS(reservaConsolidada, configRanking);
+        } else if (modeloAtivo === 'barragem') {
+            await processarResultadoBarragemSaaS(reservaConsolidada, configRanking);
+        } else if (modeloAtivo === 'grupos') {
+            await processarResultadoGruposSaaS(reservaConsolidada, configRanking);
+        }
+    } catch (err) {
+        console.error("❌ [Ranking Engine] Erro ao processar resultado:", err);
+    }
+}
+
+/* 9.2 MOTOR DO MODELO PIRÂMIDE (ESCADA) */
+async function processarResultadoPiramideSaaS(reserva, configRanking) {
+    const dadosPlacar = reserva.dadosPlacar;
+    if (!dadosPlacar || !dadosPlacar.vencedor) return;
+
+    const piramideConfig = configRanking.piramide || {};
+    const mecanicaTroca = piramideConfig.mecanicaTroca || 'direta';
+    const divGenero = configRanking.divisaoGenero || 'separado';
+
+    const listaApelidosStr = (reserva.jogadores || "").split(',').map(s => s.trim());
+    const listaCompletosStr = (reserva.jogadores_completo || "").split(',').map(s => s.trim());
+
+    const idJ1 = obterIdJogadorPorTextoSaaS(listaCompletosStr[0] || listaApelidosStr[0]);
+    const idJ2 = obterIdJogadorPorTextoSaaS(listaCompletosStr[1] || listaApelidosStr[1]);
+
+    if (!idJ1 || !idJ2) return;
+
+    const atletaBase = jogadoresGlobal[idJ1] || {};
+    const classe = (atletaBase.classe || 'B').toUpperCase();
+    let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+
+    const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+    const refTabela = `${raizBanco}/ranking/tabelas/${chaveTabela}`;
+
+    const snapTabela = await database.ref(refTabela).once('value');
+    let listaIDs = snapTabela.exists() ? snapTabela.val() : [];
+
+    if (!Array.isArray(listaIDs)) return;
+
+    const idxJ1 = listaIDs.indexOf(idJ1);
+    const idxJ2 = listaIDs.indexOf(idJ2);
+
+    if (idxJ1 === -1 || idxJ2 === -1) return;
+
+    const idxDesafiante = Math.max(idxJ1, idxJ2);
+    const idxDesafiado = Math.min(idxJ1, idxJ2);
+    const idDesafiante = listaIDs[idxDesafiante];
+
+    const venciCodigo = dadosPlacar.vencedorCodigo;
+    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
+
+    if (!idVencedor && dadosPlacar.vencedor) {
+        idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
+    }
+
+    if (idVencedor === idDesafiante) {
+        if (mecanicaTroca === 'escada') {
+            const [desafianteID] = listaIDs.splice(idxDesafiante, 1);
+            listaIDs.splice(idxDesafiado, 0, desafianteID);
+        } else {
+            const temp = listaIDs[idxDesafiante];
+            listaIDs[idxDesafiante] = listaIDs[idxDesafiado];
+            listaIDs[idxDesafiado] = temp;
+        }
+
+        await database.ref(refTabela).set(listaIDs);
+    }
+}
+
+/* 9.3 MOTOR DO MODELO BARRAGEM (PONTOS CORRIDOS) */
+async function processarResultadoBarragemSaaS(reserva, configRanking) {
+    const dadosPlacar = reserva.dadosPlacar;
+    if (!dadosPlacar || !dadosPlacar.vencedor) return;
+
+    const divGenero = configRanking.divisaoGenero || 'separado';
+    const ptsVit = parseInt(configRanking.barragem?.pontosVitoria) || 3;
+    const ptsDer = parseInt(configRanking.barragem?.pontosDerrota) || 1;
+
+    const listaApelidosStr = (reserva.jogadores || "").split(',').map(s => s.trim());
+    const listaCompletosStr = (reserva.jogadores_completo || "").split(',').map(s => s.trim());
+
+    const idJ1 = obterIdJogadorPorTextoSaaS(listaCompletosStr[0] || listaApelidosStr[0]);
+    const idJ2 = obterIdJogadorPorTextoSaaS(listaCompletosStr[1] || listaApelidosStr[1]);
+
+    if (!idJ1 || !idJ2) return;
+
+    const atletaBase = jogadoresGlobal[idJ1] || {};
+    const classe = (atletaBase.classe || 'B').toUpperCase();
+    let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+
+    const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+
+    const venciCodigo = dadosPlacar.vencedorCodigo;
+    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
+
+    if (!idVencedor && dadosPlacar.vencedor) {
+        idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
+    }
+
+    let gamesP1 = 0;
+    let gamesP2 = 0;
+
+    if (dadosPlacar.parciais) {
+        Object.values(dadosPlacar.parciais).forEach(st => {
+            gamesP1 += parseInt(st.j1) || 0;
+            gamesP2 += parseInt(st.j2) || 0;
+        });
+    }
+
+    // 1. Grava ou atualiza a partida finalizada
+    const partidaId = `partida_${chaveTabela}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
+    const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
+
+    const payloadPartida = {
+        categoria: chaveTabela,
+        status: 'finalizada',
+        jogador1Id: idJ1,
+        jogador2Id: idJ2,
+        vencedorId: idVencedor,
+        gamesP1: gamesP1,
+        gamesP2: gamesP2,
+        dataHora: Date.now()
+    };
+
+    await database.ref(refPartida).set(payloadPartida);
+
+    // 2. Busca o histórico de partidas da categoria e a tabela de inscritos
+    const [snapPartidas, snapTabela] = await Promise.all([
+        database.ref(`${raizBanco}/ranking/partidas`).once('value'),
+        database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).once('value')
+    ]);
+
+    const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
+    let listaIDs = snapTabela.exists() ? snapTabela.val() : [];
+
+    if (!Array.isArray(listaIDs) || listaIDs.length === 0) return;
+
+    // 3. Processa pontuação, saldo de games e vitórias de cada atleta
+    const estatisticas = {};
+    listaIDs.forEach(id => {
+        estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+    });
+
+    Object.values(partidasGlobal).forEach(partida => {
+        if (partida.status === 'finalizada' && partida.categoria === chaveTabela) {
+            const p1 = partida.jogador1Id;
+            const p2 = partida.jogador2Id;
+            const vitorioso = partida.vencedorId;
+            const g1 = parseInt(partida.gamesP1) || 0;
+            const g2 = parseInt(partida.gamesP2) || 0;
+
+            if (estatisticas[p1]) {
+                estatisticas[p1].j++;
+                estatisticas[p1].sg += (g1 - g2);
+                if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
+                else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+            }
+
+            if (estatisticas[p2]) {
+                estatisticas[p2].j++;
+                estatisticas[p2].sg += (g2 - g1);
+                if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
+                else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
+            }
+        }
+    });
+
+    // 4. Reordena a lista oficial de inscritos (PTS > SG > Vitórias)
+    listaIDs.sort((a, b) => {
+        const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+        const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+        if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+        if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+        return stB.v - stA.v;
+    });
+
+    // 5. Salva a lista reordenada no banco de dados
+    await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).set(listaIDs);
+}
+
+/* 9.4 MOTOR DO MODELO GRUPOS (FASE DE CHAVES - VERSÃO IDEAL COMBINADA) */
+async function processarResultadoGruposSaaS(reserva, configRanking) {
+    const dadosPlacar = reserva.dadosPlacar;
+    if (!dadosPlacar || !dadosPlacar.vencedor) return;
+
+    const divGenero = configRanking.divisaoGenero || 'separado';
+    const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo) || 4;
+    const ptsVit = parseInt(configRanking.grupos?.pontosVitoria) || 3;
+    const ptsDer = parseInt(configRanking.grupos?.pontosDerrota) || 1;
+    const criterioDesempate = configRanking.grupos?.criterioDesempate || 'games_confronto_sorteio';
+
+    const listaApelidosStr = (reserva.jogadores || "").split(',').map(s => s.trim());
+    const listaCompletosStr = (reserva.jogadores_completo || "").split(',').map(s => s.trim());
+
+    const idJ1 = obterIdJogadorPorTextoSaaS(listaCompletosStr[0] || listaApelidosStr[0]);
+    const idJ2 = obterIdJogadorPorTextoSaaS(listaCompletosStr[1] || listaApelidosStr[1]);
+
+    if (!idJ1 || !idJ2) return;
+
+    const atletaBase = jogadoresGlobal[idJ1] || {};
+    const classe = (atletaBase.classe || 'B').toUpperCase();
+    let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+
+    const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+
+    const venciCodigo = dadosPlacar.vencedorCodigo;
+    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
+
+    if (!idVencedor && dadosPlacar.vencedor) {
+        idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
+    }
+
+    let gamesP1 = 0;
+    let gamesP2 = 0;
+
+    if (dadosPlacar.parciais) {
+        Object.values(dadosPlacar.parciais).forEach(st => {
+            gamesP1 += parseInt(st.j1) || 0;
+            gamesP2 += parseInt(st.j2) || 0;
+        });
+    }
+
+    // 1. Grava a partida finalizada no histórico
+    const partidaId = `partida_${chaveTabela}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
+    const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
+
+    const payloadPartida = {
+        categoria: chaveTabela,
+        status: 'finalizada',
+        jogador1Id: idJ1,
+        jogador2Id: idJ2,
+        vencedorId: idVencedor,
+        gamesP1: gamesP1,
+        gamesP2: gamesP2,
+        dataHora: Date.now()
+    };
+
+    await database.ref(refPartida).set(payloadPartida);
+
+    // 2. Leitura síncrona de partidas e tabela
+    const [snapPartidas, snapTabela] = await Promise.all([
+        database.ref(`${raizBanco}/ranking/partidas`).once('value'),
+        database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).once('value')
+    ]);
+
+    const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
+    let listaIDs = snapTabela.exists() ? snapTabela.val() : [];
+
+    if (!Array.isArray(listaIDs) || listaIDs.length === 0) return;
+
+    // 3. Processamento de estatísticas e mapeamento de confronto direto
+    const estatisticas = {};
+    const confrontosDiretos = {};
+
+    listaIDs.forEach(id => {
+        estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+    });
+
+    Object.values(partidasGlobal).forEach(partida => {
+        if (partida.status === 'finalizada' && partida.categoria === chaveTabela) {
+            const p1 = partida.jogador1Id;
+            const p2 = partida.jogador2Id;
+            const vitorioso = partida.vencedorId;
+            const g1 = parseInt(partida.gamesP1) || 0;
+            const g2 = parseInt(partida.gamesP2) || 0;
+
+            // Registra confronto direto
+            confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
+            confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
+
+            if (estatisticas[p1]) {
+                estatisticas[p1].j++;
+                estatisticas[p1].sg += (g1 - g2);
+                if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
+                else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+            }
+
+            if (estatisticas[p2]) {
+                estatisticas[p2].j++;
+                estatisticas[p2].sg += (g2 - g1);
+                if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
+                else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
+            }
+        }
+    });
+
+    // 4. Ordenação ISOLADA dentro de cada grupo (Chave)
+    const novaListaOrdenada = [];
+    for (let i = 0; i < listaIDs.length; i += tamanhoGrupo) {
+        const membrosChave = listaIDs.slice(i, i + tamanhoGrupo);
+
+        membrosChave.sort((a, b) => {
+            const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+            const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+
+            // 1º Critério: Pontuação no Grupo
+            if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+
+            // 2º Critério: Desempate por Confronto Direto ou Saldo de Games
+            if (criterioDesempate === 'confronto_games') {
+                const vencedorDireto = confrontosDiretos[`${a}_vs_${b}`];
+                if (vencedorDireto) return vencedorDireto === a ? -1 : 1;
+                if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+            } else {
+                if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                const vencedorDireto = confrontosDiretos[`${a}_vs_${b}`];
+                if (vencedorDireto) return vencedorDireto === a ? -1 : 1;
+            }
+
+            return stB.v - stA.v;
+        });
+
+        novaListaOrdenada.push(...membrosChave);
+    }
+
+    // 5. Atualiza a tabela preservando a separação exata das chaves no banco
+    await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).set(novaListaOrdenada);
+}
+
+/* 9.5 ZERAR / REINICIAR RANKING (COM AUDITORIA DINÂMICA DE DADOS) */
+async function zerarRankingSaaS() {
+    if (!isGestorLogado || !raizBanco) {
+        showToast("Apenas o gestor do clube pode zerar o ranking.", "error");
+        return;
+    }
+
+    try {
+        if (navigator.vibrate) navigator.vibrate(30);
+        showToast("Analisando dados do ranking...", "info");
+
+        // 1. Leitura fotográfica dos dados para auditoria prévia
+        const [snapPartidas, snapTabelas, snapConvites, snapReservas, snapJogadores] = await Promise.all([
+            database.ref(`${raizBanco}/ranking/partidas`).once('value'),
+            database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
+            database.ref(`${raizBanco}/convites_ranking`).once('value'),
+            database.ref(`${raizBanco}/reservas`).once('value'),
+            database.ref(`${raizBanco}/jogadores`).once('value')
+        ]);
+
+        const partidas = snapPartidas.val() || {};
+        const tabelas = snapTabelas.val() || {};
+        const convites = snapConvites.val() || {};
+        const reservas = snapReservas.val() || {};
+        const jogadores = snapJogadores.val() || {};
+
+        // 2. Contagem minuciosa dos registros atrelados ao ranking
+        const totalPartidas = Object.keys(partidas).length;
+        
+        let totalInscritos = 0;
+        Object.values(tabelas).forEach(arr => {
+            if (Array.isArray(arr)) totalInscritos += arr.length;
+        });
+
+        let totalReservasRanking = 0;
+        const caminhosReservasExcluir = [];
+        Object.keys(reservas).forEach(quadraKey => {
+            const slots = reservas[quadraKey] || {};
+            Object.keys(slots).forEach(slotKey => {
+                const r = slots[slotKey];
+                if (r && (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking')) {
+                    totalReservasRanking++;
+                    caminhosReservasExcluir.push(`reservas/${quadraKey}/${slotKey}`);
+                }
+            });
+        });
+
+        let totalNotificacoes = 0;
+        const caminhosNotificacoesExcluir = [];
+        Object.keys(jogadores).forEach(idJog => {
+            if (jogadores[idJog] && jogadores[idJog].notificacoes) {
+                const keysNotif = Object.keys(jogadores[idJog].notificacoes);
+                totalNotificacoes += keysNotif.length;
+                caminhosNotificacoesExcluir.push(`jogadores/${idJog}/notificacoes`);
+            }
+        });
+
+        const totalGeral = totalPartidas + totalInscritos + totalReservasRanking;
+
+        // 3. Trava de segurança: se o ranking já estiver completamente limpo
+        if (totalGeral === 0 && !snapConvites.exists()) {
+            showToast("O ranking já se encontra completamente zerado.", "info");
+            return;
+        }
+
+        // 4. Montagem do balanço minucioso e profissional para o Gestor
+        const promptHTML = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                    <strong style="color: #dc2626; display: block; font-size: 13px; text-transform: uppercase; margin-bottom: 4px;">
+                        ⚠️ Ação Irreversível de Zeramento
+                    </strong>
+                    <span style="font-size: 13px; color: #7f1d1d;">
+                        Foram localizados registros ativos referentes à temporada em andamento.
+                    </span>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                    <strong style="color: #475569; display: block; font-size: 12px; text-transform: uppercase; margin-bottom: 6px;">
+                        Balanço de Dados que serão apagados:
+                    </strong>
+                    <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #1e293b;">
+                        <li><b>${totalPartidas}</b> partida(s) finalizada(s) no histórico;</li>
+                        <li><b>${totalInscritos}</b> inscrição(ões) nas tabelas de categorias;</li>
+                        <li><b>${totalReservasRanking}</b> agendamento(s) de ranking nas quadras;</li>
+                        <li><b>${totalNotificacoes}</b> notificação(ões) nas caixas dos atletas;</li>
+                        <li>Lote de convites abertos da temporada atual.</li>
+                    </ul>
+                </div>
+
+                <p style="margin: 0; font-size: 12.5px; color: #64748b; font-weight: 500;">
+                    <b>Nota de Segurança:</b> Reservas comuns dos sócios (1h e 2h) não serão afetadas. Deseja prosseguir?
+                </p>
+            </div>
+        `;
+
+        showPrompt("Balanço do Zeramento do Ranking", promptHTML, async () => {
+            try {
+                if (navigator.vibrate) navigator.vibrate(50);
+
+                const updates = {};
+                updates['ranking/partidas'] = null;
+                updates['ranking/tabelas'] = null;
+                updates['convites_ranking'] = null;
+
+                caminhosReservasExcluir.forEach(path => { updates[path] = null; });
+                caminhosNotificacoesExcluir.forEach(path => { updates[path] = null; });
+
+                await database.ref(raizBanco).update(updates);
+
+                showToast("Ranking zerado com sucesso! Módulo limpo para nova temporada.", "success");
+
+                if (typeof fecharModalConfig === 'function') {
+                    fecharModalConfig('modal-config-ranking');
+                }
+            } catch (err) {
+                console.error("❌ [Ranking] Erro ao aplicar zeramento:", err);
+                showToast("Erro ao zerar o ranking no banco de dados.", "error");
+            }
+        });
+
+    } catch (err) {
+        console.error("❌ [Ranking] Erro ao ler balanço para zeramento:", err);
+        showToast("Erro ao auditar dados do ranking no banco.", "error");
+    }
 }

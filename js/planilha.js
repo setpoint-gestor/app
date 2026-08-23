@@ -1502,8 +1502,12 @@ function aplicarFiltroRankingModalSaaS() {
             return;
         }
 
-        // Leitura Síncrona da RAM
-        const chaveTabela = `${dadosLogado.classe}_${dadosLogado.genero}`; 
+        // Leitura síncrona respeitando o modo de gênero (Unificado vs Separado)
+        const modoGenero = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.divisaoGenero) || 'separado';
+        let generoKey = (dadosLogado.genero || 'MASCULINO').toUpperCase();
+        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+        const chaveTabela = (modoGenero === 'unificado') ? `${dadosLogado.classe.toUpperCase()}_UNIFICADO` : `${dadosLogado.classe.toUpperCase()}_${generoKey}`;
         const listaIdsRanking = rankingTabelasGlobal[chaveTabela] || [];
 
         selJ2.innerHTML = '<option value="">Selecionar Desafiado...</option>';
@@ -1577,7 +1581,7 @@ function obterTagPosicaoRankingSaaS(nomeOuApelido) {
 
     const nomeUpper = nomeOuApelido.trim().toUpperCase();
 
-    // Busca o ID do atleta no banco local da RAM
+    // Busca o ID do atleta na memória RAM
     const idAtleta = Object.keys(jogadoresGlobal).find(id => {
         const j = jogadoresGlobal[id];
         if (!j) return false;
@@ -1589,9 +1593,13 @@ function obterTagPosicaoRankingSaaS(nomeOuApelido) {
     if (!idAtleta) return "";
 
     const atleta = jogadoresGlobal[idAtleta];
-    if (!atleta || !atleta.classe || !atleta.genero) return "";
+    if (!atleta || !atleta.classe) return "";
 
-    const chaveTabela = `${atleta.classe}_${atleta.genero}`;
+    const modoGenero = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.divisaoGenero) || 'separado';
+    let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
+    if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+    const chaveTabela = (modoGenero === 'unificado') ? `${atleta.classe.toUpperCase()}_UNIFICADO` : `${atleta.classe.toUpperCase()}_${generoKey}`;
     const tabela = rankingTabelasGlobal[chaveTabela];
 
     if (!tabela) return "";
@@ -1605,6 +1613,7 @@ function obterTagPosicaoRankingSaaS(nomeOuApelido) {
 
     return "";
 }
+
 
 // ====================================================================
 // MÓDULO DE GRAVAÇÃO ATÔMICA DE RESERVAS (SaaS) - COM TRANSAÇÕES E ROLLBACK

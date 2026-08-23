@@ -56,6 +56,8 @@ let configQuadrasGlobal = {};    // Espelho local em tempo real da Infraestrutur
 
 let configRegrasGlobal = {};    // Espelho local em tempo real dos Parâmetros operacionais e controle de uso da arena. 
 
+let rankingPartidasGlobal = {}; // Espelho local das partidas do ranking na memória RAM
+
 let saasUsuariosOnlineCache = {}; // Espelho local dos usuários conectados em tempo real (RAM)
 
 // ==========================================
@@ -644,6 +646,18 @@ function iniciarOuvinteMestreSaaS() {
     database.ref(`${raizBanco}/ranking/tabelas`).on('value', (snapshot) => {
         rankingTabelasGlobal = snapshot.val() || {};
         console.log("✓ [Core] Tabelas do ranking atualizadas na memória RAM.");
+        
+        const telaQuadras = document.getElementById('tela-visao-quadras');
+        if (telaQuadras && telaQuadras.classList.contains('ativa')) {
+            if (typeof forcarRepinturaPlanilha === 'function') {
+                forcarRepinturaPlanilha();
+            }
+        }
+    });
+	
+	// --- 4.6. OUVINTE MESTRE DE PARTIDAS DO RANKING ---
+    database.ref(`${raizBanco}/ranking/partidas`).on('value', (snapshot) => {
+        rankingPartidasGlobal = snapshot.val() || {};
         
         const telaQuadras = document.getElementById('tela-visao-quadras');
         if (telaQuadras && telaQuadras.classList.contains('ativa')) {
