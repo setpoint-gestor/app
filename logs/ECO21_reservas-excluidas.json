@@ -509,5 +509,71 @@
         "hora": 21
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-26T10:30:21.388Z",
+    "dataLocal": "26/08/2026, 07:30:21",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "19:00 - 21:00",
+    "duracao": "2 Horas",
+    "data": "22-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JOAO MARIA SOBRINHO",
+    "confirmacoes": {
+      "Joao Bento": true,
+      "Joao Maria": true
+    },
+    "jogadores": "Joao Maria, Joao Bento",
+    "jogadores_completo": "JOAO MARIA SOBRINHO, JOAO BENTO PEREIRA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 6,
+        "hora": 19
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 6,
+        "hora": 20
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-08-26T10:30:21.404Z",
+    "dataLocal": "26/08/2026, 07:30:21",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "19:00 - 21:00",
+    "duracao": "2 Horas",
+    "data": "22-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Joao Maria": true
+    },
+    "jogadores": "Adriano Feitosa, Joao Maria",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, JOAO MARIA SOBRINHO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 6,
+        "hora": 19
+      },
+      {
+        "quadra": "Quadra - 3",
+        "dia": 6,
+        "hora": 20
+      }
+    ]
   }
 ]
