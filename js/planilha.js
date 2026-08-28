@@ -839,17 +839,22 @@ function abrirAgendamentoSaaS(dia, hora) {
     const campoDia = document.getElementById('saas-dia');
     const campoHora = document.getElementById('saas-hora');
     const campoDuracao = document.getElementById('saas-duracao');
-    const campoJogador1 = document.getElementById('saas-jogador1');
+    const campoJogador1 = document.getElementById('saas-jogador1');  
 
     if (!campoQuadra || !campoDia || !campoHora || !campoJogador1) return;
 	
-	// 🧠 GATILHO DA REGRA DE DURAÇÃO (SaaS): Lê o banco e controla a anatomia do campo
+    // 🧠 GATILHO DA REGRA DE DURAÇÃO (SaaS): Lê o banco e controla a anatomia do campo
     if (campoDuracao) {
         const regraDuracao = (configRegrasGlobal && configRegrasGlobal.DuracaoPermitida) ? configRegrasGlobal.DuracaoPermitida : "1_2";
-        const isRankingAtivo = (typeof configRegrasGlobal !== 'undefined' && 
-                                configRegrasGlobal && 
-                                configRegrasGlobal.ranking && 
-                                configRegrasGlobal.ranking.ativo !== false);
+        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
+        const modeloRanking = confRanking.modeloAtivo || 'barragem';
+
+        // 🔒 Trava de Inscrição: O agendamento de Ranking exige Fase 3/4 E que o atleta esteja em inscritosConfirmados
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+        const estaInscrito = isGestorLogado || !!(confRanking.inscritosConfirmados && confRanking.inscritosConfirmados[idLogado]);
+        const emFaseDeJogos = (modeloRanking === 'grupos') ? (faseAtualRanking === 3 || faseAtualRanking === 4) : (faseAtualRanking === 3);
+        const isRankingAtivo = confRanking.ativo !== false && emFaseDeJogos && estaInscrito;
         const valorAnterior = campoDuracao.value;
         
         // 1. Limpa o select
@@ -863,7 +868,7 @@ function abrirAgendamentoSaaS(dia, hora) {
             campoDuracao.innerHTML += '<option value="2">2 horas</option>';
         }
 
-        // 4. Libera a opção de Ranking se o módulo estiver ativo
+        // 4. Libera a opção de Ranking apenas se estiver na fase de jogos
         if (isRankingAtivo) {
             campoDuracao.innerHTML += '<option value="ranking" id="opt-duracao-ranking">Ranking</option>';
         }
@@ -871,11 +876,11 @@ function abrirAgendamentoSaaS(dia, hora) {
         // 5. Habilita ou trava o campo conforme opções disponíveis
         if (regraDuracao === "1_2" || isRankingAtivo) {
             campoDuracao.disabled = false;
-            campoDuracao.style.appearance = ''; // Garante a setinha no dropdown
+            campoDuracao.style.appearance = '';
             campoDuracao.style.webkitAppearance = '';
         } else {
             campoDuracao.disabled = true;
-            campoDuracao.style.appearance = 'none'; // Apaga a setinha do dropdown
+            campoDuracao.style.appearance = 'none';
             campoDuracao.style.webkitAppearance = 'none';
         }
         
@@ -1469,7 +1474,7 @@ function handleConvidadoSelectSaaS(el) {}
 // ====================================================================
 // 🏆 MOTOR DE RANKING: FILTRO INTELIGENTE E EXIBIÇÃO DE ADVERSÁRIOS
 // ====================================================================
-function aplicarFiltroRankingModalSaaS() {
+async function aplicarFiltroRankingModalSaaS() {
     const campoDuracao = document.getElementById('saas-duracao') || document.getElementById('saas-duracao-reserva');
     const container = document.getElementById('jogadoresContainerSaaS');
     const btnAdd = document.getElementById('btn-add-atleta-SaaS');
@@ -1503,7 +1508,9 @@ function aplicarFiltroRankingModalSaaS() {
         }
 
         // Leitura síncrona respeitando o modo de gênero (Unificado vs Separado)
-        const modoGenero = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.divisaoGenero) || 'separado';
+        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const modoGenero = confRanking.divisaoGenero || 'separado';
+        const modeloAtivo = confRanking.modeloAtivo || 'grupos';
         let generoKey = (dadosLogado.genero || 'MASCULINO').toUpperCase();
         if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
 
@@ -1515,14 +1522,68 @@ function aplicarFiltroRankingModalSaaS() {
 
         const idsArray = Array.isArray(listaIdsRanking) ? listaIdsRanking : Object.values(listaIdsRanking);
 
-        idsArray.forEach((idAtleta, idx) => {
-            if (idAtleta !== idLogado && jogadoresGlobal && jogadoresGlobal[idAtleta]) {
+        // 🎯 FILTRAGEM RESTRITA DE ADVERSÁRIOS POR MODELO DE DISPUTA
+        let idsPermitidos = idsArray;
+
+        if (modeloAtivo === 'grupos') {
+            const idxLogado = idsArray.indexOf(idLogado);
+            if (idxLogado !== -1) {
+                const tamanhoGrupo = parseInt(confRanking.grupos?.tamanhoGrupo, 10) || 3;
+                const numGrupo = Math.floor(idxLogado / tamanhoGrupo);
+                const inicioGrupo = numGrupo * tamanhoGrupo;
+                const fimGrupo = inicioGrupo + tamanhoGrupo;
+                idsPermitidos = idsArray.slice(inicioGrupo, fimGrupo);
+            }
+        } else if (modeloAtivo === 'piramide') {
+            const idxLogado = idsArray.indexOf(idLogado);
+            if (idxLogado !== -1) {
+                const alcance = parseInt(confRanking.piramide?.limitePosicoes, 10) || 3;
+                const inicio = Math.max(0, idxLogado - alcance);
+                idsPermitidos = idsArray.slice(inicio, idxLogado);
+            }
+        }
+
+        // 🛑 BUSCA HISTÓRICO DE PARTIDAS PARA BLOQUEAR DUPLICIDADES
+        const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
+        const partidasRanking = snapPartidas.val() || {};
+        const nomeLogadoNorm = (dadosLogado.nomeCompleto || dadosLogado.apelido || '').trim().toUpperCase();
+
+        idsPermitidos = idsPermitidos.filter(idAtleta => {
+            if (idAtleta === idLogado) return false;
+
+            // 1. Impede repetir duelo já finalizado
+            const jaEnfrentou = Object.values(partidasRanking).some(p => 
+                p.categoria === chaveTabela && 
+                p.status === 'finalizada' &&
+                ((p.jogador1Id === idLogado && p.jogador2Id === idAtleta) || (p.jogador1Id === idAtleta && p.jogador2Id === idLogado))
+            );
+            if (jaEnfrentou) return false;
+
+            // 2. Impede agendar com quem já tem partida pendente/marcada na planilha
+            const atletaObj = jogadoresGlobal[idAtleta] || {};
+            const nomeAtletaNorm = (atletaObj.nomeCompleto || atletaObj.apelido || '').trim().toUpperCase();
+
+            const jaAgendado = Object.values(reservasLocaisCache || {}).some(r => {
+                if (!r || r.status === 'aula_cancelada') return false;
+                const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
+                if (!ehRanking) return false;
+                const jogs = (r.jogadores_completo || r.jogadores || '').toUpperCase();
+                return jogs.includes(nomeLogadoNorm) && jogs.includes(nomeAtletaNorm);
+            });
+            if (jaAgendado) return false;
+
+            return true;
+        });
+
+        idsPermitidos.forEach((idAtleta) => {
+            if (jogadoresGlobal && jogadoresGlobal[idAtleta]) {
                 const atleta = jogadoresGlobal[idAtleta];
                 
                 let apelidoLimpo = (atleta.apelido || atleta.nomeCompleto || "").trim();
                 apelidoLimpo = apelidoLimpo.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
                 
-                const posicaoVisual = (idx + 1) + "º";
+                const idxGlobal = idsArray.indexOf(idAtleta);
+                const posicaoVisual = (idxGlobal + 1) + "º";
 
                 const opt = document.createElement('option');
                 opt.value = idAtleta;
@@ -1560,18 +1621,17 @@ function aplicarFiltroRankingModalSaaS() {
             }
 
             if (idSelecionadoAntes && selJ2.querySelector(`option[value="${idSelecionadoAntes}"]`)) {
-                selJ2.value = idSelecionadoAntes;
+                selJ2.value = idSelecionadoAntes;   
             }
         }
         
         if (btnAdd) {
             btnAdd.style.display = 'inline-flex';
             btnAdd.style.opacity = '1';
-            btnAdd.style.pointerEvents = 'auto';
+            btnAdd.style.pointerEvents = 'auto'; 
         }
     }
 }
-
 
 // ====================================================================
 // 🏆 AUXILIAR DE POSIÇÃO DO RANKING (LEITURA SÍNCRONA EM RAM)
@@ -1682,6 +1742,48 @@ function validarAntiMonopolioSaaS(listaNomesCompletos, listaApelidos, todasReser
         }
     }
     return null; // Sinal Verde
+}
+
+function validarConflitoHorarioAtletaSaaS(listaNomesCompletos, listaApelidos, pacote, todasReservas) {
+    if (!todasReservas) return null;
+
+    const diaAlvo = pacote.dia;
+    const horaInicioAlvo = pacote.hora;
+    const horaFimAlvo = pacote.hora + pacote.duracao;
+
+    let conflitoEncontrado = null;
+
+    Object.keys(todasReservas).forEach(quadraKey => {
+        const slots = todasReservas[quadraKey] || {};
+        Object.keys(slots).forEach(slotKey => {
+            const r = slots[slotKey];
+            if (!r || r.status === 'aula_cancelada' || r.dia !== diaAlvo) return;
+            if (r.borda === undefined && r.duracao === 2) return; // Ignora a segunda hora do bloco de 2h
+
+            const hInicioReserva = r.hora;
+            const hFimReserva = r.hora + (parseInt(r.duracao) || 1);
+
+            // Verifica se há sobreposição de horário na grade
+            const haSobreposicao = (hInicioReserva < horaFimAlvo) && (hFimReserva > horaInicioAlvo);
+
+            if (haSobreposicao) {
+                const jogadoresReservaStr = (r.jogadores_completo || r.jogadores || "").toUpperCase();
+
+                listaNomesCompletos.forEach((nome, idx) => {
+                    if (jogadoresReservaStr.includes(nome.toUpperCase())) {
+                        const apelidoConf = listaApelidos[idx] || nome;
+                        const primeiroNome = apelidoConf.trim().split(' ')[0];
+                        const numQuadra = quadraKey.match(/\d+/);
+                        const qNomeVisual = numQuadra ? `Quadra ${numQuadra[0]}` : quadraKey;
+
+                        conflitoEncontrado = `${primeiroNome} já possui agendamento neste mesmo horário (${qNomeVisual}).`;
+                    }
+                });
+            }
+        });
+    });
+
+    return conflitoEncontrado;
 }
 
 // ====================================================================
@@ -1832,6 +1934,13 @@ function validarEAgendarPartidaSaas() {
         if (erroMonopolio) {
             showToast(erroMonopolio, "error", 4500);
             throw new Error("VALIDACAO_FALHOU"); // Ejeta do fluxo de gravação
+        }
+		
+		// 🛑 TRAVA DE DUPLO AGENDAMENTO (Nenhum atleta pode estar em 2 quadras ao mesmo tempo)
+        const erroConflitoHorario = validarConflitoHorarioAtletaSaaS(listaNomesCompletosReais, listaApelidos, pacote, todasReservas);
+        if (erroConflitoHorario) {
+            showToast(erroConflitoHorario, "error", 4500);
+            throw new Error("VALIDACAO_FALHOU");
         }
 
         // ESPAÇO PARA FUTURAS REGRAS:

@@ -1167,8 +1167,26 @@ function salvarSumulaSaaS() {
     }
 
     // 3. PERSISTÊNCIA ÚNICA NO BANCO DE DADOS
+    const norm = (txt) => (txt || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || 'Atleta').trim();
+    const normNomeLogado = norm(nomeLogado);
+    const jogadoresComp = norm(partidaRankingEmFoco.jogadores_completo || '');
+    const jogadoresAp = norm(partidaRankingEmFoco.jogadores || '');
+    
+    // 🛡️ Identifica se o usuário logado é um dos competidores da partida
+    const souJogadorDaPartida = normNomeLogado !== "" && (jogadoresComp.includes(normNomeLogado) || jogadoresAp.includes(normNomeLogado));
+
     const ehContestado = (partidaRankingEmFoco.statusPlacar === 'contestado');
-    const ehGestorOuArbitro = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || podeArbitrarRankingSaaS();
+    
+    // ⚖️ Arbitragem neutra: só vale se for Gestor/Árbitro e NÃO estiver jogando a partida
+    const ehArbitragemNeutra = !souJogadorDaPartida && ((typeof isGestorLogado !== 'undefined' && isGestorLogado) || podeArbitrarRankingSaaS());
 
     const executarGravacaoBanco = () => {
         if (navigator.vibrate) navigator.vibrate(40);
@@ -1178,12 +1196,11 @@ function salvarSumulaSaaS() {
             btnSalvar.textContent = "Gravando placar...";
         }
 
-        const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || 'Atleta').trim();
         const agora = Date.now();
         const prazoHorasAutoconf = (regrasSessaoRanking && regrasSessaoRanking.prazoAutoconf) || 24;
 
-        // Gestor/Árbitro ou jogo contestado aplicam 'consolidado' direto
-        const statusNovo = (ehGestorOuArbitro || ehContestado) ? "consolidado" : "pendente_validacao";
+        // Se for um dos atletas jogando, entra OBRIGATORIAMENTE como 'pendente_validacao'
+        const statusNovo = ehArbitragemNeutra ? "consolidado" : "pendente_validacao";
 
         const dadosPlacar = {
             statusPlacar: statusNovo,
@@ -1196,12 +1213,12 @@ function salvarSumulaSaaS() {
             vencedorCodigo: vencedorCodigo,
             placarFormatado: placarFormatado,
             parciais: parciais,
-            autorSumula: ehContestado ? (partidaRankingEmFoco.dadosPlacar?.autorSumula || nomeLogado) : nomeLogado,
+            autorSumula: (ehContestado && ehArbitragemNeutra) ? (partidaRankingEmFoco.dadosPlacar?.autorSumula || nomeLogado) : nomeLogado,
             dataHoraLancamento: partidaRankingEmFoco.dadosPlacar?.dataHoraLancamento || agora,
             expiraValidacaoAt: agora + (prazoHorasAutoconf * 60 * 60 * 1000)
         };
 
-        if (ehContestado) {
+        if (ehContestado && ehArbitragemNeutra) {
             dadosPlacar.decisaoArbitro = "editado_pelo_arbitro";
             dadosPlacar.dataHoraArbitragem = agora;
             dadosPlacar.arbitroResponsavel = nomeLogado;
@@ -1229,26 +1246,24 @@ function salvarSumulaSaaS() {
         if (duracao === 2) {
             const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
             updates[`${pathSlot2}/statusPlacar`] = statusNovo;
-            updates[`${pathSlot2}/dadosPlacar`] = dadosPlacar;
+            updates[`${pathSlot2}/dadosPlacar`] = statusNovo;
         }
 
         database.ref(raizBanco).update(updates)
         .then(() => {
             const msgSucesso = isWO 
-                ? (ehGestorOuArbitro ? "W.O. confirmado e homologado!" : "W.O. registrado! Enviado para validação.")
-                : (ehContestado ? "Placar corrigido e homologado com sucesso!" : "Súmula enviada para validação do adversário!");
+                ? (ehArbitragemNeutra ? "W.O. confirmado e homologado!" : "W.O. registrado! Enviado para validação.")
+                : (ehArbitragemNeutra ? "Placar corrigido e homologado com sucesso!" : "Súmula enviada para validação do adversário!");
             
             showToast(msgSucesso, "success");
 
-            if (ehContestado) {
+            if (ehContestado && ehArbitragemNeutra) {
                 notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'editado', placarFormatado);
             }
 
-            // 🎯 Sincroniza os dados do novo placar na memória em tempo real
             partidaRankingEmFoco.statusPlacar = statusNovo;
             partidaRankingEmFoco.dadosPlacar = dadosPlacar;
 
-            // 🔔 Dispara o motor de ranking com o vencedor atualizado pelo Árbitro
             if (statusNovo === "consolidado") {
                 processarResultadoRankingSaaS(partidaRankingEmFoco);
             }
@@ -1262,13 +1277,13 @@ function salvarSumulaSaaS() {
         .finally(() => {
             if (btnSalvar) {
                 btnSalvar.disabled = false;
-                btnSalvar.textContent = modoWOAtivoSaaS ? "Confirmar e Enviar W.O." : (ehContestado ? "Atualizar e Consolidar Placar" : "Salvar Súmula");
+                btnSalvar.textContent = modoWOAtivoSaaS ? "Confirmar e Enviar W.O." : (ehArbitragemNeutra ? "Atualizar e Consolidar Placar" : "Salvar Súmula");
             }
         });
     };
 
-    // 4. CONFIRMAÇÃO DE PROMPT SE FOR EDIÇÃO DE ÁRBITRO
-    if (ehContestado) {
+    // 4. CONFIRMAÇÃO DE PROMPT SE FOR EDIÇÃO DE ÁRBITRO NEUTRO
+    if (ehContestado && ehArbitragemNeutra) {
         let placarAntigoStr = partidaRankingEmFoco.dadosPlacar?.placarFormatado || "--";
         if (partidaRankingEmFoco.dadosPlacar?.isWO || (placarAntigoStr && placarAntigoStr.includes("W.O."))) {
             const motAntigo = partidaRankingEmFoco.dadosPlacar?.motivoWO || "Ausência";
@@ -2225,31 +2240,34 @@ async function aceitarConviteRankingSocioSaaS() {
     if (!idLogado || !raizBanco) return;
 
     if (navigator.vibrate) navigator.vibrate(30);
-    showToast("Processando sua inscrição no ranking...", "info");
 
     try {
         const atleta = jogadoresGlobal[idLogado] || {};
         const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
         const configRanking = snapConfig.val() || {};
-        const modoGenero = configRanking.divisaoGenero || 'separado';
 
-        const classe = (atleta.classe || 'A').toUpperCase();
-        let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
-        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
-
-        const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
-        const refTabelaCat = `${raizBanco}/ranking/tabelas/${chaveTabela}`;
-
-        const snapTabela = await database.ref(refTabelaCat).once('value');
-        let listaAtletas = snapTabela.exists() ? snapTabela.val() : [];
-
-        if (!Array.isArray(listaAtletas)) listaAtletas = [];
-
-        if (!listaAtletas.includes(idLogado)) {
-            listaAtletas.push(idLogado);
-            await database.ref(refTabelaCat).set(listaAtletas);
+        // 🛑 TRAVA DE ENCERRAMENTO: Impede inscrições após o congelamento das chaves (Fase 3+)
+        const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
+        if (faseAtual > 2) {
+            showToast("As inscrições para este torneio já foram encerradas.", "warning");
+            await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
+            fecharModalNotificacoes();
+            return;
         }
 
+        // 🟢 Avisa apenas se a inscrição puder prosseguir
+        showToast("Processando sua inscrição no ranking...", "info");
+
+        // 🟢 INSCREVE O ATLETA APENAS NA LISTA DE CONFIRMADOS DO TORNEIO (FASE 2)
+        const cobrarTaxa = configRanking.financeiro?.cobrarTaxa === true;
+        const payloadInscrito = {
+            nome: atleta.nomeCompleto || atleta.apelido || "Atleta",
+            pixPago: !cobrarTaxa, // Se não houver cobrança de taxa, já nasce como Pago
+            dataAceite: Date.now()
+        };
+        await database.ref(`${raizBanco}/config/ranking/inscritosConfirmados/${idLogado}`).set(payloadInscrito);
+
+        // Remove do lote de convites pendentes
         await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
 
         showToast("Inscrição confirmada com sucesso! Bem-vindo ao Ranking.", "success");
@@ -2260,6 +2278,7 @@ async function aceitarConviteRankingSocioSaaS() {
         showToast("Erro ao confirmar inscrição no banco de dados.", "error");
     }
 }
+
 
 async function recusarConviteRankingSocioSaaS() {
     const idLogado = localStorage.getItem('jogadorLogadoId');
@@ -2303,20 +2322,46 @@ async function recusarConviteRankingSocioSaaS() {
 }
 
 /* ======================================================== */
-/* 7. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO (PASSO 4.1)      */
+/* 7. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO                  */
 /* ======================================================== */
 
-// Abertura da Gaveta de Classificação
+// Abertura da Gaveta de Classificação com Trava de Ponto Zero (Leitura RAM)
 function abrirLeaderboardSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
 
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     if (!sheet) return;
 
+    // 1. Lê os dados já sincronizados na RAM pelo core.js
+    const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const faseAtual = parseInt(confRanking.faseAtual, 10) || 1;
+    const divGenero = confRanking.divisaoGenero || 'separado';
+
+    const chaveTabela = (divGenero === 'unificado') 
+        ? `${abaClasseAtivaSaaS}_UNIFICADO` 
+        : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
+
+    // 2. Checa Torneio Ativo e Ranking Geral na memória
+    const tabelaTorneio = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) 
+        ? rankingTabelasGlobal[chaveTabela] 
+        : null;
+    const temTorneioAtivo = (faseAtual >= 3 && Array.isArray(tabelaTorneio) && tabelaTorneio.length > 0);
+
+    const tabelaGeral = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) 
+        ? rankingGeralGlobal[chaveTabela] 
+        : null;
+    const temRankingGeral = (Array.isArray(tabelaGeral) && tabelaGeral.length > 0);
+
+    // 🛑 ESTADO 1 (PONTO ZERO): Se não tem histórico e não tem torneio ativo, barra antes de abrir
+    if (!temRankingGeral && !temTorneioAtivo) {
+        showToast("Nenhum torneio em andamento ou histórico registrado.", "info");
+        return;
+    }
+
+    // Se houver dados, abre a gaveta normalmente
     sheet.style.display = 'flex';
     setTimeout(() => sheet.classList.add('ativa'), 10);
 
-    // Carrega e desenha as abas/tabelas da categoria ativa
     if (typeof renderizarLeaderboardSaaS === 'function') {
         renderizarLeaderboardSaaS();
     }
@@ -2339,23 +2384,47 @@ function fecharLeaderboardSaaS(e) {
 
 // Vincula a ação de "Ver Tabela" do Painel do Gestor à mesma gaveta
 function abrirVisualizacaoRankingSaaS() {
-    fecharModalConfig('modal-config-ranking');
-    abrirLeaderboardSaaS();
+    // Mantém o modal de configurações aberto ao fundo
+    abrirLeaderboardSaaS(); 
 }
 
 
 /* ======================================================== */
-/* 8. MOTOR DO LEADERBOARD / RENDERIZAÇÃO DINÂMICA (PASSO 4.3) */
+/* 8. MOTOR DO LEADERBOARD / RENDERIZAÇÃO DINÂMICA          */
 /* ======================================================== */
 
+let abaVisaoLeaderboardSaaS = 'TORNEIO'; // 'TORNEIO' ou 'GERAL'
 let abaClasseAtivaSaaS = 'B';
 let abaGeneroAtivaSaaS = 'MASCULINO';
+
+function trocarVisaoLeaderboardSaaS(modo) {
+    abaVisaoLeaderboardSaaS = modo;
+    
+    const btnTorneio = document.getElementById('btn-tab-torneio-saas');
+    const btnGeral = document.getElementById('btn-tab-geral-saas');
+    
+    if (btnTorneio && btnGeral) {
+        if (modo === 'TORNEIO') {
+            btnTorneio.classList.add('active');
+            btnGeral.classList.remove('active');
+        } else {
+            btnGeral.classList.add('active');
+            btnTorneio.classList.remove('active');
+        }
+    }
+    
+    renderizarLeaderboardSaaS();
+}
 
 async function renderizarLeaderboardSaaS() {
     const selectClasse = document.getElementById('select-leaderboard-classe');
     const selectGenero = document.getElementById('select-leaderboard-genero');
     const bodyList = document.getElementById('body-leaderboard-scroll');
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
+
+    const btnTorneio = document.getElementById('btn-tab-torneio-saas');
+    const btnGeral = document.getElementById('btn-tab-geral-saas');
+    const containerAbas = btnTorneio ? btnTorneio.parentElement : null;
 
     if (!bodyList) return;
 
@@ -2370,13 +2439,22 @@ async function renderizarLeaderboardSaaS() {
         const divGenero = configRanking.divisaoGenero || 'separado';
         const ptsVit = parseInt(configRanking.barragem?.pontosVitoria) || 3;
         const ptsDer = parseInt(configRanking.barragem?.pontosDerrota) || 1;
+        const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
+        const cal = configRanking.calendario || {};
+
+        // Identifica se o torneio está na fase concluída/homologada
+        const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && faseAtual >= 5);
 
         if (txtSub) {
-            const nomesModelos = { piramide: 'Pirâmide (Escada)', barragem: 'Barragem (Pontos)', grupos: 'Grupos (Chaves)' };
-            txtSub.textContent = `Ranking Oficial do Clube • Modelo ${nomesModelos[modelo] || 'Oficial'}`;
+            if (torneioConcluido) {
+                txtSub.innerHTML = `<b>🏆 Hall de Campeões</b> • ${cal.nomeTorneio || 'Torneio do Clube'} <span style="display:inline-block; background:#dcfce7; color:#15803d; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #86efac;">✓ Homologado</span>`;
+            } else {
+                const nomesModelos = { piramide: 'Pirâmide (Escada)', barragem: 'Barragem (Pontos)', grupos: 'Grupos (Chaves)' };
+                txtSub.textContent = `Ranking Oficial do Clube • Modelo ${nomesModelos[modelo] || 'Oficial'}`;
+            }
         }
 
-        // 2. Popula os Selects de Filtro
+        // 2. Popula os Selects de Filtro (Mantido intacto)
         const classesAvulsa = ['A', 'B', 'C'];
         if (selectClasse) {
             selectClasse.innerHTML = classesAvulsa.map(cls => `
@@ -2398,20 +2476,116 @@ async function renderizarLeaderboardSaaS() {
             }
         }
 
-        // 3. Busca inscritos e histórico de partidas finalizadas
+        // 3. Busca inscritos do torneio e Ranking Geral da RAM
         const chaveTabela = (divGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
         const snapTabela = await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).once('value');
         const listaIDs = snapTabela.exists() ? snapTabela.val() : [];
 
-        if (!Array.isArray(listaIDs) || listaIDs.length === 0) {
-            bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum atleta inscrito nesta categoria.</p>';
+        const temTorneioAtivo = (faseAtual >= 3 && Array.isArray(listaIDs) && listaIDs.length > 0);
+
+        let listaGeralIDs = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal)
+            ? rankingGeralGlobal[chaveTabela]
+            : null;
+        const temRankingGeral = (Array.isArray(listaGeralIDs) && listaGeralIDs.length > 0);
+
+        // 📊 4. MATRIZ DE ESTADOS DAS ABAS DE NAVEGAÇÃO
+        if (!temRankingGeral && !temTorneioAtivo) {
+            // Estado 1: Ponto Zero (Nenhum histórico e nenhum torneio ativo)
+            if (containerAbas) containerAbas.style.display = 'none';
+            bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum torneio em andamento ou histórico registrado.</p>';
+            return;
+        }
+
+        if (containerAbas) containerAbas.style.display = 'flex';
+
+        if (!temRankingGeral && temTorneioAtivo) {
+            // Estado 2: 1º Torneio (Apenas Torneio Atual ativo a 100%)
+            if (btnTorneio) { 
+                btnTorneio.style.display = 'flex'; 
+                btnTorneio.style.width = '100%'; 
+                btnTorneio.style.cursor = 'default';
+                btnTorneio.classList.add('active'); 
+            }
+            if (btnGeral) { btnGeral.style.display = 'none'; btnGeral.classList.remove('active'); }
+            abaVisaoLeaderboardSaaS = 'TORNEIO';
+
+        } else if (temRankingGeral && !temTorneioAtivo) {
+            // Estado 3: Entre Torneios (Apenas Ranking Geral ativo a 100%)
+            if (btnGeral) { 
+                btnGeral.style.display = 'flex'; 
+                btnGeral.style.width = '100%'; 
+                btnGeral.style.cursor = 'default';
+                btnGeral.classList.add('active'); 
+            }
+            if (btnTorneio) { btnTorneio.style.display = 'none'; btnTorneio.classList.remove('active'); }
+            abaVisaoLeaderboardSaaS = 'GERAL';
+
+        } else {
+            // Estado 4: Torneios Seguintes (2 Abas a 50%/50%)
+            if (btnTorneio) { 
+                btnTorneio.style.display = 'flex'; 
+                btnTorneio.style.width = '50%'; 
+                btnTorneio.style.cursor = 'pointer';
+            }
+            if (btnGeral) { 
+                btnGeral.style.display = 'flex'; 
+                btnGeral.style.width = '50%'; 
+                btnGeral.style.cursor = 'pointer';
+            }
+            
+            if (btnTorneio && btnGeral) {
+                if (abaVisaoLeaderboardSaaS === 'TORNEIO') {
+                    btnTorneio.classList.add('active');
+                    btnGeral.classList.remove('active');
+                } else {
+                    btnGeral.classList.add('active');
+                    btnTorneio.classList.remove('active');
+                }
+            }
+        }
+
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+
+        // 📊 SE A ABA "RANKING GERAL" ESTIVER SELECIONADA: EXIBE A FILA MESTRE CONTÍNUA
+        if (abaVisaoLeaderboardSaaS === 'GERAL') {
+            let htmlGeral = `
+                <div class="box-dica-leaderboard">
+                    💡 <b>Ranking Geral do Clube:</b> Exibe a Fila Mestre acumulada da categoria.
+                </div>
+            `;
+
+            if (!Array.isArray(listaGeralIDs) || listaGeralIDs.length === 0) {
+                bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum atleta cadastrado no Ranking Geral.</p>';
+                return;
+            }
+
+            listaGeralIDs.forEach((idAtleta, index) => {
+                const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+                const pos = index + 1;
+                const nomeAtleta = atleta.nomeCompleto || atleta.apelido || 'Atleta';
+                const ehVoce = (idAtleta === idLogado);
+
+                htmlGeral += `
+                    <div class="item-leaderboard-piramide ${ehVoce ? 'voce' : ''}">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-weight: 800; font-size: 13px; color: #64748b; width: 24px;">${pos}º</span>
+                            <div>
+                                <strong style="font-size: 14px; color: #1e293b; display: block;">${nomeAtleta} ${ehVoce ? '(Você)' : ''}</strong>
+                                <span style="font-size: 11px; color: #64748b;">${pos === 1 ? 'Líder do Ranking Geral' : 'Atleta Cadastrado'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            bodyList.innerHTML = htmlGeral;
             return;
         }
 
         const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
         const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
 
-        // 4. Mapeamento de estatísticas e confrontos diretos por atleta
+        // 5. Mapeamento de estatísticas e confrontos diretos por atleta
         const estatisticas = {};
         const confrontosDiretos = {};
 
@@ -2458,7 +2632,112 @@ async function renderizarLeaderboardSaaS() {
             }
         });
 
-        const idLogado = localStorage.getItem('jogadorLogadoId');
+        // ========================================================
+        // 🏆 SE O TORNEIO ESTIVER CONCLUÍDO: HALL DE CAMPEÕES (SANFONA)
+        // ========================================================
+        if (torneioConcluido) {
+            let htmlHall = '';
+
+            const idCampeao = listaIDs[0];
+            const idVice = listaIDs[1];
+            const idTerceiro = listaIDs[2];
+
+            const objCampeao = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idCampeao]) ? jogadoresGlobal[idCampeao] : {};
+            const objVice = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idVice]) ? jogadoresGlobal[idVice] : {};
+            const objTerceiro = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idTerceiro]) ? jogadoresGlobal[idTerceiro] : {};
+
+            const nomeCampeao = capitalizarNome(objCampeao.nomeCompleto || objCampeao.apelido || 'Campeão');
+            const nomeVice = capitalizarNome(objVice.nomeCompleto || objVice.apelido || 'Vice-Campeão');
+            const nomeTerceiro = capitalizarNome(objTerceiro.nomeCompleto || objTerceiro.apelido || '3º Colocado');
+
+            // Mapeamento dinâmico do rótulo do troféu por modelo
+            const rotulosBadgesCampeao = {
+                piramide: "1º LUGAR • PIRÂMIDE",
+                barragem: "1º LUGAR • BARRAGEM",
+                grupos: "1º LUGAR • GRUPOS"
+            };
+            const txtBadgeCampeao = rotulosBadgesCampeao[modelo] || "1º LUGAR • CAMPEÃO";
+
+            // Card Dourado do 1º Lugar (Campeão)
+            htmlHall += `
+                <div style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 2px solid #f59e0b; border-radius: 16px; padding: 14px; text-align: center; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2); margin-bottom: 12px;">
+                    <div style="font-size: 28px; margin-bottom: -4px;">👑</div>
+                    <span style="background: #f59e0b; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 10px; display: inline-block;">${txtBadgeCampeao}</span>
+                    <div style="font-size: 16px; font-weight: 800; color: #78350f; margin: 4px 0;">${nomeCampeao} ${idCampeao === idLogado ? '(Você)' : ''}</div>
+                    <div style="font-size: 11.5px; color: #92400e; font-weight: 600;">Líder Homologado da Classe ${abaClasseAtivaSaaS}</div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+            `;
+
+            // Card do 2º Lugar
+            if (idVice) {
+                htmlHall += `
+                    <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 800; font-size: 13px; width: 26px; color: #475569;">2º</span>
+                            <div>
+                                <strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${nomeVice} ${idVice === idLogado ? '(Você)' : ''}</strong>
+                                <span style="font-size: 11px; color: #64748b;">Vice-Líder da Categoria</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Card do 3º Lugar
+            if (idTerceiro) {
+                htmlHall += `
+                    <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 800; font-size: 13px; width: 26px; color: #c2410c;">3º</span>
+                            <div>
+                                <strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${nomeTerceiro} ${idTerceiro === idLogado ? '(Você)' : ''}</strong>
+                                <span style="font-size: 11px; color: #64748b;">3ª Posição Final</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            htmlHall += `</div>`;
+
+            // Lista Oculta e Botão Sanfona (4º em diante)
+            if (listaIDs.length > 3) {
+                htmlHall += `
+                    <div id="box-restante-hall" style="display: none; margin-top: 8px; flex-direction: column; gap: 8px;">
+                `;
+
+                for (let i = 3; i < listaIDs.length; i++) {
+                    const idOutro = listaIDs[i];
+                    const objOutro = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idOutro]) ? jogadoresGlobal[idOutro] : {};
+                    const nomeOutro = capitalizarNome(objOutro.nomeCompleto || objOutro.apelido || 'Atleta');
+
+                    htmlHall += `
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: 800; font-size: 13px; width: 26px; color: #64748b;">${i + 1}º</span>
+                                <div>
+                                    <strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${nomeOutro} ${idOutro === idLogado ? '(Você)' : ''}</strong>
+                                    <span style="font-size: 11px; color: #64748b;">Atleta Homologado</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                htmlHall += `</div>`;
+
+                htmlHall += `
+                    <button type="button" id="btn-sanfona-hall" onclick="toggleSanfonaHallCampeoesSaaS(${listaIDs.length})" style="width: 100%; background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 12px; color: #0284c7; font-weight: 700; font-size: 12.5px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <span>Ver Classificação Completa (${listaIDs.length} atletas)</span> 🔽
+                    </button>
+                `;
+            }
+
+            bodyList.innerHTML = htmlHall;
+            return;
+        }
 
         // ========================================================
         // 🏆 MODELO 1: PIRÂMIDE (ESCADA DE DESAFIOS)
@@ -2502,7 +2781,6 @@ async function renderizarLeaderboardSaaS() {
         // 🏆 MODELO 2: BARRAGEM (ORDENAÇÃO POR PONTOS & SALDO)
         // ========================================================
         } else if (modelo === 'barragem') {
-            // Ordena atletas por PTS (desc), SG (desc) e Vitórias (desc)
             listaIDs.sort((a, b) => {
                 const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
                 const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
@@ -2554,7 +2832,7 @@ async function renderizarLeaderboardSaaS() {
             });
 
             htmlTable += `</tbody></table>`;
-            bodyList.innerHTML = htmlTable; 
+            bodyList.innerHTML = htmlTable;
 
         // ========================================================
         // 🏆 MODELO 3: GRUPOS (OPÇÃO 3 VISUAL - LINHA DUPLA & PÍLULAS)
@@ -2570,6 +2848,8 @@ async function renderizarLeaderboardSaaS() {
                 </div>
             `;
             let numGrupo = 1;
+
+            const txtStatusTag = (faseAtual === 3) ? "Zona de Classificação" : "Classificado";
 
             for (let i = 0; i < listaIDs.length; i += tamanhoGrupo) {
                 const membrosChave = listaIDs.slice(i, i + tamanhoGrupo);
@@ -2609,7 +2889,6 @@ async function renderizarLeaderboardSaaS() {
                     const ehVoce = (idAtleta === idLogado);
                     const isClassificado = posInterna <= classificadosQtd;
 
-                    // Ativa a pílula de confronto se houver empate de pontos no grupo e o atleta venceu o duelo direto
                     const temEmpatePontos = membrosChave.some(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts && st.pts > 0);
                     let exibeConfronto = false;
                     if (temEmpatePontos) {
@@ -2624,7 +2903,7 @@ async function renderizarLeaderboardSaaS() {
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                                 <div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
                                     <b>${posInterna}º</b> ${nomeAtleta} ${ehVoce ? '(Você)' : ''}
-                                    ${isClassificado ? '<span class="badge-classificado">Classificado</span>' : ''}
+                                    ${isClassificado ? `<span class="badge-classificado">${txtStatusTag}</span>` : ''}
                                 </div>
                                 <span style="font-size: 14px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
                             </div>
@@ -2650,6 +2929,23 @@ async function renderizarLeaderboardSaaS() {
     }
 }
 
+/**
+ * Alterna a expansão/recolhimento dos atletas a partir do 4º lugar no Hall de Campeões
+ */
+function toggleSanfonaHallCampeoesSaaS(totalAtletas) {
+    const boxResto = document.getElementById('box-restante-hall');
+    const btn = document.getElementById('btn-sanfona-hall');
+
+    if (!boxResto || !btn) return;
+
+    if (boxResto.style.display === 'none') {
+        boxResto.style.display = 'flex';
+        btn.innerHTML = '<span>Recolher Lista</span> 🔼';
+    } else {
+        boxResto.style.display = 'none';
+        btn.innerHTML = `<span>Ver Classificação Completa (${totalAtletas} atletas)</span> 🔽`;
+    }
+}
 
 function trocarClasseLeaderboardSaaS(cls) {
     abaClasseAtivaSaaS = cls;
@@ -2810,7 +3106,13 @@ async function processarResultadoBarragemSaaS(reserva, configRanking) {
     }
 
     // 1. Grava ou atualiza a partida finalizada
-    const partidaId = `partida_${chaveTabela}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
+    let quadraKey = "Quadra1";
+    if (reserva.quadra) {
+        const match = reserva.quadra.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
+    }
+
+    const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
     const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
 
     const payloadPartida = {
@@ -2923,7 +3225,13 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
     }
 
     // 1. Grava a partida finalizada no histórico
-    const partidaId = `partida_${chaveTabela}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
+    let quadraKey = "Quadra1";
+    if (reserva.quadra) {
+        const match = reserva.quadra.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
+    }
+
+    const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
     const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
 
     const payloadPartida = {
@@ -3019,7 +3327,42 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
     await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).set(novaListaOrdenada);
 }
 
+
 /* 9.5 ZERAR / REINICIAR RANKING (COM AUDITORIA DINÂMICA DE DADOS) */
+
+/* AUXILIAR: RESETA OS CAMPOS DO FORMULÁRIO DA FASE 1 */
+function limparFormularioFase1SaaS() {
+    const elNome = document.getElementById('inp-torneio-nome');
+    const elModelo = document.getElementById('inp-torneio-modelo');
+    const elVagas = document.getElementById('inp-torneio-vagas');
+    const elDtIncIni = document.getElementById('inp-torneio-dt-inc-ini');
+    const elDtIncFim = document.getElementById('inp-torneio-dt-inc-fim');
+    const elDtJogIni = document.getElementById('inp-torneio-dt-jog-ini');
+    const elDtJogFim = document.getElementById('inp-torneio-dt-jog-fim');
+    const lblPdf = document.getElementById('pdf-file-name');
+
+    if (elNome) elNome.value = '';
+    if (elModelo) elModelo.selectedIndex = 0;
+    if (elVagas) elVagas.value = '';
+    if (elDtIncIni) elDtIncIni.value = '';
+    if (elDtIncFim) elDtIncFim.value = '';
+    if (elDtJogIni) elDtJogIni.value = '';
+    if (elDtJogFim) elDtJogFim.value = '';
+
+    if (lblPdf) {
+        lblPdf.innerText = 'Nenhum arquivo anexado (Opcional)';
+        lblPdf.style.color = '#64748b';
+        lblPdf.style.fontWeight = '400';
+    }
+
+    // Desmarca todas as pílulas de categorias
+    document.querySelectorAll('#container-pills-categorias .pilula-check').forEach(p => {
+        p.classList.remove('ativa');
+        const ico = p.querySelector('.material-icons');
+        if (ico) ico.textContent = 'add_circle_outline';
+    });
+}
+
 async function zerarRankingSaaS() {
     if (!isGestorLogado || !raizBanco) {
         showToast("Apenas o gestor do clube pode zerar o ranking.", "error");
@@ -3031,12 +3374,13 @@ async function zerarRankingSaaS() {
         showToast("Analisando dados do ranking...", "info");
 
         // 1. Leitura fotográfica dos dados para auditoria prévia
-        const [snapPartidas, snapTabelas, snapConvites, snapReservas, snapJogadores] = await Promise.all([
+        const [snapPartidas, snapTabelas, snapConvites, snapReservas, snapJogadores, snapConfig] = await Promise.all([
             database.ref(`${raizBanco}/ranking/partidas`).once('value'),
             database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
             database.ref(`${raizBanco}/convites_ranking`).once('value'),
             database.ref(`${raizBanco}/reservas`).once('value'),
-            database.ref(`${raizBanco}/jogadores`).once('value')
+            database.ref(`${raizBanco}/jogadores`).once('value'),
+            database.ref(`${raizBanco}/config/ranking`).once('value')
         ]);
 
         const partidas = snapPartidas.val() || {};
@@ -3044,10 +3388,14 @@ async function zerarRankingSaaS() {
         const convites = snapConvites.val() || {};
         const reservas = snapReservas.val() || {};
         const jogadores = snapJogadores.val() || {};
+        const configRanking = snapConfig.val() || {};
+
+        const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
+        const temCalendario = !!configRanking.calendario;
 
         // 2. Contagem minuciosa dos registros atrelados ao ranking
         const totalPartidas = Object.keys(partidas).length;
-        
+
         let totalInscritos = 0;
         Object.values(tabelas).forEach(arr => {
             if (Array.isArray(arr)) totalInscritos += arr.length;
@@ -3060,8 +3408,15 @@ async function zerarRankingSaaS() {
             Object.keys(slots).forEach(slotKey => {
                 const r = slots[slotKey];
                 if (r && (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking')) {
-                    totalReservasRanking++;
+                    // Adiciona TODOS os slots para expurgar do Firebase
                     caminhosReservasExcluir.push(`reservas/${quadraKey}/${slotKey}`);
+
+                    // Ignora o segundo slot de reservas de 2h apenas para a contagem visual
+                    if (r.borda === undefined && parseInt(r.duracao) === 2) {
+                        return;
+                    }
+
+                    totalReservasRanking++;
                 }
             });
         });
@@ -3078,13 +3433,13 @@ async function zerarRankingSaaS() {
 
         const totalGeral = totalPartidas + totalInscritos + totalReservasRanking;
 
-        // 3. Trava de segurança: se o ranking já estiver completamente limpo
-        if (totalGeral === 0 && !snapConvites.exists()) {
+        // 3. Trava de segurança: impede execução se já estiver em estado zero na Fase 1
+        if (totalGeral === 0 && !snapConvites.exists() && faseAtual === 1 && !temCalendario) {
             showToast("O ranking já se encontra completamente zerado.", "info");
             return;
         }
 
-        // 4. Montagem do balanço minucioso e profissional para o Gestor
+        // 4. Montagem do balanço minucioso para o Gestor
         const promptHTML = `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
                 <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
@@ -3105,7 +3460,7 @@ async function zerarRankingSaaS() {
                         <li><b>${totalInscritos}</b> inscrição(ões) nas tabelas de categorias;</li>
                         <li><b>${totalReservasRanking}</b> agendamento(s) de ranking nas quadras;</li>
                         <li><b>${totalNotificacoes}</b> notificação(ões) nas caixas dos atletas;</li>
-                        <li>Lote de convites abertos da temporada atual.</li>
+                        <li>Contrato de calendário e inscrições ativas.</li>
                     </ul>
                 </div>
 
@@ -3120,6 +3475,12 @@ async function zerarRankingSaaS() {
                 if (navigator.vibrate) navigator.vibrate(50);
 
                 const updates = {};
+                // Reset absoluto do contrato e fase no config/ranking
+                updates['config/ranking/faseAtual'] = 1;
+                updates['config/ranking/calendario'] = null;
+                updates['config/ranking/inscritosConfirmados'] = null;
+
+                // Expurgo das tabelas operacionais
                 updates['ranking/partidas'] = null;
                 updates['ranking/tabelas'] = null;
                 updates['convites_ranking'] = null;
@@ -3127,13 +3488,20 @@ async function zerarRankingSaaS() {
                 caminhosReservasExcluir.forEach(path => { updates[path] = null; });
                 caminhosNotificacoesExcluir.forEach(path => { updates[path] = null; });
 
-                await database.ref(raizBanco).update(updates);
+                await database.ref(raizBanco).update(updates); 
 
-                showToast("Ranking zerado com sucesso! Módulo limpo para nova temporada.", "success");
+                // Limpa visualmente o formulário da Fase 1 no navegador
+                limparFormularioFase1SaaS();
 
-                if (typeof fecharModalConfig === 'function') {
-                    fecharModalConfig('modal-config-ranking');
+                showToast("Ranking zerado com sucesso! Módulo retornado à Fase 1.", "success");
+
+                if (typeof renderizarGestaoTemporadaSaaS === 'function') {
+                    renderizarGestaoTemporadaSaaS();
                 }
+                if (typeof atualizarBotaoRodapeRankingSaaS === 'function') {
+                    atualizarBotaoRodapeRankingSaaS();
+                }
+
             } catch (err) {
                 console.error("❌ [Ranking] Erro ao aplicar zeramento:", err);
                 showToast("Erro ao zerar o ranking no banco de dados.", "error");
@@ -3144,4 +3512,873 @@ async function zerarRankingSaaS() {
         console.error("❌ [Ranking] Erro ao ler balanço para zeramento:", err);
         showToast("Erro ao auditar dados do ranking no banco.", "error");
     }
+}
+
+/* ======================================================== */
+/* 10. ESTEIRA DINÂMICA DA TEMPORADA (MÁQUINA DE ESTADOS)   */
+/* ======================================================== */
+
+function renderizarGestaoTemporadaSaaS() {
+    const containerStepper = document.getElementById('stepper-gestor-container');
+    const cardResumo = document.getElementById('card-resumo-calendario-saas');
+    if (!containerStepper) return;
+
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const modelo = conf.modeloAtivo || "grupos";
+    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+    const cal = conf.calendario || {};
+
+    // 1. Rótulos das Fases por Modelo de Disputa
+    const rotulosPorModelo = {
+        grupos: ["1. Calendário", "2. Inscrições", "3. Chaves", "4. Mata-Mata", "5. Concluído"],
+        barragem: ["1. Calendário", "2. Inscrições", "3. Pontos Corridos", "4. Concluído"],
+        piramide: ["1. Calendário", "2. Inscrições", "3. Escada", "4. Concluído"]
+    };
+
+    const listaRotulos = rotulosPorModelo[modelo] || rotulosPorModelo.grupos;
+
+    // 2. Desenha o Stepper (INDICADOR 100% VISUAL - SEM ONCLICK)
+    let htmlStepper = '';
+    listaRotulos.forEach((rotulo, index) => {
+        const numFase = index + 1;
+        let classeNode = 'step-node';
+        let conteudoCirculo = numFase;
+
+        if (numFase < faseAtual) {
+            classeNode += ' concluido';
+            conteudoCirculo = '<i class="material-icons" style="font-size: 16px;">check</i>';
+        } else if (numFase === faseAtual) {
+            classeNode += ' ativo';
+        }
+
+        htmlStepper += `
+            <div class="${classeNode}" style="cursor: default;">
+                <div class="step-circle">${conteudoCirculo}</div>
+                <span class="step-label">${rotulo}</span>
+            </div>
+        `;
+    });
+    containerStepper.innerHTML = htmlStepper;
+
+    // 3. Mapeamento de Painéis: Pirâmide e Barragem usam a tela de Concluído (Painel 5) quando na Fase 4
+    const painelAlvo = (modelo !== "grupos" && faseAtual === 4) ? 5 : faseAtual;
+    document.querySelectorAll('#container-fases-gestor .fase-panel').forEach((panel, idx) => {
+        if ((idx + 1) === painelAlvo) {
+            panel.classList.add('ativa');
+        } else {
+            panel.classList.remove('ativa');
+        }
+    });
+
+    // 3.1 DINAMIZAÇÃO ESPECÍFICA DO PAINEL DA FASE 3
+    const panelFase3 = document.querySelectorAll('#container-fases-gestor .fase-panel')[2];
+    if (panelFase3) {
+        // Seleciona o aviso principal
+        const elBoxAviso = panelFase3.children[0];
+        
+        // Seleciona o botão interno do modelo de Grupos
+        const btnAcaoFase3 = panelFase3.querySelector('button[onclick*="encerrarFase3EAvancarSaaS"]');
+
+        if (elBoxAviso) {
+            if (modelo === 'barragem') {
+                elBoxAviso.innerHTML = `
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Disputa por Pontos Corridos (Barragem)</p>
+                    <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Atletas somam pontos a cada partida realizada na temporada.</span>
+                    <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Acompanhe a tabela do Leaderboard em tempo real e encerre ao fim do prazo.</span>
+                `;
+            } else if (modelo === 'piramide') {
+                elBoxAviso.innerHTML = `
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Escada de Desafios (Pirâmide)</p>
+                    <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Atletas realizam desafios diretos para trocar de posição e subir na tabela.</span>
+                    <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Acompanhe a movimentação em tempo real e encerre no prazo.</span>
+                `;
+            } else {
+                elBoxAviso.innerHTML = `
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Fase de Chaves (Grupos)</p>
+                    <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Grupos congelados no banco e agendamentos restritos aos adversários da mesma chave.</span>
+                    <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Acompanhe a classificação em tempo real e encerre ao fim das rodadas.</span>
+                `;
+            }
+        }
+
+        // Exibe o botão do meio APENAS no modelo Grupos (sem gambiarra de setAttribute)
+        // Garante que o botão central fique oculto, mantendo a ação concentrada no rodapé
+        if (btnAcaoFase3) {
+            btnAcaoFase3.style.display = 'none';
+        }
+    }
+
+    // 3.2 Oculta o botão duplicado de dentro do painel 5 se o botão fixo do rodapé já estiver ativo
+    const panelFase5 = document.getElementById('fase-panel-5');
+    if (panelFase5) {
+        const btnPainelAbrir = panelFase5.querySelector('button[onclick*="reiniciarEsteiraNovoTorneioSaaS"]');
+        if (btnPainelAbrir) {
+            btnPainelAbrir.style.display = 'none';
+        }
+    }
+
+    // 4. Preenche o Card de Resumo Fixo do Calendário (Exibido a partir da Fase 2)
+    if (cardResumo) {
+        if (faseAtual > 1 && cal.nomeTorneio) {
+            const fmtData = (str) => str ? str.split('-').reverse().join('/') : '--/--';
+            const dtInc = `${fmtData(cal.inicioInscricoes)} a ${fmtData(cal.fimInscricoes)}`;
+            const dtJog = `${fmtData(cal.inicioJogos)} a ${fmtData(cal.fimTorneio)}`;
+
+            const nomesModelosLegiveis = {
+                piramide: "Pirâmide",
+                barragem: "Barragem",
+                grupos: "Grupos"
+            };
+            const txtModeloExibicao = nomesModelosLegiveis[modelo] || "Oficial";
+
+            const elNomeTorneio = document.getElementById('lbl-resumo-torneio-nome');
+            if (elNomeTorneio) {
+                elNomeTorneio.innerHTML = `${cal.nomeTorneio} <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;">⚔️ Modelo: ${txtModeloExibicao}</span>`;
+            }
+
+            document.getElementById('lbl-resumo-torneio-insc').textContent = dtInc;
+            document.getElementById('lbl-resumo-torneio-jog').textContent = dtJog;
+
+            // 🛑 Oculta o botão Editar se o torneio já estiver concluído/homologado
+            const btnEditarResumo = cardResumo.querySelector('button[onclick*="editarCalendarioAtivoSaaS"]') || cardResumo.querySelector('.btn-editar');
+            if (btnEditarResumo) {
+                const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && faseAtual >= 5);
+                btnEditarResumo.style.setProperty('display', torneioConcluido ? 'none' : 'inline-flex', 'important');
+            }
+
+            cardResumo.style.display = 'flex';
+        } else {
+            cardResumo.style.display = 'none';
+        }
+    }
+
+    // 5. ATUALIZA CONTADOR DE INSCRITOS, RÓTULO DINÂMICO E BOTÕES DA FASE 2
+    const inscritos = conf.inscritosConfirmados || {};
+    const qtdInscritos = Object.keys(inscritos).length;
+
+    const lblBadge = document.getElementById('lbl-qtd-inscritos-badge');
+    const btnInscritos = document.getElementById('btn-saas-fase2-inscritos');
+    const btnEncerrar = document.getElementById('btn-saas-fase2-encerrar');
+    const btnConvites = document.getElementById('btn-saas-fase2-convites');
+
+    if (lblBadge) lblBadge.textContent = qtdInscritos;
+    if (btnInscritos) btnInscritos.disabled = (qtdInscritos === 0);
+    if (btnEncerrar) btnEncerrar.disabled = (qtdInscritos === 0); 
+
+    if (btnConvites) {
+        if (qtdInscritos > 0) {
+            btnConvites.innerHTML = '<i class="material-icons">mark_email_read</i> Repescagem / Enviar a Novos Sócios';
+        } else {
+            btnConvites.innerHTML = '<i class="material-icons">send</i> Disparar Convites aos Sócios';
+        }
+    }
+
+    // 6. Exibe o Botão Zerar/Reiniciar APENAS nas Fases em Andamento (Fases 2 e 3)
+    const btnZerar = document.querySelector('#modal-config-ranking .btn-ranking-reset');
+    if (btnZerar && btnZerar.parentElement) {
+        const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && faseAtual >= 5);
+        const exibirZerar = (faseAtual > 1 && !torneioConcluido);
+        btnZerar.parentElement.style.display = exibirZerar ? 'block' : 'none';
+    }
+}
+
+/* ======================================================== */
+/* 10.1 GRAVAÇÃO E EDIÇÃO DO CALENDÁRIO (FASE 1)            */
+/* ======================================================== */
+
+/**
+ * Atualiza o rótulo visual do arquivo PDF selecionado
+ */
+function atualizarStatusPdfSaaS(input) {
+    const lbl = document.getElementById('pdf-file-name');
+    if (!lbl) return;
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        lbl.innerText = `📄 ${file.name} (${(file.size / 1024).toFixed(0)} KB - Pronto para upload)`;
+        lbl.style.color = '#15803d';
+        lbl.style.fontWeight = '700';
+    } else {
+        lbl.innerText = 'Nenhum arquivo anexado (Opcional)';
+        lbl.style.color = '#64748b';
+        lbl.style.fontWeight = '400';
+    }
+}
+
+/**
+ * Salva o contrato mestre da edição revalidando todos os campos obrigatórios (*) e avança para a Fase 2
+ */
+function salvarCalendarioEAbrirInscricoesSaaS() {
+    if (!isGestorLogado || !raizBanco) {
+        showToast("Apenas o gestor pode alterar o calendário do torneio.", "warning");
+        return;
+    }
+
+    const nome = document.getElementById('inp-torneio-nome').value.trim();
+    const modeloDisputa = document.getElementById('inp-torneio-modelo').value;
+    const vagasRaw = document.getElementById('inp-torneio-vagas').value.trim();
+
+    // 1. Captura as pílulas de categorias/gêneros selecionadas
+    const pillsAtivas = document.querySelectorAll('#container-pills-categorias .pilula-check.ativa');
+    const categoriasHabilitadas = [];
+    pillsAtivas.forEach(p => {
+        const cat = p.getAttribute('data-cat');
+        if (cat) categoriasHabilitadas.push(cat);
+    });
+
+    const dtIncIni = document.getElementById('inp-torneio-dt-inc-ini').value;
+    const dtIncFim = document.getElementById('inp-torneio-dt-inc-fim').value;
+    const dtJogIni = document.getElementById('inp-torneio-dt-jog-ini').value;
+    const dtJogFim = document.getElementById('inp-torneio-dt-jog-fim').value;
+
+    // 2. Validações Estritas de Campos Obrigatórios (*)
+    if (!nome) {
+        showToast("Preencha o Nome Oficial do Torneio.", "warning");
+        return;
+    }
+
+    if (!modeloDisputa) {
+        showToast("Selecione o Modelo de Disputa da Edição.", "warning");
+        return;
+    }
+
+    if (vagasRaw === "") {
+        showToast("Informe o limite de vagas (digite 0 para ilimitado).", "warning");
+        return;
+    }
+
+    const limiteVagas = parseInt(vagasRaw, 10);
+    if (isNaN(limiteVagas) || limiteVagas < 0) {
+        showToast("Informe um número de vagas válido (0 para ilimitado).", "warning");
+        return;
+    }
+
+    if (categoriasHabilitadas.length === 0) {
+        showToast("Selecione ao menos uma Classe ou Gênero nas pílulas habilitadas.", "warning");
+        return;
+    }
+
+    if (!dtIncIni || !dtIncFim || !dtJogIni || !dtJogFim) {
+        showToast("Preencha todas as 4 datas oficiais do calendário.", "warning");
+        return;
+    }
+
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    // 3. Monta o contrato para gravação
+    const payloadCalendario = {
+        nomeTorneio: nome,
+        modeloDisputa: modeloDisputa,
+        limiteVagas: limiteVagas, // 0 = Ilimitado
+        categoriasHabilitadas: categoriasHabilitadas,
+        inicioInscricoes: dtIncIni,
+        fimInscricoes: dtIncFim,
+        inicioJogos: dtJogIni,
+        fimTorneio: dtJogFim
+    };
+
+    const confAnterior = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario) || {};
+    if (confAnterior.regulamentoUrl) {
+        payloadCalendario.regulamentoUrl = confAnterior.regulamentoUrl;
+    }
+
+    // 4. Se estiver na Fase 1, força o avanço para a Fase 2 (Inscrições). Em edições posteriores, preserva a fase ativa.
+    const confGlobal = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const faseAtualBanco = parseInt(confGlobal.faseAtual, 10) || 1;
+    const novaFase = (faseAtualBanco === 1) ? 2 : faseAtualBanco;
+
+    database.ref(`${raizBanco}/config/ranking`).update({
+        modeloAtivo: modeloDisputa,
+        calendario: payloadCalendario,
+        faseAtual: novaFase
+    })
+    .then(() => {
+        showToast("Contrato da edição gravado com sucesso! Inscrições abertas.", "success");
+
+        if (typeof renderizarGestaoTemporadaSaaS === 'function') {
+            renderizarGestaoTemporadaSaaS();
+        }
+
+        // 5. Tentativa de upload do PDF em segundo plano (sem travar a esteira)
+        const inputPdf = document.getElementById('inp-pdf-file');
+        if (inputPdf && inputPdf.files && inputPdf.files[0]) {
+            const file = inputPdf.files[0];
+            const pathStorage = `Clubes/${clubeAtivoId || 'SaaS'}/torneios/regulamento_${Date.now()}.pdf`;
+
+            firebase.storage().ref(pathStorage).put(file)
+                .then(snapshot => snapshot.ref.getDownloadURL())
+                .then(downloadURL => {
+                    database.ref(`${raizBanco}/config/ranking/calendario/regulamentoUrl`).set(downloadURL);
+                    showToast("Regulamento em PDF anexado com sucesso!", "info");
+                })
+                .catch(err => {
+                    console.warn("⚠️ Upload do PDF barrado por CORS em localhost. O contrato do torneio foi mantido no banco:", err);
+                });
+        }
+    })
+    .catch(err => {
+        console.error("❌ [Torneios] Erro ao salvar calendário:", err);
+        showToast("Erro ao gravar calendário no Firebase.", "error");
+    });
+}
+
+/**
+ * Preenche o formulário da Fase 1 com os dados do contrato ativo para edição
+ */
+function editarCalendarioAtivoSaaS() {
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+
+    if (cal.nomeTorneio) document.getElementById('inp-torneio-nome').value = cal.nomeTorneio;
+    if (cal.modeloDisputa) document.getElementById('inp-torneio-modelo').value = cal.modeloDisputa;
+    if (cal.limiteVagas) document.getElementById('inp-torneio-vagas').value = cal.limiteVagas;
+
+    // Sincroniza as pílulas ativas de categorias
+    if (Array.isArray(cal.categoriasHabilitadas)) {
+        document.querySelectorAll('#container-pills-categorias .pilula-check').forEach(p => {
+            const cat = p.getAttribute('data-cat');
+            if (cal.categoriasHabilitadas.includes(cat)) {
+                p.classList.add('ativa');
+                const ico = p.querySelector('.material-icons');
+                if (ico) ico.textContent = 'check_circle';
+            } else {
+                p.classList.remove('ativa');
+                const ico = p.querySelector('.material-icons');
+                if (ico) ico.textContent = 'add_circle_outline';
+            }
+        });
+    }
+
+    if (cal.inicioInscricoes) document.getElementById('inp-torneio-dt-inc-ini').value = cal.inicioInscricoes;
+    if (cal.fimInscricoes) document.getElementById('inp-torneio-dt-inc-fim').value = cal.fimInscricoes;
+    if (cal.inicioJogos) document.getElementById('inp-torneio-dt-jog-ini').value = cal.inicioJogos;
+    if (cal.fimTorneio) document.getElementById('inp-torneio-dt-jog-fim').value = cal.fimTorneio;
+
+    const lblPdf = document.getElementById('pdf-file-name');
+    if (lblPdf) {
+        if (cal.regulamentoUrl) {
+            lblPdf.innerText = "📄 Regulamento em PDF anexado";
+            lblPdf.style.color = "#15803d";
+            lblPdf.style.fontWeight = "700";
+        } else {
+            lblPdf.innerText = "Nenhum arquivo anexado (Opcional)";
+            lblPdf.style.color = "#64748b";
+            lblPdf.style.fontWeight = "400";
+        }
+    }
+
+    // Alterna a visualização para o formulário da Fase 1 sem resetar o torneio
+    document.querySelectorAll('#container-fases-gestor .fase-panel').forEach((panel, idx) => {
+        if (idx === 0) panel.classList.add('ativa');
+        else panel.classList.remove('ativa');
+    });
+
+    // Sincroniza o botão do rodapé para o estado de edição da interface local
+    if (typeof atualizarBotaoRodapeRankingSaaS === 'function') {
+        atualizarBotaoRodapeRankingSaaS();
+    }
+}
+
+/* ======================================================== */
+/* 10.2 INSCRIÇÕES E CONFERÊNCIA DE PIX (FASE 2)            */
+/* ======================================================== */
+
+/* ======================================================== */
+/* 👥 POPULAR FILTROS E RENDERIZAR LISTA DE INSCRITOS (SAAS)  */
+/* ======================================================== */
+
+function popularFiltrosInscritosSaaS() {
+    const selectClasse = document.getElementById('select-filtro-inscritos-classe');
+    const selectGenero = document.getElementById('select-filtro-inscritos-genero');
+
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+    const catsHabilitadas = cal.categoriasHabilitadas || ['CLASSE_A', 'CLASSE_B', 'CLASSE_C'];
+    const inscritos = conf.inscritosConfirmados || {};
+    const ids = Object.keys(inscritos);
+
+    // Contagem dinâmica por Classe e por Gênero
+    const contagemClasse = { A: 0, B: 0, C: 0 };
+    const contagemGenero = { MASCULINO: 0, FEMININO: 0 };
+
+    ids.forEach(idAtleta => {
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+        const classeAtleta = (atleta.classe || '').toUpperCase().replace('CLASSE_', '').trim();
+        const generoAtleta = (atleta.genero || '').toUpperCase().trim();
+
+        if (contagemClasse[classeAtleta] !== undefined) contagemClasse[classeAtleta]++;
+        if (contagemGenero[generoAtleta] !== undefined) contagemGenero[generoAtleta]++;
+    });
+
+    if (selectClasse) {
+        const valAnterior = selectClasse.value || 'TODAS';
+        selectClasse.innerHTML = `<option value="TODAS">Todas as Classes (${ids.length})</option>`;
+        const classesUnicas = new Set();
+
+        catsHabilitadas.forEach(c => {
+            const cls = c.replace('CLASSE_', '').trim();
+            if (['A', 'B', 'C'].includes(cls)) classesUnicas.add(cls);
+        });
+
+        if (classesUnicas.size === 0) {
+            ['A', 'B', 'C'].forEach(cls => classesUnicas.add(cls));
+        }
+
+        classesUnicas.forEach(cls => {
+            const qtd = contagemClasse[cls] || 0;
+            selectClasse.innerHTML += `<option value="${cls}">Classe ${cls} (${qtd})</option>`;
+        });
+        selectClasse.value = valAnterior;
+    }
+
+    if (selectGenero) {
+        const valAnteriorG = selectGenero.value || 'TODOS';
+        selectGenero.innerHTML = `
+            <option value="TODOS">Todos os Gêneros (${ids.length})</option>
+            <option value="MASCULINO">Masculino (${contagemGenero.MASCULINO || 0})</option>
+            <option value="FEMININO">Feminino (${contagemGenero.FEMININO || 0})</option>
+        `;
+        selectGenero.value = valAnteriorG;
+    }
+}
+
+function abrirModalGerenciarInscritosSaaS() {
+    popularFiltrosInscritosSaaS();
+    renderizarListaInscritosPixSaaS();
+    if (typeof abrirModalConfig === 'function') {
+        abrirModalConfig('modal-gerenciar-inscritos');
+    }
+}
+
+function renderizarListaInscritosPixSaaS() {
+    const container = document.getElementById('container-lista-inscritos-pix');
+    const lblBadge = document.getElementById('lbl-qtd-inscritos-badge');
+    const btnEncerrar = document.getElementById('btn-saas-fase2-encerrar');
+    const btnInscritos = document.getElementById('btn-saas-fase2-inscritos');
+
+    const selClasse = document.getElementById('select-filtro-inscritos-classe');
+    const selGenero = document.getElementById('select-filtro-inscritos-genero');
+
+    const filtroClasse = selClasse ? selClasse.value : 'TODAS';
+    const filtroGenero = selGenero ? selGenero.value : 'TODOS';
+
+    if (!container) return;
+
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const inscritos = conf.inscritosConfirmados || {};
+    const ids = Object.keys(inscritos);
+
+    if (lblBadge) lblBadge.textContent = ids.length;
+    if (btnInscritos) btnInscritos.disabled = (ids.length === 0);
+    if (btnEncerrar) btnEncerrar.disabled = (ids.length === 0);
+
+    if (ids.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 20px 0; font-size: 13px;">Nenhum inscrito confirmado até o momento.</p>';
+        return;
+    }
+
+    // Filtra a lista com base na classe e gênero do cadastro do atleta na memória
+    const idsFiltrados = ids.filter(idAtleta => {
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+        const classeAtleta = (atleta.classe || '').toUpperCase().replace('CLASSE_', '').trim();
+        const generoAtleta = (atleta.genero || '').toUpperCase().trim();
+
+        if (filtroClasse !== 'TODAS' && classeAtleta !== filtroClasse) return false;
+        if (filtroGenero !== 'TODOS' && generoAtleta !== filtroGenero) return false;
+
+        return true;
+    });
+
+    if (idsFiltrados.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 20px 0; font-size: 13px;">Nenhum inscrito encontrado com os filtros selecionados.</p>';
+        return;
+    }
+
+    let html = '';
+    idsFiltrados.forEach((idAtleta, idx) => {
+        const item = inscritos[idAtleta];
+        const pago = item.pixPago === true;
+        const nomeAtleta = item.nome || "Atleta";
+        const dataAceiteStr = item.dataAceite ? new Date(item.dataAceite).toLocaleDateString('pt-BR') : '';
+
+        html += `
+            <div class="item-atleta-pix">
+                <div>
+                    <span style="font-size: 13.5px; font-weight: 700; color: #1e293b;">${idx + 1}. ${nomeAtleta}</span>
+                    <span style="display: block; font-size: 11px; color: #64748b;">Inscrito em ${dataAceiteStr || 'Data N/D'}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="badge-pix ${pago ? 'pago' : 'pendente'}" onclick="togglePixStatusSaaS('${idAtleta}')">
+                        ${pago ? '🟢 PIX Confirmado' : '🟡 PIX Pendente'}
+                    </span>
+                    <button type="button" style="background:none; border:none; color:#94a3b8; cursor:pointer;" onclick="removerInscritoTorneioSaaS('${idAtleta}')" title="Remover">
+                        <i class="material-icons" style="font-size: 16px;">close</i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function togglePixStatusSaaS(idAtleta) {
+    if (!isGestorLogado || !raizBanco) return;
+
+    const pathPix = `${raizBanco}/config/ranking/inscritosConfirmados/${idAtleta}/pixPago`;
+    database.ref(pathPix).once('value').then(snap => {
+        const atual = snap.val() === true;
+        return database.ref(pathPix).set(!atual);
+    }).then(() => {
+        showToast("Status de pagamento atualizado!", "info");
+        renderizarListaInscritosPixSaaS();
+    });
+}
+
+function removerInscritoTorneioSaaS(idAtleta) {
+    if (!isGestorLogado || !raizBanco) return;
+
+    showPrompt("Remover Inscrito", "Deseja remover este atleta da lista de inscritos?", () => {
+        database.ref(`${raizBanco}/config/ranking/inscritosConfirmados/${idAtleta}`).remove().then(() => {
+            showToast("Atleta removido da lista.", "success");
+            renderizarListaInscritosPixSaaS();
+        });
+    });
+}
+
+function inscreverAtletaManualmenteSaaS() {
+    showToast("Abertura do seletor manual em desenvolvimento.", "info");
+}
+
+
+function encerrarInscricoesECriarChavesSaaS() {
+    if (!isGestorLogado || !raizBanco) {
+        showToast("Apenas o gestor pode encerrar as inscrições.", "error");
+        return;
+    }
+
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+    const inscritos = conf.inscritosConfirmados || {};
+    const qtdInscritos = Object.keys(inscritos).length;
+
+    if (qtdInscritos === 0) {
+        showToast("Não há inscritos confirmados para encerrar a fase.", "warning");
+        return;
+    }
+
+    // 1. Comparação de Datas (Hoje vs. Deadline)
+    const hojeStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const fimInscricoesStr = cal.fimInscricoes || "";
+
+    const fmtData = (str) => str ? str.split('-').reverse().join('/') : '--/--';
+    const dataFimFormatada = fmtData(fimInscricoesStr);
+
+    const executarEncerramento = () => {
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        const updates = {};
+        updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
+
+        // 🏆 CONSTRUÇÃO DAS TABELAS DO TORNEIO (ranking/tabelas) BASEADAS NO RANKING GERAL
+        const modoGenero = conf.divisaoGenero || 'separado';
+        const inscritosPorCategoria = {};
+
+        // 1. Agrupa os inscritos confirmados por categoria (Classe + Gênero)
+        Object.keys(inscritos).forEach(idAtleta => {
+            const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+            const classe = (atleta.classe || 'B').toUpperCase();
+            let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
+            if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+            const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+
+            if (!inscritosPorCategoria[chaveTabela]) {
+                inscritosPorCategoria[chaveTabela] = [];
+            }
+            inscritosPorCategoria[chaveTabela].push(idAtleta);
+        });
+
+        // 2. Para cada categoria, ordena os atletas usando a Fila Mestre (ranking_geral)
+        Object.keys(inscritosPorCategoria).forEach(chaveTab => {
+            const idsInscritosCat = inscritosPorCategoria[chaveTab];
+            const ordemMestre = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal[chaveTab]) 
+                ? rankingGeralGlobal[chaveTab] 
+                : [];
+
+            idsInscritosCat.sort((a, b) => {
+                let idxA = ordemMestre.indexOf(a);
+                let idxB = ordemMestre.indexOf(b);
+                if (idxA === -1) idxA = 9999;
+                if (idxB === -1) idxB = 9999;
+
+                if (idxA !== idxB) return idxA - idxB;
+
+                // Desempate secundário pela data de aceite do convite
+                const dataA = inscritos[a]?.dataAceite || 0;
+                const dataB = inscritos[b]?.dataAceite || 0;
+                return dataA - dataB;
+            });
+
+            // Grava na tabela do Torneio Atual sem alterar a Fila Mestre
+            updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
+        });
+
+        // Disparo automático de notificação no padrão mestre para todos os inscritos
+        const nomeTorneio = cal.nomeTorneio || "Torneio";
+        const payloadNotificacao = {
+            categoria: "inicio_temporada",
+            titulo: "A temporada começou!",
+            detalhe: `Tabela do ${nomeTorneio} liberada.\nAgende sua partida de ranking no app.`,
+            timestamp: Date.now()
+        };
+
+        Object.keys(inscritos).forEach(idAtleta => {
+            const keyNotif = database.ref().push().key;
+            updates[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
+        });
+
+        database.ref().update(updates)
+        .then(() => {
+            showToast("Inscrições encerradas! Notificações enviadas e Fase 3 iniciada.", "success");
+            if (typeof renderizarGestaoTemporadaSaaS === "function") {
+                renderizarGestaoTemporadaSaaS();
+            }
+        })
+        .catch(err => {
+            console.error("❌ Erro ao encerrar inscrições:", err);
+            showToast("Erro ao gravar dados no Firebase.", "error");
+        });
+    };
+
+    // 2. Alerta de Antecipação Inteligente se estiver antes do Deadline
+    if (fimInscricoesStr && hojeStr < fimInscricoesStr) {
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <p style="margin: 0 0 10px 0;">
+                    ⚠️ <b>Atenção:</b> O prazo oficial de inscrições vai até <b>${dataFimFormatada}</b>.
+                </p>
+                <p style="margin: 0; font-size: 13px; color: #64748b;">
+                    Tem certeza que deseja encerrar antecipadamente com <b>${qtdInscritos} inscrito(s)</b> e congelar as chaves agora?
+                </p>
+            </div>
+        `;
+        showPrompt("Encerrar Inscrições Antecipadamente", htmlPrompt, () => {
+            executarEncerramento();
+        });
+    } else {
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <p style="margin: 0;">
+                    Deseja encerrar as inscrições com <b>${qtdInscritos} atleta(s) confirmado(s)</b> e avançar para a próxima fase?
+                </p>
+            </div>
+        `;
+        showPrompt("Encerrar Inscrições e Congelar Grupos", htmlPrompt, () => {
+            executarEncerramento();
+        });
+    }
+}
+
+/* ======================================================== */
+/* 10.3 AÇÕES DA FASE DE CHAVES E PONTOS (FASE 3)           */
+/* ======================================================== */
+
+function exportarLeaderboardPDFSaaS() {
+    const sheet = document.getElementById('sheet-leaderboard-ranking');
+    if (sheet && sheet.style.display !== 'flex') {
+        abrirLeaderboardSaaS();
+    }
+    
+    setTimeout(() => {
+        if (typeof window.print === 'function') {
+            window.print();
+        } else {
+            showToast("A impressão em PDF não é suportada neste navegador.", "warning");
+        }
+    }, 300);
+}
+
+async function encerrarFase3EAvancarSaaS() {
+    if (!isGestorLogado || !raizBanco) {
+        showToast("Apenas o gestor pode encerrar esta fase.", "error");
+        return;
+    }
+
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+    const modelo = conf.modeloAtivo || "grupos";
+    const faseAtual = parseInt(conf.faseAtual, 10) || 3;
+
+    // 1. Comparação de Datas (Hoje vs. Fim do Torneio)
+    const hojeStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const fimTorneioStr = cal.fimTorneio || "";
+
+    const fmtData = (str) => str ? str.split('-').reverse().join('/') : '--/--';
+    const dataFimFormatada = fmtData(fimTorneioStr);
+
+    const titulosPrompt = {
+        piramide: "Encerrar Pirâmide e Homologar Posições",
+        barragem: "Encerrar Barragem e Consolidar Ranking",
+        grupos: faseAtual === 3 ? "Avançar para o Mata-Mata" : "Encerrar Torneio e Homologar Campeões"
+    };
+
+    const msgsPrompt = {
+        piramide: "Deseja encerrar o ciclo de desafios da Pirâmide e homologar as posições finais dos atletas no Ranking Geral?",
+        barragem: "Deseja encerrar a disputa por pontos corridos e atualizar a classificação no Ranking Geral?",
+        grupos: faseAtual === 3 
+            ? "Deseja consolidar a classificação atual das chaves e avançar para a <b>Fase 4 (Mata-Mata / Quadro Eliminatório)</b>?" 
+            : "Deseja encerrar a fase final e homologar a classificação no Ranking Geral?"
+    };
+
+    const executarEncerramentoFase3 = async () => {
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        const novaFase = (modelo === "grupos" && faseAtual === 3) ? 4 : (modelo === "grupos" ? 5 : 4);
+        const eHomologacaoFinal = (novaFase === 5 || (modelo !== "grupos" && novaFase === 4));
+
+        try {
+            const updates = {};
+            updates[`${raizBanco}/config/ranking/faseAtual`] = novaFase;
+
+            // 🏆 SE FOR A CONCLUSÃO FINAL DO TORNEIO: ALIMENTA/ATUALIZA O RANKING GERAL
+            if (eHomologacaoFinal) {
+                const snapTabelasTorneio = await database.ref(`${raizBanco}/ranking/tabelas`).once('value');
+                const snapRankingGeral = await database.ref(`${raizBanco}/ranking/ranking_geral`).once('value');
+
+                const tabelasTorneio = snapTabelasTorneio.exists() ? snapTabelasTorneio.val() : {};
+                const rankingGeralAtual = snapRankingGeral.exists() ? snapRankingGeral.val() : {};
+
+                Object.keys(tabelasTorneio).forEach(chaveCat => {
+                    const classificacaoTorneio = tabelasTorneio[chaveCat] || [];
+                    if (!Array.isArray(classificacaoTorneio) || classificacaoTorneio.length === 0) return;
+
+                    let mestreCat = Array.isArray(rankingGeralAtual[chaveCat]) ? [...rankingGeralAtual[chaveCat]] : [];
+
+                    if (mestreCat.length === 0) {
+                        // 1. PRIMEIRO TORNEIO DO CLUBE: O Ranking Geral nasce com o resultado do torneio
+                        mestreCat = [...classificacaoTorneio];
+                    } else {
+                        // 2. TORNEIOS SEGUINTES: Atualiza os participantes no topo e mantêm os demais abaixo
+                        const participantesNoTorneio = new Set(classificacaoTorneio);
+                        mestreCat = mestreCat.filter(id => !participantesNoTorneio.has(id));
+
+                        mestreCat = [...classificacaoTorneio, ...mestreCat];
+                    }
+
+                    updates[`${raizBanco}/ranking/ranking_geral/${chaveCat}`] = mestreCat;
+                });
+            }
+
+            await database.ref().update(updates);
+
+            const msgsSucesso = {
+                piramide: "Pirâmide encerrada e homologada com sucesso no Ranking Geral!",
+                barragem: "Barragem encerrada e Ranking Geral atualizado!",
+                grupos: novaFase === 4 ? "Fase de chaves encerrada! Avançando para o Mata-Mata." : "Torneio concluído e homologado no Ranking Geral!"
+            };
+
+            showToast(msgsSucesso[modelo] || "Fase encerrada com sucesso!", "success");
+
+            if (typeof renderizarGestaoTemporadaSaaS === "function") {
+                renderizarGestaoTemporadaSaaS();
+            }
+        } catch (err) {
+            console.error("❌ Erro ao avançar de fase:", err);
+            showToast("Erro ao gravar dados no Firebase.", "error");
+        }
+    };
+
+    // 2. Alerta de Antecipação se estiver antes do Término Oficial
+    if (fimTorneioStr && hojeStr < fimTorneioStr) {
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <p style="margin: 0 0 10px 0;">
+                    ⚠️ <b>Atenção:</b> O término oficial do torneio está previsto para <b>${dataFimFormatada}</b>.
+                </p>
+                <p style="margin: 0; font-size: 13px; color: #64748b;">
+                    Tem certeza que deseja encerrar a disputa antecipadamente e consolidar os resultados agora?
+                </p>
+            </div>
+        `;
+        showPrompt("Encerrar Torneio Antecipadamente", htmlPrompt, () => {
+            executarEncerramentoFase3();
+        });
+    } else {
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <p style="margin: 0;">
+                    ${msgsPrompt[modelo] || msgsPrompt.grupos}
+                </p>
+            </div>
+        `;
+        showPrompt(titulosPrompt[modelo] || "Encerrar Fase", htmlPrompt, () => {
+            executarEncerramentoFase3();
+        });
+    }
+}
+
+
+/* ======================================================== */
+/* 10.4 AÇÕES DA FASE CONCLUÍDA E HOMOLOGAÇÃO (FASE 4)      */
+/* ======================================================== */
+
+/**
+ * Abre a visualização da classificação / hall de campeões da temporada homologada
+ */
+function abrirHallDeCampeoesSaaS() {
+    if (typeof abrirLeaderboardSaaS === 'function') {
+        abrirLeaderboardSaaS();
+    } else {
+        showToast("Exibindo classificação final da temporada.", "info");
+    }
+}
+
+/**
+ * Reinicia a esteira operacional do Ranking voltando para a Fase 1 (Calendário)
+ */
+/**
+ * Reinicia a esteira operacional do Ranking voltando para a Fase 1 (Calendário)
+ */
+function reiniciarEsteiraNovoTorneioSaaS() {
+    if (!isGestorLogado || !raizBanco) {
+        showToast("Apenas o gestor pode iniciar uma nova temporada.", "error"); 
+        return;
+    }
+
+    const htmlPrompt = `
+        <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+            <p style="margin: 0 0 10px 0;">
+                🚀 <b>Abrir Novo Torneio / Nova Temporada</b>
+            </p>
+            <p style="margin: 0; font-size: 13px; color: #64748b;">
+                Deseja reiniciar a esteira de gestão e voltar para a <b>Fase 1 (Calendário)</b> para configurar uma nova edição do torneio?
+            </p>
+        </div>
+    `;
+
+    showPrompt("Abrir Nova Temporada", htmlPrompt, () => {
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        // Atualiza a fase para 1 e expurga inscritos e convites do torneio anterior
+        const updates = {};
+        updates[`${raizBanco}/config/ranking/faseAtual`] = 1;
+        updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
+        updates[`${raizBanco}/convites_ranking`] = null;
+
+        database.ref().update(updates)
+        .then(() => {
+            showToast("Esteira reiniciada! Configure o calendário da nova edição.", "success");
+            if (typeof renderizarGestaoTemporadaSaaS === "function") {
+                renderizarGestaoTemporadaSaaS();
+            }
+            if (typeof atualizarBotaoRodapeRankingSaaS === "function") {
+                atualizarBotaoRodapeRankingSaaS();
+            }
+        })
+        .catch(err => {
+            console.error("❌ Erro ao reiniciar esteira:", err);
+            showToast("Erro ao atualizar dados no Firebase.", "error");
+        });
+    });
 }

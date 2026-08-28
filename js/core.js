@@ -51,6 +51,7 @@ let jogadoresGlobal = {};       // 🔥 DECLARAÇÃO GARANTIDA: Banco de dados d
 let jogadoresGlobalAlterado = false; // 🔥 INTERRUPTOR INTELIGENTE: Controla se houve mudanças online no Firebase
 
 let rankingTabelasGlobal = {}; // Espelho local das tabelas do ranking na memória RAM
+let rankingGeralGlobal = {}; // Espelho local do Ranking Geral (Fila Mestre) na memória RAM
 
 let configQuadrasGlobal = {};    // Espelho local em tempo real da Infraestrutura e Status das Quadras
 
@@ -444,7 +445,7 @@ function navegarApp(idDestino) {
                 iniciarRadarDeConvitesSaaS(true);
             }
             if (typeof iniciarRadarSumulasPendentesSaaS === 'function') {
-                iniciarRadarSumulasPendentesSaaS(true);
+                iniciarRadarSumulasPendentesSaaS(true); 
             }
             // ⚖️ DISPARO DO ÁRBITRO
             if (typeof iniciarRadarArbitroContestacoesSaaS === 'function') {
@@ -667,6 +668,13 @@ function iniciarOuvinteMestreSaaS() {
         }
     });
 	
+	// --- 4.7. OUVINTE MESTRE DO RANKING GERAL ---
+    console.log("🏆 [Core] Sincronizando Ranking Geral em tempo real...");
+    database.ref(`${raizBanco}/ranking/ranking_geral`).on('value', (snapshot) => {
+        rankingGeralGlobal = snapshot.val() || {};
+        console.log("✓ [Core] Ranking Geral atualizado na memória RAM.");
+    });
+	
 	// --- 5. OUVINTE MESTRE DE INFRAESTRUTURA E STATUS DE QUADRAS ---
     console.log("🏟️ [Core] Sincronizando infraestrutura e status das quadras em tempo real...");
     database.ref(`${raizBanco}/config/Quadras`).on('value', (snapshot) => {
@@ -789,7 +797,7 @@ function iniciarOuvinteMestreSaaS() {
 		
 		// 🔔 GATILHO INJETADO: Radar Silencioso do Convite do Ranking (Sininho)
         if (typeof iniciarRadarConviteRankingSilenciosoSaaS === 'function') {
-            iniciarRadarConviteRankingSilenciosoSaaS();
+            iniciarRadarConviteRankingSilenciosoSaaS();  
         }
 		
 		// ====================================================================
@@ -801,6 +809,24 @@ function iniciarOuvinteMestreSaaS() {
                                     configRegrasGlobal.ranking && 
                                     configRegrasGlobal.ranking.ativo === true);
             elLegendaRanking.style.display = isRankingAtivo ? 'inline-flex' : 'none';
+        }
+		
+        // ====================================================================
+        // 🏆 REATIVIDADE DA TEMPORADA DO RANKING (Esteira & Botão do Rodapé)
+        // ====================================================================
+        if (typeof renderizarGestaoTemporadaSaaS === "function") {
+            renderizarGestaoTemporadaSaaS();
+        }
+        if (typeof atualizarBotaoRodapeRankingSaaS === "function") {
+            atualizarBotaoRodapeRankingSaaS();
+        }
+
+        // ====================================================================
+        // 👥 REATIVIDADE EM TEMPO REAL: Modal de Gerenciamento de Inscritos & PIX
+        // ====================================================================
+        const modalInscritos = document.getElementById('modal-gerenciar-inscritos');
+        if (modalInscritos && modalInscritos.style.display === 'flex' && typeof renderizarListaInscritosPixSaaS === 'function') {
+            renderizarListaInscritosPixSaaS();
         }
     });  
 

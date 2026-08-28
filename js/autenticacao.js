@@ -687,12 +687,50 @@ function fecharModalNotificacoes(e) {
     }
     const modal = document.getElementById('modal-central-notificacoes');
     if (modal) {
-        modal.style.display = 'none';
+        modal.style.display = 'none'; 
     }
 }
 
 
 // B. Renderiza as Notificações dentro da Central
+/* ======================================================== */
+/* 🛠️ GERADOR UNIVERSAL DE CARDS DE NOTIFICAÇÃO (TEMPLATE)  */
+/* ======================================================== */
+function gerarCardNotificacaoHTML(config) {
+    const {
+        classeCard = 'ranking',
+        tagTexto = '🔔 Notificação',
+        tagClasse = 'tag-gold',
+        tagEstiloCustom = '',
+        tempoTexto = 'Recente',
+        titulo = '',
+        detalhe = '',
+        botoesHTML = null,
+        estiloCard = ''
+    } = config;
+
+    const detalheFormatado = (detalhe || '').replace(/\n/g, '<br>');
+    const attrEstiloCard = estiloCard ? `style="${estiloCard}"` : '';
+    const attrEstiloTag = tagEstiloCustom ? `style="${tagEstiloCustom}"` : '';
+
+    return `
+        <div class="card-notif-item ${classeCard}" ${attrEstiloCard}>
+            <div class="notif-header-linha">
+                <span class="notif-tag ${tagClasse}" ${attrEstiloTag}>${tagTexto}</span>
+                <span class="notif-tempo">${tempoTexto}</span>
+            </div>
+            ${titulo ? `<h4 class="notif-titulo" style="text-align: center; font-weight: 800; color: #1e293b; margin: 8px 0 6px 0;">${titulo}</h4>` : ''}
+            <div class="notif-desc" style="text-align: center; line-height: 1.5;">
+                ${detalheFormatado}
+            </div>
+            ${botoesHTML ? `<div class="btn-grupo-notif" style="margin-top: 12px;">${botoesHTML}</div>` : ''}
+        </div>
+    `;
+}
+
+/* ======================================================== */
+/* 👥 RENDERIZADOR DA CENTRAL DE NOTIFICAÇÕES (SÓCIO)       */
+/* ======================================================== */
 function renderizarListaNotificacoesSocioSaaS() {
     const container = document.getElementById('container-lista-notificacoes-socio');
     const txtSubtitulo = document.getElementById('txt-contador-subtitulo');
@@ -704,37 +742,64 @@ function renderizarListaNotificacoesSocioSaaS() {
     let htmlCards = '';
     let totalPendencias = 0;
 
-    // 1. Convite do Ranking
+    // 1. CONVITE DA TEMPORADA DO RANKING (INTERATIVO)
     if (window.temConviteRankingPendenteSocio === true) {
         totalPendencias++;
-        const classeAtleta = (atleta.classe || 'A').toUpperCase();
-        const generoAtleta = (atleta.genero === 'FEMININO') ? 'Feminino' : 'Masculino';
 
-        htmlCards += `
-            <div class="card-notif-item ranking">
-                <div class="notif-header-linha">
-                    <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
-                    <span class="notif-tempo">Novo Lote</span>
-                </div>
-                <h4 class="notif-titulo" style="text-align: center;">Convite da Temporada</h4>
-                <div class="notif-desc">
-                    <div style="text-align: left;">
-                        A arena abriu as inscrições do Ranking.<br>
-                        Sua categoria cadastrada é <b>Classe ${classeAtleta} (${generoAtleta})</b>.
-                    </div>
-                    <div style="text-align: center; margin-top: 12px; font-weight: 500;">
-                        Deseja confirmar sua participação?
-                    </div>
-                </div>
-                <div class="btn-grupo-notif">
-                    <button class="btn-sub-action btn-ok" onclick="aceitarConviteRankingSocioSaaS()">Aceitar e Entrar</button>
-                    <button class="btn-sub-action btn-no" onclick="recusarConviteRankingSocioSaaS()">Recusar</button>
-                </div>
-            </div>
-        `;
+        const configRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const cal = configRanking.calendario || {};
+        
+        // Formata data padrão (DD/MM/AAAA) e data curta com ano em 2 dígitos (DD/MM/AA)
+        const fmtData = (str) => (str && str.includes('-')) ? str.split('-').reverse().join('/') : (str || '--/--');
+        const fmtDataAA = (str) => {
+            if (!str || !str.includes('-')) return str || '--/--';
+            const [ano, mes, dia] = str.split('-');
+            return `${dia}/${mes}/${ano.slice(-2)}`;
+        };
+
+        // Nome do Torneio
+        const nomeTorneio = configRanking.nomeTorneio || cal.nomeTorneio || configRanking.nome || "Torneio de Ranking";
+
+        // Categoria do Atleta
+        const classeAtleta = (atleta.classe || 'A').toUpperCase();
+        const generoAtleta = (atleta.genero === 'FEMININO') ? 'Fem' : 'Masc';
+        const minhaClasseStr = `Classe ${classeAtleta} (${generoAtleta})`;
+
+        // Modelo de Disputa
+        const modeloFormatado = {
+            piramide: "Escada (Pirâmide)",
+            barragem: "Pontos Corridos",
+            grupos: "Fase de Grupos"
+        }[configRanking.modeloAtivo || "grupos"] || "Fase de Grupos";
+
+        // Datas
+        const dataFimInscricao = fmtData(cal.fimInscricoes || cal.fimInscricao);
+        
+        // Período de Jogos (DD/MM/AA à DD/MM/AA)
+        const inicioJ = fmtDataAA(cal.inicioJogos || cal.inicioTorneio || cal.inicioPartidas || cal.inicio);
+        const fimJ = fmtDataAA(cal.fimTorneio || cal.fimPartidas || cal.fim);
+        const periodoJogos = (inicioJ !== '--/--' && fimJ !== '--/--') 
+            ? `${inicioJ} à ${fimJ}` 
+            : (inicioJ !== '--/--' ? inicioJ : '--/--');
+
+        // HTML em linha única incluindo a pergunta final centralizada
+        const gridInfoHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #fff8e1; padding: 10px 12px; border-radius: 10px; border: 1px solid #fef08a; text-align: left; margin-top: 4px;"><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">SUA CATEGORIA</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${minhaClasseStr}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">MODELO</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${modeloFormatado}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">INSCRIÇÕES ATÉ</span><span style="font-size: 12px; color: #000000; font-weight: 800;">${dataFimInscricao}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">PERÍODO JOGOS</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${periodoJogos}</span></div></div><div style="text-align: center; margin-top: 12px; font-size: 13px; color: #475569; font-weight: 500;">Deseja confirmar sua participação?</div>`;
+
+        htmlCards += gerarCardNotificacaoHTML({
+            classeCard: 'ranking',
+            tagTexto: '🏆 RANKING OFICIAL',
+            tagClasse: 'tag-gold',
+            tempoTexto: 'Novo Lote',
+            titulo: nomeTorneio,
+            detalhe: gridInfoHTML,
+            botoesHTML: `
+                <button class="btn-sub-action btn-ok" onclick="aceitarConviteRankingSocioSaaS()">Aceitar e Entrar</button>
+                <button class="btn-sub-action btn-no" onclick="recusarConviteRankingSocioSaaS()">Recusar</button>
+            `
+        });
     }
 
-    // 2. Notificações Salvas no Banco (Súmulas, Arbitragem e Reservas)
+    // 2. NOTIFICAÇÕES SALVAS NO BANCO (MAPEAMENTO VIA SWITCH/CASE)
     if (atleta.notificacoes && typeof atleta.notificacoes === 'object') {
         const keysNotif = Object.keys(atleta.notificacoes);
         totalPendencias += keysNotif.length;
@@ -743,137 +808,116 @@ function renderizarListaNotificacoesSocioSaaS() {
             const n = atleta.notificacoes[keyNotif];
             const categoria = n.categoria || 'geral';
 
-            if (categoria === 'confirmado') {
-                htmlCards += `
-                    <div class="card-notif-item confirmado">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <h4 class="notif-titulo" style="text-align: center;">Resultado confirmado.</h4>
-                        <div class="notif-desc">
-                            ${n.adversario || 'O adversário'} confirmou o resultado informado por você.
-                        </div>
-                    </div>
-                `;
-            } else if (categoria === 'recusado') {
-                htmlCards += `
-                    <div class="card-notif-item recusado">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <h4 class="notif-titulo" style="text-align: center;">Resultado recusado.</h4>
-                        <div class="notif-desc">
-                            ${n.adversario || 'O adversário'} não concordou com o placar.<br>
-                            O jogo foi encaminhado para a arbitragem decidir.
-                        </div>
-                    </div>
-                `;
-            } else if (categoria === 'homologado_arb') {
-                htmlCards += `
-                    <div class="card-notif-item homologado-arb">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <h4 class="notif-titulo" style="text-align: center;">Placar Homologado pela Arbitragem</h4>
-                        <div class="notif-desc">
-                            O árbitro analisou a contestação e manteve o resultado oficial da partida.
-                            <div class="box-destaque-resultado">
-                                <b>Resultado:</b> ${n.detalhe || '--'}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else if (categoria === 'ajustado_arb') {
-                htmlCards += `
-                    <div class="card-notif-item ajustado-arb">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <h4 class="notif-titulo" style="text-align: center;">Placar ajustado pela Arbitragem</h4>
-                        <div class="notif-desc">
-                            O árbitro analisou e alterou o resultado oficial da partida.
-                            <div class="box-destaque-resultado">
-                                <b>Resultado:</b> ${n.detalhe || '--'}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else if (categoria === 'anulado_arb') {
-                htmlCards += `
-                    <div class="card-notif-item anulado-arb">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag tag-gold">🏆 Ranking Oficial</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <h4 class="notif-titulo" style="text-align: center;">Placar anulado pela Arbitragem</h4>
-                        <div class="notif-desc">
-                            A sua partida contra ${n.adversario || 'seu adversário'} foi anulada pela arbitragem
-                            <div class="box-destaque-resultado">
-                                <b>Motivo:</b> ${n.detalhe || 'Decisão da arbitragem.'}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else if (categoria === 'cancelado_quorum') {
-                htmlCards += `
-                    <div class="card-notif-item cancelado" style="border-left: 4px solid #ef4444; background: #fef2f2;">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag" style="background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;">📅 Agendamento</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <h4 class="notif-titulo" style="text-align: center;">Reserva cancelada.</h4>
-                        <div class="notif-desc">
-                            ${n.adversario ? `<b>${n.adversario}</b> recusou o convite.<br><br>` : ''}A sua reserva de <b>${n.detalhe || 'horário pendente'}</b> foi cancelada por falta de quórum.
-                        </div>
-                    </div>
-                `;
-            } else if (categoria === 'convite_recusado') {
-                htmlCards += `
-                    <div class="card-notif-item recusado" style="border-left: 4px solid #ef4444; background: #fef2f2;">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag" style="background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;">📅 Agendamento</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <h4 class="notif-titulo" style="text-align: center;">Convite recusado.</h4>
-                        <div class="notif-desc">
-                            <b>${n.adversario || 'Um convidado'}</b> recusou o convite para a partida de <b>${n.detalhe || 'horário pendente'}</b>.<br><br>O atleta foi removido e a reserva segue mantida.
-                        </div>
-                    </div>
-                `;
-            } else if (categoria === 'partida_confirmada') {
-                htmlCards += `
-                    <div class="card-notif-item confirmado" style="border-left: 4px solid #22c55e; background: #f0fdf4;">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag" style="background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;">📅 Agendamento</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <h4 class="notif-titulo" style="text-align: center;">Partida confirmada!</h4>
-                        <div class="notif-desc">
-                            Todos os convidados confirmaram presença para a partida de <b>${n.detalhe || 'horário agendado'}</b>.
-                        </div>
-                    </div>
-                `;
-            } else {
-                htmlCards += `
-                    <div class="card-notif-item ranking">
-                        <div class="notif-header-linha">
-                            <span class="notif-tag tag-gold">🔔 Notificação</span>
-                            <span class="notif-tempo">Recente</span>
-                        </div>
-                        <div class="notif-desc">
-                            ${n.mensagem || n.texto || ''}
-                        </div>
-                    </div>
-                `;
+            switch (categoria) {
+                case 'inicio_temporada':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'ranking',
+                        tagTexto: '🏆 RANKING OFICIAL',
+                        tagClasse: 'tag-gold',
+                        titulo: n.titulo || 'A temporada começou!',
+                        detalhe: n.detalhe || ''
+                    });
+                    break;
+
+                case 'confirmado':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'confirmado',
+                        tagTexto: '🏆 RANKING OFICIAL',
+                        tagClasse: 'tag-gold',
+                        titulo: 'Resultado confirmado.',
+                        detalhe: `${n.adversario || 'O adversário'} confirmou o resultado informado por você.`
+                    });
+                    break;
+
+                case 'recusado':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'recusado',
+                        tagTexto: '🏆 RANKING OFICIAL',
+                        tagClasse: 'tag-gold',
+                        titulo: 'Resultado recusado.',
+                        detalhe: `${n.adversario || 'O adversário'} não concordou com o placar.<br>O jogo foi encaminhado para a arbitragem decidir.`
+                    });
+                    break;
+
+                case 'homologado_arb':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'homologado-arb',
+                        tagTexto: '🏆 RANKING OFICIAL',
+                        tagClasse: 'tag-gold',
+                        titulo: 'Placar Homologado pela Arbitragem',
+                        detalhe: `O árbitro analisou a contestação e manteve o resultado oficial da partida.<div class="box-destaque-resultado"><b>Resultado:</b> ${n.detalhe || '--'}</div>`
+                    });
+                    break;
+
+                case 'ajustado_arb':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'ajustado-arb',
+                        tagTexto: '🏆 RANKING OFICIAL',
+                        tagClasse: 'tag-gold',
+                        titulo: 'Placar ajustado pela Arbitragem',
+                        detalhe: `O árbitro analisou e alterou o resultado oficial da partida.<div class="box-destaque-resultado"><b>Resultado:</b> ${n.detalhe || '--'}</div>`
+                    });
+                    break;
+
+                case 'anulado_arb':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'anulado-arb',
+                        tagTexto: '🏆 RANKING OFICIAL',
+                        tagClasse: 'tag-gold',
+                        titulo: 'Placar anulado pela Arbitragem',
+                        detalhe: `A sua partida contra ${n.adversario || 'seu adversário'} foi anulada pela arbitragem.<div class="box-destaque-resultado"><b>Motivo:</b> ${n.detalhe || 'Decisão da arbitragem.'}</div>`
+                    });
+                    break;
+
+                case 'cancelado_quorum':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'cancelado',
+                        tagTexto: '📅 AGENDAMENTO',
+                        tagClasse: '',
+                        tagEstiloCustom: 'background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;',
+                        titulo: 'Reserva cancelada.',
+                        detalhe: `${n.adversario ? `<b>${n.adversario}</b> recusou o convite.<br><br>` : ''}A sua reserva de <b>${n.detalhe || 'horário pendente'}</b> foi cancelada por falta de quórum.`,
+                        estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
+                    });
+                    break;
+
+                case 'convite_recusado':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'recusado',
+                        tagTexto: '📅 AGENDAMENTO',
+                        tagClasse: '',
+                        tagEstiloCustom: 'background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;',
+                        titulo: 'Convite recusado.',
+                        detalhe: `<b>${n.adversario || 'Um convidado'}</b> recusou o convite para a partida de <b>${n.detalhe || 'horário pendente'}</b>.<br><br>O atleta foi removido e a reserva segue mantida.`,
+                        estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
+                    });
+                    break;
+
+                case 'partida_confirmada':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'confirmado',
+                        tagTexto: '📅 AGENDAMENTO',
+                        tagClasse: '',
+                        tagEstiloCustom: 'background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;',
+                        titulo: 'Partida confirmada!',
+                        detalhe: `Todos os convidados confirmaram presença para a partida de <b>${n.detalhe || 'horário agendado'}</b>.`,
+                        estiloCard: 'border-left: 4px solid #22c55e; background: #f0fdf4;'
+                    });
+                    break;
+
+                default:
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'ranking',
+                        tagTexto: '🔔 NOTIFICAÇÃO',
+                        tagClasse: 'tag-gold',
+                        detalhe: n.mensagem || n.texto || n.detalhe || ''
+                    });
+                    break;
             }
         });
     }
 
-    // Subtítulo e Estado Vazio
+    // 3. ATUALIZAÇÃO DE SUBTÍTULO E ESTADO VAZIO
     if (totalPendencias === 0) {
         htmlCards = `<p style="text-align: center; color: #888; margin-top: 30px; font-size: 14px;">Nenhuma notificação no momento.</p>`;
         if (txtSubtitulo) txtSubtitulo.textContent = "Sua caixa de entrada está limpa";
@@ -887,7 +931,6 @@ function renderizarListaNotificacoesSocioSaaS() {
 
     container.innerHTML = htmlCards;
 }
-
 
 // C. Dispara o Toast Informativo ao abrir o App quando houver pendências
 function dispararToastNotificacoesEntradaSaaS(total) {
