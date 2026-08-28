@@ -18,6 +18,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js"></script>
     <script src="capacitor.js"></script>
     
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
@@ -2026,10 +2027,10 @@
 								<i class="material-icons" style="color: #f59e0b;">emoji_events</i>
 								<div class="header-title-block">
 									<span class="sidebar-title">Tipo de Torneio</span>
-									<span class="sidebar-desc">Escolha do modelo de disputa e parâmetros específicos.</span>
+									<span class="sidebar-desc">Defina os parâmetros para cada tipo de disputa.</span>
 								</div>
 							</div>
-							<i class="material-icons icon-arrow">expand_more</i>
+							<i class="material-icons icon-arrow">expand_more</i> 
 						</div>
 						<div class="accordion-content">
 							<div class="accordion-content-inner">
@@ -2169,6 +2170,11 @@
 											<option value="3">3 atletas</option>
 											<option value="4" selected>4 atletas</option>
 											<option value="5">5 atletas</option>
+											<option value="6">6 atletas</option>
+											<option value="7">7 atletas</option>
+											<option value="8">8 atletas</option>
+											<option value="9">9 atletas</option>
+											<option value="10">10 atletas</option> 
 										</select>
 									</div>
 
@@ -2255,7 +2261,7 @@
 								<i class="material-icons" style="color: #10b981;">edit_note</i>
 								<div class="header-title-block">
 									<span class="sidebar-title">Regras de Jogo & Súmula</span>
-									<span class="sidebar-desc">Formato das partidas, pontuação de games e validação de placar.</span>
+									<span class="sidebar-desc">Formato das partidas, pontuação e validação de placar.</span>
 								</div>
 							</div>
 							<i class="material-icons icon-arrow">expand_more</i>
@@ -2411,14 +2417,16 @@
 						</div>
 					</div>
 
-					<!-- ABA 5: Gestão da Temporada -->
+					<!-- ======================================================== -->
+					<!-- ABA 5: GESTÃO DA TEMPORADA (ESTEIRA DINÂMICA POR FASES)  -->
+					<!-- ======================================================== -->
 					<div class="accordion-item" onclick="toggleGavetaRegras(this)">
 						<div class="accordion-header">
 							<div class="accordion-header-left">
 								<i class="material-icons" style="color: #ef4444;">campaign</i>
 								<div class="header-title-block">
 									<span class="sidebar-title">Gestão da Temporada</span>
-									<span class="sidebar-desc">Ações operacionais da classificação e mensagens.</span>
+									<span class="sidebar-desc">Ciclo de vida operacional, calendário e fases da competição.</span>
 								</div>
 							</div>
 							<i class="material-icons icon-arrow">expand_more</i>
@@ -2426,18 +2434,199 @@
 						<div class="accordion-content">
 							<div class="accordion-content-inner">
 								
-								<div class="ranking-actions-container">
-									<!-- Botão de Visualização / Edição da Tabela -->
-									<button type="button" class="btn-ranking-action btn-ranking-view" onclick="abrirVisualizacaoRankingSaaS()">
-										<i class="material-icons">visibility</i> 👁️ Ver Tabela de Classificação
-									</button>
+								<!-- LINHA DO TEMPO / STEPPER DINÂMICO -->
+								<div id="stepper-gestor-container" class="stepper-container">
+									<!-- Nós 1 a 5 injetados dinamicamente via js/ranking.js -->
+								</div>
 
-									<!-- Disparo de Convites Massivo -->
-									<button type="button" class="btn-ranking-action btn-ranking-invite" onclick="dispararConvitesTemporadaSaaS()">
-										<i class="material-icons">send</i> Disparar Convites de Temporada
+								<!-- CARD DE RESUMO FIXO DO CALENDÁRIO (EXIBIDO NAS FASES 2+) -->
+								<div id="card-resumo-calendario-saas" class="card-resumo-calendario" style="display: none;">
+									<div class="resumo-info">
+										<div class="resumo-titulo">🏆 <span id="lbl-resumo-torneio-nome">Edição do Torneio</span></div>
+										<div class="resumo-datas">
+											<span>📝 <b>Inscrições:</b> <span id="lbl-resumo-torneio-insc">--/-- a --/--</span></span>
+											<span>🎾 <b>Partidas:</b> <span id="lbl-resumo-torneio-jog">--/-- a --/--</span></span>
+										</div>
+									</div>
+									<button type="button" class="btn-edit-cal" onclick="editarCalendarioAtivoSaaS()">
+										<i class="material-icons" style="font-size: 16px;">edit</i> Editar
 									</button>
+								</div>
+
+								<!-- CONTAINER DE PAINÉIS DE FASE (INJETADOS REATIVAMENTE) -->
+								<div id="container-fases-gestor">
 									
-									<!-- Zerar / Reiniciar Ranking -->
+									<!-- FASE 1: CONFIGURAÇÃO DO TORNEIO E CALENDÁRIO -->
+									<div id="fase-panel-1" class="fase-panel ativa">
+										<div class="box-status-info info-azul">
+											<b>📍 Fase 1: Configuração do Torneio e Calendário</b><br>
+											Defina o contrato mestre desta edição, prazos oficiais e anexe o regulamento em PDF.
+										</div>
+
+										<!-- BLOCO 1: IDENTIFICAÇÃO E REGRAS MESTRES -->
+										<div class="secao-bloco" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 12px; margin-bottom: 14px;">
+											<div class="secao-titulo" style="font-size: 12px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+												<i class="material-icons" style="font-size: 16px; color: var(--cor-azul, #3b82f6);">emoji_events</i>
+												1. Identificação & Regras Mestres
+											</div>
+
+											<!-- LINHA COMPACTA: NOME + BOTÃO ANEXAR PDF -->
+											<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; text-align: left;">
+												<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Nome Oficial do Torneio / Edição *</label>
+												<div style="display: flex; gap: 8px; align-items: center;">
+													<input type="text" id="inp-torneio-nome" class="input-app" placeholder="Ex: I Torneio Olímpico 2026 - Classe A & B" style="flex: 1; margin: 0; padding: 8px 10px; font-size: 13px;">
+													<input type="file" id="inp-pdf-file" accept=".pdf" style="display: none;" onchange="atualizarStatusPdfSaaS(this)">
+													<button type="button" class="btn-upload-pdf" onclick="document.getElementById('inp-pdf-file').click()" style="background: #ffffff; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; color: #334155; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; height: 38px; box-sizing: border-box;">
+														<i class="material-icons" style="font-size: 16px;">attach_file</i> Anexar PDF
+													</button>
+												</div>
+												<span class="pdf-status-txt" id="pdf-file-name" style="font-size: 11px; color: #64748b; margin-top: 2px; display: block;">Nenhum arquivo anexado (Opcional)</span>
+											</div>
+
+											<div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+												<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+													<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Modelo de Disputa da Edição *</label>
+													<select id="inp-torneio-modelo" class="input-app" style="margin: 0; padding: 8px 10px; font-size: 13px;">
+														<option value="" disabled selected>Selecione o modelo...</option>
+														<option value="piramide">Pirâmide (Escada de Desafios)</option>
+														<option value="barragem">Barragem (Pontos Corridos)</option>
+														<option value="grupos">Grupos (Chaves Eliminatórias)</option>
+													</select>
+												</div>
+
+												<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+													<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Limite Máximo de Vagas *</label>
+													<input type="number" id="inp-torneio-vagas" class="input-app" placeholder="Ex: 32 (0 para ilimitado)" value="" min="0" max="256" style="margin: 0; padding: 8px 10px; font-size: 13px;">
+												</div>
+											</div>
+
+											<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px; text-align: left;">
+												<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Classes & Gêneros Habilitados *</label>
+												<div class="classes-pills-container" id="container-pills-categorias" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+													<span class="pilula-check" data-cat="CLASSE_A" onclick="togglePilulaCategoria(this)">
+														<i class="material-icons" style="font-size: 15px;">add_circle_outline</i> Classe A
+													</span>
+													<span class="pilula-check" data-cat="CLASSE_B" onclick="togglePilulaCategoria(this)">
+														<i class="material-icons" style="font-size: 15px;">add_circle_outline</i> Classe B
+													</span>
+													<span class="pilula-check" data-cat="CLASSE_C" onclick="togglePilulaCategoria(this)">
+														<i class="material-icons" style="font-size: 15px;">add_circle_outline</i> Classe C
+													</span>
+													<span class="pilula-check" data-cat="MASCULINO" onclick="togglePilulaCategoria(this)">
+														<i class="material-icons" style="font-size: 15px;">add_circle_outline</i> Masculino
+													</span>
+													<span class="pilula-check" data-cat="FEMININO" onclick="togglePilulaCategoria(this)">
+														<i class="material-icons" style="font-size: 15px;">add_circle_outline</i> Feminino
+													</span>
+												</div>
+											</div>
+										</div>
+
+										<!-- BLOCO 2: CALENDÁRIO OFICIAL (4 PRAZOS) -->
+										<div class="secao-bloco" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 12px;">
+											<div class="secao-titulo" style="font-size: 12px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+												<i class="material-icons" style="font-size: 16px; color: var(--cor-azul, #3b82f6);">event</i>
+												2. Calendário Oficial
+											</div>
+
+											<div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+												<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+													<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Início das Inscrições *</label>
+													<input type="date" id="inp-torneio-dt-inc-ini" class="input-app" style="margin: 0; padding: 8px 10px; font-size: 13px;">
+												</div>
+												<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+													<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Término Inscrições (Deadline) *</label>
+													<input type="date" id="inp-torneio-dt-inc-fim" class="input-app" style="margin: 4px 0 0 0; padding: 8px 10px; font-size: 13px;">
+												</div>
+											</div>
+
+											<div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+												<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+													<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Início dos Jogos de Quadra *</label>
+													<input type="date" id="inp-torneio-dt-jog-ini" class="input-app" style="margin: 0; padding: 8px 10px; font-size: 13px;">
+												</div>
+												<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+													<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Término Previsto (Final) *</label>
+													<input type="date" id="inp-torneio-dt-jog-fim" class="input-app" style="margin: 0; padding: 8px 10px; font-size: 13px;">
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- FASE 2: INSCRIÇÕES & CONFERÊNCIA DE PIX -->
+									<div id="fase-panel-2" class="fase-panel">
+										<div class="box-status-info info-azul">
+											<b>📍 Fase 2: Inscrições & Acompanhamento de Atletas</b><br>
+											Convites abertos no aplicativo. Acompanhe a lista de confirmados e conferência do PIX.
+										</div>
+
+										<button type="button" id="btn-saas-fase2-convites" class="btn-ranking-action btn-ranking-invite" onclick="dispararConvitesTemporadaSaaS()">
+											<i class="material-icons">send</i> Disparar Convites aos Sócios
+										</button>
+
+										<button type="button" id="btn-saas-fase2-inscritos" class="btn-ranking-action btn-ranking-view" disabled onclick="abrirModalGerenciarInscritosSaaS()">
+											<i class="material-icons">groups</i> Ver Inscritos Confirmados (<span id="lbl-qtd-inscritos-badge">0</span>)
+										</button>
+									</div>
+
+									<!-- FASE 3: FASE DE CHAVES (JOGOS DE GRUPO) -->
+									<div id="fase-panel-3" class="fase-panel">
+										<div class="box-status-info info-verde">
+											<b>📍 Fase 3: Fase de Chaves (Grupos)</b><br>
+											• Grupos congelados no banco e agendamentos restritos aos adversários da mesma chave.<br>
+											• Acompanhe a classificação em tempo real e encerre ao fim das rodadas.
+										</div>
+
+										<button type="button" class="btn-ranking-action btn-ranking-view" onclick="abrirVisualizacaoRankingSaaS()">
+											<i class="material-icons">visibility</i> Ver Tabela do Leaderboard
+										</button>
+
+										<button type="button" class="btn-ranking-action" style="background-color: #0284c7; color: #ffffff;" onclick="exportarLeaderboardPDFSaaS()">
+											<i class="material-icons">picture_as_pdf</i> Exportar Tabela para Impressão (PDF A4)
+										</button>
+
+										<button type="button" class="btn-ranking-action" style="background-color: #f59e0b; color: #ffffff;" onclick="encerrarFase3EAvancarSaaS()">
+											<i class="material-icons">check_circle</i> Encerrar Grupos e Gerar Mata-Mata
+										</button>
+									</div>
+
+									<!-- FASE 4: QUADRO ELIMINATÓRIO (MATA-MATA) -->
+									<div id="fase-panel-4" class="fase-panel">
+										<div class="box-status-info info-roxa">
+											<b>📍 Fase 4: Quadro Eliminatório (Mata-Mata)</b><br>
+											• Confrontos decisivos de Semifinais e Final em andamento.<br>
+											• Finalizados os jogos, conclua a temporada para pontuar os atletas.
+										</div>
+
+										<button type="button" class="btn-ranking-action" style="background-color: #8b5cf6; color: #ffffff;" onclick="abrirQuadroMataMataSaaS()">
+											<i class="material-icons">account_tree</i> Ver Quadro Eliminatório (Mata-Mata)
+										</button>
+
+										<button type="button" class="btn-ranking-action btn-ranking-view" onclick="concluirTorneioEHomologarSaaS()">
+											<i class="material-icons">emoji_events</i> Concluir Torneio e Somar Pontos no Ranking
+										</button>
+									</div>
+
+									<!-- FASE 5: TORNEIO CONCLUÍDO -->
+									<div id="fase-panel-5" class="fase-panel">
+										<div class="box-status-info info-dourada">
+											<b>📍 Status: Torneio Finalizado & Homologado 🏆</b><br>
+											Os resultados foram consolidados e a pontuação creditada no ranking anual do clube.
+										</div>
+
+										<button type="button" class="btn-ranking-action btn-ranking-view" onclick="abrirHallDeCampeoesSaaS()">
+											<i class="material-icons">stars</i> Ver Hall de Campeões
+										</button>
+
+										<button type="button" class="btn-ranking-action btn-ranking-invite" onclick="reiniciarEsteiraNovoTorneioSaaS()">
+											<i class="material-icons">play_arrow</i> Abrir Novo Torneio (Nova Temporada)
+										</button>
+									</div>
+
+								</div>
+
+								<!-- BOTÃO DE ZERAMENTO DE EMERGÊNCIA (PRESENTE EM TODAS AS FASES) -->
+								<div style="margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
 									<button type="button" class="btn-ranking-action btn-ranking-reset" onclick="zerarRankingSaaS()">
 										<i class="material-icons">restart_alt</i> Zerar / Reiniciar Ranking
 									</button>
@@ -2455,7 +2644,55 @@
 			</div>
 
 		</div>
-	</div>	
+	</div>
+	
+	<!-- ======================================================== -->
+	<!-- 👥 MODAL: GERENCIAMENTO DE INSCRITOS & CONFERÊNCIA PIX   -->
+	<!-- ======================================================== -->
+	<div id="modal-gerenciar-inscritos" class="modal-overlay">
+		<div class="modal-content" style="max-width: 520px; padding: 20px; border-radius: 16px; text-align: left;">
+			
+			<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+				<div>
+					<h3 style="margin: 0; color: #1e293b; font-size: 18px;">👥 Inscritos no Torneio</h3>
+					<span id="lbl-inscritos-modal-sub" style="font-size: 12px; color: #64748b;">Conferência de pagamentos e cadastros</span>
+				</div>
+				<!-- ÍCONE DE VOLTAR EM VEZ DO "X" -->
+				<button type="button" class="btn-voltar-icon" onclick="fecharModalConfig('modal-gerenciar-inscritos')" title="Voltar">
+					<i class="material-icons">arrow_back</i>
+				</button>
+			</div>
+
+			<!-- SELECTS DUPLOS INLINE DE FILTRO -->
+			<div style="display: flex; gap: 8px; margin-bottom: 12px;">
+				<select id="select-filtro-inscritos-classe" class="input-app" onchange="renderizarListaInscritosPixSaaS()" style="flex: 1; font-size: 13px; padding: 8px 10px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;">
+					<option value="TODAS">Todas as Classes</option>
+				</select>
+
+				<select id="select-filtro-inscritos-genero" class="input-app" onchange="renderizarListaInscritosPixSaaS()" style="flex: 1; font-size: 13px; padding: 8px 10px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;">
+					<option value="TODOS">Todos os Gêneros</option>
+					<option value="MASCULINO">Masculino</option>
+					<option value="FEMININO">Feminino</option>
+				</select>
+			</div>
+
+			<!-- LISTA ROLÁVEL DOS INSCRITOS -->
+			<div id="container-lista-inscritos-pix" style="max-height: 280px; overflow-y: auto; margin-bottom: 16px; border: 1px solid #f1f5f9; border-radius: 10px; padding: 6px;">
+				<p style="text-align: center; color: #94a3b8; margin: 20px 0; font-size: 13px;">Buscando confirmações...</p>
+			</div>
+
+			<!-- AÇÕES DA SECRETARIA -->
+			<div style="display: flex; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+				<button type="button" class="btn-app" style="margin: 0; flex: 1; padding: 10px; background: #3b82f6; color: white; font-size: 13px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="inscreverAtletaManualmenteSaaS()">
+					<i class="material-icons" style="font-size: 18px;">person_add</i> Inscrever Atleta Manualmente
+				</button>
+				<button type="button" class="btn-app" style="margin: 0; width: 100px; padding: 10px; background: #64748b; color: white; font-size: 13px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;" onclick="fecharModalConfig('modal-gerenciar-inscritos')">
+					Concluir
+				</button>
+			</div>
+
+		</div>
+	</div>
 	
 	
 	<!-- ======================================================== -->
@@ -2720,6 +2957,16 @@
 					</button>
 				</div>
 				<p id="txt-subtitulo-leaderboard" class="sheet-SaaS-subtitle" style="margin-top: 4px;">Ranking Oficial do Clube</p>
+			</div>
+			
+			<!-- CHAVEADORA DUPLA CAMADA (OPÇÃO 1 - SEGMENTED CONTROL) -->
+			<div class="opt1-segmented">
+				<button type="button" id="btn-tab-torneio-saas" class="opt1-btn active" onclick="trocarVisaoLeaderboardSaaS('TORNEIO')">
+					<i class="material-icons" style="font-size: 16px;">emoji_events</i> Torneio Atual
+				</button>
+				<button type="button" id="btn-tab-geral-saas" class="opt1-btn" onclick="trocarVisaoLeaderboardSaaS('GERAL')">
+					<i class="material-icons" style="font-size: 16px;">leaderboard</i> Ranking Geral
+				</button>
 			</div>
 
 			<!-- Seletor Enxuto Lado a Lado (Opção 3) -->
