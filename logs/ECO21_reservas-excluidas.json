@@ -743,5 +743,32 @@
         "hora": 14
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-08-30T16:57:30.347Z",
+    "dataLocal": "30/08/2026, 13:57:30",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "14:00 - 15:00",
+    "duracao": "1 Hora",
+    "data": "30-08-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Joao Francisco": true
+    },
+    "jogadores": "Adriano Feitosa, Joao Francisco",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, JOAO FRANCISCO DA SILVA",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 14
+      }
+    ]
   }
 ]
