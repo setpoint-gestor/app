@@ -115,15 +115,68 @@
     #modal-config-ranking .accordion-item.mobile-opened .icon-arrow {
         transform: rotate(-180deg) !important;
     }
+	
+	/* Oculta o título redundante do acervo apenas no celular */
+    #modal-config-ranking .accordion-item:nth-of-type(6) .accordion-content-inner > div:first-child {
+        display: none !important;
+    }
+
+    /* Layout de Card para a Tabela no Celular */
+    .table-exec-striped thead {
+        display: none;
+    }
+
+    .table-exec-striped tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .table-exec-striped td {
+        padding: 0;
+        border: none;
+        text-align: left;
+    }
+
+    .table-exec-striped td.col-edicao {
+        flex: 0 0 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+        font-weight: 700;
+    }
+
+    .table-exec-striped td.col-modelo,
+    .table-exec-striped td.col-periodo,
+    .table-exec-striped td.col-classificacao,
+    .table-exec-striped td.col-resultados {
+        flex: 0 0 auto;
+		border-bottom: none !important;
+    }
+
+    /* Oculta os ícones dos botões Tabelas e Súmulas apenas no celular para economizar espaço */
+    .table-exec-striped .btn-col-action i {
+        display: none !important;
+    }
 }
 
 @media (min-width: 769px) {
     #modal-config-ranking .sanfona-container {
         display: grid;
         grid-template-columns: 340px 1fr;
-        grid-template-rows: repeat(5, max-content) 1fr;
+        /* Atualizado de 5 para 6 abas */
+        grid-template-rows: repeat(6, max-content) 1fr; 
         gap: 16px 24px;
-        align-items: start;
+        align-items: start; 
         max-width: 1100px;
         margin: 0 auto;
     }
@@ -171,17 +224,25 @@
         white-space: nowrap;
     }
 
-    /* Indexação das 5 abas na Sidebar */
+    /* Indexação das 6 abas na Sidebar */
     #modal-config-ranking .accordion-item:nth-of-type(1) .accordion-header { grid-row: 1; }
     #modal-config-ranking .accordion-item:nth-of-type(2) .accordion-header { grid-row: 2; }
     #modal-config-ranking .accordion-item:nth-of-type(3) .accordion-header { grid-row: 3; }
     #modal-config-ranking .accordion-item:nth-of-type(4) .accordion-header { grid-row: 4; }
     #modal-config-ranking .accordion-item:nth-of-type(5) .accordion-header { grid-row: 5; }
+    #modal-config-ranking .accordion-item:nth-of-type(6) .accordion-header { grid-row: 6; } /* NOVA ABA 6 */
 
     #modal-config-ranking .accordion-item.active .accordion-header {
         background: var(--cor-primaria, #2E8B57);
         border-color: var(--cor-primaria, #2E8B57);
         box-shadow: 0 4px 12px rgba(46, 139, 87, 0.15);
+    }
+
+    /* Destaque Roxo quando a Aba 6 estiver Ativa */
+    #modal-config-ranking .accordion-item:nth-of-type(6).active .accordion-header {
+        background: #8b5cf6 !important;
+        border-color: #8b5cf6 !important;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25) !important;
     }
 
     #modal-config-ranking .accordion-item.active .accordion-header i { color: #ffffff !important; }
@@ -193,12 +254,14 @@
     #modal-config-ranking .accordion-content {
         display: none;
         grid-column: 2;
-        grid-row: 1 / span 6;
+        /* Atualizado de span 6 para span 7 para cobrir todas as abas */
+        grid-row: 1 / span 7; 
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.02);
         max-height: none !important;
+        min-width: 0;
     }
 
     #modal-config-ranking .accordion-item.active .accordion-content {
@@ -212,6 +275,160 @@
         gap: 20px;
     }
 }
+
+/* ======================================================== */
+/* BARRA DE FILTROS DO ACERVO (DESKTOP E MOBILE)            */
+/* ======================================================== */
+.filter-bar {
+    display: flex;
+    gap: 12px;
+	margin-top: -20px;
+    margin-bottom: 1px;
+    background: #f8fafc;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    align-items: center;
+}
+
+.filter-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+#modal-config-ranking .filter-bar .modern-select {
+    width: auto !important;
+    max-width: none !important;
+    flex: 1 !important;
+    min-width: 120px !important;
+    margin: 0 !important;
+    padding: 8px 20px 8px 8px !important;
+    font-size: 12.5px !important;
+}
+
+@media (max-width: 768px) {
+    .filter-bar {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px;
+        margin-top: 0 !important;
+        margin-bottom: 1px;
+    }
+    
+    .filter-label { 
+        display: none !important;
+    }
+
+    #modal-config-ranking .filter-bar #filtro-historico-ano,
+	
+    #modal-config-ranking .filter-bar #filtro-historico-modelo {
+        width: calc(50% - 5px) !important;
+        max-width: 50% !important;
+    }
+
+    #modal-config-ranking .filter-bar #filtro-historico-categoria {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+
+/* ======================================================== */
+/* ESTILOS DA TABELA DE HISTÓRICO E BOTÕES INLINE           */
+/* ======================================================== */
+.table-exec-striped { 
+    width: 100%; 
+    min-width: 100% !important;
+    border-collapse: collapse; 
+    font-size: 12.5px; 
+}
+.table-exec-striped th { 
+    background: #f8fafc; 
+    padding: 12px 6px; 
+    text-align: center; 
+    color: var(--cor-subtexto, #64748b); 
+    font-weight: 800; 
+    font-size: 11.5px; 
+    text-transform: uppercase; 
+    border-bottom: 2px solid #e2e8f0; 
+}
+.table-exec-striped th:first-child {
+    text-align: left;
+}
+.table-exec-striped td { 
+    padding: 10px 3px; 
+    border-bottom: 1px solid #e2e8f0; 
+    vertical-align: middle;
+    text-align: center;
+}
+
+.table-exec-striped td:first-child {
+    text-align: left;
+}
+
+.col-edicao {
+    white-space: nowrap;
+}
+
+.col-periodo {
+    white-space: nowrap;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.table-exec-striped tr:nth-child(even) td { background: #f8fafc; }
+.table-exec-striped tr:hover td { background: #f3e8ff; }
+
+.pdf-link-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #dc2626;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    background: #fee2e2;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid #fca5a5;
+    transition: all 0.2s;
+}
+.pdf-link-inline:hover { background: #fca5a5; color: #991b1b; }
+
+.format-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 8px;
+    border: 1px solid #7dd3fc;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.format-badge:hover { background: #bae6fd; }
+
+.btn-col-action {
+    padding: 4px 7px; 
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+.btn-col-action.green { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.btn-col-action.purple { background: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
+.btn-col-action:hover { transform: translateY(-1px); opacity: 0.9; }
 
 /* ======================================================== */
 /* 3. FORMULÁRIOS, LINHAS DE CONTROLE (.ctrl-row) E SWITCHES */
