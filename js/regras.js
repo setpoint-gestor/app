@@ -11,7 +11,7 @@ const dicNomesRegras = {
     Abrir: "Status do Sistema",
     LimpezaMural: "Limpeza do Mural",
     DiasLimpezaLogs: "Limpeza de Logs",
-    DiasParaLimpar: "Antecedência Máxima",
+    DiasParaLimpar: "Antecedência Máxima", 
 	DiasParaExibir: "Dias para Exibir",
     DuracaoPermitida: "Duração Permitida",
     OrganizadorEdicao: "Edição pelo Organizador",
@@ -86,27 +86,57 @@ function atualizarBotaoRodapeRankingSaaS() {
 
     const abas = document.querySelectorAll('#modal-config-ranking .accordion-item');
     const abaGestaoAtiva = abas[4] && abas[4].classList.contains('active');
+    const abaHistoricoAtiva = abas[5] && abas[5].classList.contains('active');
 
-    if (abaGestaoAtiva) {
-        const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-        const modelo = conf.modeloAtivo || "grupos";
-        const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+    // 🟣 ABA 6: Histórico de Torneios
+    if (abaHistoricoAtiva) {
+        btnSalvar.style.backgroundColor = '#8b5cf6';
+        btnSalvar.style.borderColor = '#8b5cf6';
+        btnSalvar.innerHTML = '<i class="material-icons" style="vertical-align: middle; margin-right: 6px; font-size: 18px;">picture_as_pdf</i> Exportar Relatório Geral do Acervo (PDF)';
+        btnSalvar.onclick = () => {
+            if (typeof exportarRelatorioHistoricoSaaS === 'function') {
+                exportarRelatorioHistoricoSaaS();
+            }
+        };
+        return;
+    }
 
-        // Verifica se o formulário da Fase 1 foi aberto manualmente em modo de edição
-        const panelFase1 = document.querySelectorAll('#container-fases-gestor .fase-panel')[0];
-        const editandoFase1 = panelFase1 && panelFase1.classList.contains('ativa') && faseAtual > 1;
+    // 🟢 ABAS 1 A 4: Botão Verde Padrão de Parâmetros
+    if (!abaGestaoAtiva) {
+        btnSalvar.style.backgroundColor = 'var(--cor-primaria, #2E8B57)';
+        btnSalvar.style.borderColor = 'var(--cor-primaria, #2E8B57)';
+        btnSalvar.textContent = 'Salvar Parâmetros do Ranking';
+        btnSalvar.onclick = () => salvarConfigRankingSaas();
+        return;
+    }
 
-        if (editandoFase1) {
-            btnSalvar.style.backgroundColor = '#3b82f6';
-            btnSalvar.style.borderColor = '#3b82f6';
-            btnSalvar.textContent = 'Salvar Alterações do Calendário';
-            btnSalvar.onclick = () => salvarCalendarioEAbrirInscricoesSaaS();
-        } else if (faseAtual === 1) {
+    // 🔵 ABA 5: Gestão da Temporada (Esteira Mestre)
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const modelo = conf.modeloAtivo || "grupos";
+    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+
+    // Exceção: Verifica se o formulário da Fase 1 foi aberto manualmente em modo de edição
+    const panelFase1 = document.querySelectorAll('#container-fases-gestor .fase-panel')[0];
+    const editandoFase1 = panelFase1 && panelFase1.classList.contains('ativa') && faseAtual > 1;
+
+    if (editandoFase1) {
+        btnSalvar.style.backgroundColor = '#3b82f6';
+        btnSalvar.style.borderColor = '#3b82f6';
+        btnSalvar.textContent = 'Salvar Alterações do Calendário';
+        btnSalvar.onclick = () => salvarCalendarioEAbrirInscricoesSaaS();
+        return;
+    }
+
+    // Estrutura limpa (Switch/Case) para o fluxo principal das Fases
+    switch (faseAtual) {
+        case 1:
             btnSalvar.style.backgroundColor = '#3b82f6';
             btnSalvar.style.borderColor = '#3b82f6';
             btnSalvar.textContent = 'Salvar Calendário e Abrir Inscrições';
             btnSalvar.onclick = () => salvarCalendarioEAbrirInscricoesSaaS();
-        } else if (faseAtual === 2) {
+            break;
+
+        case 2:
             btnSalvar.style.backgroundColor = '#f59e0b';
             btnSalvar.style.borderColor = '#f59e0b';
             const titulosFase2 = {
@@ -116,42 +146,41 @@ function atualizarBotaoRodapeRankingSaaS() {
             };
             btnSalvar.textContent = titulosFase2[modelo] || 'Encerrar Inscrições e Congelar Grupos';
             btnSalvar.onclick = () => encerrarInscricoesECriarChavesSaaS();
-        } else if (faseAtual === 3) {
+            break;
+
+        case 3:
             btnSalvar.style.backgroundColor = '#f59e0b';
             btnSalvar.style.borderColor = '#f59e0b';
-            const titulosRodape = {
+            const titulosFase3 = {
                 piramide: 'Encerrar Pirâmide e Homologar Posições',
                 barragem: 'Encerrar Barragem e Consolidar Ranking',
                 grupos: 'Encerrar Grupos e Gerar Mata-Mata'
             };
-            btnSalvar.textContent = titulosRodape[modelo] || 'Encerrar Grupos e Gerar Mata-Mata';
+            btnSalvar.textContent = titulosFase3[modelo] || 'Encerrar Grupos e Gerar Mata-Mata';
             btnSalvar.onclick = () => encerrarFase3EAvancarSaaS();
-        } else if (faseAtual === 4) {
+            break;
+
+        case 4:
             if (modelo === 'piramide' || modelo === 'barragem') {
-                // 🟢 Pirâmide e Barragem na Fase 4 já estão Concluídos (Botão Azul)
                 btnSalvar.style.backgroundColor = '#3b82f6';
                 btnSalvar.style.borderColor = '#3b82f6';
                 btnSalvar.textContent = 'Abrir Novo Torneio (Nova Temporada)';
                 btnSalvar.onclick = () => reiniciarEsteiraNovoTorneioSaaS();
             } else {
-                // 🟣 Grupos na Fase 4 roda o Mata-Mata (Botão Roxo)
                 btnSalvar.style.backgroundColor = '#8b5cf6';
                 btnSalvar.style.borderColor = '#8b5cf6';
                 btnSalvar.textContent = 'Concluir Torneio e Somar Pontos no Ranking';
                 btnSalvar.onclick = () => concluirTorneioEHomologarSaaS();
             }
-        } else if (faseAtual === 5) {
+            break;
+
+        case 5:
+        default:
             btnSalvar.style.backgroundColor = '#3b82f6';
             btnSalvar.style.borderColor = '#3b82f6';
             btnSalvar.textContent = 'Abrir Novo Torneio (Nova Temporada)';
             btnSalvar.onclick = () => reiniciarEsteiraNovoTorneioSaaS();
-        }
-    } else {
-        // 🟢 ABAS 1 A 4: Botão Verde Padrão de Parâmetros
-        btnSalvar.style.backgroundColor = 'var(--cor-primaria, #2E8B57)';
-        btnSalvar.style.borderColor = 'var(--cor-primaria, #2E8B57)';
-        btnSalvar.textContent = 'Salvar Parâmetros do Ranking';
-        btnSalvar.onclick = () => salvarConfigRankingSaas();
+            break;
     }
 }
 
