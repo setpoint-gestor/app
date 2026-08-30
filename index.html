@@ -2635,6 +2635,68 @@
 							</div>
 						</div>
 					</div>
+					
+					<!-- ABA 6: HISTÓRICO DE TORNEIOS (ACERVO DO CLUBE) -->
+					<div class="accordion-item" onclick="toggleGavetaRegras(this)">
+						<div class="accordion-header">
+							<div class="accordion-header-left">
+								<i class="material-icons" style="color: #8b5cf6;">history_edu</i>
+								<div class="header-title-block">
+									<span class="sidebar-title">Histórico de Torneios</span>
+									<span class="sidebar-desc">Consulta de edições homologadas e súmulas.</span>
+								</div>
+							</div>
+							<i class="material-icons icon-arrow">expand_more</i>
+						</div>
+						<div class="accordion-content">
+							<div class="accordion-content-inner">
+								
+								<div style="margin-bottom: 20px;">
+									<h2 style="font-size: 18px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; margin: 0;">
+										📜 Acervo Histórico de Torneios
+									</h2>
+								</div>
+
+								<!-- BARRA DE FILTROS MESTRE -->
+								<div class="filter-bar">
+									<span class="filter-label">Filtrar Acervo:</span>
+									<select id="filtro-historico-ano" class="modern-select">
+										<option value="todos">Ano: Todos</option>
+									</select>
+									<select id="filtro-historico-modelo" class="modern-select">
+										<option value="todos">Modelo: Todos</option>
+										<option value="piramide">Pirâmide</option>
+										<option value="barragem">Barragem</option>
+										<option value="grupos">Grupos</option>
+									</select>
+									<select id="filtro-historico-categoria" class="modern-select">
+										<option value="todas">Categoria: Todas</option>
+									</select>
+								</div>
+
+								<!-- TABELA MESTRE EXECUTIVA -->
+								<div style="flex: 1; overflow-x: auto;">
+									<table id="tabela-historico-torneios" class="table-exec-striped">
+										<thead>
+											<tr>
+												<th>Edição</th>
+												<th>Modelo</th>
+												<th>Período</th>
+												<th>Classificação</th>
+												<th>Resultados</th>
+											</tr>
+										</thead>
+										<tbody id="tbody-historico-torneios">
+											<tr>
+												<td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">Buscando acervo no histórico...</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+
+							</div>
+						</div>
+					</div>
 
 				</div>
 			</div>
@@ -2646,7 +2708,7 @@
 		</div>
 	</div>
 	
-	<!-- ======================================================== -->
+	<!-- ======================================================== --> 
 	<!-- 👥 MODAL: GERENCIAMENTO DE INSCRITOS & CONFERÊNCIA PIX   -->
 	<!-- ======================================================== -->
 	<div id="modal-gerenciar-inscritos" class="modal-overlay">
