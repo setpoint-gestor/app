@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="css/regras.css?v=4"> 
     <link rel="stylesheet" href="css/logs.css?v=4">
 	<!-- NOVO: Estilo exclusivo do Módulo de Ranking -->
-    <link rel="stylesheet" href="css/ranking.css?v=4">
+    <link rel="stylesheet" href="css/ranking.css?v=4">  
 	
 </head>
 <body>
@@ -2574,15 +2574,12 @@
 										<div class="box-status-info info-verde">
 											<b>📍 Fase 3: Fase de Chaves (Grupos)</b><br>
 											• Grupos congelados no banco e agendamentos restritos aos adversários da mesma chave.<br>
-											• Acompanhe a classificação em tempo real e encerre ao fim das rodadas.
+											• Acompanhe a classificação em tempo real e encerre ao fim das rodadas. 
 										</div>
 
-										<button type="button" class="btn-ranking-action btn-ranking-view" onclick="abrirVisualizacaoRankingSaaS()">
+										<!-- BLOCO DE BOTOES LADO A LADO -->
+										<button type="button" class="btn-ranking-action btn-ranking-view" style="margin-bottom: 12px;" onclick="abrirVisualizacaoRankingSaaS()">
 											<i class="material-icons">visibility</i> Ver Tabela do Leaderboard
-										</button>
-
-										<button type="button" class="btn-ranking-action" style="background-color: #0284c7; color: #ffffff;" onclick="exportarLeaderboardPDFSaaS()">
-											<i class="material-icons">picture_as_pdf</i> Exportar Tabela para Impressão (PDF A4)
 										</button>
 
 										<button type="button" class="btn-ranking-action" style="background-color: #f59e0b; color: #ffffff;" onclick="encerrarFase3EAvancarSaaS()">
@@ -2683,7 +2680,7 @@
 												<th>Modelo</th>
 												<th>Período</th>
 												<th>Classificação</th>
-												<th>Resultados</th>
+												<th>Resultados</th>  
 											</tr>
 										</thead>
 										<tbody id="tbody-historico-torneios">
@@ -3026,19 +3023,26 @@
 				<button type="button" id="btn-tab-torneio-saas" class="opt1-btn active" onclick="trocarVisaoLeaderboardSaaS('TORNEIO')">
 					<i class="material-icons" style="font-size: 16px;">emoji_events</i> Torneio Atual
 				</button>
+				<button type="button" id="btn-tab-sumulas-saas" class="opt1-btn" onclick="trocarVisaoLeaderboardSaaS('SUMULAS')">
+					<i class="material-icons" style="font-size: 16px;">fact_check</i> Súmulas
+				</button>
 				<button type="button" id="btn-tab-geral-saas" class="opt1-btn" onclick="trocarVisaoLeaderboardSaaS('GERAL')">
 					<i class="material-icons" style="font-size: 16px;">leaderboard</i> Ranking Geral
 				</button>
 			</div>
 
 			<!-- Seletor Enxuto Lado a Lado (Opção 3) -->
-			<div class="dropdowns-leaderboard-container">
+			<!-- Seletor Enxuto Lado a Lado com Botão PDF Contextual -->
+			<div class="dropdowns-leaderboard-container" style="display: flex; gap: 8px; align-items: center;">
 				<select id="select-leaderboard-classe" class="select-leaderboard-filtro" onchange="trocarClasseLeaderboardSaaS(this.value)">
 					<!-- Opções injetadas via JS -->
 				</select>
 				<select id="select-leaderboard-genero" class="select-leaderboard-filtro" onchange="trocarGeneroLeaderboardSaaS(this.value)">
 					<!-- Opções injetadas via JS -->
 				</select>
+				<button type="button" id="btn-export-pdf-contextual" class="btn-app" style="margin: 0; padding: 0; width: 42px; min-width: 42px; height: 38px; background: #0284c7; color: #ffffff; border: none; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" onclick="exportarPDFContextualSaaS()" title="Exportar PDF da aba ativa">
+					<i class="material-icons" style="font-size: 20px; line-height: 1;">picture_as_pdf</i>
+				</button>
 			</div>
 
 			<!-- Lista de Classificação do Ranking -->
