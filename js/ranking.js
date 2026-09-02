@@ -1971,6 +1971,8 @@ function manterPlacarArbitroSaaS() {
     if (!partidaRankingEmFoco || !raizBanco) return;
 
     const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || 'Árbitro').trim();
+    const agora = Date.now();
+
     let quadraKey = "Quadra - 1";
     if (partidaRankingEmFoco.quadra) {
         const match = partidaRankingEmFoco.quadra.match(/\d+/);
@@ -1988,7 +1990,7 @@ function manterPlacarArbitroSaaS() {
     updates[`${pathSlot1}/dadosPlacar/statusPlacar`] = "consolidado";
     updates[`${pathSlot1}/dadosPlacar/decisaoArbitro`] = "mantido_pelo_arbitro";
     updates[`${pathSlot1}/dadosPlacar/arbitroResponsavel`] = nomeLogado;
-    updates[`${pathSlot1}/dadosPlacar/dataHoraArbitragem`] = Date.now();
+    updates[`${pathSlot1}/dadosPlacar/dataHoraArbitragem`] = agora;
 
     if (duracao === 2) {
         const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
@@ -1996,13 +1998,29 @@ function manterPlacarArbitroSaaS() {
         updates[`${pathSlot2}/dadosPlacar/statusPlacar`] = "consolidado";
         updates[`${pathSlot2}/dadosPlacar/decisaoArbitro`] = "mantido_pelo_arbitro";
         updates[`${pathSlot2}/dadosPlacar/arbitroResponsavel`] = nomeLogado;
-        updates[`${pathSlot2}/dadosPlacar/dataHoraArbitragem`] = Date.now();
+        updates[`${pathSlot2}/dadosPlacar/dataHoraArbitragem`] = agora;
     }
 
     database.ref(raizBanco).update(updates)
     .then(() => {
         showToast("Placar mantido e homologado pelo árbitro!", "success");
-		notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'mantido');
+
+        // Atualiza os dados da partida em foco na memória local
+        partidaRankingEmFoco.statusPlacar = "consolidado";
+        if (partidaRankingEmFoco.dadosPlacar) {
+            partidaRankingEmFoco.dadosPlacar.statusPlacar = "consolidado";
+            partidaRankingEmFoco.dadosPlacar.decisaoArbitro = "mantido_pelo_arbitro";
+            partidaRankingEmFoco.dadosPlacar.arbitroResponsavel = nomeLogado;
+            partidaRankingEmFoco.dadosPlacar.dataHoraArbitragem = agora;
+        }
+
+        // 🔔 DISPARO DO MOTOR DE RANKING (Grava em ranking/partidas)
+        processarResultadoRankingSaaS(partidaRankingEmFoco);
+
+        // 🎯 CORREÇÃO: Envia o placar formatado (ex: "6/0 6/0") no 3º parâmetro de detalhe
+        const placarTxt = partidaRankingEmFoco.dadosPlacar?.placarFormatado || "";
+        notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'mantido', placarTxt);
+
         fecharModalConfig('modal-arbitro-placar');
     })
     .catch(err => {
@@ -2010,6 +2028,7 @@ function manterPlacarArbitroSaaS() {
         showToast("Erro ao processar decisão.", "error");
     });
 }
+
 
 function editarPlacarArbitroSaaS() {
     if (!partidaRankingEmFoco) return;
@@ -2438,7 +2457,7 @@ function abrirVisualizacaoRankingSaaS() {
 /* 8. MOTOR DO LEADERBOARD / RENDERIZAÇÃO DINÂMICA          */
 /* ======================================================== */
 
-let abaVisaoLeaderboardSaaS = 'TORNEIO'; // 'TORNEIO' ou 'GERAL'
+let abaVisaoLeaderboardSaaS = 'TORNEIO'; // 'TORNEIO', 'SUMULAS' ou 'GERAL'
 let abaClasseAtivaSaaS = 'B';
 let abaGeneroAtivaSaaS = 'MASCULINO';
 
@@ -2446,16 +2465,19 @@ function trocarVisaoLeaderboardSaaS(modo) {
     abaVisaoLeaderboardSaaS = modo;
     
     const btnTorneio = document.getElementById('btn-tab-torneio-saas');
+    const btnSumulas = document.getElementById('btn-tab-sumulas-saas');
     const btnGeral = document.getElementById('btn-tab-geral-saas');
     
-    if (btnTorneio && btnGeral) {
-        if (modo === 'TORNEIO') {
-            btnTorneio.classList.add('active');
-            btnGeral.classList.remove('active');
-        } else {
-            btnGeral.classList.add('active');
-            btnTorneio.classList.remove('active');
-        }
+    [btnTorneio, btnSumulas, btnGeral].forEach(btn => {
+        if (btn) btn.classList.remove('active');
+    });
+
+    if (modo === 'TORNEIO' && btnTorneio) {
+        btnTorneio.classList.add('active');
+    } else if (modo === 'SUMULAS' && btnSumulas) {
+        btnSumulas.classList.add('active');
+    } else if (modo === 'GERAL' && btnGeral) {
+        btnGeral.classList.add('active');
     }
     
     renderizarLeaderboardSaaS();
@@ -2468,6 +2490,7 @@ async function renderizarLeaderboardSaaS() {
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
 
     const btnTorneio = document.getElementById('btn-tab-torneio-saas');
+    const btnSumulas = document.getElementById('btn-tab-sumulas-saas');
     const btnGeral = document.getElementById('btn-tab-geral-saas');
     const containerAbas = btnTorneio ? btnTorneio.parentElement : null;
 
@@ -2499,7 +2522,7 @@ async function renderizarLeaderboardSaaS() {
             }
         }
 
-        // 2. Popula os Selects de Filtro (Mantido intacto)
+        // 2. Popula os Selects de Filtro
         const classesAvulsa = ['A', 'B', 'C'];
         if (selectClasse) {
             selectClasse.innerHTML = classesAvulsa.map(cls => `
@@ -2535,7 +2558,6 @@ async function renderizarLeaderboardSaaS() {
 
         // 📊 4. MATRIZ DE ESTADOS DAS ABAS DE NAVEGAÇÃO
         if (!temRankingGeral && !temTorneioAtivo) {
-            // Estado 1: Ponto Zero (Nenhum histórico e nenhum torneio ativo)
             if (containerAbas) containerAbas.style.display = 'none';
             bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum torneio em andamento ou histórico registrado.</p>';
             return;
@@ -2543,51 +2565,24 @@ async function renderizarLeaderboardSaaS() {
 
         if (containerAbas) containerAbas.style.display = 'flex';
 
-        if (!temRankingGeral && temTorneioAtivo) {
-            // Estado 2: 1º Torneio (Apenas Torneio Atual ativo a 100%)
-            if (btnTorneio) { 
-                btnTorneio.style.display = 'flex'; 
-                btnTorneio.style.width = '100%'; 
-                btnTorneio.style.cursor = 'default';
-                btnTorneio.classList.add('active'); 
-            }
-            if (btnGeral) { btnGeral.style.display = 'none'; btnGeral.classList.remove('active'); }
-            abaVisaoLeaderboardSaaS = 'TORNEIO';
+        // Configuração dinâmica de visibilidade dos botões
+        if (btnTorneio) btnTorneio.style.display = temTorneioAtivo ? 'flex' : 'none';
+        if (btnSumulas) btnSumulas.style.display = temTorneioAtivo ? 'flex' : 'none';
+        if (btnGeral) btnGeral.style.display = temRankingGeral ? 'flex' : 'none';
 
-        } else if (temRankingGeral && !temTorneioAtivo) {
-            // Estado 3: Entre Torneios (Apenas Ranking Geral ativo a 100%)
-            if (btnGeral) { 
-                btnGeral.style.display = 'flex'; 
-                btnGeral.style.width = '100%'; 
-                btnGeral.style.cursor = 'default';
-                btnGeral.classList.add('active'); 
-            }
-            if (btnTorneio) { btnTorneio.style.display = 'none'; btnTorneio.classList.remove('active'); }
-            abaVisaoLeaderboardSaaS = 'GERAL';
+        const botoesVisiveis = [btnTorneio, btnSumulas, btnGeral].filter(b => b && b.style.display !== 'none');
+        botoesVisiveis.forEach(b => {
+            b.style.flex = '1';
+            b.style.cursor = 'pointer';
+        });
 
-        } else {
-            // Estado 4: Torneios Seguintes (2 Abas a 50%/50%)
-            if (btnTorneio) { 
-                btnTorneio.style.display = 'flex'; 
-                btnTorneio.style.width = '50%'; 
-                btnTorneio.style.cursor = 'pointer';
-            }
-            if (btnGeral) { 
-                btnGeral.style.display = 'flex'; 
-                btnGeral.style.width = '50%'; 
-                btnGeral.style.cursor = 'pointer';
-            }
-            
-            if (btnTorneio && btnGeral) {
-                if (abaVisaoLeaderboardSaaS === 'TORNEIO') {
-                    btnTorneio.classList.add('active');
-                    btnGeral.classList.remove('active');
-                } else {
-                    btnGeral.classList.add('active');
-                    btnTorneio.classList.remove('active');
-                }
-            }
-        }
+        // Destaque do botão ativo
+        [btnTorneio, btnSumulas, btnGeral].forEach(btn => {
+            if (btn) btn.classList.remove('active');
+        });
+        if (abaVisaoLeaderboardSaaS === 'TORNEIO' && btnTorneio) btnTorneio.classList.add('active');
+        if (abaVisaoLeaderboardSaaS === 'SUMULAS' && btnSumulas) btnSumulas.classList.add('active');
+        if (abaVisaoLeaderboardSaaS === 'GERAL' && btnGeral) btnGeral.classList.add('active');
 
         const idLogado = localStorage.getItem('jogadorLogadoId');
 
@@ -2627,6 +2622,282 @@ async function renderizarLeaderboardSaaS() {
             return;
         }
 
+        // 📝 SE A ABA "SÚMULAS" ESTIVER SELECIONADA: EXIBE OS RESULTADOS DO TORNEIO ATUAL
+        if (abaVisaoLeaderboardSaaS === 'SUMULAS') {
+            const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
+            const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
+
+            const listaPartidas = Object.values(partidasGlobal).filter(p => p.categoria === chaveTabela);
+
+            if (listaPartidas.length === 0) {
+                bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhuma súmula lançada para esta categoria no torneio atual.</p>';
+                return;
+            }
+
+            const buscarNome = (id) => {
+                const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
+                const nomeStr = j.nomeCompleto || j.apelido || 'Atleta';
+                return nomeStr.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+            };
+
+            const formatarNomeCurto = (nomeBruto) => {
+                if (!nomeBruto) return "";
+                const palavras = nomeBruto.trim().toLowerCase().split(/\s+/).map(p => {
+                    if (['da', 'de', 'do', 'dos', 'das'].includes(p)) return p;
+                    return p.charAt(0).toUpperCase() + p.slice(1);
+                });
+                if (palavras.length > 2) {
+                    let res = palavras[0];
+                    for (let i = 1; i < palavras.length - 1; i++) {
+                        if (['da', 'de', 'do', 'dos', 'das'].includes(palavras[i])) {
+                            res += " " + palavras[i];
+                        } else {
+                            res += " " + palavras[i].charAt(0).toUpperCase() + ".";
+                        }
+                    }
+                    res += " " + palavras[palavras.length - 1];
+                    return res;
+                }
+                return palavras.join(' ');
+            };
+
+            const fmtSet = (pts, tb) => {
+                if (pts === undefined || pts === null || pts === "") return '-';
+                if (tb !== undefined && tb !== null && tb !== "") return `${pts}<sup>${tb}</sup>`;
+                return pts;
+            };
+
+            const calcSetWinner = (p1, p2, tb1, tb2) => {
+                const n1 = parseInt(p1), n2 = parseInt(p2);
+                if (isNaN(n1) || isNaN(n2)) return 0;
+                const t1 = parseInt(tb1), t2 = parseInt(tb2);
+                if (!isNaN(t1) && !isNaN(t2)) {
+                    if (t1 > t2) return 1;
+                    if (t2 > t1) return 2;
+                }
+                if ((n1 === 6 && n2 <= 4) || (n1 === 7 && (n2 === 5 || n2 === 6))) return 1;
+                if ((n2 === 6 && n1 <= 4) || (n2 === 7 && (n1 === 5 || n1 === 6))) return 2;
+                if ((n1 === 4 && n2 <= 2) || (n1 === 5 && (n2 === 3 || n2 === 4))) return 1;
+                if ((n2 === 4 && n1 <= 2) || (n2 === 5 && (n1 === 3 || n1 === 4))) return 2;
+                if ((n1 === 8 && n2 <= 6) || (n1 === 9 && (n2 === 7 || n2 === 8))) return 1;
+                if ((n2 === 8 && n1 <= 6) || (n2 === 9 && (n1 === 7 || n1 === 8))) return 2;
+                if (n1 >= 10 && n1 - n2 >= 2) return 1;
+                if (n2 >= 10 && n2 - n1 >= 2) return 2;
+                return 0;
+            };
+
+            let htmlSumulas = `
+                <div style="margin-top: 2px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px; font-size: 12px; color: #64748b; text-align: center;">
+                    📋 Total de <b>${listaPartidas.length} partida(s)</b> nesta categoria.
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+            `;
+
+            listaPartidas.forEach(partida => {
+                const j1NomeLongo = buscarNome(partida.jogador1Id);
+                const j2NomeLongo = buscarNome(partida.jogador2Id);
+                const j1Exibicao = formatarNomeCurto(j1NomeLongo);
+                const j2Exibicao = formatarNomeCurto(j2NomeLongo);
+
+                const catKey = partida.categoria || '';
+                let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
+                catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+                const dp = partida.dadosPlacar || {};
+                const stPlacar = dp.statusPlacar || partida.status || 'consolidado';
+                const decisaoArb = dp.decisaoArbitro || '';
+                const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
+                const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
+
+                let badgeHtml = '';
+                let footerArbHtml = '';
+
+                if (stPlacar === 'anulado' || decisaoArb === 'anulado_pelo_arbitro') {
+                    badgeHtml = `<span style="font-size: 11px; color: #dc2626; font-weight: 700;"><span style="margin-right: 3px;">🔴</span> Arbitrado</span>`;
+                    const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+                    const motivoAnul = dp.motivoAnulacao || 'partida inválida pelo torneio.';
+                    footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
+                } else if (decisaoArb === 'editado_pelo_arbitro') {
+                    badgeHtml = `<span style="font-size: 11px; color: #d97706; font-weight: 700;"><span style="margin-right: 3px;">🟠</span> Arbitrado</span>`;
+                    const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+                    footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Editado pela arbitragem: ${juizNome}</div>`;
+                } else if (decisaoArb === 'mantido_pelo_arbitro') {
+                    badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;"><span style="margin-right: 3px;">🟢</span> Arbitrado</span>`;
+                    const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+                    footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Homologado pela arbitragem: ${juizNome}</div>`;
+                } else {
+                    badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
+                }
+
+                const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                const vencedorOficial = norm(dp.vencedor || "");
+                const ehAnulado = (stPlacar === 'anulado' || decisaoArb === 'anulado_pelo_arbitro');
+                
+                const j1EhVencedor = !ehAnulado && ((partida.vencedorId === partida.jogador1Id) || (dp.vencedorCodigo === 'J1') || (vencedorOficial === norm(j1NomeLongo)));
+
+                let classNomeJ1 = (j1EhVencedor && !ehAnulado) ? 'match-winner' : '';
+                let classNomeJ2 = (!j1EhVencedor && !ehAnulado) ? 'match-winner' : '';
+                let setaJ1 = (j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : '';
+                let setaJ2 = (!j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : '';
+
+                htmlSumulas += `
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 14px 6px 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                            <span style="font-size: 11px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 8px; border-radius: 8px; border: 1px solid #ddd6fe;">
+                                ${catLabel || 'Categoria Oficial'}
+                            </span>
+                            ${badgeHtml}
+                        </div>
+                `;
+
+                if (isWO) {
+                    htmlSumulas += `
+                        <table class="atp-table">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span>
+                                    </td>
+                                    <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${j1EhVencedor ? 'W.O.' : ''}</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span>
+                                    </td>
+                                    <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${!j1EhVencedor ? 'W.O.' : ''}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div style="text-align: center; font-style: italic; color: #64748b; font-size: 13px; margin-top: 10px; margin-bottom: 4px;">
+                            Motivo: ${dp.motivoWO || 'Não informado'}
+                        </div>
+                    `;
+                } else if (dp.parciais) {
+                    const tagRetJ1 = (isRET && dp.desistenteCodigo === 'J1') ? '<span class="badge-ret" style="margin-left: 6px;">RET</span>' : '';
+                    const tagRetJ2 = (isRET && dp.desistenteCodigo === 'J2') ? '<span class="badge-ret" style="margin-left: 6px;">RET</span>' : '';
+
+                    const p = dp.parciais || {};
+                    const temSet1 = (p.set1 && p.set1.j1 !== undefined && p.set1.j1 !== null && p.set1.j1 !== "");
+                    const temSet2 = (p.set2 && p.set2.j1 !== undefined && p.set2.j1 !== null && p.set2.j1 !== "");
+                    const temSet3 = (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "");
+
+                    let thSetsHtml = '';
+                    if (temSet1) thSetsHtml += `<th class="col-score">1</th>`;
+                    if (temSet2) thSetsHtml += `<th class="col-score">2</th>`;
+                    if (temSet3) thSetsHtml += `<th class="col-score">3</th>`;
+
+                    let tdSetsJ1Html = '';
+                    let tdSetsJ2Html = '';
+
+                    if (temSet1) {
+                        const s1J1 = fmtSet(p.set1.j1, p.set1.tbJ1);
+                        const s1J2 = fmtSet(p.set1.j2, p.set1.tbJ2);
+                        const w1 = calcSetWinner(p.set1.j1, p.set1.j2, p.set1.tbJ1, p.set1.tbJ2);
+                        const classS1J1 = (!ehAnulado && w1 === 1) ? 'set-winner' : '';
+                        const classS1J2 = (!ehAnulado && w1 === 2) ? 'set-winner' : '';
+                        tdSetsJ1Html += `<td class="col-score atp-score ${classS1J1}">${s1J1}</td>`;
+                        tdSetsJ2Html += `<td class="col-score atp-score ${classS1J2}">${s1J2}</td>`;
+                    }
+
+                    if (temSet2) {
+                        const s2J1 = fmtSet(p.set2.j1, p.set2.tbJ1);
+                        const s2J2 = fmtSet(p.set2.j2, p.set2.tbJ2);
+                        const w2 = calcSetWinner(p.set2.j1, p.set2.j2, p.set2.tbJ1, p.set2.tbJ2);
+                        const classS2J1 = (!ehAnulado && w2 === 1) ? 'set-winner' : '';
+                        const classS2J2 = (!ehAnulado && w2 === 2) ? 'set-winner' : '';
+                        tdSetsJ1Html += `<td class="col-score atp-score ${classS2J1}">${s2J1}</td>`;
+                        tdSetsJ2Html += `<td class="col-score atp-score ${classS2J2}">${s2J2}</td>`;
+                    }
+
+                    if (temSet3) {
+                        const s3J1 = fmtSet(p.set3.j1, p.set3.tbJ1);
+                        const s3J2 = fmtSet(p.set3.j2, p.set3.tbJ2);
+                        const w3 = calcSetWinner(p.set3.j1, p.set3.j2, p.set3.tbJ1, p.set3.tbJ2);
+                        const classS3J1 = (!ehAnulado && w3 === 1) ? 'set-winner' : '';
+                        const classS3J2 = (!ehAnulado && w3 === 2) ? 'set-winner' : '';
+                        tdSetsJ1Html += `<td class="col-score atp-score ${classS3J1}">${s3J1}</td>`;
+                        tdSetsJ2Html += `<td class="col-score atp-score ${classS3J2}">${s3J2}</td>`;
+                    }
+
+                    htmlSumulas += `
+                        <table class="atp-table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    ${thSetsHtml}
+                                    <th class="col-arrow"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>
+                                        ${tagRetJ1}
+                                    </td>
+                                    ${tdSetsJ1Html}
+                                    <td class="col-arrow">${setaJ1}</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>
+                                        ${tagRetJ2}
+                                    </td>
+                                    ${tdSetsJ2Html}
+                                    <td class="col-arrow">${setaJ2}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    `;
+
+                    if (isRET && dp.motivoRET) {
+                        htmlSumulas += `
+                            <div style="text-align: center; font-style: italic; color: #64748b; font-size: 13px; margin-top: 10px; margin-bottom: 4px;">
+                                Motivo: ${dp.motivoRET}
+                            </div>
+                        `;
+                    }
+                } else {
+                    htmlSumulas += `
+                        <table class="atp-table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th class="col-score">1</th>
+                                    <th class="col-arrow"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span>
+                                    </td>
+                                    <td class="col-score atp-score ${j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP1 || 0}</td>
+                                    <td class="col-arrow">${setaJ1}</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span>
+                                    </td>
+                                    <td class="col-score atp-score ${!j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP2 || 0}</td>
+                                    <td class="col-arrow">${setaJ2}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    `;
+                }
+
+                if (footerArbHtml) {
+                    htmlSumulas += footerArbHtml;
+                }
+
+                htmlSumulas += `</div>`;
+            });
+
+            htmlSumulas += `</div>`;
+            bodyList.innerHTML = htmlSumulas;
+            return;
+        }
+
         const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
         const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
 
@@ -2647,7 +2918,6 @@ async function renderizarLeaderboardSaaS() {
                 const gamesP1 = parseInt(partida.gamesP1) || 0;
                 const gamesP2 = parseInt(partida.gamesP2) || 0;
 
-                // Registra confronto direto entre atletas
                 confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
                 confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
 
@@ -2695,7 +2965,6 @@ async function renderizarLeaderboardSaaS() {
             const nomeVice = capitalizarNome(objVice.nomeCompleto || objVice.apelido || 'Vice-Campeão');
             const nomeTerceiro = capitalizarNome(objTerceiro.nomeCompleto || objTerceiro.apelido || '3º Colocado');
 
-            // Mapeamento dinâmico do rótulo do troféu por modelo
             const rotulosBadgesCampeao = {
                 piramide: "1º LUGAR • PIRÂMIDE",
                 barragem: "1º LUGAR • BARRAGEM",
@@ -2703,7 +2972,6 @@ async function renderizarLeaderboardSaaS() {
             };
             const txtBadgeCampeao = rotulosBadgesCampeao[modelo] || "1º LUGAR • CAMPEÃO";
 
-            // Card Dourado do 1º Lugar (Campeão)
             htmlHall += `
                 <div style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 2px solid #f59e0b; border-radius: 16px; padding: 14px; text-align: center; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2); margin-bottom: 12px;">
                     <div style="font-size: 28px; margin-bottom: -4px;">👑</div>
@@ -2715,7 +2983,6 @@ async function renderizarLeaderboardSaaS() {
                 <div style="display: flex; flex-direction: column; gap: 8px;">
             `;
 
-            // Card do 2º Lugar
             if (idVice) {
                 htmlHall += `
                     <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
@@ -2730,7 +2997,6 @@ async function renderizarLeaderboardSaaS() {
                 `;
             }
 
-            // Card do 3º Lugar
             if (idTerceiro) {
                 htmlHall += `
                     <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
@@ -2747,7 +3013,6 @@ async function renderizarLeaderboardSaaS() {
 
             htmlHall += `</div>`;
 
-            // Lista Oculta e Botão Sanfona (4º em diante)
             if (listaIDs.length > 3) {
                 htmlHall += `
                     <div id="box-restante-hall" style="display: none; margin-top: 8px; flex-direction: column; gap: 8px;">
@@ -2973,6 +3238,7 @@ async function renderizarLeaderboardSaaS() {
         bodyList.innerHTML = '<p style="text-align: center; color: #ef4444; margin-top: 30px;">Erro ao carregar a classificação.</p>';
     }
 }
+
 
 /**
  * Alterna a expansão/recolhimento dos atletas a partir do 4º lugar no Hall de Campeões
@@ -4257,20 +4523,892 @@ function encerrarInscricoesECriarChavesSaaS() {
 /* 10.3 AÇÕES DA FASE DE CHAVES E PONTOS (FASE 3)           */
 /* ======================================================== */
 
-function exportarLeaderboardPDFSaaS() {
-    const sheet = document.getElementById('sheet-leaderboard-ranking');
-    if (sheet && sheet.style.display !== 'flex') {
-        abrirLeaderboardSaaS();
+async function exportarLeaderboardPDFSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+    showToast("Gerando PDF do Torneio Atual...", "info");
+
+    // 1. CARREGAMENTO AUTOMÁTICO DO MOTOR HTML2PDF
+    if (typeof html2pdf === 'undefined') {
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script); 
+        });
     }
+
+    // 2. RENDERIZA OS DADOS DA ABA SELECIONADA NA MEMÓRIA
+    if (typeof renderizarLeaderboardSaaS === 'function') {
+        await renderizarLeaderboardSaaS();
+    }
+
+    const bodyLeaderboard = document.getElementById('body-leaderboard-scroll');
+    const txtSub = document.getElementById('txt-subtitulo-leaderboard');
+    const elNomeClube = document.getElementById('txt-nome-clube');
+
+    if (!bodyLeaderboard || !bodyLeaderboard.innerHTML.trim()) {
+        showToast("Erro ao localizar o conteúdo para exportação.", "error");
+        return;
+    }
+
+    let nomeClubeRaw = elNomeClube ? elNomeClube.textContent.trim() : '';
+    if (!nomeClubeRaw || nomeClubeRaw.toUpperCase() === 'CARREGANDO...') {
+        nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || clubeAtivoId || 'CLUBE';
+    }
+    const nomeClube = nomeClubeRaw.toUpperCase();
+	
+    const dataHojeStr = new Date().toLocaleDateString('pt-BR');
+
+    // Identificação do Torneio e Categoria Ativa
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+    const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
+
+    const selClasse = document.getElementById('select-leaderboard-classe');
+    const selGenero = document.getElementById('select-leaderboard-genero');
+    const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
+    const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
+    const categoriaAtivaTxt = [txtClasse, txtGenero].filter(Boolean).join(' • ');
+
+    // Linha 2 (Torneio — Categoria) e Linha 3 (Subtítulo + Modelo)
+    const linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
     
-    setTimeout(() => {
-        if (typeof window.print === 'function') {
-            window.print();
-        } else {
-            showToast("A impressão em PDF não é suportada neste navegador.", "warning");
+    let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').trim() : '';
+    const linha3Subtitulo = modeloTxt ? `Tabela de Classificação — ${modeloTxt}` : "Tabela de Classificação";
+
+    // 3. CONTAINER DE 520PX PADRONIZADO
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'pdf-leaderboard-wrapper';
+    tempContainer.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 490px;
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        z-index: -9999;
+    `;
+
+    tempContainer.innerHTML = `
+        <style>
+            #pdf-leaderboard-wrapper * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
+            }
+
+            .pdf-a4-sheet {
+                background: #ffffff;
+                width: 490px;
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                text-align: left;
+            }
+
+            /* CABEÇALHO PADRÃO EM 3 LINHAS */
+            .pdf-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #0f172a;
+                margin-bottom: 12px;
+                width: 100%;
+            }
+
+            .pdf-header-titles {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                text-align: left;
+            }
+
+            .pdf-header-titles h1 {
+                font-size: 15px;
+                font-weight: 900;
+                color: #0f172a;
+                text-transform: uppercase;
+                letter-spacing: -0.5px;
+                margin: 0;
+            }
+
+            .pdf-header-titles .line-2 {
+                font-size: 12px;
+                font-weight: 800;
+                color: #2563eb;
+                margin: 0;
+            }
+
+            .pdf-header-titles .line-3 {
+                font-size: 11px;
+                font-weight: 700;
+                color: #475569;
+                margin: 0;
+            }
+
+            .pdf-date {
+                font-size: 10px;
+                font-weight: 700;
+                color: #475569;
+                white-space: nowrap;
+                padding-bottom: 2px;
+            }
+
+            .pdf-body-content {
+                width: 100%;
+                display: block;
+                text-align: left;
+            }
+
+            .pdf-body-content .box-dica-leaderboard { 
+                display: none !important; 
+            }
+
+            .pdf-body-content .item-leaderboard-piramide {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px 14px;
+                margin-bottom: 8px;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-radius: 12px;
+            }
+
+            .pdf-body-content .tabela-leaderboard-barragem {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 11px;
+                margin-top: 8px;
+            }
+
+            .pdf-body-content .tabela-leaderboard-barragem th {
+                background: #f8fafc;
+                padding: 8px 6px;
+                border-bottom: 2px solid #cbd5e1;
+                color: #475569;
+                font-weight: 800;
+            }
+
+            .pdf-body-content .tabela-leaderboard-barragem td {
+                padding: 8px 6px;
+                border-bottom: 1px solid #e2e8f0;
+                text-align: center;
+            }
+
+            /* RODAPÉ OFICIAL DO SISTEMA */
+            .pdf-footer {
+                border-top: 1px solid #cbd5e1;
+                padding-top: 10px;
+                margin-top: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                font-size: 8.5px;
+                color: #64748b;
+                width: 100%;
+            }
+
+            .pdf-footer-signature {
+                border-top: 1px solid #0f172a;
+                width: 140px;
+                text-align: center;
+                padding-top: 3px;
+                font-weight: 700;
+                color: #0f172a;
+                font-size: 9px;
+            }
+        </style>
+
+        <div class="pdf-a4-sheet">
+            <div class="pdf-header">
+                <div class="pdf-header-titles">
+                    <h1>${nomeClube} — SETPOINT</h1>
+                    <div class="line-2">${linha2TorneioCategoria}</div>
+                    <div class="line-3">${linha3Subtitulo}</div>
+                </div>
+                <div class="pdf-date">${dataHojeStr}</div>
+            </div>
+
+            <div class="pdf-body-content">
+                ${bodyLeaderboard.innerHTML}
+            </div>
+
+            <div class="pdf-footer">
+                <div>
+                    <b>SetPoint SaaS</b> • Relatório Oficial do Ranking<br>
+                    Documento emitido automaticamente pelo sistema.
+                </div>
+                <div class="pdf-footer-signature">
+                    Arbitragem / Gestão
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.documentElement.appendChild(tempContainer);
+
+    // 4. RESET TEMPORÁRIO DE SCROLL PARA ENQUADRAMENTO
+    const savedScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    await new Promise(r => setTimeout(r, 350));
+
+    // 5. PROCESSAMENTO E DOWNLOAD DO PDF
+    const targetElement = tempContainer.querySelector('.pdf-a4-sheet');
+    const nomeArquivo = `Torneio_Atual_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+
+    const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     nomeArquivo,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            width: 520,
+            windowWidth: 520
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(targetElement).save();
+        showToast("PDF do Torneio Atual baixado com sucesso!", "success");
+    } catch (err) {
+        console.error("❌ Erro ao baixar PDF:", err);
+        showToast("Erro ao gerar o PDF.", "error");
+    } finally {
+        window.scrollTo(0, savedScrollY);
+        if (tempContainer && tempContainer.parentNode) {
+            tempContainer.parentNode.removeChild(tempContainer);
         }
-    }, 300);
+    }
 }
+
+
+
+/* ======================================================== */
+/* GERENCIADOR E EXPORTADOR CONTEXTUAL DE PDFS DO RANKING   */
+/* ======================================================== */
+function exportarPDFContextualSaaS() {
+    // Detecta dinamicamente a aba em que o usuário está navegando
+    if (abaVisaoLeaderboardSaaS === 'TORNEIO') {
+        exportarLeaderboardPDFSaaS();
+    } else if (abaVisaoLeaderboardSaaS === 'SUMULAS') {
+        exportarSumulasPDFSaaS();
+    } else if (abaVisaoLeaderboardSaaS === 'GERAL') {
+        exportarRankingGeralPDFSaaS();
+    } else {
+        // Fallback seguro caso esteja em estado indefinido
+        exportarLeaderboardPDFSaaS();
+    }
+}
+
+
+
+async function exportarRankingGeralPDFSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+    showToast("Gerando PDF do Ranking Geral...", "info");
+
+    // 1. CARREGAMENTO AUTOMÁTICO DO MOTOR HTML2PDF
+    if (typeof html2pdf === 'undefined') {
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    // 2. GUARDA ESTADO DA ABA ANTERIOR E FORÇA RENDERIZAÇÃO DO RANKING GERAL
+    const modoAnterior = abaVisaoLeaderboardSaaS;
+    abaVisaoLeaderboardSaaS = 'GERAL';
+
+    if (typeof renderizarLeaderboardSaaS === 'function') {
+        await renderizarLeaderboardSaaS();
+    }
+
+    const bodyLeaderboard = document.getElementById('body-leaderboard-scroll');
+    const elNomeClube = document.getElementById('txt-nome-clube');
+
+    // Valida se existem atletas no Ranking Geral
+    if (!bodyLeaderboard || !bodyLeaderboard.innerHTML.trim() || bodyLeaderboard.innerText.includes("Nenhum atleta")) {
+        showToast("Nenhum atleta cadastrado no Ranking Geral desta categoria.", "warning");
+        abaVisaoLeaderboardSaaS = modoAnterior;
+        if (typeof renderizarLeaderboardSaaS === 'function') await renderizarLeaderboardSaaS();
+        return;
+    }
+
+    let nomeClubeRaw = elNomeClube ? elNomeClube.textContent.trim() : '';
+    if (!nomeClubeRaw || nomeClubeRaw.toUpperCase() === 'CARREGANDO...') {
+        nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || clubeAtivoId || 'CLUBE';
+    }
+    const nomeClube = nomeClubeRaw.toUpperCase();
+	
+    const dataHojeStr = new Date().toLocaleDateString('pt-BR');
+
+    // Identificação do Torneio e Categoria Ativa
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+    const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
+
+    const selClasse = document.getElementById('select-leaderboard-classe');
+    const selGenero = document.getElementById('select-leaderboard-genero');
+    const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
+    const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
+    const categoriaAtivaTxt = [txtClasse, txtGenero].filter(Boolean).join(' • ');
+
+    const linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
+    const linha3Subtitulo = "Extrato do Ranking Geral";
+
+    // 3. CONTAINER COM 560PX E ORIGEM FIXA
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'pdf-ranking-geral-wrapper';
+    tempContainer.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 520px;
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        z-index: -9999;
+    `;
+
+    tempContainer.innerHTML = `
+        <style>
+            #pdf-ranking-geral-wrapper * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
+            }
+
+            .pdf-a4-sheet {
+                background: #ffffff;
+                width: 520px;
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                text-align: left;
+            }
+
+            /* CABEÇALHO PADRÃO EM 3 LINHAS */
+            .pdf-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #0f172a;
+                margin-bottom: 12px;
+                width: 100%;
+            }
+
+            .pdf-header-titles {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                text-align: left;
+            }
+
+            .pdf-header-titles h1 {
+                font-size: 15px;
+                font-weight: 900;
+                color: #0f172a;
+                text-transform: uppercase;
+                letter-spacing: -0.5px;
+                margin: 0;
+            }
+
+            .pdf-header-titles .line-2 {
+                font-size: 12px;
+                font-weight: 800;
+                color: #2563eb;
+                margin: 0;
+            }
+
+            .pdf-header-titles .line-3 {
+                font-size: 11px;
+                font-weight: 700;
+                color: #475569;
+                margin: 0;
+            }
+
+            .pdf-date {
+                font-size: 10px;
+                font-weight: 700;
+                color: #475569;
+                white-space: nowrap;
+                padding-bottom: 2px;
+            }
+
+            .pdf-body-content {
+                width: 100%;
+                display: block;
+                text-align: left;
+            }
+
+            .pdf-body-content .box-dica-leaderboard {
+                display: none !important;
+            }
+
+            .pdf-body-content .item-leaderboard-piramide {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px 14px;
+                margin-bottom: 8px;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-radius: 12px;
+            }
+
+            /* DESTAQUE DO ATLETA LOGADO NO PDF */
+            .pdf-body-content .item-leaderboard-piramide.voce {
+                background: #f0fdf4 !important;
+                border: 2px solid #28a745 !important;
+            }
+
+            /* RODAPÉ OFICIAL DO SISTEMA */
+            .pdf-footer {
+                border-top: 1px solid #cbd5e1;
+                padding-top: 10px;
+                margin-top: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                font-size: 8.5px;
+                color: #64748b;
+                width: 100%;
+            }
+
+            .pdf-footer-signature {
+                border-top: 1px solid #0f172a;
+                width: 140px;
+                text-align: center;
+                padding-top: 3px;
+                font-weight: 700;
+                color: #0f172a;
+                font-size: 9px;
+            }
+        </style>
+
+        <div class="pdf-a4-sheet">
+            <div class="pdf-header">
+                <div class="pdf-header-titles">
+                    <h1>${nomeClube} — SETPOINT</h1>
+                    <div class="line-2">${linha2TorneioCategoria}</div>
+                    <div class="line-3">${linha3Subtitulo}</div>
+                </div>
+                <div class="pdf-date">${dataHojeStr}</div>
+            </div>
+
+            <div class="pdf-body-content">
+                ${bodyLeaderboard.innerHTML}
+            </div>
+
+            <div class="pdf-footer">
+                <div>
+                    <b>SetPoint SaaS</b> • Relatório Oficial do Ranking<br>
+                    Documento emitido automaticamente pelo sistema.
+                </div>
+                <div class="pdf-footer-signature">
+                    Arbitragem / Gestão
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.documentElement.appendChild(tempContainer);
+
+    // 4. RESET TEMPORÁRIO DE SCROLL PARA ENQUADRAMENTO
+    const savedScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    await new Promise(r => setTimeout(r, 350));
+
+    // 5. PROCESSAMENTO COM TRAVA DE ORIGEM (X:0, Y:0, WIDTH:560)
+    const targetElement = tempContainer.querySelector('.pdf-a4-sheet');
+    const nomeArquivo = `Ranking_Geral_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+
+    const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     nomeArquivo,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            width: 560,
+            windowWidth: 560
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(targetElement).save();
+        showToast("PDF do Ranking Geral baixado com sucesso!", "success");
+    } catch (err) {
+        console.error("❌ Erro ao baixar PDF do Ranking Geral:", err);
+        showToast("Erro ao gerar o PDF do Ranking Geral.", "error");
+    } finally {
+        window.scrollTo(0, savedScrollY);
+        if (tempContainer && tempContainer.parentNode) {
+            tempContainer.parentNode.removeChild(tempContainer);
+        }
+
+        // Restaura a aba ativa do usuário
+        abaVisaoLeaderboardSaaS = modoAnterior;
+        if (typeof renderizarLeaderboardSaaS === 'function') {
+            await renderizarLeaderboardSaaS();
+        }
+    }
+}
+
+
+async function exportarSumulasPDFSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+    showToast("Gerando PDF das Súmulas...", "info");
+
+    // 1. CARREGAMENTO AUTOMÁTICO DO MOTOR HTML2PDF
+    if (typeof html2pdf === 'undefined') {
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    // 2. GUARDA ESTADO DA ABA ANTERIOR E FORÇA RENDERIZAÇÃO DA VISÃO DE SÚMULAS
+    const modoAnterior = abaVisaoLeaderboardSaaS;
+    abaVisaoLeaderboardSaaS = 'SUMULAS';
+
+    if (typeof renderizarLeaderboardSaaS === 'function') {
+        await renderizarLeaderboardSaaS();
+    }
+
+    const bodyLeaderboard = document.getElementById('body-leaderboard-scroll');
+    const txtSub = document.getElementById('txt-subtitulo-leaderboard');
+    const elNomeClube = document.getElementById('txt-nome-clube');
+
+    // Valida se existem súmulas na categoria selecionada
+    if (!bodyLeaderboard || !bodyLeaderboard.innerHTML.trim() || bodyLeaderboard.innerText.includes("Nenhuma súmula")) {
+        showToast("Nenhuma súmula cadastrada nesta categoria para exportar.", "warning");
+        abaVisaoLeaderboardSaaS = modoAnterior;
+        if (typeof renderizarLeaderboardSaaS === 'function') await renderizarLeaderboardSaaS();
+        return;
+    }
+
+    let nomeClubeRaw = elNomeClube ? elNomeClube.textContent.trim() : '';
+    if (!nomeClubeRaw || nomeClubeRaw.toUpperCase() === 'CARREGANDO...') {
+        nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || clubeAtivoId || 'CLUBE';
+    }
+    const nomeClube = nomeClubeRaw.toUpperCase();
+	
+    const dataHojeStr = new Date().toLocaleDateString('pt-BR');
+
+    // Identificação do Torneio e Categoria Ativa
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+    const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
+
+    const selClasse = document.getElementById('select-leaderboard-classe');
+    const selGenero = document.getElementById('select-leaderboard-genero');
+    const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
+    const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
+    const categoriaAtivaTxt = [txtClasse, txtGenero].filter(Boolean).join(' • ');
+
+    const linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
+
+    let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').trim() : 'Modelo Oficial';
+    const linha3Subtitulo = `Súmulas e Resultados — ${modeloTxt}`;
+
+    // 3. CONTAINER CENTRALIZADO E COM INJEÇÃO DOS ESTILOS DAS SÚMULAS (ATP TABLE)
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'pdf-sumulas-wrapper';
+    tempContainer.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 560px;
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        z-index: -9999;
+    `;
+
+    tempContainer.innerHTML = `
+        <style>
+            #pdf-sumulas-wrapper * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
+            }
+
+            .pdf-a4-sheet {
+                background: #ffffff;
+                width: 560px;
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                text-align: left;
+            }
+
+            /* CABEÇALHO PADRÃO EM 3 LINHAS */
+            .pdf-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #0f172a;
+                margin-bottom: 12px;
+                width: 100%;
+            }
+
+            .pdf-header-titles {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                text-align: left;
+            }
+
+            .pdf-header-titles h1 {
+                font-size: 15px;
+                font-weight: 900;
+                color: #0f172a;
+                text-transform: uppercase;
+                letter-spacing: -0.5px;
+                margin: 0;
+            }
+
+            .pdf-header-titles .line-2 {
+                font-size: 12px;
+                font-weight: 800;
+                color: #2563eb;
+                margin: 0;
+            }
+
+            .pdf-header-titles .line-3 {
+                font-size: 11px;
+                font-weight: 700;
+                color: #475569;
+                margin: 0;
+            }
+
+            .pdf-date {
+                font-size: 10px;
+                font-weight: 700;
+                color: #475569;
+                white-space: nowrap;
+                padding-bottom: 2px;
+            }
+
+            .pdf-body-content {
+                width: 100%;
+                display: block;
+                text-align: left;
+            }
+
+            .pdf-body-content .box-dica-leaderboard {
+                display: none !important;
+            }
+
+            /* ESTILOS REPLICADOS DAS SÚMULAS (ATP TABLE) */
+            .pdf-body-content .atp-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 11px;
+            }
+
+            .pdf-body-content .atp-table th {
+                color: #64748b;
+                font-size: 10px;
+                font-weight: 700;
+                border-bottom: 1px solid #cbd5e1;
+                padding-bottom: 4px;
+                text-align: center;
+            }
+
+            .pdf-body-content .atp-table th:first-child {
+                text-align: left;
+                padding-left: 0;
+            }
+
+            .pdf-body-content .atp-table td {
+                padding: 8px 0;
+                border-bottom: 1px solid #f1f5f9;
+                text-align: center;
+            }
+
+            .pdf-body-content .atp-table td:first-child {
+                text-align: left;
+            }
+
+            .pdf-body-content .atp-name {
+                font-size: 12px;
+                color: #0f172a;
+            }
+
+            .pdf-body-content .atp-name.match-winner {
+                font-weight: 800;
+                color: #0f172a;
+            }
+
+            .pdf-body-content .atp-score {
+                font-size: 12px;
+                color: #64748b;
+            }
+
+            .pdf-body-content .atp-score.set-winner {
+                font-weight: 800;
+                color: #0f172a;
+            }
+
+            .pdf-body-content .atp-score sup {
+                font-size: 9px;
+                color: #94a3b8;
+                margin-left: 1px;
+            }
+
+            .pdf-body-content .winner-arrow {
+                color: #0f172a;
+                font-size: 11px;
+            }
+
+            .pdf-body-content .col-score { width: 32px; text-align: center; }
+            .pdf-body-content .col-arrow { width: 20px; text-align: center; }
+
+            .pdf-body-content .badge-ret {
+                background-color: #dc2626;
+                color: #ffffff;
+                font-size: 9px;
+                font-weight: 800;
+                padding: 2px 4px;
+                border-radius: 3px;
+                margin-left: 4px;
+            }
+
+            /* RODAPÉ OFICIAL DO SISTEMA */
+            .pdf-footer {
+                border-top: 1px solid #cbd5e1;
+                padding-top: 10px;
+                margin-top: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                font-size: 8.5px;
+                color: #64748b;
+                width: 100%;
+            }
+
+            .pdf-footer-signature {
+                border-top: 1px solid #0f172a;
+                width: 140px;
+                text-align: center;
+                padding-top: 3px;
+                font-weight: 700;
+                color: #0f172a;
+                font-size: 9px;
+            }
+        </style>
+
+        <div class="pdf-a4-sheet">
+            <div class="pdf-header">
+                <div class="pdf-header-titles">
+                    <h1>${nomeClube} — SETPOINT</h1>
+                    <div class="line-2">${linha2TorneioCategoria}</div>
+                    <div class="line-3">${linha3Subtitulo}</div>
+                </div>
+                <div class="pdf-date">${dataHojeStr}</div>
+            </div>
+
+            <div class="pdf-body-content">
+                ${bodyLeaderboard.innerHTML}
+            </div>
+
+            <div class="pdf-footer">
+                <div>
+                    <b>SetPoint SaaS</b> • Relatório Oficial do Ranking<br>
+                    Documento emitido automaticamente pelo sistema.
+                </div>
+                <div class="pdf-footer-signature">
+                    Arbitragem / Gestão
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.documentElement.appendChild(tempContainer);
+
+    // 4. RESET TEMPORÁRIO DE SCROLL PARA ENQUADRAMENTO PERFECT
+    const savedScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    await new Promise(r => setTimeout(r, 350));
+
+    // 5. PROCESSAMENTO E DOWNLOAD DO PDF
+    const targetElement = tempContainer.querySelector('.pdf-a4-sheet');
+    const nomeArquivo = `Sumulas_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+
+    const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     nomeArquivo,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            width: 600,
+            windowWidth: 600
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(targetElement).save();
+        showToast("PDF das Súmulas baixado com sucesso!", "success");
+    } catch (err) {
+        console.error("❌ Erro ao baixar PDF das súmulas:", err);
+        showToast("Erro ao gerar o PDF das súmulas.", "error");
+    } finally {
+        window.scrollTo(0, savedScrollY);
+        if (tempContainer && tempContainer.parentNode) {
+            tempContainer.parentNode.removeChild(tempContainer);
+        }
+
+        // Restaura a aba ativa do usuário
+        abaVisaoLeaderboardSaaS = modoAnterior;
+        if (typeof renderizarLeaderboardSaaS === 'function') {
+            await renderizarLeaderboardSaaS();
+        }
+    }
+}
+
+
 
 async function encerrarFase3EAvancarSaaS() {
     if (!isGestorLogado || !raizBanco) {
@@ -4946,7 +6084,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
         const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
 
-        // 🎯 BADGES E RODAPÉS REATIVOS DA ARBITRAGEM
+        // BADGES E RODAPÉS REATIVOS DA ARBITRAGEM
         let badgeHtml = '';
         let footerArbHtml = '';
 
@@ -4954,15 +6092,15 @@ function abrirSumulasAcervoSaaS(idEdicao) {
             badgeHtml = `<span style="font-size: 11px; color: #dc2626; font-weight: 700;"><span style="margin-right: 3px;">🔴</span> Arbitrado</span>`;
             const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
             const motivoAnul = dp.motivoAnulacao || 'partida inválida pelo torneio, conforme regulamento.';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 12px; margin-top: 10px; margin-bottom: 2px;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
+            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
         } else if (decisaoArb === 'editado_pelo_arbitro') {
             badgeHtml = `<span style="font-size: 11px; color: #d97706; font-weight: 700;"><span style="margin-right: 3px;">🟠</span> Arbitrado</span>`;
             const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 12px; margin-top: 10px; margin-bottom: 2px;">Editado pela arbitragem: ${juizNome}</div>`;
+            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Editado pela arbitragem: ${juizNome}</div>`;
         } else if (decisaoArb === 'mantido_pelo_arbitro') {
             badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;"><span style="margin-right: 3px;">🟢</span> Arbitrado</span>`;
             const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 12px; margin-top: 10px; margin-bottom: 2px;">Homologado pela arbitragem: ${juizNome}</div>`;
+            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Homologado pela arbitragem: ${juizNome}</div>`;
         } else {
             badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
         }
@@ -4976,10 +6114,10 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         let classNomeJ1 = (j1EhVencedor && !ehAnulado) ? 'match-winner' : '';
         let classNomeJ2 = (!j1EhVencedor && !ehAnulado) ? 'match-winner' : '';
         let setaJ1 = (j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : '';
-        let setaJ2 = (!j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : '';
+        let setaJ2 = (!j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : ''; 
 
         html += `
-            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 14px 6px 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
                     <span style="font-size: 11px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 8px; border-radius: 8px; border: 1px solid #ddd6fe;">
                         ${catLabel || 'Categoria Oficial'}
@@ -5127,7 +6265,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
 
         // Injeta a nota explicativa da arbitragem no rodapé do card
         if (footerArbHtml) {
-            html += footerArbHtml;
+            html += footerArbHtml; 
         }
 
         html += `</div>`;
@@ -5144,7 +6282,499 @@ function abrirSumulasAcervoSaaS(idEdicao) {
 }
 
 
-function exportarRelatorioHistoricoSaaS() { showToast("Gerando relatório PDF do acervo...", "info"); }
+
+async function exportarRelatorioHistoricoSaaS() {
+    // 1. CARREGA OS DADOS DO FIREBASE CASO AINDA NÃO ESTEJAM NA MEMÓRIA
+    if (!acervoHistoricoGlobalSaaS || acervoHistoricoGlobalSaaS.length === 0) {
+        if (typeof carregarHistoricoTorneiosSaaS === 'function') {
+            await carregarHistoricoTorneiosSaaS();
+        }
+    }
+
+    if (!acervoHistoricoGlobalSaaS || acervoHistoricoGlobalSaaS.length === 0) {
+        showToast("Nenhum torneio arquivado no histórico para gerar relatório.", "warning");
+        return;
+    }
+
+    if (navigator.vibrate) navigator.vibrate(30);
+    showToast("Gerando relatório PDF...", "info");
+
+    // 2. CARREGAMENTO AUTOMÁTICO DO MOTOR HTML2PDF
+    if (typeof html2pdf === 'undefined') {
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    const dataHojeStr = new Date().toLocaleDateString('pt-BR');
+    const elNomeClube = document.getElementById('txt-nome-clube');
+    const nomeClube = (elNomeClube ? elNomeClube.textContent.trim() : 'CLUBE OLÍMPICO').toUpperCase();
+
+    // 3. CÁLCULO DE KPIS E DADOS GERAIS DO ACERVO
+    const totalTorneios = acervoHistoricoGlobalSaaS.length;
+    let totalPartidasValidadas = 0;
+    const atletasUnicosSet = new Set();
+    const contagemTitulos = {};
+
+    const capitalizar = (str) => {
+        if (!str) return '';
+        return str.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+    };
+
+    const buscarNomeAtleta = (id) => {
+        const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
+        return capitalizar(j.nomeCompleto || j.apelido || 'Atleta');
+    };
+
+    acervoHistoricoGlobalSaaS.forEach(edicao => {
+        const partidas = edicao.partidas || {};
+        totalPartidasValidadas += Object.keys(partidas).length;
+
+        const classif = edicao.classificacaoFinal || {};
+        Object.keys(classif).forEach(catKey => {
+            const listaIds = classif[catKey] || [];
+            listaIds.forEach(id => atletasUnicosSet.add(id));
+
+            let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
+            catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+            if (listaIds[0]) {
+                const idC = listaIds[0];
+                if (!contagemTitulos[idC]) {
+                    contagemTitulos[idC] = { id: idC, nome: buscarNomeAtleta(idC), titulos: 0, vices: 0, categorias: new Set() };
+                }
+                contagemTitulos[idC].titulos++;
+                contagemTitulos[idC].categorias.add(catLabel);
+            }
+
+            if (listaIds[1]) {
+                const idV = listaIds[1];
+                if (!contagemTitulos[idV]) {
+                    contagemTitulos[idV] = { id: idV, nome: buscarNomeAtleta(idV), titulos: 0, vices: 0, categorias: new Set() };
+                }
+                contagemTitulos[idV].vices++;
+                contagemTitulos[idV].categorias.add(catLabel);
+            }
+        });
+    });
+
+    const rankingCampeoes = Object.values(contagemTitulos)
+        .filter(c => c.titulos > 0)
+        .sort((a, b) => {
+            if (b.titulos !== a.titulos) return b.titulos - a.titulos;
+            return b.vices - a.vices;
+        });
+
+    const top5Campeoes = rankingCampeoes.slice(0, 5);
+    const liderAbsolutoNome = top5Campeoes.length > 0 ? top5Campeoes[0].nome : '--';
+
+    // 4. TABELA DE EDIÇÕES HISTÓRICAS
+    const fmtDataCurta = (str) => {
+        if (!str) return '--/--';
+        const p = str.split('-');
+        return p.length === 3 ? `${p[2]}/${p[1]}` : str;
+    };
+
+    let htmlTabelaEdicoes = '';
+    acervoHistoricoGlobalSaaS.forEach(edicao => {
+        const cal = edicao.contrato || {};
+        const dtIni = fmtDataCurta(cal.inicioJogos);
+        const dtFim = fmtDataCurta(cal.fimTorneio);
+        const qtdJogos = edicao.partidas ? Object.keys(edicao.partidas).length : 0;
+        const mod = (edicao.modelo || 'oficial').charAt(0).toUpperCase() + (edicao.modelo || 'oficial').slice(1);
+        const badgeClass = edicao.modelo === 'piramide' ? 'badge-piramide' : (edicao.modelo === 'barragem' ? 'badge-barragem' : 'badge-grupos');
+
+        htmlTabelaEdicoes += `
+            <tr>
+                <td style="font-weight: 700;">${cal.nomeTorneio || 'Torneio'}</td>
+                <td><span class="badge-model ${badgeClass}">${mod}</span></td>
+                <td style="font-size: 8.5px;">${dtIni} a ${dtFim}</td>
+                <td style="text-align: center;"><b>${qtdJogos}</b></td>
+            </tr>
+        `;
+    });
+
+    // 5. TOP 5 MAIORES CAMPEÕES
+    const medalhas = ['🥇', '🥈', '🥉', '4º', '5º'];
+    const rankClasses = ['rank-1', 'rank-2', 'rank-3', '', ''];
+    let htmlTop5 = '';
+
+    top5Campeoes.forEach((c, idx) => {
+        const pilulasHtml = Array.from(c.categorias).map(cat => `<span class="cat-pill">${cat}</span>`).join(' ');
+        htmlTop5 += `
+            <div class="champion-item ${rankClasses[idx]}">
+                <div class="champ-left">
+                    <span class="champ-pos">${medalhas[idx]}</span>
+                    <div class="champ-info">
+                        <div class="name">${c.nome}</div>
+                        <div class="cats-list">${pilulasHtml}</div>
+                    </div>
+                </div>
+                <div class="champ-score">
+                    <div class="titles-count">${c.titulos} 🏆</div>
+                    <div class="vices-count">${c.vices} vices</div>
+                </div>
+            </div>
+        `;
+    });
+
+    if (top5Campeoes.length === 0) {
+        htmlTop5 = `<div style="text-align:center; color:#64748b; padding:15px; font-size:11px;">Nenhum campeão homologado ainda.</div>`;
+    }
+
+    // 6. ESTRUTURA DIMENSIONADA EM LARGURA TOTAL DE 620PX (SEM RISCO DE CORTE EM A4)
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'pdf-export-wrapper';
+    tempContainer.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 600px;
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        z-index: -9999999;
+    `;
+
+    tempContainer.innerHTML = `
+        <style>
+            #pdf-export-wrapper * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
+            }
+
+            .a4-container {
+                background: #ffffff;
+                width: 600px;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .report-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                border-bottom: 2px solid #0f172a;
+                padding-bottom: 6px;
+                width: 100%;
+            }
+
+            .brand-block h1 {
+                font-size: 15px;
+                font-weight: 900;
+                color: #0f172a;
+                letter-spacing: -0.5px;
+                text-transform: uppercase;
+                margin: 0;
+            }
+
+            .brand-block p {
+                font-size: 10px;
+                font-weight: 600;
+                color: #64748b;
+                margin-top: 1px;
+            }
+
+            .header-date {
+                font-size: 10px;
+                font-weight: 600;
+                color: #64748b;
+                white-space: nowrap;
+            }
+
+            /* 1. CARDS DE KPI AJUSTADOS */
+            .kpi-grid {
+                display: flex;
+                gap: 6px;
+                width: 100%;
+            }
+
+            .kpi-card {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 6px;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                min-width: 0;
+            }
+
+            /* OS 3 PRIMEIRA CARDS FICAM ENXUTOS COM 115PX */
+            .kpi-card.compact {
+                width: 115px;
+                flex: 0 0 115px;
+            }
+
+            /* O 4º CARD EXPANDE NO ESPAÇO RESTANTE */
+            .kpi-card.wide {
+                flex: 1;
+            }
+
+            .kpi-icon {
+                width: 24px;
+                height: 24px;
+                border-radius: 5px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                flex-shrink: 0;
+            }
+
+            .kpi-data {
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .kpi-data .val {
+                font-size: 12px;
+                font-weight: 900;
+                color: #0f172a;
+                line-height: 1;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .kpi-data .lbl {
+                font-size: 7px;
+                font-weight: 700;
+                color: #64748b;
+                margin-top: 1px;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+            /* 2. CORPO DIVIDIDO: TOP 5 COMPACTADO EM 200PX */
+            .split-body {
+                display: flex;
+                gap: 10px;
+                align-items: flex-start;
+                width: 100%;
+            }
+
+            .hall-box {
+                width: 200px;
+                flex-shrink: 0;
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 8px;
+            }
+
+            .table-box {
+                flex: 1;
+                min-width: 0;
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 8px;
+            }
+
+            .box-title {
+                font-size: 10px;
+                font-weight: 800;
+                color: #0f172a;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 6px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .champion-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 4px 5px;
+                border-radius: 6px;
+                margin-bottom: 4px;
+                border: 1px solid #e2e8f0;
+                background: #ffffff;
+            }
+
+            .champion-item.rank-1 { background: #fffbeb; border-color: #fde047; }
+            .champion-item.rank-2 { background: #f8fafc; border-color: #cbd5e1; }
+            .champion-item.rank-3 { background: #fff7ed; border-color: #ffedd5; }
+
+            .champ-left { display: flex; align-items: center; gap: 4px; min-width: 0; }
+            .champ-pos { font-size: 10px; font-weight: 900; width: 14px; text-align: center; flex-shrink: 0; }
+            .champ-info { min-width: 0; }
+            .champ-info .name { font-size: 9.5px; font-weight: 800; color: #0f172a; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .champ-info .cats-list { display: flex; gap: 2px; margin-top: 1px; flex-wrap: wrap; }
+
+            .cat-pill {
+                font-size: 7px;
+                font-weight: 800;
+                padding: 1px 3px;
+                border-radius: 3px;
+                background: #f1f5f9;
+                color: #64748b;
+                border: 1px solid #cbd5e1;
+            }
+
+            .champ-score { text-align: right; flex-shrink: 0; margin-left: 2px; }
+            .champ-score .titles-count { font-size: 10.5px; font-weight: 900; color: #b45309; }
+            .champ-score .vices-count { font-size: 7px; font-weight: 700; color: #64748b; }
+
+            /* 3. TABELA DE EDIÇÕES COM APROXIMAÇÃO DAS COLUNAS */
+            .history-table { width: 100%; border-collapse: collapse; font-size: 9px; table-layout: fixed; }
+            .history-table th { text-align: left; padding: 3px 2px; color: #64748b; font-size: 7.5px; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+            .history-table td { padding: 5px 2px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+            .badge-model { font-size: 7.5px; font-weight: 800; padding: 1px 4px; border-radius: 4px; display: inline-block; }
+            .badge-piramide { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+            .badge-barragem { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+            .badge-grupos { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+
+            .report-footer {
+                border-top: 1px solid #e2e8f0;
+                padding-top: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 8px;
+                color: #64748b;
+                width: 100%;
+            }
+
+            .signature-line {
+                border-top: 1px solid #0f172a;
+                width: 120px;
+                text-align: center;
+                padding-top: 2px;
+                font-weight: 700;
+                color: #0f172a;
+            }
+        </style>
+
+        <div class="a4-container">
+            <div class="report-header">
+                <div class="brand-block">
+                    <h1>${nomeClube} — SETPOINT</h1>
+                    <p>Relatório geral do acervo de torneios</p>
+                </div>
+                <div class="header-date">${dataHojeStr}</div>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi-card compact">
+                    <div class="kpi-icon" style="background: #e0f2fe; color: #0284c7;">🏆</div>
+                    <div class="kpi-data">
+                        <div class="val">${totalTorneios}</div>
+                        <div class="lbl">Torneios Realizados</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card compact">
+                    <div class="kpi-icon" style="background: #dcfce7; color: #16a34a;">🎾</div>
+                    <div class="kpi-data">
+                        <div class="val">${totalPartidasValidadas}</div>
+                        <div class="lbl">Partidas Validadas</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card compact">
+                    <div class="kpi-icon" style="background: #fef3c7; color: #d97706;">👥</div>
+                    <div class="kpi-data">
+                        <div class="val">${atletasUnicosSet.size}</div>
+                        <div class="lbl">Atletas Participantes</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card wide">
+                    <div class="kpi-icon" style="background: #f3e8ff; color: #7c3aed;">⭐</div>
+                    <div class="kpi-data">
+                        <div class="val">${liderAbsolutoNome}</div>
+                        <div class="lbl">Líder Absoluto(a)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="split-body">
+                <div class="hall-box">
+                    <div class="box-title">🏆 Top 5 Maiores Campeões</div>
+                    ${htmlTop5}
+                </div>
+
+                <div class="table-box">
+                    <div class="box-title">📜 Edições Registradas no Acervo</div>
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 48%;">Edição / Torneio</th>
+                                <th style="width: 20%;">Modelo</th>
+                                <th style="width: 20%;">Período</th>
+                                <th style="width: 12%; text-align: center;">Jogos</th>
+                            </tr>
+                        </thead>
+                        <tbody>${htmlTabelaEdicoes}</tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="report-footer">
+                <div>
+                    <b>SetPoint SaaS</b> • Sistema Oficial de Gestão do Ranking & Torneios<br>
+                    Documento gerado automaticamente pelo módulo de auditoria do clube.
+                </div>
+                <div class="signature-line">Gestão da Arena / Arbitragem</div>
+            </div>
+        </div>
+    `;
+
+    document.documentElement.appendChild(tempContainer);
+
+    // Salva e zera a rolagem temporariamente para enquadramento perfeito
+    const savedScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    await new Promise(r => setTimeout(r, 350));
+
+    const targetElement = tempContainer.querySelector('.a4-container');
+    const nomeArquivo = `Relatorio_Acervo_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+
+    const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     nomeArquivo,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            width: 620,
+            windowWidth: 620
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(targetElement).save();
+        showToast("Relatório PDF baixado com sucesso!", "success");
+    } catch (err) {
+        console.error("❌ Erro ao baixar PDF:", err);
+        showToast("Erro ao processar o relatório PDF.", "error");
+    } finally {
+        window.scrollTo(0, savedScrollY);
+        if (tempContainer && tempContainer.parentNode) {
+            tempContainer.parentNode.removeChild(tempContainer);
+        }
+    }
+}
 
 // Orquestrador de clique exclusivo para carregar os dados
 document.addEventListener('DOMContentLoaded', () => {
