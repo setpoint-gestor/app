@@ -15,7 +15,7 @@
 	/* 🎨 Gradientes Inteligentes para a Tela "Ver Detalhes" */
     --gradiente-1-hora-detalhes: linear-gradient(135deg, #36b359 0%, #50c870 100%);
     --gradiente-2-horas-detalhes: linear-gradient(135deg, #2b95c6 0%, #4eb2de 100%);
-    --gradiente-ranking-detalhes: linear-gradient(135deg, #f0ac0e 0%, #f9d85c 100%); 
+    --gradiente-ranking-detalhes: linear-gradient(135deg, #f0ac0e 0%, #f9d85c 100%);  
 	
 }
 
@@ -247,8 +247,8 @@ select.input-app:focus {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    z-index: 20000;
-    pointer-events: none; 
+    z-index: 30000;
+    pointer-events: none;  
 }
 
 .toast {
