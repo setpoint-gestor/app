@@ -1017,5 +1017,61 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-09-05T22:41:26.331Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Joao Bento": true,
+      "Joca": true
+    },
+    "data": "01-09-2026",
+    "dataLocal": "05/09/2026, 19:41:26",
+    "duracao": "1 Hora",
+    "horario": "18:00 - 19:00",
+    "jogadores": "Joca, Joao Bento",
+    "jogadores_completo": "JOAO DARIO DINIZ, JOAO BENTO PEREIRA",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "JOAO DARIO DINIZ",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 18,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-09-05T22:41:26.331Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alessandro Xavier": true
+    },
+    "data": "01-09-2026",
+    "dataLocal": "05/09/2026, 19:41:26",
+    "duracao": "1 Hora",
+    "horario": "18:00 - 19:00",
+    "jogadores": "Alessandro Xavier, Adriano Feitosa",
+    "jogadores_completo": "ALESSANDRO ROMERO XAVIER, ADRIANO GOMES FEITOSA",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ALESSANDRO ROMERO XAVIER",
+    "origem": "sistema",
+    "quadra": "Quadra 3 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 18,
+        "quadra": "Quadra - 3"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-09-05T22:41:26.331Z"
   }
 ]
