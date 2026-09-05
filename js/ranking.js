@@ -4964,7 +4964,7 @@ async function exportarLeaderboardPDFSaaS() {
             doc.setTextColor(100, 116, 139);
             doc.text(item.sub, marginX + contentWidth - 4, currentY + 5.8, { align: "right" });
 
-            currentY += 11;
+            currentY += 11; 
         });
     }
 
