@@ -2385,6 +2385,7 @@ async function recusarConviteRankingSocioSaaS() {
     }
 }
 
+
 /* ======================================================== */
 /* 7. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO                  */
 /* ======================================================== */
@@ -2395,6 +2396,19 @@ function abrirLeaderboardSaaS() {
 
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     if (!sheet) return;
+
+    // LIMPA MEMÓRIA DO HISTÓRICO E RESTAURA O CONTAINER DE FILTROS E BOTOES DO TOPO
+    edicaoHistoricaFocoSaaS = null;
+
+    const containerAbas = document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null;
+    const selectClasse = document.getElementById('select-leaderboard-classe');
+    const selectGenero = document.getElementById('select-leaderboard-genero');
+    const containerDropdowns = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
+
+    if (containerAbas) containerAbas.style.display = '';
+    if (selectClasse) selectClasse.style.display = '';
+    if (selectGenero) selectGenero.style.display = '';
+    if (containerDropdowns) containerDropdowns.style.display = '';
 
     // 1. Lê os dados já sincronizados na RAM pelo core.js
     const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
@@ -2443,15 +2457,25 @@ function fecharLeaderboardSaaS(e) {
     sheet.classList.remove('ativa');
     setTimeout(() => {
         sheet.style.display = 'none';
+
+        edicaoHistoricaFocoSaaS = null;
+
+        const containerAbas = document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null;
+        const selectClasse = document.getElementById('select-leaderboard-classe');
+        const selectGenero = document.getElementById('select-leaderboard-genero');
+        const containerDropdowns = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
+
+        if (containerAbas) containerAbas.style.display = '';
+        if (selectClasse) selectClasse.style.display = '';
+        if (selectGenero) selectGenero.style.display = '';
+        if (containerDropdowns) containerDropdowns.style.display = '';
     }, 250);
 }
 
 // Vincula a ação de "Ver Tabela" do Painel do Gestor à mesma gaveta
 function abrirVisualizacaoRankingSaaS() {
-    // Mantém o modal de configurações aberto ao fundo
     abrirLeaderboardSaaS(); 
 }
-
 
 /* ======================================================== */
 /* 8. MOTOR DO LEADERBOARD / RENDERIZAÇÃO DINÂMICA          */
@@ -2703,7 +2727,20 @@ async function renderizarLeaderboardSaaS() {
                 let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
                 catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
+                // Extração e Formatação da Data do Confronto (Opção 1)
                 const dp = partida.dadosPlacar || {};
+                const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
+                let dataPartidaStr = '--/--/----';
+                if (dataMs) {
+                    const d = new Date(dataMs);
+                    if (!isNaN(d.getTime())) {
+                        dataPartidaStr = d.toLocaleDateString('pt-BR');
+                    }
+                } else if (partida.dataCompleta) {
+                    const p = partida.dataCompleta.split('-');
+                    if (p.length === 3) dataPartidaStr = `${p[2]}/${p[1]}/${p[0]}`;
+                }
+
                 const stPlacar = dp.statusPlacar || partida.status || 'consolidado';
                 const decisaoArb = dp.decisaoArbitro || '';
                 const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
@@ -2743,9 +2780,14 @@ async function renderizarLeaderboardSaaS() {
                 htmlSumulas += `
                     <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 14px 6px 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
-                            <span style="font-size: 11px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 8px; border-radius: 8px; border: 1px solid #ddd6fe;">
-                                ${catLabel || 'Categoria Oficial'}
-                            </span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 11px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 8px; border-radius: 8px; border: 1px solid #ddd6fe;">
+                                    ${catLabel || 'Categoria Oficial'}
+                                </span>
+                                <span style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;">
+                                    <i class="material-icons" style="font-size: 12px;">event</i> ${dataPartidaStr}
+                                </span>
+                            </div>
                             ${badgeHtml}
                         </div>
                 `;
@@ -3238,7 +3280,6 @@ async function renderizarLeaderboardSaaS() {
         bodyList.innerHTML = '<p style="text-align: center; color: #ef4444; margin-top: 30px;">Erro ao carregar a classificação.</p>';
     }
 }
-
 
 /**
  * Alterna a expansão/recolhimento dos atletas a partir do 4º lugar no Hall de Campeões
@@ -4525,30 +4566,47 @@ function encerrarInscricoesECriarChavesSaaS() {
 
 async function exportarLeaderboardPDFSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
-    showToast("Gerando PDF do Torneio Atual...", "info");
+    
+    // 1. DETECTA SE A GAVETA ESTÁ EXIBINDO UM TORNEIO DO ACERVO HISTÓRICO
+    const sheetLeaderboard = document.getElementById('sheet-leaderboard-ranking');
+    const ehHistorico = !!(edicaoHistoricaFocoSaaS && sheetLeaderboard && sheetLeaderboard.classList.contains('ativa'));
 
-    // 1. CARREGAMENTO AUTOMÁTICO DO MOTOR HTML2PDF
-    if (typeof html2pdf === 'undefined') {
+    showToast(ehHistorico ? "Gerando PDF do Acervo Histórico..." : "Gerando PDF do Torneio Atual...", "info");
+
+    // 2. CARREGAMENTO DA BIBLIOTECA NATIVA JSPDF
+    if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
             script.onload = resolve;
             script.onerror = reject;
-            document.head.appendChild(script); 
+            document.head.appendChild(script);
         });
     }
 
-    // 2. RENDERIZA OS DADOS DA ABA SELECIONADA NA MEMÓRIA
-    if (typeof renderizarLeaderboardSaaS === 'function') {
-        await renderizarLeaderboardSaaS();
+    const { jsPDF } = window.jspdf || { jsPDF: window.jsPDF };
+    if (!jsPDF) {
+        showToast("Erro ao carregar o motor de PDF.", "error");
+        return;
+    }
+
+    // 3. RENDERIZA O CONTEÚDO CORRETO SEM SOBRESCREVER A TELA SE FOR HISTÓRICO
+    if (ehHistorico) {
+        if (typeof renderizarHTMLPodioAcervoSaaS === 'function') {
+            renderizarHTMLPodioAcervoSaaS();
+        }
+    } else {
+        if (typeof renderizarLeaderboardSaaS === 'function') {
+            await renderizarLeaderboardSaaS();
+        }
     }
 
     const bodyLeaderboard = document.getElementById('body-leaderboard-scroll');
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
     const elNomeClube = document.getElementById('txt-nome-clube');
 
-    if (!bodyLeaderboard || !bodyLeaderboard.innerHTML.trim()) {
-        showToast("Erro ao localizar o conteúdo para exportação.", "error");
+    if (!bodyLeaderboard || !bodyLeaderboard.innerHTML.trim() || bodyLeaderboard.innerText.includes("Nenhum torneio")) {
+        showToast("Erro ao localizar o conteúdo da classificação para exportação.", "error");
         return;
     }
 
@@ -4557,244 +4615,375 @@ async function exportarLeaderboardPDFSaaS() {
         nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || clubeAtivoId || 'CLUBE';
     }
     const nomeClube = nomeClubeRaw.toUpperCase();
-	
     const dataHojeStr = new Date().toLocaleDateString('pt-BR');
 
-    // Identificação do Torneio e Categoria Ativa
-    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
+    let linha2TorneioCategoria = "";
+    let linha3Subtitulo = "";
+    let tipoModelo = 'piramide';
+    const leaderboardItems = [];
 
-    const selClasse = document.getElementById('select-leaderboard-classe');
-    const selGenero = document.getElementById('select-leaderboard-genero');
-    const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
-    const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
-    const categoriaAtivaTxt = [txtClasse, txtGenero].filter(Boolean).join(' • ');
+    // 4. CONSTRUÇÃO DOS DADOS DO RELATÓRIO (BIFURCAÇÃO HISTÓRICO VS. TORNEIO ATUAL)
+    if (ehHistorico) {
+        const cal = edicaoHistoricaFocoSaaS.contrato || {};
+        const nomeTorneio = cal.nomeTorneio || 'Torneio';
+        let catLabel = (categoriaHistoricaAtivaSaaS || '').replace('CLASSE_', 'Classe ').replace('_', ' ');
+        catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
-    // Linha 2 (Torneio — Categoria) e Linha 3 (Subtítulo + Modelo)
-    const linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
-    
-    let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').trim() : '';
-    const linha3Subtitulo = modeloTxt ? `Tabela de Classificação — ${modeloTxt}` : "Tabela de Classificação";
+        linha2TorneioCategoria = `${nomeTorneio} — ${catLabel}`;
+        linha3Subtitulo = "Hall de Campeões [Acervo Histórico]";
 
-    // 3. CONTAINER DE 520PX PADRONIZADO
-    const tempContainer = document.createElement('div');
-    tempContainer.id = 'pdf-leaderboard-wrapper';
-    tempContainer.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 490px;
-        margin: 0;
-        padding: 0;
-        background: #ffffff;
-        z-index: -9999;
-    `;
+        const listaIDs = (edicaoHistoricaFocoSaaS.classificacaoFinal && edicaoHistoricaFocoSaaS.classificacaoFinal[categoriaHistoricaAtivaSaaS]) || [];
+        const capitalizar = (str) => {
+            if (!str) return '';
+            return str.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+        };
 
-    tempContainer.innerHTML = `
-        <style>
-            #pdf-leaderboard-wrapper * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-                font-family: Arial, Helvetica, sans-serif;
-            }
+        const idLogado = localStorage.getItem('jogadorLogadoId');
 
-            .pdf-a4-sheet {
-                background: #ffffff;
-                width: 490px;
-                padding: 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-                text-align: left;
-            }
+        listaIDs.forEach((idAtleta, idx) => {
+            const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+            const nomeStr = capitalizar(j.nomeCompleto || j.apelido || 'Atleta');
+            const pos = `${idx + 1}º`;
+            let sub = 'Atleta Homologado';
+            if (idx === 0) sub = 'Líder Homologado';
+            else if (idx === 1) sub = 'Vice-Líder da Categoria';
+            else if (idx === 2) sub = '3ª Posição Final';
 
-            /* CABEÇALHO PADRÃO EM 3 LINHAS */
-            .pdf-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-                padding-bottom: 8px;
-                border-bottom: 2px solid #0f172a;
-                margin-bottom: 12px;
-                width: 100%;
-            }
+            leaderboardItems.push({
+                pos,
+                nome: nomeStr,
+                sub,
+                ehVoce: idAtleta === idLogado
+            });
+        });
+    } else {
+        const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const cal = conf.calendario || {};
+        const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
 
-            .pdf-header-titles {
-                display: flex;
-                flex-direction: column;
-                gap: 3px;
-                text-align: left;
-            }
+        const selClasse = document.getElementById('select-leaderboard-classe');
+        const selGenero = document.getElementById('select-leaderboard-genero');
+        const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
+        const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
+        const categoriaAtivaTxt = [txtClasse, txtGenero].filter(Boolean).join(' • ');
 
-            .pdf-header-titles h1 {
-                font-size: 15px;
-                font-weight: 900;
-                color: #0f172a;
-                text-transform: uppercase;
-                letter-spacing: -0.5px;
-                margin: 0;
-            }
+        linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
+        let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').trim() : '';
+        linha3Subtitulo = modeloTxt ? `Tabela de Classificação — ${modeloTxt}` : "Tabela de Classificação";
 
-            .pdf-header-titles .line-2 {
-                font-size: 12px;
-                font-weight: 800;
-                color: #2563eb;
-                margin: 0;
-            }
+        const rowsPiramide = Array.from(bodyLeaderboard.querySelectorAll('.item-leaderboard-piramide'));
+        const rowsBarragem = Array.from(bodyLeaderboard.querySelectorAll('.tabela-leaderboard-barragem tbody tr'));
+        const cardsGrupos = Array.from(bodyLeaderboard.querySelectorAll('.card-leaderboard-grupo'));
 
-            .pdf-header-titles .line-3 {
-                font-size: 11px;
-                font-weight: 700;
-                color: #475569;
-                margin: 0;
-            }
+        if (rowsBarragem.length > 0) {
+            tipoModelo = 'barragem';
+            rowsBarragem.forEach(tr => {
+                const tds = Array.from(tr.querySelectorAll('td'));
+                if (tds.length >= 7) {
+                    leaderboardItems.push({
+                        pos: tds[0].innerText.trim(),
+                        nome: tds[1].innerText.trim(),
+                        j: tds[2].innerText.trim(),
+                        v: tds[3].innerText.trim(),
+                        d: tds[4].innerText.trim(),
+                        sg: tds[5].innerText.trim(),
+                        pts: tds[6].innerText.trim(),
+                        ehVoce: tr.classList.contains('voce') || tr.style.background.includes('f0fdf4')
+                    });
+                }
+            });
+        } else if (cardsGrupos.length > 0) {
+            tipoModelo = 'grupos';
+            cardsGrupos.forEach(cardG => {
+                const headerTxt = cardG.querySelector('.header-leaderboard-grupo')?.innerText.replace(/\n/g, ' — ').trim() || 'GRUPO';
+                const membros = Array.from(cardG.querySelectorAll('.item-membro-grupo')).map(mEl => {
+                    const linha1 = mEl.children[0]?.innerText.trim() || '';
+                    const linha2 = mEl.children[1]?.innerText.trim() || '';
+                    return {
+                        infoAtleta: linha1,
+                        pills: linha2,
+                        isClassificado: mEl.classList.contains('classificado')
+                    };
+                });
+                leaderboardItems.push({ grupoHeader: headerTxt, membros });
+            });
+        } else {
+            tipoModelo = 'piramide';
+            rowsPiramide.forEach(itemEl => {
+                const pos = itemEl.querySelector('span[style*="font-weight: 800"]')?.innerText.trim() || '';
+                const nome = itemEl.querySelector('strong')?.innerText.trim() || '';
+                const sub = itemEl.querySelector('span[style*="font-size: 11px"]')?.innerText.trim() || '';
+                leaderboardItems.push({ pos, nome, sub, ehVoce: itemEl.classList.contains('voce') });
+            });
+        }
+    }
 
-            .pdf-date {
-                font-size: 10px;
-                font-weight: 700;
-                color: #475569;
-                white-space: nowrap;
-                padding-bottom: 2px;
-            }
+    // 5. DESENHO VETORIAL NO JSPDF (A4: 210mm x 297mm)
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const marginX = 15;
+    const contentWidth = pageWidth - (marginX * 2);
 
-            .pdf-body-content {
-                width: 100%;
-                display: block;
-                text-align: left;
-            }
+    let currentY = 15;
 
-            .pdf-body-content .box-dica-leaderboard { 
-                display: none !important; 
-            }
+    // Cabeçalho Mestre
+    const drawHeader = () => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(15, 23, 42);
+        doc.text(nomeClube + " — SETPOINT", marginX, currentY);
 
-            .pdf-body-content .item-leaderboard-piramide {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 10px 14px;
-                margin-bottom: 8px;
-                background: #ffffff;
-                border: 1px solid #cbd5e1;
-                border-radius: 12px;
-            }
+        currentY += 5;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.setTextColor(37, 99, 235);
+        doc.text(linha2TorneioCategoria, marginX, currentY);
 
-            .pdf-body-content .tabela-leaderboard-barragem {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 11px;
-                margin-top: 8px;
-            }
+        currentY += 4.5;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text(linha3Subtitulo, marginX, currentY);
 
-            .pdf-body-content .tabela-leaderboard-barragem th {
-                background: #f8fafc;
-                padding: 8px 6px;
-                border-bottom: 2px solid #cbd5e1;
-                color: #475569;
-                font-weight: 800;
-            }
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text(dataHojeStr, pageWidth - marginX, currentY, { align: "right" });
 
-            .pdf-body-content .tabela-leaderboard-barragem td {
-                padding: 8px 6px;
-                border-bottom: 1px solid #e2e8f0;
-                text-align: center;
-            }
-
-            /* RODAPÉ OFICIAL DO SISTEMA */
-            .pdf-footer {
-                border-top: 1px solid #cbd5e1;
-                padding-top: 10px;
-                margin-top: 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-                font-size: 8.5px;
-                color: #64748b;
-                width: 100%;
-            }
-
-            .pdf-footer-signature {
-                border-top: 1px solid #0f172a;
-                width: 140px;
-                text-align: center;
-                padding-top: 3px;
-                font-weight: 700;
-                color: #0f172a;
-                font-size: 9px;
-            }
-        </style>
-
-        <div class="pdf-a4-sheet">
-            <div class="pdf-header">
-                <div class="pdf-header-titles">
-                    <h1>${nomeClube} — SETPOINT</h1>
-                    <div class="line-2">${linha2TorneioCategoria}</div>
-                    <div class="line-3">${linha3Subtitulo}</div>
-                </div>
-                <div class="pdf-date">${dataHojeStr}</div>
-            </div>
-
-            <div class="pdf-body-content">
-                ${bodyLeaderboard.innerHTML}
-            </div>
-
-            <div class="pdf-footer">
-                <div>
-                    <b>SetPoint SaaS</b> • Relatório Oficial do Ranking<br>
-                    Documento emitido automaticamente pelo sistema.
-                </div>
-                <div class="pdf-footer-signature">
-                    Arbitragem / Gestão
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.documentElement.appendChild(tempContainer);
-
-    // 4. RESET TEMPORÁRIO DE SCROLL PARA ENQUADRAMENTO
-    const savedScrollY = window.scrollY;
-    window.scrollTo(0, 0);
-
-    await new Promise(r => setTimeout(r, 350));
-
-    // 5. PROCESSAMENTO E DOWNLOAD DO PDF
-    const targetElement = tempContainer.querySelector('.pdf-a4-sheet');
-    const nomeArquivo = `Torneio_Atual_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-
-    const opt = {
-        margin:       [10, 10, 10, 10],
-        filename:     nomeArquivo,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            logging: false,
-            scrollX: 0,
-            scrollY: 0,
-            x: 0,
-            y: 0,
-            width: 520,
-            windowWidth: 520
-        },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        currentY += 2.5;
+        doc.setDrawColor(15, 23, 42);
+        doc.setLineWidth(0.4);
+        doc.line(marginX, currentY, pageWidth - marginX, currentY);
+        currentY += 6;
     };
 
+    // Rodapé Mestre
+    const drawFooter = (finalY) => {
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.2);
+        doc.line(marginX, finalY, pageWidth - marginX, finalY);
+
+        const footerY = finalY + 4;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        doc.text("SetPoint SaaS", marginX, footerY);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(" • Relatório Oficial do Ranking", marginX + 21, footerY);
+        doc.text("Documento emitido automaticamente pelo sistema.", marginX, footerY + 3.5);
+
+        const sigWidth = 45;
+        const sigX = pageWidth - marginX - sigWidth;
+        doc.setDrawColor(15, 23, 42);
+        doc.setLineWidth(0.3);
+        doc.line(sigX, footerY + 2, pageWidth - marginX, footerY + 2);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Arbitragem / Gestão", sigX + (sigWidth / 2), footerY + 5.5, { align: "center" });
+    };
+
+    drawHeader();
+
+    // RENDERIZAÇÃO CONFORME MODELO
+    if (tipoModelo === 'barragem') {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(marginX, currentY, contentWidth, 6, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+
+        doc.text("POS", marginX + 3, currentY + 4.2);
+        doc.text("ATLETA", marginX + 18, currentY + 4.2);
+        doc.text("J", marginX + 110, currentY + 4.2, { align: "center" });
+        doc.text("V", marginX + 125, currentY + 4.2, { align: "center" });
+        doc.text("D", marginX + 140, currentY + 4.2, { align: "center" });
+        doc.text("SG", marginX + 158, currentY + 4.2, { align: "center" });
+        doc.text("PTS", marginX + 174, currentY + 4.2, { align: "center" });
+
+        currentY += 6;
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.3);
+        doc.line(marginX, currentY, pageWidth - marginX, currentY);
+
+        leaderboardItems.forEach((item) => {
+            if (currentY + 8 > pageHeight - 20) {
+                doc.addPage();
+                currentY = 15;
+            }
+
+            if (item.ehVoce) {
+                doc.setFillColor(240, 253, 244);
+                doc.rect(marginX, currentY, contentWidth, 7, "F");
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8.5);
+            doc.setTextColor(item.ehVoce ? 21 : 30, item.ehVoce ? 128 : 41, item.ehVoce ? 61 : 59);
+            doc.text(item.pos, marginX + 3, currentY + 4.8);
+            doc.text(item.nome, marginX + 18, currentY + 4.8);
+
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+            doc.text(item.j, marginX + 110, currentY + 4.8, { align: "center" });
+            doc.text(item.v, marginX + 125, currentY + 4.8, { align: "center" });
+            doc.text(item.d, marginX + 140, currentY + 4.8, { align: "center" });
+
+            if (item.sg.startsWith('+')) doc.setTextColor(22, 163, 74);
+            else if (item.sg.startsWith('-')) doc.setTextColor(220, 38, 38);
+            else doc.setTextColor(100, 116, 139);
+            doc.setFont("helvetica", "bold");
+            doc.text(item.sg, marginX + 158, currentY + 4.8, { align: "center" });
+
+            doc.setTextColor(21, 128, 61);
+            doc.setFont("helvetica", "bold");
+            doc.text(item.pts, marginX + 174, currentY + 4.8, { align: "center" });
+
+            currentY += 7;
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.15);
+            doc.line(marginX, currentY, pageWidth - marginX, currentY);
+        });
+
+    } else if (tipoModelo === 'grupos') {
+        leaderboardItems.forEach((grupo) => {
+            const grupoHeight = 8 + (grupo.membros.length * 10);
+            if (currentY + grupoHeight > pageHeight - 20) {
+                doc.addPage();
+                currentY = 15;
+            }
+
+            doc.setFillColor(245, 243, 255);
+            doc.setDrawColor(221, 214, 254);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(marginX, currentY, contentWidth, 6.5, 1, 1, "FD");
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8.5);
+            doc.setTextColor(139, 92, 246);
+            doc.text(grupo.grupoHeader, marginX + 4, currentY + 4.5);
+
+            currentY += 8;
+
+            grupo.membros.forEach((membro) => {
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8.5);
+                doc.setTextColor(15, 23, 42);
+                doc.text(membro.infoAtleta, marginX + 4, currentY + 4);
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7.5);
+                doc.setTextColor(100, 116, 139);
+                doc.text(membro.pills, marginX + 4, currentY + 8);
+
+                currentY += 9.5;
+                doc.setDrawColor(241, 245, 249);
+                doc.setLineWidth(0.15);
+                doc.line(marginX + 2, currentY, pageWidth - marginX - 2, currentY);
+            });
+
+            currentY += 3;
+        });
+
+    } else {
+        leaderboardItems.forEach((item) => {
+            if (currentY + 11 > pageHeight - 20) {
+                doc.addPage();
+                currentY = 15;
+            }
+
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(item.ehVoce ? 240 : 255, item.ehVoce ? 253 : 255, item.ehVoce ? 244 : 255);
+            doc.setLineWidth(item.ehVoce ? 0.3 : 0.15);
+            doc.roundedRect(marginX, currentY, contentWidth, 9, 1.5, 1.5, "FD");
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.setTextColor(item.ehVoce ? 21 : 100, item.ehVoce ? 128 : 116, item.ehVoce ? 61 : 139);
+            doc.text(item.pos, marginX + 4, currentY + 5.8);
+
+            doc.setTextColor(15, 23, 42);
+            doc.text(item.nome, marginX + 18, currentY + 5.8);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text(item.sub, marginX + contentWidth - 4, currentY + 5.8, { align: "right" });
+
+            currentY += 11;
+        });
+    }
+
+    drawFooter(Math.max(currentY + 2, pageHeight - 20));
+
+    // 6. ROTEAMENTO NATIVO VIA CAPACITOR
+    const nomeArquivo = ehHistorico 
+        ? `Tabela_Acervo_${(edicaoHistoricaFocoSaaS.contrato?.nomeTorneio || 'Torneio').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+        : `Torneio_Atual_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+
     try {
-        await html2pdf().set(opt).from(targetElement).save();
-        showToast("PDF do Torneio Atual baixado com sucesso!", "success");
+        await processarSaidaPDFSaaS(doc, nomeArquivo, ehHistorico ? "PDF do Acervo Histórico" : "PDF do Torneio Atual");
     } catch (err) {
-        console.error("❌ Erro ao baixar PDF:", err);
-        showToast("Erro ao gerar o PDF.", "error");
-    } finally {
-        window.scrollTo(0, savedScrollY);
-        if (tempContainer && tempContainer.parentNode) {
-            tempContainer.parentNode.removeChild(tempContainer);
-        }
+        console.error("❌ Erro ao exportar classificação:", err);
+        showToast("Erro ao gerar PDF da classificação.", "error");
     }
 }
 
+/**
+ * 📲 PONTE NATIVA CAPACITOR / WEB: Compatível com jsPDF e html2pdf
+ */
+async function processarSaidaPDFSaaS(pdfWorkerOrDoc, nomeArquivo, tituloMensagem = "PDF") {
+    const isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+
+    if (isNative) {
+        try {
+            let base64Pdf = '';
+
+            // Obtém a string Base64 tanto do jsPDF nativo quanto do html2pdf
+            if (typeof pdfWorkerOrDoc.output === 'function') {
+                base64Pdf = await Promise.resolve(pdfWorkerOrDoc.output('datauristring'));
+            } else if (typeof pdfWorkerOrDoc.outputPdf === 'function') {
+                base64Pdf = await pdfWorkerOrDoc.outputPdf('datauristring');
+            } else {
+                base64Pdf = await Promise.resolve(pdfWorkerOrDoc);
+            }
+
+            const cleanBase64 = base64Pdf.includes(',') ? base64Pdf.split(',')[1] : base64Pdf;
+
+            const Filesystem = window.Capacitor.Plugins.Filesystem;
+            const FileOpener = window.Capacitor.Plugins.FileOpener;
+
+            // 1. Escreve o arquivo PDF vetorial na pasta CACHE do Android
+            const fileResult = await Filesystem.writeFile({
+                path: nomeArquivo,
+                data: cleanBase64,
+                directory: 'CACHE'
+            });
+
+            // 2. Abre o arquivo diretamente no leitor nativo do Android
+            await FileOpener.openFile({
+                path: fileResult.uri,
+                mimeType: 'application/pdf'
+            });
+
+            showToast(`${tituloMensagem} gerado e aberto!`, "success");
+        } catch (err) {
+            console.error("❌ Erro ao processar PDF nativo:", err);
+            showToast(`Erro ao abrir PDF: ${err.message || err}`, "error");
+        }
+    } else {
+        // Fallback Web Desktop (Navegador Chrome/Edge)
+        if (typeof pdfWorkerOrDoc.save === 'function') {
+            pdfWorkerOrDoc.save(nomeArquivo);
+        } else if (typeof pdfWorkerOrDoc.save === 'function') {
+            await pdfWorkerOrDoc.save();
+        }
+        showToast(`${tituloMensagem} baixado com sucesso!`, "success");
+    }
+}
 
 
 /* ======================================================== */
@@ -4815,23 +5004,28 @@ function exportarPDFContextualSaaS() {
 }
 
 
-
 async function exportarRankingGeralPDFSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
     showToast("Gerando PDF do Ranking Geral...", "info");
 
-    // 1. CARREGAMENTO AUTOMÁTICO DO MOTOR HTML2PDF
-    if (typeof html2pdf === 'undefined') {
+    // 1. CARREGAMENTO DA BIBLIOTECA NATIVA JSPDF
+    if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
         });
     }
 
-    // 2. GUARDA ESTADO DA ABA ANTERIOR E FORÇA RENDERIZAÇÃO DO RANKING GERAL
+    const { jsPDF } = window.jspdf || { jsPDF: window.jsPDF };
+    if (!jsPDF) {
+        showToast("Erro ao carregar o motor de PDF.", "error");
+        return;
+    }
+
+    // 2. GUARDA ESTADO DA ABA E FORÇA RENDERIZAÇÃO DA VISÃO GERAL
     const modoAnterior = abaVisaoLeaderboardSaaS;
     abaVisaoLeaderboardSaaS = 'GERAL';
 
@@ -4842,7 +5036,6 @@ async function exportarRankingGeralPDFSaaS() {
     const bodyLeaderboard = document.getElementById('body-leaderboard-scroll');
     const elNomeClube = document.getElementById('txt-nome-clube');
 
-    // Valida se existem atletas no Ranking Geral
     if (!bodyLeaderboard || !bodyLeaderboard.innerHTML.trim() || bodyLeaderboard.innerText.includes("Nenhum atleta")) {
         showToast("Nenhum atleta cadastrado no Ranking Geral desta categoria.", "warning");
         abaVisaoLeaderboardSaaS = modoAnterior;
@@ -4855,10 +5048,8 @@ async function exportarRankingGeralPDFSaaS() {
         nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || clubeAtivoId || 'CLUBE';
     }
     const nomeClube = nomeClubeRaw.toUpperCase();
-	
     const dataHojeStr = new Date().toLocaleDateString('pt-BR');
 
-    // Identificação do Torneio e Categoria Ativa
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const cal = conf.calendario || {};
     const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
@@ -4872,208 +5063,135 @@ async function exportarRankingGeralPDFSaaS() {
     const linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
     const linha3Subtitulo = "Extrato do Ranking Geral";
 
-    // 3. CONTAINER COM 560PX E ORIGEM FIXA
-    const tempContainer = document.createElement('div');
-    tempContainer.id = 'pdf-ranking-geral-wrapper';
-    tempContainer.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 520px;
-        margin: 0;
-        padding: 0;
-        background: #ffffff;
-        z-index: -9999;
-    `;
+    // 3. EXTRAÇÃO DOS DADOS DA MESTRE DO DOM
+    const rowsPiramide = Array.from(bodyLeaderboard.querySelectorAll('.item-leaderboard-piramide'));
+    const leaderboardItems = rowsPiramide.map(itemEl => {
+        const pos = itemEl.querySelector('span[style*="font-weight: 800"]')?.innerText.trim() || '';
+        const nome = itemEl.querySelector('strong')?.innerText.trim() || '';
+        const sub = itemEl.querySelector('span[style*="font-size: 11px"]')?.innerText.trim() || 'Atleta Cadastrado';
+        const ehVoce = itemEl.classList.contains('voce') || itemEl.style.background?.includes('f0fdf4');
+        return { pos, nome, sub, ehVoce };
+    });
 
-    tempContainer.innerHTML = `
-        <style>
-            #pdf-ranking-geral-wrapper * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-                font-family: Arial, Helvetica, sans-serif;
-            }
+    // 4. DESENHO VETORIAL NO JSPDF
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const marginX = 15;
+    const contentWidth = pageWidth - (marginX * 2); // 180mm
 
-            .pdf-a4-sheet {
-                background: #ffffff;
-                width: 520px;
-                padding: 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-                text-align: left;
-            }
+    let currentY = 15;
 
-            /* CABEÇALHO PADRÃO EM 3 LINHAS */
-            .pdf-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-                padding-bottom: 8px;
-                border-bottom: 2px solid #0f172a;
-                margin-bottom: 12px;
-                width: 100%;
-            }
+    // Cabeçalho Mestre
+    const drawHeader = () => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(15, 23, 42);
+        doc.text(nomeClube + " — SETPOINT", marginX, currentY);
 
-            .pdf-header-titles {
-                display: flex;
-                flex-direction: column;
-                gap: 3px;
-                text-align: left;
-            }
+        currentY += 5;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.setTextColor(37, 99, 235);
+        doc.text(linha2TorneioCategoria, marginX, currentY);
 
-            .pdf-header-titles h1 {
-                font-size: 15px;
-                font-weight: 900;
-                color: #0f172a;
-                text-transform: uppercase;
-                letter-spacing: -0.5px;
-                margin: 0;
-            }
+        currentY += 4.5;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text(linha3Subtitulo, marginX, currentY);
 
-            .pdf-header-titles .line-2 {
-                font-size: 12px;
-                font-weight: 800;
-                color: #2563eb;
-                margin: 0;
-            }
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text(dataHojeStr, pageWidth - marginX, currentY, { align: "right" });
 
-            .pdf-header-titles .line-3 {
-                font-size: 11px;
-                font-weight: 700;
-                color: #475569;
-                margin: 0;
-            }
-
-            .pdf-date {
-                font-size: 10px;
-                font-weight: 700;
-                color: #475569;
-                white-space: nowrap;
-                padding-bottom: 2px;
-            }
-
-            .pdf-body-content {
-                width: 100%;
-                display: block;
-                text-align: left;
-            }
-
-            .pdf-body-content .box-dica-leaderboard {
-                display: none !important;
-            }
-
-            .pdf-body-content .item-leaderboard-piramide {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 10px 14px;
-                margin-bottom: 8px;
-                background: #ffffff;
-                border: 1px solid #cbd5e1;
-                border-radius: 12px;
-            }
-
-            /* DESTAQUE DO ATLETA LOGADO NO PDF */
-            .pdf-body-content .item-leaderboard-piramide.voce {
-                background: #f0fdf4 !important;
-                border: 2px solid #28a745 !important;
-            }
-
-            /* RODAPÉ OFICIAL DO SISTEMA */
-            .pdf-footer {
-                border-top: 1px solid #cbd5e1;
-                padding-top: 10px;
-                margin-top: 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-                font-size: 8.5px;
-                color: #64748b;
-                width: 100%;
-            }
-
-            .pdf-footer-signature {
-                border-top: 1px solid #0f172a;
-                width: 140px;
-                text-align: center;
-                padding-top: 3px;
-                font-weight: 700;
-                color: #0f172a;
-                font-size: 9px;
-            }
-        </style>
-
-        <div class="pdf-a4-sheet">
-            <div class="pdf-header">
-                <div class="pdf-header-titles">
-                    <h1>${nomeClube} — SETPOINT</h1>
-                    <div class="line-2">${linha2TorneioCategoria}</div>
-                    <div class="line-3">${linha3Subtitulo}</div>
-                </div>
-                <div class="pdf-date">${dataHojeStr}</div>
-            </div>
-
-            <div class="pdf-body-content">
-                ${bodyLeaderboard.innerHTML}
-            </div>
-
-            <div class="pdf-footer">
-                <div>
-                    <b>SetPoint SaaS</b> • Relatório Oficial do Ranking<br>
-                    Documento emitido automaticamente pelo sistema.
-                </div>
-                <div class="pdf-footer-signature">
-                    Arbitragem / Gestão
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.documentElement.appendChild(tempContainer);
-
-    // 4. RESET TEMPORÁRIO DE SCROLL PARA ENQUADRAMENTO
-    const savedScrollY = window.scrollY;
-    window.scrollTo(0, 0);
-
-    await new Promise(r => setTimeout(r, 350));
-
-    // 5. PROCESSAMENTO COM TRAVA DE ORIGEM (X:0, Y:0, WIDTH:560)
-    const targetElement = tempContainer.querySelector('.pdf-a4-sheet');
-    const nomeArquivo = `Ranking_Geral_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-
-    const opt = {
-        margin:       [10, 10, 10, 10],
-        filename:     nomeArquivo,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            logging: false,
-            scrollX: 0,
-            scrollY: 0,
-            x: 0,
-            y: 0,
-            width: 560,
-            windowWidth: 560
-        },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        currentY += 2.5;
+        doc.setDrawColor(15, 23, 42);
+        doc.setLineWidth(0.4);
+        doc.line(marginX, currentY, pageWidth - marginX, currentY);
+        currentY += 6;
     };
 
-    try {
-        await html2pdf().set(opt).from(targetElement).save();
-        showToast("PDF do Ranking Geral baixado com sucesso!", "success");
-    } catch (err) {
-        console.error("❌ Erro ao baixar PDF do Ranking Geral:", err);
-        showToast("Erro ao gerar o PDF do Ranking Geral.", "error");
-    } finally {
-        window.scrollTo(0, savedScrollY);
-        if (tempContainer && tempContainer.parentNode) {
-            tempContainer.parentNode.removeChild(tempContainer);
+    // Rodapé Mestre
+    const drawFooter = (finalY) => {
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.2);
+        doc.line(marginX, finalY, pageWidth - marginX, finalY);
+
+        const footerY = finalY + 4;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        doc.text("SetPoint SaaS", marginX, footerY);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(" • Relatório Oficial do Ranking", marginX + 21, footerY);
+        doc.text("Documento emitido automaticamente pelo sistema.", marginX, footerY + 3.5);
+
+        const sigWidth = 45;
+        const sigX = pageWidth - marginX - sigWidth;
+        doc.setDrawColor(15, 23, 42);
+        doc.setLineWidth(0.3);
+        doc.line(sigX, footerY + 2, pageWidth - marginX, footerY + 2);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Arbitragem / Gestão", sigX + (sigWidth / 2), footerY + 5.5, { align: "center" });
+    };
+
+    drawHeader();
+
+    // 5. RENDERIZAÇÃO DOS CARDS EM 2 LINHAS
+    const cardH = 13.5;
+
+    leaderboardItems.forEach((item, index) => {
+        const isLast = (index === leaderboardItems.length - 1);
+        const neededSpace = isLast ? (cardH + 22) : cardH;
+
+        if (currentY + neededSpace > (pageHeight - 15)) {
+            doc.addPage();
+            currentY = 15;
         }
 
-        // Restaura a aba ativa do usuário
+        // Fundo e borda do Card
+        doc.setDrawColor(203, 213, 225);
+        doc.setFillColor(item.ehVoce ? 240 : 255, item.ehVoce ? 253 : 255, item.ehVoce ? 244 : 255);
+        doc.setLineWidth(item.ehVoce ? 0.3 : 0.15);
+        doc.roundedRect(marginX, currentY, contentWidth, cardH, 2, 2, "FD");
+
+        // Posição Ordinal (ex: 1º, 2º) - Alinhada ao centro vertical do card
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(item.ehVoce ? 21 : 100, item.ehVoce ? 128 : 116, item.ehVoce ? 61 : 139);
+        doc.text(item.pos, marginX + 5, currentY + 8.2);
+
+        // Linha 1: Nome do Atleta
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(item.nome, marginX + 20, currentY + 5.5);
+
+        // Linha 2: Subtítulo (Líder do Ranking Geral / Atleta Cadastrado)
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.sub, marginX + 20, currentY + 10);
+
+        currentY += cardH + 3.5;
+    });
+
+    drawFooter(Math.max(currentY + 2, pageHeight - 20));
+
+    // 6. ROTEAMENTO NATIVO VIA CAPACITOR
+    const nomeArquivo = `Ranking_Geral_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    try {
+        await processarSaidaPDFSaaS(doc, nomeArquivo, "PDF do Ranking Geral");
+    } catch (err) {
+        console.error("❌ Erro ao exportar Ranking Geral:", err);
+        showToast("Erro ao gerar PDF do Ranking Geral.", "error");
+    } finally {
         abaVisaoLeaderboardSaaS = modoAnterior;
         if (typeof renderizarLeaderboardSaaS === 'function') {
             await renderizarLeaderboardSaaS();
@@ -5084,36 +5202,59 @@ async function exportarRankingGeralPDFSaaS() {
 
 async function exportarSumulasPDFSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
-    showToast("Gerando PDF das Súmulas...", "info");
+    
+    // 1. DETECTA SE A GAVETA ESTÁ EXIBINDO UM TORNEIO DO ACERVO HISTÓRICO
+    const sheetLeaderboard = document.getElementById('sheet-leaderboard-ranking');
+    const ehHistorico = !!(edicaoHistoricaFocoSaaS && sheetLeaderboard && sheetLeaderboard.classList.contains('ativa'));
 
-    // 1. CARREGAMENTO AUTOMÁTICO DO MOTOR HTML2PDF
-    if (typeof html2pdf === 'undefined') {
+    showToast(ehHistorico ? "Gerando PDF das Súmulas do Acervo..." : "Gerando PDF das Súmulas...", "info");
+
+    // 🟢 LIMPADOR ANTI-EMOJI: Remove caracteres não suportados pela fonte do PDF (Helvetica)
+    const limparTextoPdf = (txt) => {
+        if (!txt) return '';
+        return txt.replace(/[•—–]/g, '-')
+                  .replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+    };
+
+    // 2. CARREGAMENTO DA BIBLIOTECA NATIVA JSPDF
+    if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
         });
     }
 
-    // 2. GUARDA ESTADO DA ABA ANTERIOR E FORÇA RENDERIZAÇÃO DA VISÃO DE SÚMULAS
-    const modoAnterior = abaVisaoLeaderboardSaaS;
-    abaVisaoLeaderboardSaaS = 'SUMULAS';
+    const { jsPDF } = window.jspdf || { jsPDF: window.jsPDF };
+    if (!jsPDF) {
+        showToast("Erro ao carregar o motor de PDF.", "error");
+        return;
+    }
 
-    if (typeof renderizarLeaderboardSaaS === 'function') {
-        await renderizarLeaderboardSaaS();
+    // 3. GUARDA ESTADO E RENDERIZA (APENAS SE NÃO FOR HISTÓRICO)
+    const modoAnterior = abaVisaoLeaderboardSaaS;
+    
+    if (!ehHistorico) {
+        abaVisaoLeaderboardSaaS = 'SUMULAS';
+        if (typeof renderizarLeaderboardSaaS === 'function') {
+            await renderizarLeaderboardSaaS();
+        }
     }
 
     const bodyLeaderboard = document.getElementById('body-leaderboard-scroll');
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
     const elNomeClube = document.getElementById('txt-nome-clube');
 
-    // Valida se existem súmulas na categoria selecionada
     if (!bodyLeaderboard || !bodyLeaderboard.innerHTML.trim() || bodyLeaderboard.innerText.includes("Nenhuma súmula")) {
-        showToast("Nenhuma súmula cadastrada nesta categoria para exportar.", "warning");
-        abaVisaoLeaderboardSaaS = modoAnterior;
-        if (typeof renderizarLeaderboardSaaS === 'function') await renderizarLeaderboardSaaS();
+        showToast("Nenhuma súmula encontrada para exportar.", "warning");
+        if (!ehHistorico) {
+            abaVisaoLeaderboardSaaS = modoAnterior;
+            if (typeof renderizarLeaderboardSaaS === 'function') await renderizarLeaderboardSaaS();
+        }
         return;
     }
 
@@ -5121,293 +5262,384 @@ async function exportarSumulasPDFSaaS() {
     if (!nomeClubeRaw || nomeClubeRaw.toUpperCase() === 'CARREGANDO...') {
         nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || clubeAtivoId || 'CLUBE';
     }
-    const nomeClube = nomeClubeRaw.toUpperCase();
-	
+    const nomeClube = limparTextoPdf(nomeClubeRaw.toUpperCase());
     const dataHojeStr = new Date().toLocaleDateString('pt-BR');
 
-    // Identificação do Torneio e Categoria Ativa
-    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
+    let linha2TorneioCategoria = "";
+    let linha3Subtitulo = "";
 
-    const selClasse = document.getElementById('select-leaderboard-classe');
-    const selGenero = document.getElementById('select-leaderboard-genero');
-    const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
-    const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
-    const categoriaAtivaTxt = [txtClasse, txtGenero].filter(Boolean).join(' • ');
+    if (ehHistorico) {
+        const cal = edicaoHistoricaFocoSaaS.contrato || {};
+        const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio Histórico');
+        linha2TorneioCategoria = `${nomeTorneio} - Acervo Histórico`;
+        linha3Subtitulo = "Súmulas e Resultados - Edição Concluída";
+    } else {
+        const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const cal = conf.calendario || {};
+        const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio Oficial');
 
-    const linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
+        const selClasse = document.getElementById('select-leaderboard-classe');
+        const selGenero = document.getElementById('select-leaderboard-genero');
+        const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
+        const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
+        const categoriaAtivaTxt = limparTextoPdf([txtClasse, txtGenero].filter(Boolean).join(' - '));
 
-    let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').trim() : 'Modelo Oficial';
-    const linha3Subtitulo = `Súmulas e Resultados — ${modeloTxt}`;
+        linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} - ${categoriaAtivaTxt}` : nomeTorneio;
+        let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').trim() : 'Modelo Oficial';
+        linha3Subtitulo = limparTextoPdf(`Súmulas e Resultados - ${modeloTxt}`);
+    }
 
-    // 3. CONTAINER CENTRALIZADO E COM INJEÇÃO DOS ESTILOS DAS SÚMULAS (ATP TABLE)
-    const tempContainer = document.createElement('div');
-    tempContainer.id = 'pdf-sumulas-wrapper';
-    tempContainer.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 560px;
-        margin: 0;
-        padding: 0;
-        background: #ffffff;
-        z-index: -9999;
-    `;
-
-    tempContainer.innerHTML = `
-        <style>
-            #pdf-sumulas-wrapper * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-                font-family: Arial, Helvetica, sans-serif;
+    // 4. EXTRAÇÃO DOS CARDS DO DOM PARA OBJETOS JS
+    const atpTables = Array.from(bodyLeaderboard.querySelectorAll('.atp-table'));
+    let cardElements = atpTables.map(table => {
+        let el = table;
+        while (el.parentElement && el.parentElement !== bodyLeaderboard && el.parentElement.id !== 'box-restante-sumulas-acervo' && !el.parentElement.classList.contains('pdf-body-content')) {
+            if (el.parentElement.tagName === 'DIV' && (el.parentElement.style.background || el.parentElement.style.border)) {
+                return el.parentElement;
             }
+            el = el.parentElement;
+        }
+        return el;
+    }).filter((card, index, self) => self.indexOf(card) === index);
 
-            .pdf-a4-sheet {
-                background: #ffffff;
-                width: 560px;
-                padding: 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-                text-align: left;
+    if (cardElements.length === 0) {
+        const allDivs = Array.from(bodyLeaderboard.querySelectorAll('div[style*="border-radius: 14px"]'));
+        if (allDivs.length > 0) {
+            cardElements = allDivs;
+        } else {
+            cardElements = Array.from(bodyLeaderboard.children).filter(child => 
+                !child.classList.contains('box-dica-leaderboard') && child.innerText.trim().length > 0
+            );
+        }
+    }
+
+    const matchesData = cardElements.map(cardEl => {
+        const txtFull = cardEl.innerText || '';
+        
+        let badgeCategoria = cardEl.querySelector('span[style*="purple"], span[style*="8b5cf6"], .badge-categoria')?.innerText.trim();
+        if (!badgeCategoria) {
+            if (ehHistorico) {
+                badgeCategoria = 'Súmula Histórica';
+            } else {
+                const selClasse = document.getElementById('select-leaderboard-classe');
+                const selGenero = document.getElementById('select-leaderboard-genero');
+                const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
+                const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
+                badgeCategoria = [txtClasse, txtGenero].filter(Boolean).join(' - ') || 'Súmula Oficial';
             }
+        }
+        badgeCategoria = limparTextoPdf(badgeCategoria);
+        
+        const dateMatch = txtFull.match(/\b\d{2}\/\d{2}\/\d{4}\b/);
+        const matchDate = dateMatch ? dateMatch[0] : '';
 
-            /* CABEÇALHO PADRÃO EM 3 LINHAS */
-            .pdf-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-                padding-bottom: 8px;
-                border-bottom: 2px solid #0f172a;
-                margin-bottom: 12px;
-                width: 100%;
-            }
-
-            .pdf-header-titles {
-                display: flex;
-                flex-direction: column;
-                gap: 3px;
-                text-align: left;
-            }
-
-            .pdf-header-titles h1 {
-                font-size: 15px;
-                font-weight: 900;
-                color: #0f172a;
-                text-transform: uppercase;
-                letter-spacing: -0.5px;
-                margin: 0;
-            }
-
-            .pdf-header-titles .line-2 {
-                font-size: 12px;
-                font-weight: 800;
-                color: #2563eb;
-                margin: 0;
-            }
-
-            .pdf-header-titles .line-3 {
-                font-size: 11px;
-                font-weight: 700;
-                color: #475569;
-                margin: 0;
-            }
-
-            .pdf-date {
-                font-size: 10px;
-                font-weight: 700;
-                color: #475569;
-                white-space: nowrap;
-                padding-bottom: 2px;
-            }
-
-            .pdf-body-content {
-                width: 100%;
-                display: block;
-                text-align: left;
-            }
-
-            .pdf-body-content .box-dica-leaderboard {
-                display: none !important;
-            }
-
-            /* ESTILOS REPLICADOS DAS SÚMULAS (ATP TABLE) */
-            .pdf-body-content .atp-table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 11px;
-            }
-
-            .pdf-body-content .atp-table th {
-                color: #64748b;
-                font-size: 10px;
-                font-weight: 700;
-                border-bottom: 1px solid #cbd5e1;
-                padding-bottom: 4px;
-                text-align: center;
-            }
-
-            .pdf-body-content .atp-table th:first-child {
-                text-align: left;
-                padding-left: 0;
-            }
-
-            .pdf-body-content .atp-table td {
-                padding: 8px 0;
-                border-bottom: 1px solid #f1f5f9;
-                text-align: center;
-            }
-
-            .pdf-body-content .atp-table td:first-child {
-                text-align: left;
-            }
-
-            .pdf-body-content .atp-name {
-                font-size: 12px;
-                color: #0f172a;
-            }
-
-            .pdf-body-content .atp-name.match-winner {
-                font-weight: 800;
-                color: #0f172a;
-            }
-
-            .pdf-body-content .atp-score {
-                font-size: 12px;
-                color: #64748b;
-            }
-
-            .pdf-body-content .atp-score.set-winner {
-                font-weight: 800;
-                color: #0f172a;
-            }
-
-            .pdf-body-content .atp-score sup {
-                font-size: 9px;
-                color: #94a3b8;
-                margin-left: 1px;
-            }
-
-            .pdf-body-content .winner-arrow {
-                color: #0f172a;
-                font-size: 11px;
-            }
-
-            .pdf-body-content .col-score { width: 32px; text-align: center; }
-            .pdf-body-content .col-arrow { width: 20px; text-align: center; }
-
-            .pdf-body-content .badge-ret {
-                background-color: #dc2626;
-                color: #ffffff;
-                font-size: 9px;
-                font-weight: 800;
-                padding: 2px 4px;
-                border-radius: 3px;
-                margin-left: 4px;
-            }
-
-            /* RODAPÉ OFICIAL DO SISTEMA */
-            .pdf-footer {
-                border-top: 1px solid #cbd5e1;
-                padding-top: 10px;
-                margin-top: 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-                font-size: 8.5px;
-                color: #64748b;
-                width: 100%;
-            }
-
-            .pdf-footer-signature {
-                border-top: 1px solid #0f172a;
-                width: 140px;
-                text-align: center;
-                padding-top: 3px;
-                font-weight: 700;
-                color: #0f172a;
-                font-size: 9px;
-            }
-        </style>
-
-        <div class="pdf-a4-sheet">
-            <div class="pdf-header">
-                <div class="pdf-header-titles">
-                    <h1>${nomeClube} — SETPOINT</h1>
-                    <div class="line-2">${linha2TorneioCategoria}</div>
-                    <div class="line-3">${linha3Subtitulo}</div>
-                </div>
-                <div class="pdf-date">${dataHojeStr}</div>
-            </div>
-
-            <div class="pdf-body-content">
-                ${bodyLeaderboard.innerHTML}
-            </div>
-
-            <div class="pdf-footer">
-                <div>
-                    <b>SetPoint SaaS</b> • Relatório Oficial do Ranking<br>
-                    Documento emitido automaticamente pelo sistema.
-                </div>
-                <div class="pdf-footer-signature">
-                    Arbitragem / Gestão
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.documentElement.appendChild(tempContainer);
-
-    // 4. RESET TEMPORÁRIO DE SCROLL PARA ENQUADRAMENTO PERFECT
-    const savedScrollY = window.scrollY;
-    window.scrollTo(0, 0);
-
-    await new Promise(r => setTimeout(r, 350));
-
-    // 5. PROCESSAMENTO E DOWNLOAD DO PDF
-    const targetElement = tempContainer.querySelector('.pdf-a4-sheet');
-    const nomeArquivo = `Sumulas_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-
-    const opt = {
-        margin:       [10, 10, 10, 10],
-        filename:     nomeArquivo,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            logging: false,
-            scrollX: 0,
-            scrollY: 0,
-            x: 0,
-            y: 0,
-            width: 600,
-            windowWidth: 600
-        },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    try {
-        await html2pdf().set(opt).from(targetElement).save();
-        showToast("PDF das Súmulas baixado com sucesso!", "success");
-    } catch (err) {
-        console.error("❌ Erro ao baixar PDF das súmulas:", err);
-        showToast("Erro ao gerar o PDF das súmulas.", "error");
-    } finally {
-        window.scrollTo(0, savedScrollY);
-        if (tempContainer && tempContainer.parentNode) {
-            tempContainer.parentNode.removeChild(tempContainer);
+        let noteText = '';
+        const noteEl = cardEl.querySelector('div[style*="italic"]');
+        if (noteEl) {
+            noteText = limparTextoPdf(noteEl.innerText.trim());
+        } else if (txtFull.includes('Motivo:')) {
+            const match = txtFull.match(/Motivo:[^\n]+/i);
+            if (match) noteText = limparTextoPdf(match[0].trim());
         }
 
-        // Restaura a aba ativa do usuário
-        abaVisaoLeaderboardSaaS = modoAnterior;
-        if (typeof renderizarLeaderboardSaaS === 'function') {
-            await renderizarLeaderboardSaaS();
+        let statusTag = 'Homologado';
+        let statusColor = [22, 163, 74];
+
+        const noteLower = noteText.toLowerCase();
+        if (noteLower.includes('anulada por') || txtFull.includes('Anulada por')) {
+            statusTag = 'Arbitrado';
+            statusColor = [220, 38, 38];
+        } else if (noteLower.includes('editado pela arbitragem')) {
+            statusTag = 'Arbitrado';
+            statusColor = [217, 119, 6];
+        } else if (noteLower.includes('homologado pela arbitragem')) {
+            statusTag = 'Arbitrado';
+            statusColor = [22, 163, 74];
+        } else if (txtFull.includes('Arbitrado')) {
+            statusTag = 'Arbitrado';
+            statusColor = [22, 163, 74];
+        }
+
+        const rows = Array.from(cardEl.querySelectorAll('tr')).filter(r => r.querySelector('.atp-name') || r.querySelectorAll('td').length >= 2);
+        
+        const players = [];
+        rows.forEach(r => {
+            const nameEl = r.querySelector('.atp-name');
+            if (!nameEl) return;
+            const name = limparTextoPdf(nameEl.innerText.trim());
+            const isWinner = nameEl.classList.contains('match-winner') || r.querySelector('.winner-arrow') !== null;
+            const hasRET = r.querySelector('.badge-ret') !== null;
+
+            const scoreTds = Array.from(r.querySelectorAll('.atp-score, td.col-score'));
+            const scores = scoreTds.map(td => {
+                const sup = td.querySelector('sup')?.innerText || '';
+                const mainVal = td.innerText.replace(sup, '').trim();
+                return { val: mainVal, sup: sup };
+            });
+
+            players.push({ name, isWinner, hasRET, scores });
+        });
+
+        return { badgeCategoria, matchDate, statusTag, statusColor, players, noteText };
+    });
+
+    const totalPartidas = matchesData.length;
+
+    // 5. DESENHO VETORIAL NO JSPDF
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const marginX = 15;
+    const contentWidth = pageWidth - (marginX * 2);
+
+    let currentY = 15;
+
+    const drawHeaderPage1 = () => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(15, 23, 42);
+        doc.text(nomeClube, marginX, currentY);
+
+        currentY += 5;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.setTextColor(37, 99, 235);
+        doc.text(linha2TorneioCategoria, marginX, currentY);
+
+        currentY += 4.5;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text(linha3Subtitulo, marginX, currentY);
+
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text(dataHojeStr, pageWidth - marginX, currentY, { align: "right" });
+
+        currentY += 2.5;
+        doc.setDrawColor(15, 23, 42);
+        doc.setLineWidth(0.4);
+        doc.line(marginX, currentY, pageWidth - marginX, currentY);
+        currentY += 5;
+
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(marginX, currentY, contentWidth, 7, 1.5, 1.5, "FD");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Total de ${totalPartidas} partida(s) nesta edição/categoria.`, marginX + (contentWidth / 2), currentY + 4.6, { align: "center" });
+
+        currentY += 11;
+    };
+
+    const drawFooterLastPage = (finalY) => {
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.2);
+        doc.line(marginX, finalY, pageWidth - marginX, finalY);
+
+        const footerY = finalY + 4;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        doc.text("SetPoint SaaS", marginX, footerY);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(" - Relatório Oficial do Ranking", marginX + 21, footerY);
+        doc.text("Documento emitido automaticamente pelo sistema.", marginX, footerY + 3.5);
+
+        const sigWidth = 45;
+        const sigX = pageWidth - marginX - sigWidth;
+        doc.setDrawColor(15, 23, 42);
+        doc.setLineWidth(0.3);
+        doc.line(sigX, footerY + 2, pageWidth - marginX, footerY + 2);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Arbitragem / Gestão", sigX + (sigWidth / 2), footerY + 5.5, { align: "center" });
+    };
+
+    const drawWinnerArrow = (x, y) => {
+        doc.setFillColor(15, 23, 42);
+        doc.triangle(x, y - 1.2, x, y + 1.2, x - 1.8, y, "F");
+    };
+
+    // 6. RENDERIZAÇÃO DOS CARDS
+    drawHeaderPage1();
+
+    matchesData.forEach((match, index) => {
+        const hasNote = Boolean(match.noteText);
+        const cardHeight = hasNote ? 27 : 22; 
+        const isLastMatch = (index === matchesData.length - 1);
+        const neededSpace = isLastMatch ? (cardHeight + 22) : cardHeight;
+
+        if (currentY + neededSpace > (pageHeight - 15)) {
+            doc.addPage();
+            currentY = 15;
+        }
+
+        const cardX = marginX;
+        const cardY = currentY;
+
+        doc.setDrawColor(203, 213, 225);
+        doc.setFillColor(255, 255, 255);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(cardX, cardY, contentWidth, cardHeight, 2, 2, "FD");
+
+        // Pílula 1: Categoria (Roxa)
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        const badgeTxt = match.badgeCategoria;
+        const badgeW = doc.getTextWidth(badgeTxt) + 5;
+        
+        doc.setFillColor(245, 243, 255);
+        doc.setDrawColor(221, 214, 254);
+        doc.setLineWidth(0.15);
+        doc.roundedRect(cardX + 3, cardY + 2, badgeW, 4.2, 1, 1, "FD");
+        doc.setTextColor(139, 92, 246);
+        doc.text(badgeTxt, cardX + 5.5, cardY + 5);
+
+        // Pílula 2: Data da Partida (Cinza Neutra)
+        if (match.matchDate) {
+            const dateTxt = match.matchDate;
+            const dateW = doc.getTextWidth(dateTxt) + 5;
+            const dateX = cardX + 3 + badgeW + 2;
+
+            doc.setFillColor(241, 245, 249);
+            doc.setDrawColor(203, 213, 225);
+            doc.setLineWidth(0.15);
+            doc.roundedRect(dateX, cardY + 2, dateW, 4.2, 1, 1, "FD");
+            doc.setTextColor(71, 85, 105);
+            doc.text(dateTxt, dateX + 2.5, cardY + 5);
+        }
+
+        // Status no Canto Direito
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        const statusTxt = match.statusTag;
+        const statusTxtW = doc.getTextWidth(statusTxt);
+        const statusX = cardX + contentWidth - 4;
+
+        doc.setFillColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
+        doc.setDrawColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
+        doc.circle(statusX - statusTxtW - 2.5, cardY + 4, 1.1, "F");
+
+        doc.setTextColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
+        doc.text(statusTxt, statusX, cardY + 5, { align: "right" });
+
+        const p1 = match.players[0] || { name: '--', isWinner: false, hasRET: false, scores: [] };
+        const row1Y = cardY + 11.5;
+
+        doc.setFont("helvetica", p1.isWinner ? "bold" : "normal");
+        doc.setFontSize(p1.isWinner ? 9.5 : 9);
+        doc.setTextColor(15, 23, 42);
+        doc.text(p1.name, cardX + 5, row1Y);
+
+        if (p1.hasRET) {
+            const wName = doc.getTextWidth(p1.name);
+            doc.setFillColor(220, 38, 38);
+            doc.roundedRect(cardX + 6 + wName, row1Y - 3, 8, 3.5, 0.6, 0.6, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(6);
+            doc.setTextColor(255, 255, 255);
+            doc.text("RET", cardX + 6 + wName + 1.2, row1Y - 0.5);
+        }
+
+        let scoreX1 = cardX + contentWidth - 28;
+        p1.scores.forEach(s => {
+            doc.setFont("helvetica", p1.isWinner ? "bold" : "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(15, 23, 42);
+            doc.text(s.val, scoreX1, row1Y, { align: "center" });
+
+            if (s.sup) {
+                doc.setFontSize(5.5);
+                doc.setTextColor(148, 163, 184);
+                doc.text(s.sup, scoreX1 + 2.2, row1Y - 1.8);
+            }
+            scoreX1 += 9;
+        });
+
+        if (p1.isWinner) {
+            drawWinnerArrow(cardX + contentWidth - 4, row1Y - 0.8);
+        }
+
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.15);
+        doc.line(cardX + 3, cardY + 13.5, cardX + contentWidth - 3, cardY + 13.5);
+
+        const p2 = match.players[1] || { name: '--', isWinner: false, hasRET: false, scores: [] };
+        const row2Y = cardY + 18;
+
+        doc.setFont("helvetica", p2.isWinner ? "bold" : "normal");
+        doc.setFontSize(p2.isWinner ? 9.5 : 9);
+        doc.setTextColor(15, 23, 42);
+        doc.text(p2.name, cardX + 5, row2Y);
+
+        if (p2.hasRET) {
+            const wName2 = doc.getTextWidth(p2.name);
+            doc.setFillColor(220, 38, 38);
+            doc.roundedRect(cardX + 6 + wName2, row2Y - 3, 8, 3.5, 0.6, 0.6, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(6);
+            doc.setTextColor(255, 255, 255);
+            doc.text("RET", cardX + 6 + wName2 + 1.2, row2Y - 0.5);
+        }
+
+        let scoreX2 = cardX + contentWidth - 28;
+        p2.scores.forEach(s => {
+            doc.setFont("helvetica", p2.isWinner ? "bold" : "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(15, 23, 42);
+            doc.text(s.val, scoreX2, row2Y, { align: "center" });
+
+            if (s.sup) {
+                doc.setFontSize(5.5);
+                doc.setTextColor(148, 163, 184);
+                doc.text(s.sup, scoreX2 + 2.2, row2Y - 1.8);
+            }
+            scoreX2 += 9;
+        });
+
+        if (p2.isWinner) {
+            drawWinnerArrow(cardX + contentWidth - 4, row2Y - 0.8);
+        }
+
+        if (hasNote) {
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(7.5);
+            doc.setTextColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
+            doc.text(match.noteText, cardX + (contentWidth / 2), cardY + cardHeight - 2.5, { align: "center" });
+        }
+
+        currentY += cardHeight + 3.5;
+    });
+
+    drawFooterLastPage(Math.max(currentY + 2, pageHeight - 20));
+
+    // 7. ROTEAMENTO NATIVO VIA CAPACITOR
+    const nomeArquivo = ehHistorico
+        ? `Sumulas_Acervo_${limparTextoPdf(edicaoHistoricaFocoSaaS?.contrato?.nomeTorneio || 'Torneio').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+        : `Sumulas_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    
+    try {
+        await processarSaidaPDFSaaS(doc, nomeArquivo, ehHistorico ? "PDF das Súmulas do Acervo" : "PDF das Súmulas");
+    } catch (err) {
+        console.error("❌ Erro ao salvar PDF vetorial:", err);
+        showToast("Erro ao gerar arquivo PDF.", "error");
+    } finally {
+        if (!ehHistorico) {
+            abaVisaoLeaderboardSaaS = modoAnterior;
+            if (typeof renderizarLeaderboardSaaS === 'function') {
+                await renderizarLeaderboardSaaS();
+            }
         }
     }
 }
-
 
 
 async function encerrarFase3EAvancarSaaS() {
@@ -5787,16 +6019,17 @@ function abrirPodioAcervoSaaS(idEdicao) {
     // Define a primeira categoria alfabeticamente como padrão ao abrir
     categoriaHistoricaAtivaSaaS = categorias.sort()[0];
 
-    // 2. Prepara a Gaveta Leaderboard (Isolamento Visual)
+    // 2. Prepara a Gaveta Leaderboard (Oculta o topo inteiro de filtros/PDF para o modo Pódio)
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     const containerAbas = document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null;
     const selectClasse = document.getElementById('select-leaderboard-classe');
     const selectGenero = document.getElementById('select-leaderboard-genero');
+    const containerDropdowns = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
 
-    // Oculta abas e seletores nativos do torneio atual para não haver conflito
     if (containerAbas) containerAbas.style.display = 'none';
     if (selectClasse) selectClasse.style.display = 'none';
     if (selectGenero) selectGenero.style.display = 'none';
+    if (containerDropdowns) containerDropdowns.style.display = 'none';
 
     // 🛡️ Garante que os controles voltem ao normal quando a gaveta fechar
     if (sheet && !listenerGavetaHistoricoAdd) {
@@ -5805,6 +6038,7 @@ function abrirPodioAcervoSaaS(idEdicao) {
                 if (containerAbas) containerAbas.style.display = '';
                 if (selectClasse) selectClasse.style.display = '';
                 if (selectGenero) selectGenero.style.display = '';
+                if (containerDropdowns) containerDropdowns.style.display = '';
             }
         });
         listenerGavetaHistoricoAdd = true;
@@ -5819,6 +6053,7 @@ function abrirPodioAcervoSaaS(idEdicao) {
         setTimeout(() => sheet.classList.add('ativa'), 10);
     }
 }
+
 
 // Navegação entre categorias do torneio histórico
 function mudarCategoriaHistoricaSaaS(novaCat) {
@@ -5867,7 +6102,7 @@ function renderizarHTMLPodioAcervoSaaS() {
     }
 
     // =======================================================
-    // RENDERIZAÇÃO DO PÓDIO (Layout Idêntico à Fase Concluída)
+    // RENDERIZAÇÃO DO PÓDIO
     // =======================================================
     const idLogado = localStorage.getItem('jogadorLogadoId');
     const idCampeao = listaIDs[0];
@@ -5946,14 +6181,27 @@ function renderizarHTMLPodioAcervoSaaS() {
             `;
         }
         html += `</div>`;
-        
-        // Botão Sanfona (Reaproveitando sua função já existente)
+    }
+
+    // 🟢 BARRA DE AÇÕES DO RODAPÉ (SANFONA + BOTÃO PDF À DIREITA)
+    html += `
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px;">
+    `;
+
+    if (listaIDs.length > 3) {
         html += `
-            <button type="button" id="btn-sanfona-hall" onclick="toggleSanfonaHallCampeoesSaaS(${listaIDs.length})" style="width: 100%; background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 12px; color: #0284c7; font-weight: 700; font-size: 12.5px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <button type="button" id="btn-sanfona-hall" onclick="toggleSanfonaHallCampeoesSaaS(${listaIDs.length})" style="flex: 1; background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 12px; color: #0284c7; font-weight: 700; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
                 <span>Ver Classificação Completa (${listaIDs.length} atletas)</span> 🔽
             </button>
         `;
     }
+
+    html += `
+            <button type="button" onclick="exportarLeaderboardPDFSaaS()" title="Exportar PDF" style="width: 44px; height: 42px; background: #0284c7; border: none; border-radius: 12px; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25); flex-shrink: 0; margin-left: ${listaIDs.length <= 3 ? 'auto' : '0'};">
+                <i class="material-icons" style="font-size: 20px;">picture_as_pdf</i>
+            </button>
+        </div>
+    `;
 
     bodyList.innerHTML = html;
 }
@@ -5970,6 +6218,9 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         return;
     }
 
+    // 🟢 GRAVAR A EDIÇÃO NA MEMÓRIA PARA O PDF SABER QUE É HISTÓRICO
+    edicaoHistoricaFocoSaaS = edicao;
+
     const partidasObj = edicao.partidas || {};
     const listaPartidas = Object.values(partidasObj);
 
@@ -5978,7 +6229,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         return;
     }
 
-    // 2. Prepara a Gaveta do Leaderboard (Isolamento Visual)
+    // 2. Prepara a Gaveta do Leaderboard
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     const bodyList = document.getElementById('body-leaderboard-scroll');
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
@@ -5986,10 +6237,25 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     const containerAbas = document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null;
     const selectClasse = document.getElementById('select-leaderboard-classe');
     const selectGenero = document.getElementById('select-leaderboard-genero');
+    const containerDropdowns = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
 
     if (containerAbas) containerAbas.style.display = 'none';
     if (selectClasse) selectClasse.style.display = 'none';
     if (selectGenero) selectGenero.style.display = 'none';
+    if (containerDropdowns) containerDropdowns.style.display = 'none';
+
+    // 🛡️ Garante que os controles voltem ao normal quando a gaveta fechar
+    if (sheet && !listenerGavetaHistoricoAdd) {
+        sheet.addEventListener('transitionend', () => {
+            if (!sheet.classList.contains('ativa')) {
+                if (containerAbas) containerAbas.style.display = '';
+                if (selectClasse) selectClasse.style.display = '';
+                if (selectGenero) selectGenero.style.display = '';
+                if (containerDropdowns) containerDropdowns.style.display = '';
+            }
+        });
+        listenerGavetaHistoricoAdd = true;
+    }
 
     const cal = edicao.contrato || {};
     const fmtDataCurta = (str) => {
@@ -6001,10 +6267,10 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     const dtInicio = fmtDataCurta(cal.inicioJogos);
     const dtFim = fmtDataCurta(cal.fimTorneio);
 
-    // SUBTÍTULO LIMPO: Nome do Torneio + Pílula de Data (Sem Ícone)
+    // 🟢 COMPACTAÇÃO: Subtítulo colado no painel abaixo
     if (txtSub) {
         txtSub.innerHTML = `<span style="font-weight: 700; color: #1e293b;">${cal.nomeTorneio || 'Torneio'}</span> <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px; margin-left:6px; border:1px solid #cbd5e1;">${dtInicio} a ${dtFim}</span>`;
-        txtSub.style.marginBottom = "2px";
+        txtSub.style.marginBottom = "0px";
     }
 
     // Auxiliares de Formatação
@@ -6041,34 +6307,10 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         return pts;
     };
 
-    const calcSetWinner = (p1, p2, tb1, tb2) => {
-        const n1 = parseInt(p1), n2 = parseInt(p2);
-        if (isNaN(n1) || isNaN(n2)) return 0;
-        const t1 = parseInt(tb1), t2 = parseInt(tb2);
-        if (!isNaN(t1) && !isNaN(t2)) {
-            if (t1 > t2) return 1;
-            if (t2 > t1) return 2;
-        }
-        if ((n1 === 6 && n2 <= 4) || (n1 === 7 && (n2 === 5 || n2 === 6))) return 1;
-        if ((n2 === 6 && n1 <= 4) || (n2 === 7 && (n1 === 5 || n1 === 6))) return 2;
-        if ((n1 === 4 && n2 <= 2) || (n1 === 5 && (n2 === 3 || n2 === 4))) return 1;
-        if ((n2 === 4 && n1 <= 2) || (n2 === 5 && (n1 === 3 || n1 === 4))) return 2;
-        if ((n1 === 8 && n2 <= 6) || (n1 === 9 && (n2 === 7 || n2 === 8))) return 1;
-        if ((n2 === 8 && n1 <= 6) || (n2 === 9 && (n1 === 7 || n1 === 8))) return 2;
-        if (n1 >= 10 && n1 - n2 >= 2) return 1;
-        if (n2 >= 10 && n2 - n1 >= 2) return 2;
-        return 0;
-    };
+    let htmlCardsMain = '';
+    let htmlCardsExtra = '';
 
-    // PAINEL INFORMATIVO
-    let html = `
-        <div style="margin-top: 2px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px; font-size: 12px; color: #64748b; text-align: center;">
-            📋 Total de <b>${listaPartidas.length} partida(s)</b> homologada(s) nesta edição.
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-    `;
-
-    listaPartidas.forEach(partida => {
+    listaPartidas.forEach((partida, idx) => {
         const j1NomeLongo = buscarNome(partida.jogador1Id);
         const j2NomeLongo = buscarNome(partida.jogador2Id);
         const j1Exibicao = formatarNomeCurto(j1NomeLongo);
@@ -6078,31 +6320,44 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
         catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
+        // Extração e Formatação da Data do Confronto
         const dp = partida.dadosPlacar || {};
+        const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
+        let dataPartidaStr = '--/--/----';
+        if (dataMs) {
+            const d = new Date(dataMs);
+            if (!isNaN(d.getTime())) {
+                dataPartidaStr = d.toLocaleDateString('pt-BR');
+            }
+        } else if (partida.dataCompleta) {
+            const p = partida.dataCompleta.split('-');
+            if (p.length === 3) dataPartidaStr = `${p[2]}/${p[1]}/${p[0]}`;
+        }
+
         const stPlacar = dp.statusPlacar || partida.status || 'consolidado';
         const decisaoArb = dp.decisaoArbitro || '';
         const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
         const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
 
-        // BADGES E RODAPÉS REATIVOS DA ARBITRAGEM
+        // 🟢 COMPACTAÇÃO: Textos do árbitro encostados na tabela de placar
         let badgeHtml = '';
         let footerArbHtml = '';
 
         if (stPlacar === 'anulado' || decisaoArb === 'anulado_pelo_arbitro') {
-            badgeHtml = `<span style="font-size: 11px; color: #dc2626; font-weight: 700;"><span style="margin-right: 3px;">🔴</span> Arbitrado</span>`;
+            badgeHtml = `<span style="font-size: 10px; color: #dc2626; font-weight: 700;"><span style="margin-right: 2px;">🔴</span> Arbitrado</span>`;
             const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-            const motivoAnul = dp.motivoAnulacao || 'partida inválida pelo torneio, conforme regulamento.';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
+            const motivoAnul = dp.motivoAnulacao || 'partida inválida.';
+            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
         } else if (decisaoArb === 'editado_pelo_arbitro') {
-            badgeHtml = `<span style="font-size: 11px; color: #d97706; font-weight: 700;"><span style="margin-right: 3px;">🟠</span> Arbitrado</span>`;
+            badgeHtml = `<span style="font-size: 10px; color: #d97706; font-weight: 700;"><span style="margin-right: 2px;">🟠</span> Arbitrado</span>`;
             const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Editado pela arbitragem: ${juizNome}</div>`;
+            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Editado pela arbitragem: ${juizNome}</div>`;
         } else if (decisaoArb === 'mantido_pelo_arbitro') {
-            badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;"><span style="margin-right: 3px;">🟢</span> Arbitrado</span>`;
+            badgeHtml = `<span style="font-size: 10px; color: #16a34a; font-weight: 700;"><span style="margin-right: 2px;">🟢</span> Arbitrado</span>`;
             const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Homologado pela arbitragem: ${juizNome}</div>`;
+            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Homologado pela arbitragem: ${juizNome}</div>`;
         } else {
-            badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
+            badgeHtml = `<span style="font-size: 10px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
         }
 
         const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -6116,35 +6371,37 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         let setaJ1 = (j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : '';
         let setaJ2 = (!j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : ''; 
 
-        html += `
-            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 14px 6px 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
-                    <span style="font-size: 11px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 8px; border-radius: 8px; border: 1px solid #ddd6fe;">
-                        ${catLabel || 'Categoria Oficial'}
-                    </span>
+        // 🟢 COMPACTAÇÃO EXTREMA: Margins e Paddings do Card
+        let cardSingle = `
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 6px 10px 4px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px;">
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <span style="font-size: 10px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 6px; border-radius: 6px; border: 1px solid #ddd6fe;">
+                            ${catLabel || 'Oficial'}
+                        </span>
+                        <span style="font-size: 10px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;">
+                            <i class="material-icons" style="font-size: 11px;">event</i> ${dataPartidaStr}
+                        </span>
+                    </div>
                     ${badgeHtml}
                 </div>
         `;
 
         if (isWO) {
-            html += `
-                <table class="atp-table">
+            cardSingle += `
+                <table class="atp-table" style="margin-bottom: 0px;">
                     <tbody>
                         <tr>
-                            <td>
-                                <span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span>
-                            </td>
+                            <td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td>
                             <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${j1EhVencedor ? 'W.O.' : ''}</td>
                         </tr>
                         <tr>
-                            <td>
-                                <span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span>
-                            </td>
+                            <td><span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span></td>
                             <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${!j1EhVencedor ? 'W.O.' : ''}</td>
                         </tr>
                     </tbody>
                 </table>
-                <div style="text-align: center; font-style: italic; color: #64748b; font-size: 13px; margin-top: 10px; margin-bottom: 4px;">
+                <div style="text-align: center; font-style: italic; color: #64748b; font-size: 11.5px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">
                     Motivo: ${dp.motivoWO || 'Não informado'}
                 </div>
             `;
@@ -6157,134 +6414,148 @@ function abrirSumulasAcervoSaaS(idEdicao) {
             const temSet2 = (p.set2 && p.set2.j1 !== undefined && p.set2.j1 !== null && p.set2.j1 !== "");
             const temSet3 = (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "");
 
-            let thSetsHtml = '';
-            if (temSet1) thSetsHtml += `<th class="col-score">1</th>`;
-            if (temSet2) thSetsHtml += `<th class="col-score">2</th>`;
-            if (temSet3) thSetsHtml += `<th class="col-score">3</th>`;
-
             let tdSetsJ1Html = '';
             let tdSetsJ2Html = '';
 
             if (temSet1) {
-                const s1J1 = fmtSet(p.set1.j1, p.set1.tbJ1);
-                const s1J2 = fmtSet(p.set1.j2, p.set1.tbJ2);
-                const w1 = calcSetWinner(p.set1.j1, p.set1.j2, p.set1.tbJ1, p.set1.tbJ2);
-                const classS1J1 = (!ehAnulado && w1 === 1) ? 'set-winner' : '';
-                const classS1J2 = (!ehAnulado && w1 === 2) ? 'set-winner' : '';
-                tdSetsJ1Html += `<td class="col-score atp-score ${classS1J1}">${s1J1}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classS1J2}">${s1J2}</td>`;
+                tdSetsJ1Html += `<td class="col-score atp-score ${classNomeJ1}">${fmtSet(p.set1.j1, p.set1.tbJ1)}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classNomeJ2}">${fmtSet(p.set1.j2, p.set1.tbJ2)}</td>`;
             }
-
             if (temSet2) {
-                const s2J1 = fmtSet(p.set2.j1, p.set2.tbJ1);
-                const s2J2 = fmtSet(p.set2.j2, p.set2.tbJ2);
-                const w2 = calcSetWinner(p.set2.j1, p.set2.j2, p.set2.tbJ1, p.set2.tbJ2);
-                const classS2J1 = (!ehAnulado && w2 === 1) ? 'set-winner' : '';
-                const classS2J2 = (!ehAnulado && w2 === 2) ? 'set-winner' : '';
-                tdSetsJ1Html += `<td class="col-score atp-score ${classS2J1}">${s2J1}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classS2J2}">${s2J2}</td>`;
+                tdSetsJ1Html += `<td class="col-score atp-score ${classNomeJ1}">${fmtSet(p.set2.j1, p.set2.tbJ1)}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classNomeJ2}">${fmtSet(p.set2.j2, p.set2.tbJ2)}</td>`;
             }
-
             if (temSet3) {
-                const s3J1 = fmtSet(p.set3.j1, p.set3.tbJ1);
-                const s3J2 = fmtSet(p.set3.j2, p.set3.tbJ2);
-                const w3 = calcSetWinner(p.set3.j1, p.set3.j2, p.set3.tbJ1, p.set3.tbJ2);
-                const classS3J1 = (!ehAnulado && w3 === 1) ? 'set-winner' : '';
-                const classS3J2 = (!ehAnulado && w3 === 2) ? 'set-winner' : '';
-                tdSetsJ1Html += `<td class="col-score atp-score ${classS3J1}">${s3J1}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classS3J2}">${s3J2}</td>`;
+                tdSetsJ1Html += `<td class="col-score atp-score ${classNomeJ1}">${fmtSet(p.set3.j1, p.set3.tbJ1)}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classNomeJ2}">${fmtSet(p.set3.j2, p.set3.tbJ2)}</td>`;
             }
 
-            html += `
-                <table class="atp-table">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            ${thSetsHtml}
-                            <th class="col-arrow"></th>
-                        </tr>
-                    </thead>
+            cardSingle += `
+                <table class="atp-table" style="margin-bottom: 0px;">
                     <tbody>
-                        <tr>
-                            <td>
-                                <span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>
-                                ${tagRetJ1}
-                            </td>
-                            ${tdSetsJ1Html}
-                            <td class="col-arrow">${setaJ1}</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>
-                                ${tagRetJ2}
-                            </td>
-                            ${tdSetsJ2Html}
-                            <td class="col-arrow">${setaJ2}</td>
-                        </tr>
+                        <tr><td><span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>${tagRetJ1}</td>${tdSetsJ1Html}<td class="col-arrow">${setaJ1}</td></tr>
+                        <tr><td><span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>${tagRetJ2}</td>${tdSetsJ2Html}<td class="col-arrow">${setaJ2}</td></tr>
                     </tbody>
                 </table>
             `;
 
             if (isRET && dp.motivoRET) {
-                html += `
-                    <div style="text-align: center; font-style: italic; color: #64748b; font-size: 13px; margin-top: 10px; margin-bottom: 4px;">
+                cardSingle += `
+                    <div style="text-align: center; font-style: italic; color: #64748b; font-size: 11.5px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">
                         Motivo: ${dp.motivoRET}
                     </div>
                 `;
             }
         } else {
-            // Fallback para partidas legadas
-            html += `
-                <table class="atp-table">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th class="col-score">1</th>
-                            <th class="col-arrow"></th>
-                        </tr>
-                    </thead>
+            cardSingle += `
+                <table class="atp-table" style="margin-bottom: 0px;">
                     <tbody>
-                        <tr>
-                            <td>
-                                <span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span>
-                            </td>
-                            <td class="col-score atp-score ${j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP1 || 0}</td>
-                            <td class="col-arrow">${setaJ1}</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span>
-                            </td>
-                            <td class="col-score atp-score ${!j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP2 || 0}</td>
-                            <td class="col-arrow">${setaJ2}</td>
-                        </tr>
+                        <tr><td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td><td class="col-score atp-score ${j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP1 || 0}</td><td class="col-arrow">${setaJ1}</td></tr>
+                        <tr><td><span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span></td><td class="col-score atp-score ${!j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP2 || 0}</td><td class="col-arrow">${setaJ2}</td></tr>
                     </tbody>
                 </table>
             `;
         }
 
-        // Injeta a nota explicativa da arbitragem no rodapé do card
-        if (footerArbHtml) {
-            html += footerArbHtml; 
-        }
+        if (footerArbHtml) cardSingle += footerArbHtml; 
 
-        html += `</div>`;
+        cardSingle += `</div>`;
+
+        if (idx < 2) {
+            htmlCardsMain += cardSingle;
+        } else {
+            htmlCardsExtra += cardSingle;
+        }
     });
 
-    html += `</div>`;
+    // 🟢 INJEÇÃO DE CSS: Sobrescreve o padding do Header da gaveta para subir o Título
+    let html = `
+        <style>
+            #sheet-leaderboard-ranking .bottom-sheet-header { padding-top: 12px !important; padding-bottom: 6px !important; }
+        </style>
+        <div style="margin-top: 0px; margin-bottom: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; font-size: 11.5px; color: #64748b; text-align: center;">
+            📋 Total de <b>${listaPartidas.length} partida(s)</b> homologada(s).
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${htmlCardsMain}
+        </div>
+    `;
+
+    if (htmlCardsExtra) {
+        html += `
+            <div id="box-restante-sumulas-acervo" style="display: none; flex-direction: column; gap: 8px; margin-top: 8px;">
+                ${htmlCardsExtra}
+            </div>
+        `;
+    }
+
+    const txtSumi = listaPartidas.length === 1 ? 'súmula' : 'súmulas';
+    const temMaisDeDuas = listaPartidas.length > 2;
+
+    html += `
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+    `;
+
+    if (temMaisDeDuas) {
+        html += `
+            <button type="button" id="btn-sanfona-sumulas-acervo" onclick="toggleSanfonaSumulasAcervoSaaS(${listaPartidas.length})" style="flex: 1; background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 10px; color: #0284c7; font-weight: 700; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <span>Ver todas as súmulas (${listaPartidas.length} ${txtSumi}) 🔽</span>
+            </button>
+        `;
+    } else {
+        html += `
+            <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 10px; color: #64748b; font-weight: 700; font-size: 12px; text-align: center;">
+                📋 Exibindo ${listaPartidas.length} ${txtSumi}
+            </div>
+        `;
+    }
+
+    html += `
+            <button type="button" onclick="exportarSumulasPDFSaaS()" title="Exportar PDF" style="width: 42px; height: 40px; background: #0284c7; border: none; border-radius: 10px; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25); flex-shrink: 0;">
+                <i class="material-icons" style="font-size: 18px;">picture_as_pdf</i>
+            </button>
+        </div>
+    `;
+
     bodyList.innerHTML = html;
 
-    // 5. Exibe a gaveta na tela
     if (sheet) {
         sheet.style.display = 'flex';
         setTimeout(() => sheet.classList.add('ativa'), 10);
     }
 }
 
+/**
+ * Alterna a expansão/recolhimento das súmulas a partir da 3ª partida no Acervo
+ */
+function toggleSanfonaSumulasAcervoSaaS(total) {
+    if (navigator.vibrate) navigator.vibrate(15);
+    
+    const boxResto = document.getElementById('box-restante-sumulas-acervo');
+    const btn = document.getElementById('btn-sanfona-sumulas-acervo');
+    if (!boxResto || !btn) return;
+
+    const spanTxt = btn.querySelector('span');
+
+    if (boxResto.style.display === 'none' || !boxResto.style.display) {
+        boxResto.style.display = 'flex';
+        if (spanTxt) spanTxt.textContent = 'Recolher súmulas 🔼';
+        
+        // AUTOSCROLL: Rolagem automática e suave para revelar as novas súmulas que abriram abaixo
+        setTimeout(() => {
+            btn.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 50);
+    } else {
+        boxResto.style.display = 'none';
+        const txtSumi = total === 1 ? 'súmula' : 'súmulas';
+        if (spanTxt) spanTxt.textContent = `Ver todas as súmulas (${total} ${txtSumi}) 🔽`;
+    }
+}
 
 
 async function exportarRelatorioHistoricoSaaS() {
-    // 1. CARREGA OS DADOS DO FIREBASE CASO AINDA NÃO ESTEJAM NA MEMÓRIA
+    // 1. CARREGA OS DADOS DO FIREBASE SE AINDA NÃO ESTIVEREM NA MEMÓRIA
     if (!acervoHistoricoGlobalSaaS || acervoHistoricoGlobalSaaS.length === 0) {
         if (typeof carregarHistoricoTorneiosSaaS === 'function') {
             await carregarHistoricoTorneiosSaaS();
@@ -6299,15 +6570,21 @@ async function exportarRelatorioHistoricoSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
     showToast("Gerando relatório PDF...", "info");
 
-    // 2. CARREGAMENTO AUTOMÁTICO DO MOTOR HTML2PDF
-    if (typeof html2pdf === 'undefined') {
+    // 2. CARREGAMENTO DA BIBLIOTECA NATIVA JSPDF
+    if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
         });
+    }
+
+    const { jsPDF } = window.jspdf || { jsPDF: window.jsPDF };
+    if (!jsPDF) {
+        showToast("Erro ao carregar o motor de PDF.", "error");
+        return;
     }
 
     const dataHojeStr = new Date().toLocaleDateString('pt-BR');
@@ -6339,7 +6616,7 @@ async function exportarRelatorioHistoricoSaaS() {
             const listaIds = classif[catKey] || [];
             listaIds.forEach(id => atletasUnicosSet.add(id));
 
-            let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
+            let catLabel = catKey.replace('CLASSE_', '').replace('_', ' ');
             catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
             if (listaIds[0]) {
@@ -6372,409 +6649,307 @@ async function exportarRelatorioHistoricoSaaS() {
     const top5Campeoes = rankingCampeoes.slice(0, 5);
     const liderAbsolutoNome = top5Campeoes.length > 0 ? top5Campeoes[0].nome : '--';
 
-    // 4. TABELA DE EDIÇÕES HISTÓRICAS
+    // 4. DESENHO VETORIAL NO JSPDF (A4: 210mm x 297mm)
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const marginX = 15;
+    const contentWidth = pageWidth - (marginX * 2); // 180mm
+
+    let currentY = 15;
+
+    // Cabeçalho Mestre
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text(nomeClube + " — SETPOINT", marginX, currentY);
+
+    currentY += 5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text("Relatório Geral do Acervo de Torneios", marginX, currentY);
+
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(dataHojeStr, pageWidth - marginX, currentY, { align: "right" });
+
+    currentY += 2.5;
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.4);
+    doc.line(marginX, currentY, pageWidth - marginX, currentY);
+    currentY += 6;
+
+    // 5. CARDS DE KPIS (Borda Dourada do TOP 1 aplicada no Líder Absoluto)
+    const kpiH = 14;
+    const w1 = 36;
+    const w2 = 36;
+    const w3 = 38;
+    const w4 = contentWidth - (w1 + w2 + w3 + 9); // ~61mm
+
+    const kpiConfigs = [
+        { x: marginX, w: w1, val: String(totalTorneios), lbl: "TORNEIOS REALIZADOS", isLider: false },
+        { x: marginX + w1 + 3, w: w2, val: String(totalPartidasValidadas), lbl: "PARTIDAS VALIDADAS", isLider: false },
+        { x: marginX + w1 + w2 + 6, w: w3, val: String(atletasUnicosSet.size), lbl: "ATLETAS PARTICIPANTES", isLider: false },
+        { x: marginX + w1 + w2 + w3 + 9, w: w4, val: liderAbsolutoNome, lbl: "LÍDER ABSOLUTO(A)", isLider: true }
+    ];
+
+    kpiConfigs.forEach((k) => {
+        doc.setFillColor(248, 250, 252);
+        
+        if (k.isLider) {
+            doc.setDrawColor(250, 204, 21); // Borda Dourada idêntica ao TOP 1
+            doc.setLineWidth(0.3);
+        } else {
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.2);
+        }
+        
+        doc.roundedRect(k.x, currentY, k.w, kpiH, 2, 2, "FD");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        const txtVal = doc.getTextWidth(k.val) > (k.w - 5) ? k.val.substring(0, 18) + "…" : k.val;
+        doc.text(txtVal, k.x + 4, currentY + 5.5);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(k.lbl, k.x + 4, currentY + 10.5);
+    });
+
+    currentY += kpiH + 6;
+
+    // 6. CÁLCULO DINÂMICO DA ALTURA DOS PAINÉIS (Fundo Branco Padrão)
+    const panelLeftW = 68;
+    const panelRightW = contentWidth - panelLeftW - 5; // 107mm
+    const panelRightX = marginX + panelLeftW + 5;
+    const panelY = currentY;
+
+    const countTop5 = top5Campeoes.length || 1;
+    const countEdicoes = acervoHistoricoGlobalSaaS.length || 1;
+
+    const panelLeftH = Math.max(35, 10 + (countTop5 * 21) + 2);
+    const panelRightH = Math.max(35, 13.5 + (countEdicoes * 7) + 3);
+
+    // Caixa Esquerda (Top 5 - Fundo Branco)
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(marginX, panelY, panelLeftW, panelLeftH, 2.5, 2.5, "FD");
+
+    // Caixa Direita (Edições - Fundo Branco)
+    doc.roundedRect(panelRightX, panelY, panelRightW, panelRightH, 2.5, 2.5, "FD");
+
+    // --- CONTEÚDO ESQUERDA: TOP 5 MAIORES CAMPEÕES ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text("TOP 5 MAIORES CAMPEÕES", marginX + 4, panelY + 6);
+
+    let itemY = panelY + 10;
+
+    // Paleta Temática do Pódio (Ouro, Prata e Bronze)
+    const medalColors = [
+        { cardFill: [254, 252, 232], cardBorder: [250, 204, 21], fill: [254, 240, 138], border: [250, 204, 21], text: [161, 98, 7], label: "1º" },   // Ouro
+        { cardFill: [248, 250, 252], cardBorder: [203, 213, 225], fill: [241, 245, 249], border: [203, 213, 225], text: [71, 85, 105], label: "2º" },  // Prata (Cinza)
+        { cardFill: [255, 247, 237], cardBorder: [253, 186, 116], fill: [254, 215, 170], border: [253, 186, 116], text: [194, 65, 12], label: "3º" },  // Bronze
+        { cardFill: [255, 255, 255], cardBorder: [226, 232, 240], fill: [255, 255, 255], border: [226, 232, 240], text: [100, 116, 139], label: "4º" }, // 4º
+        { cardFill: [255, 255, 255], cardBorder: [226, 232, 240], fill: [255, 255, 255], border: [226, 232, 240], text: [100, 116, 139], label: "5º" }  // 5º
+    ];
+
+    top5Campeoes.forEach((c, idx) => {
+        const mc = medalColors[idx] || medalColors[3];
+        const cardW = panelLeftW - 8; // 60mm
+        const cardX = marginX + 4; // 19mm
+
+        // Subcard do Campeão com Cor Temática
+        doc.setFillColor(mc.cardFill[0], mc.cardFill[1], mc.cardFill[2]);
+        doc.setDrawColor(mc.cardBorder[0], mc.cardBorder[1], mc.cardBorder[2]);
+        doc.setLineWidth(0.25);
+        doc.roundedRect(cardX, itemY, cardW, 19, 2, 2, "FD");
+
+        // Pílula da Posição / Medalha
+        doc.setFillColor(mc.fill[0], mc.fill[1], mc.fill[2]);
+        doc.setDrawColor(mc.border[0], mc.border[1], mc.border[2]);
+        doc.setLineWidth(0.15);
+        doc.roundedRect(cardX + 2.5, itemY + 3.5, 6.5, 6, 1, 1, "FD");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(mc.text[0], mc.text[1], mc.text[2]);
+        doc.text(mc.label, cardX + 5.75, itemY + 7.7, { align: "center" });
+
+        // Nome do Atleta
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 23, 42);
+        const nomeFormatado = c.nome.length > 28 ? c.nome.substring(0, 27) + "…" : c.nome;
+        doc.text(nomeFormatado, cardX + 11, itemY + 7);
+
+        // Pílula da Categoria
+        const catArray = Array.from(c.categorias);
+        const catTxt = catArray.length > 0 ? catArray[0] : "Classe Oficial";
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.5);
+        const badgeW = doc.getTextWidth(catTxt) + 4;
+
+        doc.setFillColor(245, 243, 255);
+        doc.setDrawColor(221, 214, 254);
+        doc.setLineWidth(0.15);
+        doc.roundedRect(cardX + 11, itemY + 11, badgeW, 4.2, 1, 1, "FD");
+        doc.setTextColor(139, 92, 246);
+        doc.text(catTxt, cardX + 13, itemY + 14);
+
+        // Bloco de Títulos e Vices
+        const titulosTxt = c.titulos === 1 ? "1 título" : `${c.titulos} títulos`;
+        const vicesTxt = c.vices === 1 ? "1 vice" : `${c.vices} vices`;
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(180, 83, 9);
+        doc.text(titulosTxt, cardX + cardW - 3, itemY + 13, { align: "right" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(vicesTxt, cardX + cardW - 3, itemY + 16.8, { align: "right" });
+
+        itemY += 21;
+    });
+
+    // --- CONTEÚDO DIREITA: EDIÇÕES REGISTRADAS NO ACERVO ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text("EDIÇÕES REGISTRADAS NO ACERVO", panelRightX + 4, panelY + 6);
+
+    let tableY = panelY + 11;
+
+    // Cabeçalho da Tabela
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+
+    doc.text("EDIÇÃO / TORNEIO", panelRightX + 3, tableY);
+    doc.text("MODELO", panelRightX + 63, tableY, { align: "center" });
+    doc.text("PERÍODO", panelRightX + 84, tableY, { align: "center" });
+    doc.text("JOGOS", panelRightX + 100, tableY, { align: "center" });
+
+    tableY += 2.5;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.line(panelRightX + 3, tableY, panelRightX + panelRightW - 3, tableY);
+
+    tableY += 5;
+
     const fmtDataCurta = (str) => {
         if (!str) return '--/--';
         const p = str.split('-');
         return p.length === 3 ? `${p[2]}/${p[1]}` : str;
     };
 
-    let htmlTabelaEdicoes = '';
-    acervoHistoricoGlobalSaaS.forEach(edicao => {
+    acervoHistoricoGlobalSaaS.forEach((edicao) => {
         const cal = edicao.contrato || {};
         const dtIni = fmtDataCurta(cal.inicioJogos);
         const dtFim = fmtDataCurta(cal.fimTorneio);
         const qtdJogos = edicao.partidas ? Object.keys(edicao.partidas).length : 0;
-        const mod = (edicao.modelo || 'oficial').charAt(0).toUpperCase() + (edicao.modelo || 'oficial').slice(1);
-        const badgeClass = edicao.modelo === 'piramide' ? 'badge-piramide' : (edicao.modelo === 'barragem' ? 'badge-barragem' : 'badge-grupos');
+        const modRaw = (edicao.modelo || 'barragem').toLowerCase();
+        const modTxt = modRaw.charAt(0).toUpperCase() + modRaw.slice(1);
 
-        htmlTabelaEdicoes += `
-            <tr>
-                <td style="font-weight: 700;">${cal.nomeTorneio || 'Torneio'}</td>
-                <td><span class="badge-model ${badgeClass}">${mod}</span></td>
-                <td style="font-size: 8.5px;">${dtIni} a ${dtFim}</td>
-                <td style="text-align: center;"><b>${qtdJogos}</b></td>
-            </tr>
-        `;
-    });
+        // Nome do Torneio
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(15, 23, 42);
+        const nomeTorneioRaw = cal.nomeTorneio || 'Torneio';
+        const nomeTorneioTxt = nomeTorneioRaw.length > 36 ? nomeTorneioRaw.substring(0, 35) + "…" : nomeTorneioRaw;
+        doc.text(nomeTorneioTxt, panelRightX + 3, tableY + 2.8);
 
-    // 5. TOP 5 MAIORES CAMPEÕES
-    const medalhas = ['🥇', '🥈', '🥉', '4º', '5º'];
-    const rankClasses = ['rank-1', 'rank-2', 'rank-3', '', ''];
-    let htmlTop5 = '';
+        // Pílula de Modelo (Centralizada)
+        let pillFill = [245, 243, 255];
+        let pillBorder = [221, 214, 254];
+        let pillText = [139, 92, 246];
 
-    top5Campeoes.forEach((c, idx) => {
-        const pilulasHtml = Array.from(c.categorias).map(cat => `<span class="cat-pill">${cat}</span>`).join(' ');
-        htmlTop5 += `
-            <div class="champion-item ${rankClasses[idx]}">
-                <div class="champ-left">
-                    <span class="champ-pos">${medalhas[idx]}</span>
-                    <div class="champ-info">
-                        <div class="name">${c.nome}</div>
-                        <div class="cats-list">${pilulasHtml}</div>
-                    </div>
-                </div>
-                <div class="champ-score">
-                    <div class="titles-count">${c.titulos} 🏆</div>
-                    <div class="vices-count">${c.vices} vices</div>
-                </div>
-            </div>
-        `;
-    });
-
-    if (top5Campeoes.length === 0) {
-        htmlTop5 = `<div style="text-align:center; color:#64748b; padding:15px; font-size:11px;">Nenhum campeão homologado ainda.</div>`;
-    }
-
-    // 6. ESTRUTURA DIMENSIONADA EM LARGURA TOTAL DE 620PX (SEM RISCO DE CORTE EM A4)
-    const tempContainer = document.createElement('div');
-    tempContainer.id = 'pdf-export-wrapper';
-    tempContainer.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 600px;
-        margin: 0;
-        padding: 0;
-        background: #ffffff;
-        z-index: -9999999;
-    `;
-
-    tempContainer.innerHTML = `
-        <style>
-            #pdf-export-wrapper * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-                font-family: Arial, Helvetica, sans-serif;
-            }
-
-            .a4-container {
-                background: #ffffff;
-                width: 600px;
-                padding: 16px;
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .report-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-                border-bottom: 2px solid #0f172a;
-                padding-bottom: 6px;
-                width: 100%;
-            }
-
-            .brand-block h1 {
-                font-size: 15px;
-                font-weight: 900;
-                color: #0f172a;
-                letter-spacing: -0.5px;
-                text-transform: uppercase;
-                margin: 0;
-            }
-
-            .brand-block p {
-                font-size: 10px;
-                font-weight: 600;
-                color: #64748b;
-                margin-top: 1px;
-            }
-
-            .header-date {
-                font-size: 10px;
-                font-weight: 600;
-                color: #64748b;
-                white-space: nowrap;
-            }
-
-            /* 1. CARDS DE KPI AJUSTADOS */
-            .kpi-grid {
-                display: flex;
-                gap: 6px;
-                width: 100%;
-            }
-
-            .kpi-card {
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 6px;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-                min-width: 0;
-            }
-
-            /* OS 3 PRIMEIRA CARDS FICAM ENXUTOS COM 115PX */
-            .kpi-card.compact {
-                width: 115px;
-                flex: 0 0 115px;
-            }
-
-            /* O 4º CARD EXPANDE NO ESPAÇO RESTANTE */
-            .kpi-card.wide {
-                flex: 1;
-            }
-
-            .kpi-icon {
-                width: 24px;
-                height: 24px;
-                border-radius: 5px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 12px;
-                flex-shrink: 0;
-            }
-
-            .kpi-data {
-                min-width: 0;
-                overflow: hidden;
-            }
-
-            .kpi-data .val {
-                font-size: 12px;
-                font-weight: 900;
-                color: #0f172a;
-                line-height: 1;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-
-            .kpi-data .lbl {
-                font-size: 7px;
-                font-weight: 700;
-                color: #64748b;
-                margin-top: 1px;
-                text-transform: uppercase;
-                white-space: nowrap;
-            }
-
-            /* 2. CORPO DIVIDIDO: TOP 5 COMPACTADO EM 200PX */
-            .split-body {
-                display: flex;
-                gap: 10px;
-                align-items: flex-start;
-                width: 100%;
-            }
-
-            .hall-box {
-                width: 200px;
-                flex-shrink: 0;
-                background: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                padding: 8px;
-            }
-
-            .table-box {
-                flex: 1;
-                min-width: 0;
-                background: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                padding: 8px;
-            }
-
-            .box-title {
-                font-size: 10px;
-                font-weight: 800;
-                color: #0f172a;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                margin-bottom: 6px;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-            }
-
-            .champion-item {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 4px 5px;
-                border-radius: 6px;
-                margin-bottom: 4px;
-                border: 1px solid #e2e8f0;
-                background: #ffffff;
-            }
-
-            .champion-item.rank-1 { background: #fffbeb; border-color: #fde047; }
-            .champion-item.rank-2 { background: #f8fafc; border-color: #cbd5e1; }
-            .champion-item.rank-3 { background: #fff7ed; border-color: #ffedd5; }
-
-            .champ-left { display: flex; align-items: center; gap: 4px; min-width: 0; }
-            .champ-pos { font-size: 10px; font-weight: 900; width: 14px; text-align: center; flex-shrink: 0; }
-            .champ-info { min-width: 0; }
-            .champ-info .name { font-size: 9.5px; font-weight: 800; color: #0f172a; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .champ-info .cats-list { display: flex; gap: 2px; margin-top: 1px; flex-wrap: wrap; }
-
-            .cat-pill {
-                font-size: 7px;
-                font-weight: 800;
-                padding: 1px 3px;
-                border-radius: 3px;
-                background: #f1f5f9;
-                color: #64748b;
-                border: 1px solid #cbd5e1;
-            }
-
-            .champ-score { text-align: right; flex-shrink: 0; margin-left: 2px; }
-            .champ-score .titles-count { font-size: 10.5px; font-weight: 900; color: #b45309; }
-            .champ-score .vices-count { font-size: 7px; font-weight: 700; color: #64748b; }
-
-            /* 3. TABELA DE EDIÇÕES COM APROXIMAÇÃO DAS COLUNAS */
-            .history-table { width: 100%; border-collapse: collapse; font-size: 9px; table-layout: fixed; }
-            .history-table th { text-align: left; padding: 3px 2px; color: #64748b; font-size: 7.5px; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
-            .history-table td { padding: 5px 2px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-            .badge-model { font-size: 7.5px; font-weight: 800; padding: 1px 4px; border-radius: 4px; display: inline-block; }
-            .badge-piramide { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
-            .badge-barragem { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
-            .badge-grupos { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-
-            .report-footer {
-                border-top: 1px solid #e2e8f0;
-                padding-top: 8px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 8px;
-                color: #64748b;
-                width: 100%;
-            }
-
-            .signature-line {
-                border-top: 1px solid #0f172a;
-                width: 120px;
-                text-align: center;
-                padding-top: 2px;
-                font-weight: 700;
-                color: #0f172a;
-            }
-        </style>
-
-        <div class="a4-container">
-            <div class="report-header">
-                <div class="brand-block">
-                    <h1>${nomeClube} — SETPOINT</h1>
-                    <p>Relatório geral do acervo de torneios</p>
-                </div>
-                <div class="header-date">${dataHojeStr}</div>
-            </div>
-
-            <div class="kpi-grid">
-                <div class="kpi-card compact">
-                    <div class="kpi-icon" style="background: #e0f2fe; color: #0284c7;">🏆</div>
-                    <div class="kpi-data">
-                        <div class="val">${totalTorneios}</div>
-                        <div class="lbl">Torneios Realizados</div>
-                    </div>
-                </div>
-
-                <div class="kpi-card compact">
-                    <div class="kpi-icon" style="background: #dcfce7; color: #16a34a;">🎾</div>
-                    <div class="kpi-data">
-                        <div class="val">${totalPartidasValidadas}</div>
-                        <div class="lbl">Partidas Validadas</div>
-                    </div>
-                </div>
-
-                <div class="kpi-card compact">
-                    <div class="kpi-icon" style="background: #fef3c7; color: #d97706;">👥</div>
-                    <div class="kpi-data">
-                        <div class="val">${atletasUnicosSet.size}</div>
-                        <div class="lbl">Atletas Participantes</div>
-                    </div>
-                </div>
-
-                <div class="kpi-card wide">
-                    <div class="kpi-icon" style="background: #f3e8ff; color: #7c3aed;">⭐</div>
-                    <div class="kpi-data">
-                        <div class="val">${liderAbsolutoNome}</div>
-                        <div class="lbl">Líder Absoluto(a)</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="split-body">
-                <div class="hall-box">
-                    <div class="box-title">🏆 Top 5 Maiores Campeões</div>
-                    ${htmlTop5}
-                </div>
-
-                <div class="table-box">
-                    <div class="box-title">📜 Edições Registradas no Acervo</div>
-                    <table class="history-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 48%;">Edição / Torneio</th>
-                                <th style="width: 20%;">Modelo</th>
-                                <th style="width: 20%;">Período</th>
-                                <th style="width: 12%; text-align: center;">Jogos</th>
-                            </tr>
-                        </thead>
-                        <tbody>${htmlTabelaEdicoes}</tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="report-footer">
-                <div>
-                    <b>SetPoint SaaS</b> • Sistema Oficial de Gestão do Ranking & Torneios<br>
-                    Documento gerado automaticamente pelo módulo de auditoria do clube.
-                </div>
-                <div class="signature-line">Gestão da Arena / Arbitragem</div>
-            </div>
-        </div>
-    `;
-
-    document.documentElement.appendChild(tempContainer);
-
-    // Salva e zera a rolagem temporariamente para enquadramento perfeito
-    const savedScrollY = window.scrollY;
-    window.scrollTo(0, 0);
-
-    await new Promise(r => setTimeout(r, 350));
-
-    const targetElement = tempContainer.querySelector('.a4-container');
-    const nomeArquivo = `Relatorio_Acervo_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-
-    const opt = {
-        margin:       [10, 10, 10, 10],
-        filename:     nomeArquivo,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            logging: false,
-            scrollX: 0,
-            scrollY: 0,
-            x: 0,
-            y: 0,
-            width: 620,
-            windowWidth: 620
-        },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    try {
-        await html2pdf().set(opt).from(targetElement).save();
-        showToast("Relatório PDF baixado com sucesso!", "success");
-    } catch (err) {
-        console.error("❌ Erro ao baixar PDF:", err);
-        showToast("Erro ao processar o relatório PDF.", "error");
-    } finally {
-        window.scrollTo(0, savedScrollY);
-        if (tempContainer && tempContainer.parentNode) {
-            tempContainer.parentNode.removeChild(tempContainer);
+        if (modRaw === 'barragem') {
+            pillFill = [224, 242, 254];
+            pillBorder = [186, 230, 253];
+            pillText = [2, 132, 199];
+        } else if (modRaw === 'grupos') {
+            pillFill = [220, 252, 231];
+            pillBorder = [134, 239, 172];
+            pillText = [22, 163, 74];
         }
+
+        const pillW = 15;
+        const pillX = panelRightX + 63 - (pillW / 2);
+
+        doc.setFillColor(pillFill[0], pillFill[1], pillFill[2]);
+        doc.setDrawColor(pillBorder[0], pillBorder[1], pillBorder[2]);
+        doc.setLineWidth(0.15);
+        doc.roundedRect(pillX, tableY - 0.7, pillW, 4.2, 1, 1, "FD");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.5);
+        doc.setTextColor(pillText[0], pillText[1], pillText[2]);
+        doc.text(modTxt, panelRightX + 63, tableY + 2.3, { align: "center" });
+
+        // Período (Centralizado)
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`${dtIni} a ${dtFim}`, panelRightX + 84, tableY + 2.8, { align: "center" });
+
+        // Jogos (Centralizado)
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(String(qtdJogos), panelRightX + 100, tableY + 2.8, { align: "center" });
+
+        tableY += 7;
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.15);
+        doc.line(panelRightX + 3, tableY - 1.5, panelRightX + panelRightW - 3, tableY - 1.5);
+    });
+
+    // 7. RODAPÉ MESTRE NA BASE
+    const finalY = pageHeight - 20;
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.2);
+    doc.line(marginX, finalY, pageWidth - marginX, finalY);
+
+    const footerY = finalY + 4;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text("SetPoint SaaS", marginX, footerY);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text(" • Relatório Geral do Acervo de Torneios", marginX + 21, footerY);
+    doc.text("Documento gerado automaticamente pelo módulo de auditoria.", marginX, footerY + 3.5);
+
+    const sigWidth = 45;
+    const sigX = pageWidth - marginX - sigWidth;
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.3);
+    doc.line(sigX, footerY + 2, pageWidth - marginX, footerY + 2);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Arbitragem / Gestão", sigX + (sigWidth / 2), footerY + 5.5, { align: "center" });
+
+    // 8. ROTEAMENTO NATIVO VIA CAPACITOR
+    const nomeArquivo = `Relatorio_Acervo_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    try {
+        await processarSaidaPDFSaaS(doc, nomeArquivo, "Relatório Histórico");
+    } catch (err) {
+        console.error("❌ Erro ao exportar Relatório Histórico:", err);
+        showToast("Erro ao gerar relatório PDF.", "error");
     }
 }
+
 
 // Orquestrador de clique exclusivo para carregar os dados
 document.addEventListener('DOMContentLoaded', () => {
