@@ -761,24 +761,20 @@
         font-size: 10px !important; 
     }
 
-    /* 2. Formulários e Grids (Ajusta apenas o campo de data rebelde no iPhone) */
+    /* 2. Formulários e Grids (Adequação de volume interno para o Safari) */
     #modal-config-ranking .secao-bloco .grid-2-col { 
-        grid-template-columns: 1fr 1fr !important; /* Desfaz a jaula que quebrou o texto do rótulo */
+        grid-template-columns: 1fr 1fr !important; 
         gap: 8px !important; 
     }
     #modal-config-ranking .secao-bloco .input-app { 
-        padding: 8px 10px !important; 
-        font-size: 13px !important; 
+        padding: 8px 4px !important; /* Retira a folga de espaço branco nas laterais */
+        font-size: 11.5px !important; /* Diminui a fonte para a data extensa caber */
+        letter-spacing: -0.3px !important; /* Aproxima as letras milimetricamente */
         width: 100% !important;
-        max-width: 100% !important; /* Impede o campo de vazar do próprio espaço */
-        min-width: 0 !important;    /* Autoriza o iPhone a encolher o campo abaixo do tamanho do texto */
         box-sizing: border-box !important;
-        overflow: hidden !important; /* Esconde o texto que tentar escapar da caixinha */
-        text-overflow: ellipsis !important; /* Pode adicionar reticências caso o sistema permita */
-        white-space: nowrap !important;
     }
     #modal-config-ranking .secao-bloco .field-group label { 
-        font-size: 11.5px !important; 
+        font-size: 11px !important; /* Leve redução para acompanhar a simetria e não quebrar linha */
     }
 
     /* 3. Truque CSS: Transforma o botão "Anexar PDF" em um quadrado azul */
