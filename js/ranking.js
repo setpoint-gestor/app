@@ -7002,14 +7002,35 @@ async function exportarRelatorioHistoricoSaaS() {
 }
 
 
-// Orquestrador de clique exclusivo para carregar os dados
+// ========================================================
+// 12. ORQUESTRADOR DE CLIQUES E AUTO-SCROLL MOBILE
+// ========================================================
 document.addEventListener('DOMContentLoaded', () => {
     const modalRanking = document.getElementById('modal-config-ranking');
     if (modalRanking) {
         const abas = modalRanking.querySelectorAll('.accordion-header');
         abas.forEach((aba, idx) => {
             aba.addEventListener('click', () => {
+                // 1. Carrega os dados da aba de Acervo Histórico (Aba 6)
                 if (idx === 5) carregarHistoricoTorneiosSaaS(); 
+                
+                // 2. Lógica de Auto-Scroll Inteligente (Apenas Celular)
+                if (window.innerWidth <= 768) {
+                    // Aguarda 320ms para a animação do CSS concluir a transição física
+                    setTimeout(() => {
+                        const paiItem = aba.parentElement;
+                        
+                        if (paiItem && paiItem.classList.contains('active')) {
+                            // ABA ABRINDO: Ancara o título clicado no teto
+                            aba.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            // ABA FECHANDO: Retorna a visão para a primeira aba, revelando o menu inteiro
+                            if (abas.length > 0) {
+                                abas[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        }
+                    }, 320); 
+                }
             });
         });
     }
