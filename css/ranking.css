@@ -12,7 +12,7 @@
     max-height: 100dvh !important;
     border-radius: 0 !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 0 !important; 
     display: flex;
     flex-direction: column;
     background-color: var(--bg-site, #f4f6f8); 
@@ -555,7 +555,7 @@
 #modal-config-ranking .stepper-container {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 24px;
+    margin-bottom: 0px;
     position: relative;
     padding: 0 4px;
 }
@@ -731,6 +731,95 @@
     background: #3b82f6 !important;
     border-color: #3b82f6 !important;
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* ======================================================== */
+/* 4.1 ADAPTAÇÃO MOBILE: GESTÃO DA TEMPORADA (OPÇÃO 2)      */
+/* ======================================================== */
+@media (max-width: 768px) {
+    /* 1. Stepper Compacto Duplo (Quebra em duas linhas e centralização vertical) */
+    #modal-config-ranking .stepper-container { 
+        flex-wrap: wrap !important; 
+        justify-content: center !important; 
+        gap: 10px 5px !important; 
+        margin-top: 16px !important;    /* Desgruda na medida exata do teto azul */
+        margin-bottom: 0px !important; /* Reduz drasticamente o buraco inferior */
+    }
+    #modal-config-ranking .stepper-container::before { 
+        display: none !important; /* Remove linha conectora horizontal que quebra no empilhamento */
+    }
+    #modal-config-ranking .step-node { 
+        gap: 6px !important; 
+        padding: 0 4px !important; 
+    }
+    #modal-config-ranking .step-circle { 
+        width: 32px !important; 
+        height: 32px !important; 
+        font-size: 13px !important; 
+    }
+    #modal-config-ranking .step-label { 
+        font-size: 10px !important; 
+    }
+
+    /* 2. Formulários e Grids (Quebra o 50/50 e ajusta para telas estreitas) */
+    #modal-config-ranking .secao-bloco .grid-2-col { 
+        grid-template-columns: 1fr 1fr !important; 
+        gap: 8px !important; 
+    }
+    #modal-config-ranking .secao-bloco .input-app { 
+        padding: 8px 10px !important; 
+        font-size: 13px !important; 
+    }
+    #modal-config-ranking .secao-bloco .field-group label { 
+        font-size: 11.5px !important; 
+    }
+
+    /* 3. Truque CSS: Transforma o botão "Anexar PDF" em um quadrado azul */
+    #modal-config-ranking .btn-upload-pdf { 
+        width: 42px !important; 
+        height: 38px !important; 
+        padding: 0 !important; 
+        flex-shrink: 0 !important;
+        background: #0284c7 !important;
+        border-color: #0284c7 !important;
+        color: transparent !important; 
+        position: relative !important;
+        overflow: hidden !important;
+    }
+    #modal-config-ranking .btn-upload-pdf .material-icons {
+        display: none !important; 
+    }
+    #modal-config-ranking .btn-upload-pdf::after {
+        content: 'picture_as_pdf'; 
+        font-family: 'Material Icons';
+        color: #ffffff;
+        font-size: 18px;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    /* 4. Cores das Abas Ativas (Sanfona Mobile) */
+    #modal-config-ranking .accordion-item.active .accordion-header {
+        background: var(--cor-primaria, #2E8B57) !important;
+        border-color: var(--cor-primaria, #2E8B57) !important;
+    }
+    #modal-config-ranking .accordion-item:nth-of-type(5).active .accordion-header {
+        background: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+    }
+    #modal-config-ranking .accordion-item:nth-of-type(6).active .accordion-header {
+        background: #8b5cf6 !important;
+        border-color: #8b5cf6 !important;
+    }
+    #modal-config-ranking .accordion-item.active .accordion-header i,
+    #modal-config-ranking .accordion-item.active .accordion-header .sidebar-title { 
+        color: #ffffff !important; 
+    }
+    #modal-config-ranking .accordion-item.active .accordion-header .sidebar-desc { 
+        color: #e2e8f0 !important; 
+    }
 }
 
 /* ======================================================== */
