@@ -820,6 +820,10 @@
     #modal-config-ranking .accordion-item.active .accordion-header .sidebar-desc { 
         color: #e2e8f0 !important; 
     }
+	/* Garante rolagem extra para que as abas curtas consigam chegar ao topo */
+    #modal-config-ranking .regras-content-scroll {
+        padding-bottom: 65vh !important; 
+    }
 }
 
 /* ======================================================== */
