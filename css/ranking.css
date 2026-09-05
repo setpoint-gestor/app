@@ -761,14 +761,16 @@
         font-size: 10px !important; 
     }
 
-    /* 2. Formulários e Grids (Quebra o 50/50 e ajusta para telas estreitas) */
+    /* 2. Formulários e Grids (Ajuste anti-vazamento no iPhone) */
     #modal-config-ranking .secao-bloco .grid-2-col { 
-        grid-template-columns: 1fr 1fr !important; 
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; 
         gap: 8px !important; 
     }
     #modal-config-ranking .secao-bloco .input-app { 
         padding: 8px 10px !important; 
         font-size: 13px !important; 
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     #modal-config-ranking .secao-bloco .field-group label { 
         font-size: 11.5px !important; 
