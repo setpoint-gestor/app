@@ -4573,6 +4573,15 @@ async function exportarLeaderboardPDFSaaS() {
 
     showToast(ehHistorico ? "Gerando PDF do Acervo Histórico..." : "Gerando PDF do Torneio Atual...", "info");
 
+    // 🟢 LIMPADOR ANTI-EMOJI: Remove caracteres não suportados pela fonte do PDF
+    const limparTextoPdf = (txt) => {
+        if (!txt) return '';
+        return txt.replace(/[•—–]/g, '-')
+                  .replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+    };
+
     // 2. CARREGAMENTO DA BIBLIOTECA NATIVA JSPDF
     if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
         await new Promise((resolve, reject) => {
@@ -4614,7 +4623,7 @@ async function exportarLeaderboardPDFSaaS() {
     if (!nomeClubeRaw || nomeClubeRaw.toUpperCase() === 'CARREGANDO...') {
         nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || clubeAtivoId || 'CLUBE';
     }
-    const nomeClube = nomeClubeRaw.toUpperCase();
+    const nomeClube = limparTextoPdf(nomeClubeRaw.toUpperCase());
     const dataHojeStr = new Date().toLocaleDateString('pt-BR');
 
     let linha2TorneioCategoria = "";
@@ -4625,11 +4634,11 @@ async function exportarLeaderboardPDFSaaS() {
     // 4. CONSTRUÇÃO DOS DADOS DO RELATÓRIO (BIFURCAÇÃO HISTÓRICO VS. TORNEIO ATUAL)
     if (ehHistorico) {
         const cal = edicaoHistoricaFocoSaaS.contrato || {};
-        const nomeTorneio = cal.nomeTorneio || 'Torneio';
+        const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio');
         let catLabel = (categoriaHistoricaAtivaSaaS || '').replace('CLASSE_', 'Classe ').replace('_', ' ');
-        catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        catLabel = limparTextoPdf(catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '));
 
-        linha2TorneioCategoria = `${nomeTorneio} — ${catLabel}`;
+        linha2TorneioCategoria = `${nomeTorneio} - ${catLabel}`;
         linha3Subtitulo = "Hall de Campeões [Acervo Histórico]";
 
         const listaIDs = (edicaoHistoricaFocoSaaS.classificacaoFinal && edicaoHistoricaFocoSaaS.classificacaoFinal[categoriaHistoricaAtivaSaaS]) || [];
@@ -4642,7 +4651,7 @@ async function exportarLeaderboardPDFSaaS() {
 
         listaIDs.forEach((idAtleta, idx) => {
             const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-            const nomeStr = capitalizar(j.nomeCompleto || j.apelido || 'Atleta');
+            const nomeStr = limparTextoPdf(capitalizar(j.nomeCompleto || j.apelido || 'Atleta'));
             const pos = `${idx + 1}º`;
             let sub = 'Atleta Homologado';
             if (idx === 0) sub = 'Líder Homologado';
@@ -4659,62 +4668,104 @@ async function exportarLeaderboardPDFSaaS() {
     } else {
         const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
         const cal = conf.calendario || {};
-        const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
+        const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio Oficial');
 
         const selClasse = document.getElementById('select-leaderboard-classe');
         const selGenero = document.getElementById('select-leaderboard-genero');
         const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
         const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
-        const categoriaAtivaTxt = [txtClasse, txtGenero].filter(Boolean).join(' • ');
+        const categoriaAtivaTxt = limparTextoPdf([txtClasse, txtGenero].filter(Boolean).join(' - '));
 
-        linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
-        let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').trim() : '';
-        linha3Subtitulo = modeloTxt ? `Tabela de Classificação — ${modeloTxt}` : "Tabela de Classificação";
+        linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} - ${categoriaAtivaTxt}` : nomeTorneio;
+        
+        let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube', '').replace('Central do Ranking', '').trim() : '';
+        modeloTxt = limparTextoPdf(modeloTxt);
+        linha3Subtitulo = modeloTxt ? `Tabela de Classificação - ${modeloTxt}` : "Tabela de Classificação";
 
-        const rowsPiramide = Array.from(bodyLeaderboard.querySelectorAll('.item-leaderboard-piramide'));
-        const rowsBarragem = Array.from(bodyLeaderboard.querySelectorAll('.tabela-leaderboard-barragem tbody tr'));
-        const cardsGrupos = Array.from(bodyLeaderboard.querySelectorAll('.card-leaderboard-grupo'));
+        // 🟢 DETECTA SE A TELA ESTÁ NO MODO "HALL DE CAMPEÕES" (TORNEIO HOMOLOGADO)
+        const isHomologado = txtSub && txtSub.innerText.includes('Hall de Campeões');
 
-        if (rowsBarragem.length > 0) {
-            tipoModelo = 'barragem';
-            rowsBarragem.forEach(tr => {
-                const tds = Array.from(tr.querySelectorAll('td'));
-                if (tds.length >= 7) {
+        if (isHomologado) {
+            tipoModelo = 'piramide'; // Reutiliza o design de lista limpo para o PDF
+            linha3Subtitulo = "Hall de Campeões [Edição Homologada]";
+
+            // Card Ouro (1º Lugar)
+            const cardOuro = bodyLeaderboard.querySelector('div[style*="linear-gradient"]');
+            if (cardOuro) {
+                const nomeDiv = cardOuro.querySelector('div[style*="font-size: 16px"]');
+                const subDiv = cardOuro.querySelector('div[style*="font-size: 11.5px"]');
+                leaderboardItems.push({
+                    pos: "1º",
+                    nome: limparTextoPdf(nomeDiv ? nomeDiv.innerText.replace('(Você)', '').trim() : ''),
+                    sub: limparTextoPdf(subDiv ? subDiv.innerText.trim() : ''),
+                    ehVoce: cardOuro.innerText.includes('(Você)')
+                });
+            }
+
+            // Demais posições (Cards prateados, bronze e lista)
+            const rowsOutros = Array.from(bodyLeaderboard.querySelectorAll('div[style*="justify-content: space-between"]'));
+            rowsOutros.forEach(row => {
+                const posSpan = row.querySelector('span[style*="width: 26px"]');
+                const nomeStrong = row.querySelector('strong');
+                const subSpan = row.querySelector('span[style*="font-size: 11px"]');
+                
+                if (posSpan && nomeStrong) {
                     leaderboardItems.push({
-                        pos: tds[0].innerText.trim(),
-                        nome: tds[1].innerText.trim(),
-                        j: tds[2].innerText.trim(),
-                        v: tds[3].innerText.trim(),
-                        d: tds[4].innerText.trim(),
-                        sg: tds[5].innerText.trim(),
-                        pts: tds[6].innerText.trim(),
-                        ehVoce: tr.classList.contains('voce') || tr.style.background.includes('f0fdf4')
+                        pos: limparTextoPdf(posSpan.innerText.trim()),
+                        nome: limparTextoPdf(nomeStrong.innerText.replace('(Você)', '').trim()),
+                        sub: limparTextoPdf(subSpan ? subSpan.innerText.trim() : ''),
+                        ehVoce: row.innerText.includes('(Você)')
                     });
                 }
             });
-        } else if (cardsGrupos.length > 0) {
-            tipoModelo = 'grupos';
-            cardsGrupos.forEach(cardG => {
-                const headerTxt = cardG.querySelector('.header-leaderboard-grupo')?.innerText.replace(/\n/g, ' — ').trim() || 'GRUPO';
-                const membros = Array.from(cardG.querySelectorAll('.item-membro-grupo')).map(mEl => {
-                    const linha1 = mEl.children[0]?.innerText.trim() || '';
-                    const linha2 = mEl.children[1]?.innerText.trim() || '';
-                    return {
-                        infoAtleta: linha1,
-                        pills: linha2,
-                        isClassificado: mEl.classList.contains('classificado')
-                    };
-                });
-                leaderboardItems.push({ grupoHeader: headerTxt, membros });
-            });
+
         } else {
-            tipoModelo = 'piramide';
-            rowsPiramide.forEach(itemEl => {
-                const pos = itemEl.querySelector('span[style*="font-weight: 800"]')?.innerText.trim() || '';
-                const nome = itemEl.querySelector('strong')?.innerText.trim() || '';
-                const sub = itemEl.querySelector('span[style*="font-size: 11px"]')?.innerText.trim() || '';
-                leaderboardItems.push({ pos, nome, sub, ehVoce: itemEl.classList.contains('voce') });
-            });
+            // Lógica original: Extrai os dados se o torneio ainda estiver rodando nas tabelas
+            const rowsPiramide = Array.from(bodyLeaderboard.querySelectorAll('.item-leaderboard-piramide'));
+            const rowsBarragem = Array.from(bodyLeaderboard.querySelectorAll('.tabela-leaderboard-barragem tbody tr'));
+            const cardsGrupos = Array.from(bodyLeaderboard.querySelectorAll('.card-leaderboard-grupo'));
+
+            if (rowsBarragem.length > 0) {
+                tipoModelo = 'barragem';
+                rowsBarragem.forEach(tr => {
+                    const tds = Array.from(tr.querySelectorAll('td'));
+                    if (tds.length >= 7) {
+                        leaderboardItems.push({
+                            pos: limparTextoPdf(tds[0].innerText.trim()),
+                            nome: limparTextoPdf(tds[1].innerText.trim()),
+                            j: limparTextoPdf(tds[2].innerText.trim()),
+                            v: limparTextoPdf(tds[3].innerText.trim()),
+                            d: limparTextoPdf(tds[4].innerText.trim()),
+                            sg: limparTextoPdf(tds[5].innerText.trim()),
+                            pts: limparTextoPdf(tds[6].innerText.trim()),
+                            ehVoce: tr.classList.contains('voce') || tr.style.background.includes('f0fdf4')
+                        });
+                    }
+                });
+            } else if (cardsGrupos.length > 0) {
+                tipoModelo = 'grupos';
+                cardsGrupos.forEach(cardG => {
+                    const headerTxt = limparTextoPdf(cardG.querySelector('.header-leaderboard-grupo')?.innerText.replace(/\n/g, ' - ').trim() || 'GRUPO');
+                    const membros = Array.from(cardG.querySelectorAll('.item-membro-grupo')).map(mEl => {
+                        const linha1 = limparTextoPdf(mEl.children[0]?.innerText.trim() || '');
+                        const linha2 = limparTextoPdf(mEl.children[1]?.innerText.trim() || '');
+                        return {
+                            infoAtleta: linha1,
+                            pills: linha2,
+                            isClassificado: mEl.classList.contains('classificado')
+                        };
+                    });
+                    leaderboardItems.push({ grupoHeader: headerTxt, membros });
+                });
+            } else {
+                tipoModelo = 'piramide';
+                rowsPiramide.forEach(itemEl => {
+                    const pos = limparTextoPdf(itemEl.querySelector('span[style*="font-weight: 800"]')?.innerText.trim() || '');
+                    const nome = limparTextoPdf(itemEl.querySelector('strong')?.innerText.trim() || '');
+                    const sub = limparTextoPdf(itemEl.querySelector('span[style*="font-size: 11px"]')?.innerText.trim() || '');
+                    leaderboardItems.push({ pos, nome, sub, ehVoce: itemEl.classList.contains('voce') });
+                });
+            }
         }
     }
 
@@ -4732,7 +4783,7 @@ async function exportarLeaderboardPDFSaaS() {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
         doc.setTextColor(15, 23, 42);
-        doc.text(nomeClube + " — SETPOINT", marginX, currentY);
+        doc.text(nomeClube, marginX, currentY);
 
         currentY += 5;
         doc.setFont("helvetica", "bold");
@@ -4771,7 +4822,7 @@ async function exportarLeaderboardPDFSaaS() {
 
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100, 116, 139);
-        doc.text(" • Relatório Oficial do Ranking", marginX + 21, footerY);
+        doc.text(" - Relatório Oficial do Ranking", marginX + 21, footerY);
         doc.text("Documento emitido automaticamente pelo sistema.", marginX, footerY + 3.5);
 
         const sigWidth = 45;
@@ -4921,8 +4972,8 @@ async function exportarLeaderboardPDFSaaS() {
 
     // 6. ROTEAMENTO NATIVO VIA CAPACITOR
     const nomeArquivo = ehHistorico 
-        ? `Tabela_Acervo_${(edicaoHistoricaFocoSaaS.contrato?.nomeTorneio || 'Torneio').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
-        : `Torneio_Atual_${nomeClube.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        ? `Tabela_Acervo_${limparTextoPdf(edicaoHistoricaFocoSaaS?.contrato?.nomeTorneio || 'Torneio').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+        : `Torneio_Atual_${limparTextoPdf(nomeClube).replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
 
     try {
         await processarSaidaPDFSaaS(doc, nomeArquivo, ehHistorico ? "PDF do Acervo Histórico" : "PDF do Torneio Atual");
