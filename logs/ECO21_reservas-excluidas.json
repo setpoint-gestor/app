@@ -1185,5 +1185,32 @@
         "hora": 13
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-06T16:54:21.978Z",
+    "dataLocal": "06/09/2026, 13:54:21",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "13:00 - 14:00",
+    "duracao": "1 Hora",
+    "data": "06-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Joao Bento": true
+    },
+    "jogadores": "Adriano Feitosa, Joao Bento",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, JOAO BENTO PEREIRA",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 13
+      }
+    ]
   }
 ]
