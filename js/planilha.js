@@ -12,7 +12,7 @@ let timeoutPillQuadra = null;
 let ultimoCliqueTituloQuadra = 0;  
 
 // Variável para controlar a transição perfeita da planilha
-let primeiraCargaQuadra = true; 
+let primeiraCargaQuadra = true;  
 
 // Ponteiro da escuta (listener) em tempo real do Firebase para a quadra ativa
 let ouvinteQuadraAtual = null;  
@@ -469,8 +469,9 @@ function limparGridEAplicarGradesFixas(configAula, configDupla) {
 }
 
 
+
 // ====================================================================
-// 🎾 SUB-MÓDULO 2: PLOTAGEM DE RESERVAS RICAS E BORDAS CONTÍNUAS (APELIDOS)
+// 🎾 SUB-MÓDULO 2: PLOTAGEM DE RESERVAS ATIVAS E BORDAS CONTÍNUAS
 // ====================================================================
 function plotarReservasAtivas(reservas) {
     Object.keys(reservas).forEach(key => {
@@ -585,8 +586,22 @@ function plotarReservasAtivas(reservas) {
                 const p2 = partesFormatadas[1] || 'Desafiado';
 
                 const partesBrutasOriginais = (r.jogadores || '').split(', ');
-                const tagPos1 = obterTagPosicaoRankingSaaS(partesBrutasOriginais[0]);
-                const tagPos2 = obterTagPosicaoRankingSaaS(partesBrutasOriginais[1]);
+
+                // 🌟 LEITURA INTELIGENTE DE TAGS (CONGELADA VS FALLBACK DINÂMICO)
+                let tagPos1 = "";
+                let tagPos2 = "";
+
+                if (r.tagGrupoRanking) {
+                    // MODELO GRUPOS / MATA-MATA: Pílula discreta no canto superior esquerdo
+                    tagPos1 = `<span class="grupo-tag">${r.tagGrupoRanking}</span>`;
+                } else {
+                    // PIRÂMIDE OU BARRAGEM: Lê posição congelada do banco ou calcula via fallback
+                    const txtP1 = r.posicaoP1 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(partesBrutasOriginais[0]) : "");
+                    const txtP2 = r.posicaoP2 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(partesBrutasOriginais[1]) : "");
+
+                    if (txtP1) tagPos1 = `<span class="pos-tag">${txtP1}</span>`;
+                    if (txtP2) tagPos2 = `<span class="pos-tag">${txtP2}</span>`;
+                }
 
                 // 1ª Hora (Célula Superior)
                 cel.innerHTML = `${tagPos1}${p1}`;
@@ -652,8 +667,22 @@ function plotarReservasAtivas(reservas) {
                 const p2 = partesFormatadas[1] || 'Desafiado';
 
                 const partesBrutasOriginais = (r.jogadores || '').split(', ');
-                const tagPos1 = obterTagPosicaoRankingSaaS(partesBrutasOriginais[0]);
-                const tagPos2 = obterTagPosicaoRankingSaaS(partesBrutasOriginais[1]);
+
+                // 🌟 LEITURA INTELIGENTE DE TAGS (CONGELADA VS FALLBACK DINÂMICO)
+                let tagPos1 = "";
+                let tagPos2 = "";
+
+                if (r.tagGrupoRanking) {
+                    // MODELO GRUPOS / MATA-MATA: Pílula discreta no canto superior esquerdo
+                    tagPos1 = `<span class="grupo-tag">${r.tagGrupoRanking}</span>`;
+                } else {
+                    // PIRÂMIDE OU BARRAGEM: Lê posição congelada do banco ou calcula via fallback
+                    const txtP1 = r.posicaoP1 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(partesBrutasOriginais[0]) : "");
+                    const txtP2 = r.posicaoP2 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(partesBrutasOriginais[1]) : "");
+
+                    if (txtP1) tagPos1 = `<span class="pos-tag">${txtP1}</span>`;
+                    if (txtP2) tagPos2 = `<span class="pos-tag">${txtP2}</span>`;
+                }
 
                 cel.innerHTML = `${tagPos1}${p1}<br><span class="pilula-x-ranking-1h">x</span><br>${tagPos2}${p2}`;
             } else if (partesFormatadas.length === 4) {
@@ -692,6 +721,7 @@ function plotarReservasAtivas(reservas) {
         };
     });
 }
+
 
 // ====================================================================
 // ⏱️ SUB-MÓDULO 3: NEUTRALIZAÇÃO DO PASSADO E SENSOR HOVER EM TEMPO REAL
@@ -1537,13 +1567,43 @@ async function aplicarFiltroRankingModalSaaS() {
         } else if (modeloAtivo === 'piramide') {
             const idxLogado = idsArray.indexOf(idLogado);
             if (idxLogado !== -1) {
-                const alcance = parseInt(confRanking.piramide?.limitePosicoes, 10) || 3;
-                const inicio = Math.max(0, idxLogado - alcance);
-                idsPermitidos = idsArray.slice(inicio, idxLogado);
+                const alcanceTipo = confRanking.piramide?.alcanceTipo || 'posicoes';
+
+                if (alcanceTipo === 'linha') {
+                    // Regra de Número da Linha (Linha imediatamente acima)
+                    const posLogado = idxLogado + 1; // Posição 1-based
+                    
+                    let linhaAtual = 1;
+                    let acum = 1;
+                    while (acum < posLogado) {
+                        linhaAtual++;
+                        acum += linhaAtual;
+                    }
+
+                    if (linhaAtual > 1) {
+                        const linhaAcima = linhaAtual - 1;
+                        const posInicioLinhaAcima = ((linhaAcima - 1) * linhaAcima / 2) + 1;
+                        const posFimLinhaAcima = (linhaAcima * (linhaAcima + 1)) / 2;
+
+                        const idxInicio = posInicioLinhaAcima - 1;
+                        const idxFim = posFimLinhaAcima; // slice é exclusivo no fim
+                        idsPermitidos = idsArray.slice(idxInicio, idxFim);
+                    } else {
+                        idsPermitidos = []; // Líder não desafia ninguém acima
+                    }
+                } else if (alcanceTipo === 'livre') {
+                    // Qualquer atleta acima na tabela
+                    idsPermitidos = idsArray.slice(0, idxLogado);
+                } else {
+                    // Fixo por posições (padrão)
+                    const alcance = parseInt(confRanking.piramide?.limitePosicoes, 10) || 3;
+                    const inicio = Math.max(0, idxLogado - alcance);
+                    idsPermitidos = idsArray.slice(inicio, idxLogado);
+                }
             }
         }
 
-        // 🛑 BUSCA HISTÓRICO DE PARTIDAS PARA BLOQUEAR DUPLICIDADES
+        // 🛑 BUSCA HISTÓRICO DE PARTIDAS E RESERVAS PARA BLOQUEAR DUPLICIDADES CONTEXTUAIS
         const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
         const partidasRanking = snapPartidas.val() || {};
         const nomeLogadoNorm = (dadosLogado.nomeCompleto || dadosLogado.apelido || '').trim().toUpperCase();
@@ -1551,24 +1611,34 @@ async function aplicarFiltroRankingModalSaaS() {
         idsPermitidos = idsPermitidos.filter(idAtleta => {
             if (idAtleta === idLogado) return false;
 
-            // 1. Impede repetir duelo já finalizado
-            const jaEnfrentou = Object.values(partidasRanking).some(p => 
-                p.categoria === chaveTabela && 
-                p.status === 'finalizada' &&
-                ((p.jogador1Id === idLogado && p.jogador2Id === idAtleta) || (p.jogador1Id === idAtleta && p.jogador2Id === idLogado))
-            );
-            if (jaEnfrentou) return false;
+            // 1. Barragem e Grupos: impedem repetir duelo já finalizado na mesma edição
+            if (modeloAtivo === 'barragem' || modeloAtivo === 'grupos') {
+                const jaEnfrentou = Object.values(partidasRanking).some(p => 
+                    p.categoria === chaveTabela && 
+                    p.status === 'finalizada' &&
+                    ((p.jogador1Id === idLogado && p.jogador2Id === idAtleta) || (p.jogador1Id === idAtleta && p.jogador2Id === idLogado))
+                );
+                if (jaEnfrentou) return false;
+            }
 
-            // 2. Impede agendar com quem já tem partida pendente/marcada na planilha
+            // 2. Impede agendar com quem já tem partida PENDENTE/AGENDADA no futuro
             const atletaObj = jogadoresGlobal[idAtleta] || {};
             const nomeAtletaNorm = (atletaObj.nomeCompleto || atletaObj.apelido || '').trim().toUpperCase();
 
             const jaAgendado = Object.values(reservasLocaisCache || {}).some(r => {
                 if (!r || r.status === 'aula_cancelada') return false;
-                const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
+                const ehRanking = (r.isRanking === true || r.tipo === 'ranking');
                 if (!ehRanking) return false;
+
                 const jogs = (r.jogadores_completo || r.jogadores || '').toUpperCase();
-                return jogs.includes(nomeLogadoNorm) && jogs.includes(nomeAtletaNorm);
+                const envolveAmbos = jogs.includes(nomeLogadoNorm) && jogs.includes(nomeAtletaNorm);
+                if (!envolveAmbos) return false;
+
+                // Descarte de partidas já concluídas ou anuladas
+                const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
+                if (stPlacar === 'consolidado' || stPlacar === 'anulado') return false;
+
+                return true;
             });
             if (jaAgendado) return false;
 
@@ -1633,10 +1703,12 @@ async function aplicarFiltroRankingModalSaaS() {
     }
 }
 
+
 // ====================================================================
 // 🏆 AUXILIAR DE POSIÇÃO DO RANKING (LEITURA SÍNCRONA EM RAM)
 // ====================================================================
-function obterTagPosicaoRankingSaaS(nomeOuApelido) {
+
+function obterPosicaoTextoRankingSaaS(nomeOuApelido) {
     if (!nomeOuApelido || !jogadoresGlobal || !rankingTabelasGlobal) return "";
 
     const nomeUpper = nomeOuApelido.trim().toUpperCase();
@@ -1668,10 +1740,19 @@ function obterTagPosicaoRankingSaaS(nomeOuApelido) {
     const idx = idsArray.indexOf(idAtleta);
 
     if (idx !== -1) {
-        return `<span class="pos-tag">${idx + 1}º</span>`;
+        return `${idx + 1}º`;
     }
 
     return "";
+}
+
+// ====================================================================
+// 🏆 AUXILIAR DE POSIÇÃO DO RANKING (GERAÇÃO DE TAG HTML PARA TELA)
+// ====================================================================
+function obterTagPosicaoRankingSaaS(nomeOuApelido) {
+    const posTexto = obterPosicaoTextoRankingSaaS(nomeOuApelido);
+    if (!posTexto) return "";
+    return `<span class="pos-tag">${posTexto}</span>`;
 }
 
 
@@ -2006,6 +2087,48 @@ function validarEAgendarPartidaSaas() {
             jogadores_completo: stringCompletosExibicao,
             confirmacoes: objetoConfirmacoes            
         };
+		
+		// 🌟 PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES E GRUPOS NO ATO DO AGENDAMENTO (TEXTO PURO)
+        if (pacote.isRanking) {
+            const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+            const modeloAtivo = confRanking.modeloAtivo || 'piramide';
+            const faseAtual = parseInt(confRanking.faseAtual, 10) || 3;
+
+            if (modeloAtivo === 'grupos') {
+                if (faseAtual === 3) {
+                    // FASE DE GRUPOS: Identifica o grupo do primeiro jogador (G1, G2...)
+                    const idJ1 = Object.keys(bancoJogadores).find(k => 
+                        bancoJogadores[k].nomeCompleto === listaNomesCompletosReais[0] || bancoJogadores[k].apelido === listaApelidos[0]
+                    );
+                    const atletaJ1 = bancoJogadores[idJ1] || {};
+                    const classeJ1 = (atletaJ1.classe || 'B').toUpperCase();
+                    let genJ1 = (atletaJ1.genero || 'MASCULINO').toUpperCase();
+                    if (genJ1 === 'NAO_INFORMAR') genJ1 = 'MASCULINO';
+
+                    const modoGen = confRanking.divisaoGenero || 'separado';
+                    const chaveTab = (modoGen === 'unificado') ? `${classeJ1}_UNIFICADO` : `${classeJ1}_${genJ1}`;
+                    const tabelaCat = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) ? rankingTabelasGlobal[chaveTab] : [];
+                    const idsArr = Array.isArray(tabelaCat) ? tabelaCat : Object.values(tabelaCat);
+
+                    const idxJ1 = idsArr.indexOf(idJ1);
+                    const tamanhoGrupo = parseInt(confRanking.grupos?.tamanhoGrupo, 10) || 4;
+                    const numGrupo = idxJ1 !== -1 ? (Math.floor(idxJ1 / tamanhoGrupo) + 1) : 1;
+                    objetoReservaReferencia.tagGrupoRanking = `G${numGrupo}`;
+                } else if (faseAtual === 4) {
+                    // MATA-MATA: Identifica a rodada com base na quantidade de inscritos
+                    const qtdClassificados = Object.keys(confRanking.inscritosConfirmados || {}).length;
+                    let tagRodada = "Mata-Mata";
+                    if (qtdClassificados <= 4) tagRodada = "Semi";
+                    else if (qtdClassificados <= 8) tagRodada = "Quartas";
+                    else if (qtdClassificados <= 16) tagRodada = "Oitavas";
+                    objetoReservaReferencia.tagGrupoRanking = tagRodada;
+                }
+            } else {
+                // PIRÂMIDE OU BARRAGEM: Congela apenas o texto puro da posição ("2º", "3º")
+                objetoReservaReferencia.posicaoP1 = obterPosicaoTextoRankingSaaS(listaApelidos[0]);
+                objetoReservaReferencia.posicaoP2 = obterPosicaoTextoRankingSaaS(listaApelidos[1]);
+            }
+        }
 
         // Injeta o cronômetro apenas se a reserva for pendente
         if (timestampExpiracao) {
@@ -2918,6 +3041,18 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const posJ1 = getPos(nomesApelidos[0]);
         const posJ2 = getPos(nomesApelidos[1]);
 
+        // 🏷️ RÓTULO DO MODELO/FASE ACIMA DA LINHA HORIZONTAL
+        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const modeloAtivo = confRanking.modeloAtivo || 'piramide';
+        let labelModelo = 'Pirâmide';
+
+        if (modeloAtivo === 'barragem') {
+            labelModelo = 'Barragem';
+        } else if (modeloAtivo === 'grupos') {
+            const tagFase = dadosReserva.tagGrupoRanking || 'G1';
+            labelModelo = `Grupos • ${tagFase}`;
+        }
+
         let classNomeJ1 = '', classNomeJ2 = '';
         let setaJ1 = '', setaJ2 = '';
         let s1J1 = '-', s2J1 = '-', s3J1 = '-';
@@ -2931,7 +3066,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const isWO = !!dp && (dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O.")));
         const isRET = !!dp && (dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET")));
 
-        // 🚩 BIFURCAÇÃO W.O.: Layout sem colunas numéricas de sets (Com nome do vencedor em negrito)
+        // 🚩 BIFURCAÇÃO W.O.
         if (isWO) {
             const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
             const vencedorOficial = norm(dp.vencedor || "");
@@ -2939,6 +3074,12 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
 
             htmlRanking += `
                 <table class="atp-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelModelo}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <tr>
                             <td>
@@ -3003,23 +3144,15 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                     if (t2 > t1) return 2;
                 }
 
-                // 1. Set Tradicional (Concluído em 6x0..6x4, 7x5 ou 7x6)
                 if ((n1 === 6 && n2 <= 4) || (n1 === 7 && (n2 === 5 || n2 === 6))) return 1;
                 if ((n2 === 6 && n1 <= 4) || (n2 === 7 && (n1 === 5 || n1 === 6))) return 2;
-
-                // 2. Set Curto (Concluído em 4x0..4x2, 5x3 ou 5x4)
                 if ((n1 === 4 && n2 <= 2) || (n1 === 5 && (n2 === 3 || n2 === 4))) return 1;
                 if ((n2 === 4 && n1 <= 2) || (n2 === 5 && (n1 === 3 || n1 === 4))) return 2;
-
-                // 3. Pro-Set (Concluído em 8x0..8x6, 9x7 ou 9x8)
                 if ((n1 === 8 && n2 <= 6) || (n1 === 9 && (n2 === 7 || n2 === 8))) return 1;
                 if ((n2 === 8 && n1 <= 6) || (n2 === 9 && (n1 === 7 || n1 === 8))) return 2;
-
-                // 4. Super Tie-break do 3º Set (Concluído em 10+ pontos com diferença >= 2)
                 if (n1 >= 10 && n1 - n2 >= 2) return 1;
                 if (n2 >= 10 && n2 - n1 >= 2) return 2;
 
-                // Set incompleto / interrompido por desistência (ex: 3x1, 5x2, 2x1)
                 return 0;
             };
 
@@ -3070,7 +3203,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                 <table class="atp-table">
                     <thead>
                         <tr>
-                            <th></th>
+                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelModelo}</th>
                             ${thSetsHtml}
                             <th class="col-arrow"></th>
                         </tr>
@@ -3109,6 +3242,11 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             // Partida sem placar lançado (Aguardando Placar)
             htmlRanking += `
                 <table class="atp-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelModelo}</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <tr>
                             <td>
@@ -3127,7 +3265,6 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             `;
         }
 
-        // 🎯 MÁGICA DAS CORES: Laranja para Editado, Verde para Homologado
         if (stPlacar === 'anulado') {
             const arbNome = formatarNomeExibicaoDetalhes(dp?.arbitroResponsavel || 'Árbitro');
             htmlRanking += `<div class="motivo-anulacao">Anulada por ${arbNome}: "${dp?.motivoAnulacao || 'Decisão da arbitragem'}"</div>`;

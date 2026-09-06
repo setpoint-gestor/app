@@ -2390,7 +2390,7 @@ async function recusarConviteRankingSocioSaaS() {
 /* 7. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO                  */
 /* ======================================================== */
 
-// Abertura da Gaveta de Classificação com Trava de Ponto Zero (Leitura RAM)
+// Abertura da Gaveta de Classificação com Liberação da Janela
 function abrirLeaderboardSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
 
@@ -2410,33 +2410,21 @@ function abrirLeaderboardSaaS() {
     if (selectGenero) selectGenero.style.display = '';
     if (containerDropdowns) containerDropdowns.style.display = '';
 
-    // 1. Lê os dados já sincronizados na RAM pelo core.js
-    const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const faseAtual = parseInt(confRanking.faseAtual, 10) || 1;
-    const divGenero = confRanking.divisaoGenero || 'separado';
-
-    const chaveTabela = (divGenero === 'unificado') 
-        ? `${abaClasseAtivaSaaS}_UNIFICADO` 
-        : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
-
-    // 2. Checa Torneio Ativo e Ranking Geral na memória
-    const tabelaTorneio = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) 
-        ? rankingTabelasGlobal[chaveTabela] 
-        : null;
-    const temTorneioAtivo = (faseAtual >= 3 && Array.isArray(tabelaTorneio) && tabelaTorneio.length > 0);
-
-    const tabelaGeral = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) 
-        ? rankingGeralGlobal[chaveTabela] 
-        : null;
-    const temRankingGeral = (Array.isArray(tabelaGeral) && tabelaGeral.length > 0);
-
-    // 🛑 ESTADO 1 (PONTO ZERO): Se não tem histórico e não tem torneio ativo, barra antes de abrir
-    if (!temRankingGeral && !temTorneioAtivo) {
-        showToast("Nenhum torneio em andamento ou histórico registrado.", "info");
-        return;
+    // Define a categoria ativa com base no jogador logado ANTES da leitura
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (idLogado && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) {
+        const atleta = jogadoresGlobal[idLogado];
+        if (atleta.classe) {
+            abaClasseAtivaSaaS = atleta.classe.toUpperCase().replace('CLASSE_', '').trim();
+        }
+        if (atleta.genero) {
+            let gen = atleta.genero.toUpperCase().trim();
+            if (gen === 'NAO_INFORMAR') gen = 'MASCULINO';
+            abaGeneroAtivaSaaS = gen;
+        }
     }
 
-    // Se houver dados, abre a gaveta normalmente
+    // Abre a gaveta para o atleta visualizar a Central do Ranking e navegar pelos filtros
     sheet.style.display = 'flex';
     setTimeout(() => sheet.classList.add('ativa'), 10);
 
@@ -2444,6 +2432,7 @@ function abrirLeaderboardSaaS() {
         renderizarLeaderboardSaaS();
     }
 }
+
 
 // Fechamento da Gaveta
 function fecharLeaderboardSaaS(e) {
@@ -2507,7 +2496,7 @@ function trocarVisaoLeaderboardSaaS(modo) {
     renderizarLeaderboardSaaS();
 }
 
-async function renderizarLeaderboardSaaS() {
+function renderizarLeaderboardSaaS() {
     const selectClasse = document.getElementById('select-leaderboard-classe');
     const selectGenero = document.getElementById('select-leaderboard-genero');
     const bodyList = document.getElementById('body-leaderboard-scroll');
@@ -2520,12 +2509,9 @@ async function renderizarLeaderboardSaaS() {
 
     if (!bodyList) return;
 
-    bodyList.innerHTML = '<p style="text-align: center; color: #888; margin-top: 30px;">Carregando classificação...</p>';
-
     try {
-        // 1. Lê as configurações do ranking e pontuação do Firebase
-        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
-        const configRanking = snapConfig.val() || {};
+        // 1. Lê as configurações do ranking da RAM (sincronizadas pelo core.js)
+        const configRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
 
         const modelo = configRanking.modeloAtivo || 'piramide';
         const divGenero = configRanking.divisaoGenero || 'separado';
@@ -2568,17 +2554,24 @@ async function renderizarLeaderboardSaaS() {
             }
         }
 
-        // 3. Busca inscritos do torneio e Ranking Geral da RAM
+        // 3. Busca inscritos do torneio e Ranking Geral direto da RAM (zero latência de rede)
         const chaveTabela = (divGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
-        const snapTabela = await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).once('value');
-        const listaIDs = snapTabela.exists() ? snapTabela.val() : [];
+        
+        const listaIDs = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
+            ? rankingTabelasGlobal[chaveTabela]
+            : [];
+
+        let listaGeralIDs = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal && rankingGeralGlobal[chaveTabela])
+            ? rankingGeralGlobal[chaveTabela]
+            : [];
 
         const temTorneioAtivo = (faseAtual >= 3 && Array.isArray(listaIDs) && listaIDs.length > 0);
-
-        let listaGeralIDs = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal)
-            ? rankingGeralGlobal[chaveTabela]
-            : null;
         const temRankingGeral = (Array.isArray(listaGeralIDs) && listaGeralIDs.length > 0);
+
+        // 🌟 AUTO-ROUTING: Se não houver torneio ativo, força a exibição do Ranking Geral
+        if (!temTorneioAtivo && temRankingGeral && (abaVisaoLeaderboardSaaS === 'TORNEIO' || abaVisaoLeaderboardSaaS === 'SUMULAS')) {
+            abaVisaoLeaderboardSaaS = 'GERAL';
+        }
 
         // 📊 4. MATRIZ DE ESTADOS DAS ABAS DE NAVEGAÇÃO
         if (!temRankingGeral && !temTorneioAtivo) {
@@ -2610,11 +2603,11 @@ async function renderizarLeaderboardSaaS() {
 
         const idLogado = localStorage.getItem('jogadorLogadoId');
 
-        // 📊 SE A ABA "RANKING GERAL" ESTIVER SELECIONADA: EXIBE A FILA MESTRE CONTÍNUA
+        // 📊 SE A ABA "RANKING GERAL" ESTIVER SELECIONADA: EXIBE A FILA MESTRE COM PONTUAÇÃO
         if (abaVisaoLeaderboardSaaS === 'GERAL') {
             let htmlGeral = `
                 <div class="box-dica-leaderboard">
-                    💡 <b>Ranking Geral do Clube:</b> Exibe a Fila Mestre acumulada da categoria.
+                    💡 <b>Ranking Geral do Clube:</b> Exibe a Fila Mestre acumulada e o saldo de pontos da categoria.
                 </div>
             `;
 
@@ -2623,14 +2616,27 @@ async function renderizarLeaderboardSaaS() {
                 return;
             }
 
+            // Dicionário de pontos acumulados na temporada
+            const dictPontos = (typeof rankingPontosGeralGlobal !== 'undefined' && rankingPontosGeralGlobal && rankingPontosGeralGlobal[chaveTabela])
+                ? rankingPontosGeralGlobal[chaveTabela]
+                : ((typeof pontosGeralGlobal !== 'undefined' && pontosGeralGlobal && pontosGeralGlobal[chaveTabela])
+                    ? pontosGeralGlobal[chaveTabela]
+                    : {});
+
             listaGeralIDs.forEach((idAtleta, index) => {
                 const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
                 const pos = index + 1;
                 const nomeAtleta = atleta.nomeCompleto || atleta.apelido || 'Atleta';
                 const ehVoce = (idAtleta === idLogado);
+                const pts = parseInt(dictPontos[idAtleta], 10) || 0;
+
+                // Estilo minimalista de pontos (sem fundo/pílula)
+                const estiloPontos = pts > 0 
+                    ? "color: #15803d;" 
+                    : "color: #94a3b8;";
 
                 htmlGeral += `
-                    <div class="item-leaderboard-piramide ${ehVoce ? 'voce' : ''}">
+                    <div class="item-leaderboard-piramide ${ehVoce ? 'voce' : ''}" style="display: flex; align-items: center; justify-content: space-between;">
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span style="font-weight: 800; font-size: 13px; color: #64748b; width: 24px;">${pos}º</span>
                             <div>
@@ -2638,6 +2644,7 @@ async function renderizarLeaderboardSaaS() {
                                 <span style="font-size: 11px; color: #64748b;">${pos === 1 ? 'Líder do Ranking Geral' : 'Atleta Cadastrado'}</span>
                             </div>
                         </div>
+                        <span style="font-weight: 800; font-size: 13.5px; flex-shrink: 0; ${estiloPontos}">${pts} pts</span>
                     </div>
                 `;
             });
@@ -2646,11 +2653,13 @@ async function renderizarLeaderboardSaaS() {
             return;
         }
 
+        // Leitura de partidas diretamente da RAM
+        const partidasGlobal = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal)
+            ? rankingPartidasGlobal
+            : {};
+
         // 📝 SE A ABA "SÚMULAS" ESTIVER SELECIONADA: EXIBE OS RESULTADOS DO TORNEIO ATUAL
         if (abaVisaoLeaderboardSaaS === 'SUMULAS') {
-            const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
-            const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
-
             const listaPartidas = Object.values(partidasGlobal).filter(p => p.categoria === chaveTabela);
 
             if (listaPartidas.length === 0) {
@@ -2727,7 +2736,6 @@ async function renderizarLeaderboardSaaS() {
                 let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
                 catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
-                // Extração e Formatação da Data do Confronto (Opção 1)
                 const dp = partida.dadosPlacar || {};
                 const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
                 let dataPartidaStr = '--/--/----';
@@ -2940,10 +2948,7 @@ async function renderizarLeaderboardSaaS() {
             return;
         }
 
-        const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
-        const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
-
-        // 5. Mapeamento de estatísticas e confrontos diretos por atleta
+        // 5. Mapeamento de estatísticas e confrontos diretos por atleta a partir da RAM
         const estatisticas = {};
         const confrontosDiretos = {};
 
@@ -3095,12 +3100,49 @@ async function renderizarLeaderboardSaaS() {
         // 🏆 MODELO 1: PIRÂMIDE (ESCADA DE DESAFIOS)
         // ========================================================
         if (modelo === 'piramide') {
+            const idxLogado = listaIDs.indexOf(idLogado);
+            const alcanceTipo = configRanking.piramide?.alcanceTipo || 'posicoes';
+            const alcancePosicoes = parseInt(configRanking.piramide?.limitePosicoes, 10) || 3;
+
+            let textoAlcanceDica = `até ${alcancePosicoes} acima`;
+            let idxInicioAlcance = -1;
+            let idxFimAlcance = -1;
+
+            if (idxLogado !== -1) {
+                if (alcanceTipo === 'linha') {
+                    textoAlcanceDica = "na linha acima";
+                    const posLogado = idxLogado + 1;
+                    
+                    let linhaAtual = 1;
+                    let acum = 1;
+                    while (acum < posLogado) {
+                        linhaAtual++;
+                        acum += linhaAtual;
+                    }
+
+                    if (linhaAtual > 1) {
+                        const linhaAcima = linhaAtual - 1;
+                        const posInicioLinhaAcima = ((linhaAcima - 1) * linhaAcima / 2) + 1;
+                        const posFimLinhaAcima = (linhaAcima * (linhaAcima + 1)) / 2;
+
+                        idxInicioAlcance = posInicioLinhaAcima - 1;
+                        idxFimAlcance = posFimLinhaAcima - 1;
+                    }
+                } else if (alcanceTipo === 'livre') {
+                    textoAlcanceDica = "todas as posições acima";
+                    idxInicioAlcance = 0;
+                    idxFimAlcance = idxLogado - 1;
+                } else {
+                    idxInicioAlcance = Math.max(0, idxLogado - alcancePosicoes);
+                    idxFimAlcance = idxLogado - 1;
+                }
+            }
+
             let htmlList = `
                 <div class="box-dica-leaderboard">
-                    💡 <b>Modelo Pirâmide:</b> Exibe a posição ordinal. As posições destacadas em laranja estão dentro do seu limite de desafio (até 2 acima).
+                    💡 <b>Modelo Pirâmide:</b> Exibe a posição ordinal. As posições destacadas em laranja estão dentro do seu limite de desafio (${textoAlcanceDica}).
                 </div>
             `;
-            const idxLogado = listaIDs.indexOf(idLogado);
 
             listaIDs.forEach((idAtleta, index) => {
                 const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
@@ -3108,7 +3150,7 @@ async function renderizarLeaderboardSaaS() {
                 const nomeAtleta = atleta.nomeCompleto || atleta.apelido || 'Atleta do Ranking';
 
                 const ehVoce = (idAtleta === idLogado);
-                const noAlcance = (idxLogado !== -1 && index < idxLogado && index >= idxLogado - 2);
+                const noAlcance = (idxLogado !== -1 && !ehVoce && index >= idxInicioAlcance && index <= idxFimAlcance);
 
                 let classeCard = 'item-leaderboard-piramide';
                 if (ehVoce) classeCard += ' voce';
@@ -3280,6 +3322,7 @@ async function renderizarLeaderboardSaaS() {
         bodyList.innerHTML = '<p style="text-align: center; color: #ef4444; margin-top: 30px;">Erro ao carregar a classificação.</p>';
     }
 }
+
 
 /**
  * Alterna a expansão/recolhimento dos atletas a partir do 4º lugar no Hall de Campeões
@@ -4133,8 +4176,20 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
         return;
     }
 
-    if (categoriasHabilitadas.length === 0) {
-        showToast("Selecione ao menos uma Classe ou Gênero nas pílulas habilitadas.", "warning");
+    // 🌟 TRAVA DUPLA DE CATEGORIAS: Exige ao menos 1 Classe E ao menos 1 Gênero
+    const confGlobalCheck = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const divGenero = confGlobalCheck.divisaoGenero || 'separado';
+
+    const temClasse = categoriasHabilitadas.some(cat => cat.startsWith('CLASSE_'));
+    const temGenero = categoriasHabilitadas.includes('MASCULINO') || categoriasHabilitadas.includes('FEMININO');
+
+    if (!temClasse) {
+        showToast("Selecione ao menos uma Classe (A, B ou C) nas pílulas habilitadas.", "warning");
+        return;
+    }
+
+    if (divGenero !== 'unificado' && !temGenero) {
+        showToast("Selecione ao menos um Gênero (Masculino ou Feminino) nas pílulas habilitadas.", "warning");
         return;
     }
 
@@ -4163,8 +4218,7 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
     }
 
     // 4. Se estiver na Fase 1, força o avanço para a Fase 2 (Inscrições). Em edições posteriores, preserva a fase ativa.
-    const confGlobal = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const faseAtualBanco = parseInt(confGlobal.faseAtual, 10) || 1;
+    const faseAtualBanco = parseInt(confGlobalCheck.faseAtual, 10) || 1;
     const novaFase = (faseAtualBanco === 1) ? 2 : faseAtualBanco;
 
     database.ref(`${raizBanco}/config/ranking`).update({
@@ -5114,14 +5168,24 @@ async function exportarRankingGeralPDFSaaS() {
     const linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
     const linha3Subtitulo = "Extrato do Ranking Geral";
 
-    // 3. EXTRAÇÃO DOS DADOS DA MESTRE DO DOM
+    // 3. EXTRAÇÃO DOS DADOS E PONTOS DA MESTRE DO DOM
     const rowsPiramide = Array.from(bodyLeaderboard.querySelectorAll('.item-leaderboard-piramide'));
     const leaderboardItems = rowsPiramide.map(itemEl => {
         const pos = itemEl.querySelector('span[style*="font-weight: 800"]')?.innerText.trim() || '';
         const nome = itemEl.querySelector('strong')?.innerText.trim() || '';
         const sub = itemEl.querySelector('span[style*="font-size: 11px"]')?.innerText.trim() || 'Atleta Cadastrado';
         const ehVoce = itemEl.classList.contains('voce') || itemEl.style.background?.includes('f0fdf4');
-        return { pos, nome, sub, ehVoce };
+        
+        // Extração dos Pontos da Pílula (ex: "250 pts")
+        let pts = '';
+        const spans = itemEl.querySelectorAll('span');
+        spans.forEach(s => {
+            if (s.innerText.includes('pts')) {
+                pts = s.innerText.trim();
+            }
+        });
+
+        return { pos, nome, sub, pts, ehVoce };
     });
 
     // 4. DESENHO VETORIAL NO JSPDF
@@ -5194,7 +5258,7 @@ async function exportarRankingGeralPDFSaaS() {
 
     drawHeader();
 
-    // 5. RENDERIZAÇÃO DOS CARDS EM 2 LINHAS
+    // 5. RENDERIZAÇÃO DOS CARDS COM PONTOS MINIMALISTAS
     const cardH = 13.5;
 
     leaderboardItems.forEach((item, index) => {
@@ -5212,7 +5276,7 @@ async function exportarRankingGeralPDFSaaS() {
         doc.setLineWidth(item.ehVoce ? 0.3 : 0.15);
         doc.roundedRect(marginX, currentY, contentWidth, cardH, 2, 2, "FD");
 
-        // Posição Ordinal (ex: 1º, 2º) - Alinhada ao centro vertical do card
+        // Posição Ordinal (ex: 1º, 2º)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(item.ehVoce ? 21 : 100, item.ehVoce ? 128 : 116, item.ehVoce ? 61 : 139);
@@ -5229,6 +5293,23 @@ async function exportarRankingGeralPDFSaaS() {
         doc.setFontSize(8);
         doc.setTextColor(100, 116, 139);
         doc.text(item.sub, marginX + 20, currentY + 10);
+
+        // 🟢 PONTOS MINIMALISTAS (Alinhados à Direita no PDF)
+        if (item.pts) {
+            const numPts = parseInt(item.pts, 10) || 0;
+            const textX = marginX + contentWidth - 5; // Margem direita de 5mm
+
+            if (numPts > 0) {
+                doc.setTextColor(21, 128, 61); // Verde Escuro
+            } else {
+                doc.setTextColor(148, 163, 184); // Cinza
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9.5);
+            // Alinhamento 'right' ancora o final do texto no textX
+            doc.text(item.pts, textX, currentY + 8.2, { align: "right" });
+        }
 
         currentY += cardH + 3.5;
     });
@@ -5704,6 +5785,143 @@ async function encerrarFase3EAvancarSaaS() {
     const modelo = conf.modeloAtivo || "grupos";
     const faseAtual = parseInt(conf.faseAtual, 10) || 3;
 
+    // 1. VARREDURA DE SEGURANÇA: Busca partidas de ranking com placar pendente ou contestado
+    try {
+        const snapReservas = await database.ref(`${raizBanco}/reservas`).once('value');
+        const todasReservas = snapReservas.exists() ? snapReservas.val() : {};
+        
+        const pendentes = [];
+        const contestadas = [];
+
+        const diasSemana = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+        Object.keys(todasReservas).forEach(quadraKey => {
+            const slots = todasReservas[quadraKey] || {};
+            Object.keys(slots).forEach(slotKey => {
+                const r = slots[slotKey];
+                if (!r) return;
+                
+                const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
+                if (!ehRanking) return;
+
+                // Ignora o 2º slot de reservas de 2h para não duplicar na lista
+                if (r.borda === undefined && parseInt(r.duracao) === 2) return;
+
+                const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
+
+                if (stPlacar === 'pendente_validacao' || stPlacar === 'contestado') {
+                    const nomeDia = diasSemana[r.dia] || "Dia";
+                    const hInicio = String(r.hora).padStart(2, '0') + ":00";
+                    
+                    // 🌟 MÁGICA DO ALINHAMENTO: "baseline" garante alinhamento de texto perfeito e "flex: 1" respeita a margem na quebra de linha
+                    const detalheLimpo = `
+                        <div style="display: flex; align-items: baseline;">
+                            <span style="white-space: nowrap; margin-right: 6px;">${nomeDia} às ${hInicio}:</span>
+                            <span style="font-weight: 700; line-height: 1.4; flex: 1;">${r.jogadores || 'Atletas'}</span>
+                        </div>
+                    `;
+
+                    if (stPlacar === 'pendente_validacao') {
+                        pendentes.push(detalheLimpo);
+                    } else {
+                        contestadas.push(detalheLimpo);
+                    }
+                }
+            });
+        });
+
+        const totalPendencias = pendentes.length + contestadas.length;
+
+        // 🛑 TRAVA DE BLOQUEIO: Se houver súmulas pendentes/contestadas, monta os painéis dinâmicos
+        if (totalPendencias > 0) {
+            let textoSubtitulo = "";
+            let textoAvisoRodape = "";
+            
+            if (pendentes.length > 0 && contestadas.length === 0) {
+                textoSubtitulo = pendentes.length === 1 
+                    ? "Foi localizada <b>1 partida</b> com placar aguardando validação." 
+                    : `Foram localizadas <b>${pendentes.length} partidas</b> com placar aguardando validação.`;
+                
+                textoAvisoRodape = pendentes.length === 1 
+                    ? "Valide este placar antes de homologar a temporada."
+                    : "Valide estes placares antes de homologar a temporada.";
+                    
+            } else if (contestadas.length > 0 && pendentes.length === 0) {
+                textoSubtitulo = contestadas.length === 1 
+                    ? "Foi localizada <b>1 partida</b> aguardando arbitragem." 
+                    : `Foram localizadas <b>${contestadas.length} partidas</b> aguardando arbitragem.`;
+                    
+                textoAvisoRodape = contestadas.length === 1 
+                    ? "Arbitre este placar antes de homologar a temporada."
+                    : "Arbitre estes placares antes de homologar a temporada.";
+                    
+            } else {
+                textoSubtitulo = `Foram localizadas <b>${totalPendencias} partidas</b>: ${pendentes.length} aguardando validação e ${contestadas.length} em arbitragem.`;
+                textoAvisoRodape = "Valide ou arbitre estes placares antes de homologar a temporada.";
+            }
+
+            let fieldsetsHtml = "";
+
+            if (pendentes.length > 0) {
+                let listHtml = "";
+                pendentes.forEach(p => {
+                    // O <li> também passa a usar baseline para alinhar o "•" perfeitamente
+                    listHtml += `<li class="prompt-saas-item" style="display: flex; align-items: baseline; margin-bottom: 6px;"><span class="prompt-saas-bullet" style="margin-right: 6px;">•</span> <div style="flex: 1;">${p}</div></li>`;
+                });
+                fieldsetsHtml += `
+                    <fieldset class="prompt-saas-fieldset" style="margin-bottom: 12px;">
+                        <legend class="prompt-saas-legend">SÚMULAS PENDENTES</legend>
+                        <ul class="prompt-saas-list" style="padding: 0; margin: 0; list-style: none;">
+                            ${listHtml}
+                        </ul>
+                    </fieldset>
+                `;
+            }
+
+            if (contestadas.length > 0) {
+                let listHtml = "";
+                contestadas.forEach(p => {
+                    listHtml += `<li class="prompt-saas-item" style="display: flex; align-items: baseline; margin-bottom: 6px;"><span class="prompt-saas-bullet" style="color: #dc2626; margin-right: 6px;">•</span> <div style="flex: 1;">${p}</div></li>`;
+                });
+                fieldsetsHtml += `
+                    <fieldset class="prompt-saas-fieldset" style="border-color: #fecaca; margin-bottom: 12px;">
+                        <legend class="prompt-saas-legend" style="color: #dc2626;">SÚMULAS CONTESTADAS</legend>
+                        <ul class="prompt-saas-list" style="padding: 0; margin: 0; list-style: none;">
+                            ${listHtml}
+                        </ul>
+                    </fieldset>
+                `;
+            }
+
+            const htmlBloqueio = `
+                <div class="prompt-saas-container">
+                    <p style="margin: 0 0 12px 0; font-size: 13.5px; color: #475569; line-height: 1.5;">
+                        ${textoSubtitulo}
+                    </p>
+
+                    ${fieldsetsHtml}
+
+                    <p class="prompt-saas-warning" style="color: #dc2626; font-weight: 700; margin-top: 12px; text-align: center;">
+                        ${textoAvisoRodape}
+                    </p>
+                </div>
+            `;
+
+            showPrompt("Súmulas Pendentes", htmlBloqueio, () => {
+                // Clique em Entendi / Fechar
+            });
+            
+            // Oculta o botão de confirmação para agir apenas como um aviso/bloqueio
+            const btnConfirm = document.getElementById('btnPromptConfirm');
+            if (btnConfirm) btnConfirm.style.display = 'none';
+            return;
+        }
+
+    } catch (err) {
+        console.error("❌ Erro ao auditar reservas pendentes antes de encerrar:", err);
+    }
+
+    // 2. FLUXO NORMAL DE ENCERRAMENTO (Se não houver pendências)
     const hojeStr = new Date().toISOString().split('T')[0];
     const fimTorneioStr = cal.fimTorneio || "";
     const fmtData = (str) => str ? str.split('-').reverse().join('/') : '--/--';
@@ -5736,32 +5954,57 @@ async function encerrarFase3EAvancarSaaS() {
             if (eHomologacaoFinal) {
                 const edicaoId = `${new Date().getFullYear()}_${(cal.nomeTorneio || 'Torneio').replace(/\s+/g, '_')}`;
 
-                const [snapTabelasTorneio, snapRankingGeral, snapPartidas] = await Promise.all([
+                const [snapTabelasTorneio, snapRankingGeral, snapPartidas, snapPontosGeral] = await Promise.all([
                     database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
                     database.ref(`${raizBanco}/ranking/ranking_geral`).once('value'),
-                    database.ref(`${raizBanco}/ranking/partidas`).once('value')
+                    database.ref(`${raizBanco}/ranking/partidas`).once('value'),
+                    database.ref(`${raizBanco}/ranking/pontos_geral`).once('value')
                 ]);
 
                 const tabelasTorneio = snapTabelasTorneio.exists() ? snapTabelasTorneio.val() : {};
                 const rankingGeralAtual = snapRankingGeral.exists() ? snapRankingGeral.val() : {};
                 const partidasTorneio = snapPartidas.exists() ? snapPartidas.val() : {};
+                const pontosGeralAtual = snapPontosGeral.exists() ? snapPontosGeral.val() : {};
 
-                // 1. Atualização da Fila Mestre no Ranking Geral
+                // 🏆 TABELA DE PONTOS DA TEMPORADA (Padrão CBT / ATP)
+                const TABELA_PONTOS_SaaS = {
+                    0: 250, // 1º Lugar (Campeão)
+                    1: 180, // 2º Lugar (Vice)
+                    2: 120, // 3º Lugar
+                    3: 60   // 4º Lugar
+                };
+                const PONTOS_PARTICIPACAO_DEFAULT = 20; // 5º Lugar em diante
+
+                // 1. Atualização do Ranking Geral por Pontuação Acumulada
                 Object.keys(tabelasTorneio).forEach(chaveCat => {
                     const classificacaoTorneio = tabelasTorneio[chaveCat] || [];
                     if (!Array.isArray(classificacaoTorneio) || classificacaoTorneio.length === 0) return;
 
-                    let mestreCat = Array.isArray(rankingGeralAtual[chaveCat]) ? [...rankingGeralAtual[chaveCat]] : [];
+                    let pontosCat = pontosGeralAtual[chaveCat] || {};
 
-                    if (mestreCat.length === 0) {
-                        mestreCat = [...classificacaoTorneio];
-                    } else {
-                        const participantesNoTorneio = new Set(classificacaoTorneio);
-                        mestreCat = mestreCat.filter(id => !participantesNoTorneio.has(id));
-                        mestreCat = [...classificacaoTorneio, ...mestreCat];
-                    }
+                    // A) Soma os pontos conquistados na edição ao saldo do atleta
+                    classificacaoTorneio.forEach((idAtleta, posicaoIdx) => {
+                        const pontosGanhos = TABELA_PONTOS_SaaS[posicaoIdx] !== undefined 
+                            ? TABELA_PONTOS_SaaS[posicaoIdx] 
+                            : PONTOS_PARTICIPACAO_DEFAULT;
 
-                    updates[`${raizBanco}/ranking/ranking_geral/${chaveCat}`] = mestreCat;
+                        const pontosAtuais = parseInt(pontosCat[idAtleta], 10) || 0;
+                        pontosCat[idAtleta] = pontosAtuais + pontosGanhos;
+                    });
+
+                    // Grava os novos saldos no banco
+                    updates[`${raizBanco}/ranking/pontos_geral/${chaveCat}`] = pontosCat;
+
+                    // B) Reordena o Ranking Geral por total de pontos acumulados (Decrescente)
+                    const todosAtletasCat = Object.keys(pontosCat);
+                    todosAtletasCat.sort((a, b) => {
+                        const ptsA = parseInt(pontosCat[a], 10) || 0;
+                        const ptsB = parseInt(pontosCat[b], 10) || 0;
+                        return ptsB - ptsA; // Maior pontuação fica no topo
+                    });
+
+                    // Grava a nova Fila Mestre do clube
+                    updates[`${raizBanco}/ranking/ranking_geral/${chaveCat}`] = todosAtletasCat;
 
                     // 2. Gravação do Pódio no Hall de Campeões
                     updates[`${raizBanco}/hall_de_campeoes/${edicaoId}/${chaveCat}`] = {
@@ -5794,6 +6037,10 @@ async function encerrarFase3EAvancarSaaS() {
         }
     };
 
+    // Garante que o botão de confirmação volte a aparecer nos prompts normais
+    const btnConfirm = document.getElementById('btnPromptConfirm');
+    if (btnConfirm) btnConfirm.style.display = '';
+
     if (fimTorneioStr && hojeStr < fimTorneioStr) {
         showPrompt("Encerrar Torneio Antecipadamente", `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
@@ -5813,7 +6060,6 @@ async function encerrarFase3EAvancarSaaS() {
         });
     }
 }
-
 
 /* ======================================================== */
 /* 10.4 AÇÕES DA FASE CONCLUÍDA E HOMOLOGAÇÃO (FASE 4)      */
@@ -6266,7 +6512,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     const edicao = acervoHistoricoGlobalSaaS.find(e => e.id === idEdicao);
     if (!edicao) {
         showToast("Dados da edição não encontrados.", "warning");
-        return;
+        return; 
     }
 
     // 🟢 GRAVAR A EDIÇÃO NA MEMÓRIA PARA O PDF SABER QUE É HISTÓRICO

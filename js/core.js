@@ -19,7 +19,7 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);  
 }
 
-const database = firebase.database();  
+const database = firebase.database();   
 const auth = firebase.auth(); 
 
 
@@ -52,6 +52,7 @@ let jogadoresGlobalAlterado = false; // 🔥 INTERRUPTOR INTELIGENTE: Controla s
 
 let rankingTabelasGlobal = {}; // Espelho local das tabelas do ranking na memória RAM
 let rankingGeralGlobal = {}; // Espelho local do Ranking Geral (Fila Mestre) na memória RAM
+let rankingPontosGeralGlobal = {}; // Espelho local dos Pontos do Ranking Geral na memória RAM
 
 let configQuadrasGlobal = {};    // Espelho local em tempo real da Infraestrutura e Status das Quadras
 
@@ -673,6 +674,19 @@ function iniciarOuvinteMestreSaaS() {
     database.ref(`${raizBanco}/ranking/ranking_geral`).on('value', (snapshot) => {
         rankingGeralGlobal = snapshot.val() || {};
         console.log("✓ [Core] Ranking Geral atualizado na memória RAM.");
+    });
+	
+	// --- 4.8. OUVINTE MESTRE DOS PONTOS DO RANKING GERAL ---
+    console.log("🏆 [Core] Sincronizando Pontos do Ranking Geral em tempo real...");
+    database.ref(`${raizBanco}/ranking/pontos_geral`).on('value', (snapshot) => {
+        rankingPontosGeralGlobal = snapshot.val() || {};
+        console.log("✓ [Core] Pontos do Ranking Geral atualizados na memória RAM.");
+        
+        // Repinta o Leaderboard se a gaveta estiver aberta
+        const sheet = document.getElementById('sheet-leaderboard-ranking');
+        if (sheet && sheet.classList.contains('ativa') && typeof renderizarLeaderboardSaaS === 'function') {
+            renderizarLeaderboardSaaS();
+        }
     });
 	
 	// --- 5. OUVINTE MESTRE DE INFRAESTRUTURA E STATUS DE QUADRAS ---
