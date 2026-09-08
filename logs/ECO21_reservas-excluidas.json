@@ -583,5 +583,36 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-09-08T10:23:34.006Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-08T10:29:17.221Z",
+    "dataLocal": "08/09/2026, 07:29:17",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "08-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALMIR ALVES DA CRUZ",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Almir": true
+    },
+    "jogadores": "Almir, Alexandre Camargo",
+    "jogadores_completo": "ALMIR ALVES DA CRUZ, ALEXANDRE CAMARGO",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 7
+      },
+      {
+        "dia": 2,
+        "hora": 8
+      }
+    ]
   }
 ]
