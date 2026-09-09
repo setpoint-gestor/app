@@ -645,5 +645,32 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-09-08T10:29:26.417Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-09T19:12:19.052Z",
+    "dataLocal": "09/09/2026, 16:12:19",
+    "autor": "JOAO MARIA SOBRINHO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 17:00",
+    "duracao": "1 Hora",
+    "data": "09-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JOAO MARIA SOBRINHO",
+    "confirmacoes": {
+      "Almir": true,
+      "Joao Maria": true
+    },
+    "jogadores": "Joao Maria, Almir",
+    "jogadores_completo": "JOAO MARIA SOBRINHO, ALMIR ALVES DA CRUZ",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 16
+      }
+    ]
   }
 ]
