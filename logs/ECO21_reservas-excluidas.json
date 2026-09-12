@@ -699,5 +699,36 @@
         "hora": 14
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-12T17:07:33.947Z",
+    "dataLocal": "12/09/2026, 14:07:33",
+    "autor": "JOAO DARIO DINIZ",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "14:00 - 16:00",
+    "duracao": "2 Horas",
+    "data": "12-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JOAO DARIO DINIZ",
+    "confirmacoes": {
+      "Arnold": true,
+      "Joca": true
+    },
+    "jogadores": "Joca, Arnold",
+    "jogadores_completo": "JOAO DARIO DINIZ, ARNOLD WINTER",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 14
+      },
+      {
+        "dia": 6,
+        "hora": 15
+      }
+    ]
   }
 ]
