@@ -672,5 +672,32 @@
         "hora": 16
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-12T16:45:51.266Z",
+    "dataLocal": "12/09/2026, 13:45:51",
+    "autor": "ANA MARIA MARINHO GOMES",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "14:00 - 15:00",
+    "duracao": "1 Hora",
+    "data": "12-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "confirmacoes": {
+      "An Alice": true,
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Ana Maria Marinho, An Alice",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ANA LICE DOURADO",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 14
+      }
+    ]
   }
 ]
