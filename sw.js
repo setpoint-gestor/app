@@ -1,4 +1,4 @@
-const CACHE_NAME = 'setpoint-gestor-v4'; // 🔄 Subimos para v4 para forçar a limpeza imediata do cache problemático
+const CACHE_NAME = 'setpoint-gestor-v5'; // 🔄 Subimos para v5 para renovar os arquivos do fatiamento do Ranking
 
 const urlsToCache = [
   './',
@@ -21,7 +21,9 @@ const urlsToCache = [
   './js/config.js?v=4',
   './js/regras.js?v=4',
   './js/logs.js?v=4',
-  './js/ranking.js?v=4'  
+  './js/ranking-core.js?v=4',
+  './js/ranking-torneio.js?v=4',
+  './js/ranking-ui-pdf.js?v=4'  
 ];
 
 self.addEventListener('install', event => {
@@ -47,7 +49,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// 🔥 CORREÇÃO CIRÚRGICA: Estratégia Network-First (Rede Primeiro) para TUDO
+// 🔥 Estratégia Network-First (Rede Primeiro) para TUDO
 self.addEventListener('fetch', event => {
   // Ignora requisições que não sejam GET (ex: salvamentos no Firebase ou GitHub)
   if (event.request.method !== 'GET') return;
@@ -56,7 +58,6 @@ self.addEventListener('fetch', event => {
     fetch(event.request)
       .then(response => {
         // 1. A internet funcionou! Pegamos o arquivo fresquinho do servidor.
-        // Atualizamos o cache silenciosamente para garantir que o "modo offline" fique atualizado.
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then(cache => {
           cache.put(event.request, responseClone);
@@ -64,7 +65,7 @@ self.addEventListener('fetch', event => {
         return response;
       })
       .catch(() => {
-        // 2. A internet caiu ou falhou! Só agora usamos o cache como plano B (Modo Offline).
+        // 2. A internet caiu ou falhou! Usa o cache como plano B (Modo Offline).
         return caches.match(event.request);
       })
   );

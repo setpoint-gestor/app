@@ -2588,7 +2588,7 @@
 									</div>
 
 									<!-- FASE 4: QUADRO ELIMINATÓRIO (MATA-MATA) -->
-									<div id="fase-panel-4" class="fase-panel">
+									<div id="fase-panel-4" class="fase-panel"> 
 										<div class="box-status-info info-roxa">
 											<b>📍 Fase 4: Quadro Eliminatório (Mata-Mata)</b><br>
 											• Confrontos decisivos de Semifinais e Final em andamento.<br>
@@ -2597,10 +2597,6 @@
 
 										<button type="button" class="btn-ranking-action" style="background-color: #8b5cf6; color: #ffffff;" onclick="abrirQuadroMataMataSaaS()">
 											<i class="material-icons">account_tree</i> Ver Quadro Eliminatório (Mata-Mata)
-										</button>
-
-										<button type="button" class="btn-ranking-action btn-ranking-view" onclick="concluirTorneioEHomologarSaaS()">
-											<i class="material-icons">emoji_events</i> Concluir Torneio e Somar Pontos no Ranking
 										</button>
 									</div>
 
@@ -3062,7 +3058,10 @@
     <script src="js/regras.js?v=4"></script>
     <script src="js/logs.js?v=4"></script>	
 	<!-- NOVO: Lógica isolada do Módulo de Ranking -->
-    <script src="js/ranking.js?v=4"></script>
+    <!-- Módulos do Ranking SaaS (Fatiamento em 3 Partes) -->
+	<script src="js/ranking-core.js?v=4"></script>
+	<script src="js/ranking-torneio.js?v=4"></script>
+	<script src="js/ranking-ui-pdf.js?v=4"></script>
 	
 	<!-- PWA: Registro do Motor Offline e Atualizador Automático -->
     <script>
