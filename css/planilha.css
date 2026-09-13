@@ -2175,27 +2175,15 @@ body.dark-mode #tabelaQuadra td .pos-tag {
     color: #854d0e !important;
 }
 
-/* 🏷️ PÍLULA DE GRUPO / MATA-MATA (CANTO SUPERIOR ESQUERDO) */
-#tabelaQuadra td .grupo-tag {
-    position: absolute !important;
-    top: 3px !important;
-    left: 4px !important;
-    font-size: 9.5px !important;
-    font-weight: 800 !important;
-    color: #0369a1 !important;
-    background: #e0f2fe !important;
-    border: 1px solid #bae6fd !important;
-    padding: 1px 5px !important;
-    border-radius: 4px !important;
-    line-height: 1 !important;
-    display: inline-block !important;
-    z-index: 10 !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+/* ======================================================== */
+/* ANCORAGEM VERTICAL PARA BLOCOS DE 2 HORAS                */
+/* ======================================================== */
+#tabelaQuadra td.reserva-2h-topo {
+    vertical-align: bottom !important;
+    padding-bottom: 4px !important;
 }
 
-/* Suporte ao Modo Escuro */
-body.dark-mode #tabelaQuadra td .grupo-tag {
-    background: #0369a1 !important;
-    color: #e0f2fe !important;
-    border-color: #0284c7 !important;
+#tabelaQuadra td.reserva-2h-baixo {
+    vertical-align: top !important;
+    padding-top: 4px !important;
 }
