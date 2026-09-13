@@ -17,7 +17,7 @@ let nomeVencedorWOSaaS = "";
 let motivoCustomizadoWOSaaS = "";
 
 let modoRETAtivoSaaS = false;
-let desistenteRETSaaS = null; // 'J1' ou 'J2'
+let desistenteRETSaaS = null; // 'J1' ou 'J2' 
 let nomeDesistenteRETSaaS = "";
 let motivoRETSaaS = "";
 let motivoCustomizadoRETSaaS = "";
@@ -2472,7 +2472,8 @@ function abrirVisualizacaoRankingSaaS() {
 
 let abaVisaoLeaderboardSaaS = 'TORNEIO'; // 'TORNEIO', 'SUMULAS' ou 'GERAL'
 let abaClasseAtivaSaaS = 'B';
-let abaGeneroAtivaSaaS = 'MASCULINO';
+let abaGeneroAtivaSaaS = 'MASCULINO'; 
+let abaFaseAtivaSaaS = 'AUTO'; // 'AUTO', 'GRUPOS', 'SEMI', 'FINAL', 'TODAS'
 
 function trocarVisaoLeaderboardSaaS(modo) {
     abaVisaoLeaderboardSaaS = modo;
@@ -2532,7 +2533,7 @@ function renderizarLeaderboardSaaS() {
             }
         }
 
-        // 2. Popula os Selects de Filtro
+        // 2. Popula os Selects de Filtro (Classe e Gênero)
         const classesAvulsa = ['A', 'B', 'C'];
         if (selectClasse) {
             selectClasse.innerHTML = classesAvulsa.map(cls => `
@@ -2554,7 +2555,7 @@ function renderizarLeaderboardSaaS() {
             }
         }
 
-        // 3. Busca inscritos do torneio e Ranking Geral direto da RAM (zero latência de rede)
+        // 3. Busca inscritos do torneio e Ranking Geral direto da RAM
         const chaveTabela = (divGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
         
         const listaIDs = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
@@ -2565,15 +2566,75 @@ function renderizarLeaderboardSaaS() {
             ? rankingGeralGlobal[chaveTabela]
             : [];
 
+        // Avaliação de existência de torneio/ranking ativo
         const temTorneioAtivo = (faseAtual >= 3 && Array.isArray(listaIDs) && listaIDs.length > 0);
         const temRankingGeral = (Array.isArray(listaGeralIDs) && listaGeralIDs.length > 0);
-
-        // 🌟 AUTO-ROUTING: Se não houver torneio ativo, força a exibição do Ranking Geral
-        if (!temTorneioAtivo && temRankingGeral && (abaVisaoLeaderboardSaaS === 'TORNEIO' || abaVisaoLeaderboardSaaS === 'SUMULAS')) {
+		
+		// 🌟 AUTO-ROUTING: Sem torneio ativo, direciona a tela obrigatoriamente para o Ranking Geral
+        if (!temTorneioAtivo) {
             abaVisaoLeaderboardSaaS = 'GERAL';
         }
 
-        // 📊 4. MATRIZ DE ESTADOS DAS ABAS DE NAVEGAÇÃO
+        // 3º SELETOR DINÂMICO: FASE DO TORNEIO
+        let selectFase = document.getElementById('select-leaderboard-fase');
+        if (!selectFase && selectGenero && selectGenero.parentElement) {
+            selectFase = document.createElement('select');
+            selectFase.id = 'select-leaderboard-fase';
+            selectFase.className = 'select-leaderboard-fase';
+            selectFase.style.cssText = 'background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:8px 6px; font-size:12px; font-weight:700; color:#8b5cf6; outline:none; cursor:pointer; flex:1;';
+            selectGenero.parentElement.insertBefore(selectFase, selectGenero.nextSibling);
+            
+            selectFase.onchange = (e) => {
+                abaFaseAtivaSaaS = e.target.value;
+                renderizarLeaderboardSaaS();
+            };
+        }
+
+        if (selectFase) {
+            const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) 
+                ? rankingChavesGlobal[chaveTabela] 
+                : null;
+
+            // Se a categoria selecionada tem chaves de Mata-Mata ativas, monta o seletor
+            if (faseAtual >= 4 && modelo === 'grupos' && dadosChaveCat && dadosChaveCat.faseAtual >= 2) {
+                const rodada1 = dadosChaveCat.rodada1 || [];
+                const tamanhoChaveAtual = parseInt(dadosChaveCat.faseAtual, 10) || (rodada1.length * 2);
+                const totalClassific = parseInt(dadosChaveCat.totalClassificados, 10) || tamanhoChaveAtual;
+
+                const tamanhoInicial = (typeof calcularPotenciaDeDoisSuperiorSaaS === 'function') 
+                    ? calcularPotenciaDeDoisSuperiorSaaS(totalClassific) 
+                    : tamanhoChaveAtual;
+
+                let opcoesMataMata = "";
+
+                for (let pot = tamanhoInicial; pot >= tamanhoChaveAtual && pot >= 2; pot /= 2) {
+                    const rotuloFase = (typeof obterRotuloFaseMataMataSaaS === 'function') 
+                        ? obterRotuloFaseMataMataSaaS(pot) 
+                        : `Mata-Mata (${pot})`;
+                    const valOpt = `MM_${pot}`; 
+                    
+                    const isSelected = (abaFaseAtivaSaaS === valOpt) || 
+                                       ((abaFaseAtivaSaaS === 'AUTO' || abaFaseAtivaSaaS === 'MATA_MATA' || abaFaseAtivaSaaS === 'SEMI') && pot === tamanhoChaveAtual);
+
+                    if (isSelected) abaFaseAtivaSaaS = valOpt;
+
+                    opcoesMataMata += `<option value="${valOpt}" ${isSelected ? 'selected' : ''}>${rotuloFase}</option>`;
+                }
+
+                selectFase.style.display = 'block';
+                selectFase.innerHTML = `
+                    ${opcoesMataMata}
+                    <option value="GRUPOS" ${abaFaseAtivaSaaS === 'GRUPOS' ? 'selected' : ''}>Grupos</option>
+                    <option value="TODAS" ${abaFaseAtivaSaaS === 'TODAS' ? 'selected' : ''}>Todas</option>
+                `;
+            } else {
+                // Se não há chaves para esta categoria (ex: Classe C Feminino), oculta o seletor sem calcular nada
+                selectFase.style.display = 'none';
+                abaFaseAtivaSaaS = 'GRUPOS';
+            }
+        }
+		
+        // 4. MATRIZ DE ESTADOS DAS ABAS DE NAVEGAÇÃO
         if (!temRankingGeral && !temTorneioAtivo) {
             if (containerAbas) containerAbas.style.display = 'none';
             bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum torneio em andamento ou histórico registrado.</p>';
@@ -2582,28 +2643,37 @@ function renderizarLeaderboardSaaS() {
 
         if (containerAbas) containerAbas.style.display = 'flex';
 
-        // Configuração dinâmica de visibilidade dos botões
         if (btnTorneio) btnTorneio.style.display = temTorneioAtivo ? 'flex' : 'none';
         if (btnSumulas) btnSumulas.style.display = temTorneioAtivo ? 'flex' : 'none';
         if (btnGeral) btnGeral.style.display = temRankingGeral ? 'flex' : 'none';
 
         const botoesVisiveis = [btnTorneio, btnSumulas, btnGeral].filter(b => b && b.style.display !== 'none');
-        botoesVisiveis.forEach(b => {
-            b.style.flex = '1';
-            b.style.cursor = 'pointer';
-        });
 
-        // Destaque do botão ativo
-        [btnTorneio, btnSumulas, btnGeral].forEach(btn => {
-            if (btn) btn.classList.remove('active');
-        });
-        if (abaVisaoLeaderboardSaaS === 'TORNEIO' && btnTorneio) btnTorneio.classList.add('active');
-        if (abaVisaoLeaderboardSaaS === 'SUMULAS' && btnSumulas) btnSumulas.classList.add('active');
-        if (abaVisaoLeaderboardSaaS === 'GERAL' && btnGeral) btnGeral.classList.add('active');
+        // 🧠 COMPORTAMENTO DINÂMICO: Se houver apenas o Ranking Geral visível, vira rótulo fixo (sem clique)
+        if (botoesVisiveis.length === 1 && btnGeral && btnGeral.style.display !== 'none') {
+            btnGeral.style.flex = '1';
+            btnGeral.style.cursor = 'default';
+            btnGeral.style.pointerEvents = 'none';
+            btnGeral.classList.add('active');
+        } else {
+            // Se houver torneio ativo, reativa os cliques normais das abas
+            botoesVisiveis.forEach(b => {
+                b.style.flex = '1';
+                b.style.cursor = 'pointer';
+                b.style.pointerEvents = 'auto';
+            });
+
+            [btnTorneio, btnSumulas, btnGeral].forEach(btn => {
+                if (btn) btn.classList.remove('active');
+            });
+            if (abaVisaoLeaderboardSaaS === 'TORNEIO' && btnTorneio) btnTorneio.classList.add('active');
+            if (abaVisaoLeaderboardSaaS === 'SUMULAS' && btnSumulas) btnSumulas.classList.add('active');
+            if (abaVisaoLeaderboardSaaS === 'GERAL' && btnGeral) btnGeral.classList.add('active');
+        }
 
         const idLogado = localStorage.getItem('jogadorLogadoId');
 
-        // 📊 SE A ABA "RANKING GERAL" ESTIVER SELECIONADA: EXIBE A FILA MESTRE COM PONTUAÇÃO
+        // SE A ABA "RANKING GERAL" ESTIVER SELECIONADA
         if (abaVisaoLeaderboardSaaS === 'GERAL') {
             let htmlGeral = `
                 <div class="box-dica-leaderboard">
@@ -2616,7 +2686,6 @@ function renderizarLeaderboardSaaS() {
                 return;
             }
 
-            // Dicionário de pontos acumulados na temporada
             const dictPontos = (typeof rankingPontosGeralGlobal !== 'undefined' && rankingPontosGeralGlobal && rankingPontosGeralGlobal[chaveTabela])
                 ? rankingPontosGeralGlobal[chaveTabela]
                 : ((typeof pontosGeralGlobal !== 'undefined' && pontosGeralGlobal && pontosGeralGlobal[chaveTabela])
@@ -2630,7 +2699,6 @@ function renderizarLeaderboardSaaS() {
                 const ehVoce = (idAtleta === idLogado);
                 const pts = parseInt(dictPontos[idAtleta], 10) || 0;
 
-                // Estilo minimalista de pontos (sem fundo/pílula)
                 const estiloPontos = pts > 0 
                     ? "color: #15803d;" 
                     : "color: #94a3b8;";
@@ -2653,14 +2721,62 @@ function renderizarLeaderboardSaaS() {
             return;
         }
 
-        // Leitura de partidas diretamente da RAM
         const partidasGlobal = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal)
             ? rankingPartidasGlobal
             : {};
 
-        // 📝 SE A ABA "SÚMULAS" ESTIVER SELECIONADA: EXIBE OS RESULTADOS DO TORNEIO ATUAL
+        // 📝 SE A ABA "SÚMULAS" ESTIVER SELECIONADA
         if (abaVisaoLeaderboardSaaS === 'SUMULAS') {
-            const listaPartidas = Object.values(partidasGlobal).filter(p => p.categoria === chaveTabela);
+            let listaPartidas = Object.values(partidasGlobal).filter(p => p.categoria === chaveTabela);
+
+            // 🎯 FILTRAGEM DINÂMICA POR FASE NA ABA SÚMULAS (LEITURA 100% PASSIVA DO BANCO)
+            if (modelo === 'grupos' && abaFaseAtivaSaaS && abaFaseAtivaSaaS !== 'TODAS' && abaFaseAtivaSaaS !== 'AUTO') {
+                const idsArr = Array.isArray(listaIDs) ? listaIDs : Object.values(listaIDs);
+                const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo, 10) || 3;
+
+                // Determina a potência alvo (ex: 8 para Quartas, 4 para Semis, 2 para Final)
+                let potAlvo = null;
+                if (typeof abaFaseAtivaSaaS === 'string' && abaFaseAtivaSaaS.startsWith('MM_')) {
+                    potAlvo = parseInt(abaFaseAtivaSaaS.replace('MM_', ''), 10);
+                }
+
+                // 🛡️ Consulta estritamente o banco de dados oficial sem simular nada na RAM
+                const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal[chaveTabela] : null;
+                let confsFase = [];
+
+                if (dadosChaveCat) {
+                    const tamAtual = parseInt(dadosChaveCat.faseAtual, 10) || 0;
+                    if (potAlvo === tamAtual && Array.isArray(dadosChaveCat.rodada1)) {
+                        confsFase = dadosChaveCat.rodada1;
+                    } else if (dadosChaveCat.historicoRodadas) {
+                        // Leitura segura aceitando chave numérica ou texto ("8" ou 8)
+                        confsFase = dadosChaveCat.historicoRodadas[potAlvo] || dadosChaveCat.historicoRodadas[String(potAlvo)] || [];
+                    }
+                }
+
+                listaPartidas = listaPartidas.filter(p => {
+                    const dp = p.dadosPlacar || {};
+                    const tagG = dp.tagGrupoRanking || p.tagGrupoRanking;
+
+                    // Uma partida é da Fase de Grupos se possui a tag de grupo gravada
+                    const ehPartidaGrupo = !!tagG;
+
+                    if (abaFaseAtivaSaaS === 'GRUPOS') {
+                        return ehPartidaGrupo;
+                    }
+
+                    if (ehPartidaGrupo) return false;
+
+                    if (potAlvo && Array.isArray(confsFase) && confsFase.length > 0) {
+                        return confsFase.some(c => 
+                            (c.jogador1Id === p.jogador1Id && c.jogador2Id === p.jogador2Id) ||
+                            (c.jogador1Id === p.jogador2Id && c.jogador2Id === p.jogador1Id)
+                        );
+                    }
+
+                    return false;
+                });
+            }
 
             if (listaPartidas.length === 0) {
                 bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhuma súmula lançada para esta categoria no torneio atual.</p>';
@@ -2754,6 +2870,71 @@ function renderizarLeaderboardSaaS() {
                 const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
                 const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
 
+                // Cálculo da Fase/Grupo para exibição no cabeçalho da súmula
+                let labelFasePartida = 'Ranking';
+                let tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
+
+                if (modelo === 'grupos') {
+                    const idsArr = Array.isArray(listaIDs) ? listaIDs : Object.values(listaIDs);
+                    const idx1 = partida.jogador1Id ? idsArr.indexOf(partida.jogador1Id) : -1;
+                    const idx2 = partida.jogador2Id ? idsArr.indexOf(partida.jogador2Id) : -1;
+                    const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo, 10) || 3;
+
+                    const grp1 = idx1 !== -1 ? Math.floor(idx1 / tamanhoGrupo) : -1;
+                    const grp2 = idx2 !== -1 ? Math.floor(idx2 / tamanhoGrupo) : -2;
+
+                    if (tagG) {
+                        labelFasePartida = `Grupos - ${tagG}`;
+                    } else if (grp1 !== -1 && grp1 === grp2) {
+                        tagG = `G${grp1 + 1}`;
+                        labelFasePartida = `Grupos - ${tagG}`;
+                    } else {
+                        if (faseAtual >= 4) {
+                            let rotuloFaseMM = "Mata-Mata";
+                            const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal[chaveTabela] : null;
+
+                            if (dadosChaveCat) {
+                                const tamAtual = parseInt(dadosChaveCat.faseAtual, 10) || 0;
+                                const ehNaRodadaAtiva = (dadosChaveCat.rodada1 || []).some(c => 
+                                    (c.jogador1Id === partida.jogador1Id && c.jogador2Id === partida.jogador2Id) ||
+                                    (c.jogador1Id === partida.jogador2Id && c.jogador2Id === partida.jogador1Id)
+                                );
+
+                                if (ehNaRodadaAtiva) {
+                                    rotuloFaseMM = (typeof obterRotuloFaseMataMataSaaS === 'function') ? obterRotuloFaseMataMataSaaS(tamAtual) : "Mata-Mata";
+                                } else if (dadosChaveCat.historicoRodadas) {
+                                    const potEncontrada = Object.keys(dadosChaveCat.historicoRodadas).find(pot => {
+                                        const confs = dadosChaveCat.historicoRodadas[pot] || [];
+                                        return confs.some(c => 
+                                            (c.jogador1Id === partida.jogador1Id && c.jogador2Id === partida.jogador2Id) ||
+                                            (c.jogador1Id === partida.jogador2Id && c.jogador2Id === partida.jogador1Id)
+                                        );
+                                    });
+
+                                    if (potEncontrada) {
+                                        rotuloFaseMM = (typeof obterRotuloFaseMataMataSaaS === 'function') ? obterRotuloFaseMataMataSaaS(parseInt(potEncontrada, 10)) : "Mata-Mata";
+                                    }
+                                }
+                            } 
+
+                            if (rotuloFaseMM === "Mata-Mata" && typeof abaFaseAtivaSaaS === 'string' && abaFaseAtivaSaaS.startsWith('MM_')) {
+                                const potSel = parseInt(abaFaseAtivaSaaS.replace('MM_', ''), 10);
+                                if (!isNaN(potSel) && typeof obterRotuloFaseMataMataSaaS === 'function') {
+                                    rotuloFaseMM = obterRotuloFaseMataMataSaaS(potSel);
+                                }
+                            }
+
+                            labelFasePartida = rotuloFaseMM;
+                        } else {
+                            labelFasePartida = 'Mata-Mata';
+                        }
+                    }
+                } else if (modelo === 'barragem') {
+                    labelFasePartida = 'Barragem';
+                } else if (modelo === 'piramide') {
+                    labelFasePartida = 'Pirâmide';
+                }
+
                 let badgeHtml = '';
                 let footerArbHtml = '';
 
@@ -2803,6 +2984,12 @@ function renderizarLeaderboardSaaS() {
                 if (isWO) {
                     htmlSumulas += `
                         <table class="atp-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 <tr>
                                     <td>
@@ -2873,7 +3060,7 @@ function renderizarLeaderboardSaaS() {
                         <table class="atp-table">
                             <thead>
                                 <tr>
-                                    <th></th>
+                                    <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
                                     ${thSetsHtml}
                                     <th class="col-arrow"></th>
                                 </tr>
@@ -2911,7 +3098,7 @@ function renderizarLeaderboardSaaS() {
                         <table class="atp-table">
                             <thead>
                                 <tr>
-                                    <th></th>
+                                    <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
                                     <th class="col-score">1</th>
                                     <th class="col-arrow"></th>
                                 </tr>
@@ -2948,7 +3135,7 @@ function renderizarLeaderboardSaaS() {
             return;
         }
 
-        // 5. Mapeamento de estatísticas e confrontos diretos por atleta a partir da RAM
+        // 5. Mapeamento de estatísticas e confrontos diretos por atleta
         const estatisticas = {};
         const confrontosDiretos = {};
 
@@ -2958,6 +3145,22 @@ function renderizarLeaderboardSaaS() {
 
         Object.values(partidasGlobal).forEach(partida => {
             if (partida.status === 'finalizada' && partida.categoria === chaveTabela) {
+                // 🛑 TRAVA DE SEGURANÇA (MODELO GRUPOS): Ignora jogos do Mata-Mata ao calcular a tabela de grupos na tela
+                if (modelo === 'grupos') {
+                    const dp = partida.dadosPlacar || {};
+                    const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
+                    const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo, 10) || 3;
+
+                    const idx1 = partida.jogador1Id ? listaIDs.indexOf(partida.jogador1Id) : -1;
+                    const idx2 = partida.jogador2Id ? listaIDs.indexOf(partida.jogador2Id) : -1;
+                    const grp1 = idx1 !== -1 ? Math.floor(idx1 / tamanhoGrupo) : -1;
+                    const grp2 = idx2 !== -1 ? Math.floor(idx2 / tamanhoGrupo) : -2;
+
+                    const ehPartidaGrupo = !!tagG || (grp1 !== -1 && grp1 === grp2);
+
+                    if (!ehPartidaGrupo) return;
+                }
+
                 const p1 = partida.jogador1Id;
                 const p2 = partida.jogador2Id;
                 const vitorioso = partida.vencedorId;
@@ -2994,10 +3197,10 @@ function renderizarLeaderboardSaaS() {
             }
         });
 
-        // ========================================================
-        // 🏆 SE O TORNEIO ESTIVER CONCLUÍDO: HALL DE CAMPEÕES (SANFONA)
-        // ========================================================
-        if (torneioConcluido) {
+        // SE O TORNEIO ESTIVER CONCLUÍDO: EXIBE HALL DE CAMPEÕES APENAS NA FASE FINAL / AUTO
+        const exibeHall = torneioConcluido && (abaFaseAtivaSaaS === 'AUTO' || abaFaseAtivaSaaS === 'MM_2' || abaFaseAtivaSaaS === 'FINAL');
+
+        if (exibeHall) {
             let htmlHall = '';
 
             const idCampeao = listaIDs[0];
@@ -3024,7 +3227,7 @@ function renderizarLeaderboardSaaS() {
                     <div style="font-size: 28px; margin-bottom: -4px;">👑</div>
                     <span style="background: #f59e0b; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 10px; display: inline-block;">${txtBadgeCampeao}</span>
                     <div style="font-size: 16px; font-weight: 800; color: #78350f; margin: 4px 0;">${nomeCampeao} ${idCampeao === idLogado ? '(Você)' : ''}</div>
-                    <div style="font-size: 11.5px; color: #92400e; font-weight: 600;">Líder Homologado da Classe ${abaClasseAtivaSaaS}</div>
+                    <div style="font-size: 11.5px; color: #92400e; font-weight: 600;">Campeão do Torneio</div>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -3037,7 +3240,7 @@ function renderizarLeaderboardSaaS() {
                             <span style="font-weight: 800; font-size: 13px; width: 26px; color: #475569;">2º</span>
                             <div>
                                 <strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${nomeVice} ${idVice === idLogado ? '(Você)' : ''}</strong>
-                                <span style="font-size: 11px; color: #64748b;">Vice-Líder da Categoria</span>
+                                <span style="font-size: 11px; color: #64748b;">Vice-Campeão do Torneio</span>
                             </div>
                         </div>
                     </div>
@@ -3066,22 +3269,21 @@ function renderizarLeaderboardSaaS() {
                 `;
 
                 for (let i = 3; i < listaIDs.length; i++) {
-                    const idOutro = listaIDs[i];
-                    const objOutro = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idOutro]) ? jogadoresGlobal[idOutro] : {};
-                    const nomeOutro = capitalizarNome(objOutro.nomeCompleto || objOutro.apelido || 'Atleta');
+					const idOutro = listaIDs[i];
+					const objOutro = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idOutro]) ? jogadoresGlobal[idOutro] : {};
+					const nomeOutro = capitalizarNome(objOutro.nomeCompleto || objOutro.apelido || 'Atleta');
 
-                    htmlHall += `
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-weight: 800; font-size: 13px; width: 26px; color: #64748b;">${i + 1}º</span>
-                                <div>
-                                    <strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${nomeOutro} ${idOutro === idLogado ? '(Você)' : ''}</strong>
-                                    <span style="font-size: 11px; color: #64748b;">Atleta Homologado</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
+					htmlHall += `
+						<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
+							<div style="display: flex; align-items: center; gap: 8px;">
+								<span style="font-weight: 800; font-size: 13px; width: 26px; color: #64748b;">${i + 1}º</span>
+								<div>
+									<strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${nomeOutro} ${idOutro === idLogado ? '(Você)' : ''}</strong>
+								</div>
+							</div>
+						</div>
+					`;
+				}
 
                 htmlHall += `</div>`;
 
@@ -3096,9 +3298,7 @@ function renderizarLeaderboardSaaS() {
             return;
         }
 
-        // ========================================================
-        // 🏆 MODELO 1: PIRÂMIDE (ESCADA DE DESAFIOS)
-        // ========================================================
+        // MODELO 1: PIRÂMIDE
         if (modelo === 'piramide') {
             const idxLogado = listaIDs.indexOf(idLogado);
             const alcanceTipo = configRanking.piramide?.alcanceTipo || 'posicoes';
@@ -3171,9 +3371,7 @@ function renderizarLeaderboardSaaS() {
 
             bodyList.innerHTML = htmlList;
 
-        // ========================================================
-        // 🏆 MODELO 2: BARRAGEM (ORDENAÇÃO POR PONTOS & SALDO)
-        // ========================================================
+        // MODELO 2: BARRAGEM
         } else if (modelo === 'barragem') {
             listaIDs.sort((a, b) => {
                 const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
@@ -3228,9 +3426,7 @@ function renderizarLeaderboardSaaS() {
             htmlTable += `</tbody></table>`;
             bodyList.innerHTML = htmlTable;
 
-        // ========================================================
-        // 🏆 MODELO 3: GRUPOS (OPÇÃO 3 VISUAL - LINHA DUPLA & PÍLULAS)
-        // ========================================================
+        // MODELO 3: GRUPOS
         } else if (modelo === 'grupos') {
             const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo) || 4;
             const classificadosQtd = parseInt(configRanking.grupos?.classificadosGrupo) || 2;
@@ -3242,8 +3438,6 @@ function renderizarLeaderboardSaaS() {
                 </div>
             `;
             let numGrupo = 1;
-
-            const txtStatusTag = (faseAtual === 3) ? "Zona de Classificação" : "Classificado";
 
             for (let i = 0; i < listaIDs.length; i += tamanhoGrupo) {
                 const membrosChave = listaIDs.slice(i, i + tamanhoGrupo);
@@ -3283,6 +3477,9 @@ function renderizarLeaderboardSaaS() {
                     const ehVoce = (idAtleta === idLogado);
                     const isClassificado = posInterna <= classificadosQtd;
 
+                    // 🧠 REGRA DE TAGS: Na Fase 3, grupos com >1 atleta usam "Zona de Classificação". Grupos solo (1 atleta) ou Fase 4+ usam "Classificado".
+                    const tagTexto = (faseAtual === 3 && membrosChave.length > 1) ? "Zona de Classificação" : "Classificado";
+
                     const temEmpatePontos = membrosChave.some(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts && st.pts > 0);
                     let exibeConfronto = false;
                     if (temEmpatePontos) {
@@ -3297,7 +3494,7 @@ function renderizarLeaderboardSaaS() {
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                                 <div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
                                     <b>${posInterna}º</b> ${nomeAtleta} ${ehVoce ? '(Você)' : ''}
-                                    ${isClassificado ? `<span class="badge-classificado">${txtStatusTag}</span>` : ''}
+                                    ${isClassificado ? `<span class="badge-classificado">${tagTexto}</span>` : ''}
                                 </div>
                                 <span style="font-size: 14px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
                             </div>
@@ -3313,8 +3510,170 @@ function renderizarLeaderboardSaaS() {
                 htmlGrupos += `</div>`;
                 numGrupo++;
             }
+            
+			let htmlMataMata = '';
+			
+            if (faseAtual >= 4) {
+                const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) 
+                    ? rankingChavesGlobal[chaveTabela] 
+                    : null;
 
-            bodyList.innerHTML = htmlGrupos;
+                const rodadaAtualBanco = (dadosChaveCat && dadosChaveCat.rodada1) ? dadosChaveCat.rodada1 : [];
+                const tamanhoChaveAtual = (dadosChaveCat && dadosChaveCat.faseAtual) ? parseInt(dadosChaveCat.faseAtual, 10) : (rodadaAtualBanco.length * 2);
+                const totalClassific = (dadosChaveCat && dadosChaveCat.totalClassificados) ? parseInt(dadosChaveCat.totalClassificados, 10) : tamanhoChaveAtual;
+
+                // 🎯 Lê a fase selecionada no dropdown (ex: MM_8 para Quartas, MM_4 para Semi)
+                let potAlvo = tamanhoChaveAtual;
+                if (abaFaseAtivaSaaS && abaFaseAtivaSaaS.startsWith('MM_')) {
+                    potAlvo = parseInt(abaFaseAtivaSaaS.replace('MM_', ''), 10);
+                }
+
+                // Obtém os confrontos da fase escolhida diretamente do banco de dados (leitura 100% passiva)
+				let rodadaExibir = [];
+
+				if (potAlvo === tamanhoChaveAtual && rodadaAtualBanco.length > 0) {
+					// Lê a rodada ativa atual gravada no banco
+					rodadaExibir = rodadaAtualBanco;
+				} else if (dadosChaveCat && dadosChaveCat.historicoRodadas && dadosChaveCat.historicoRodadas[potAlvo]) {
+					// Lê a foto histórica salva no banco para esta fase específica
+					rodadaExibir = dadosChaveCat.historicoRodadas[potAlvo];
+				} else {
+					// Leitura estritamente passiva: se a foto histórica não existir no banco, exibe tela limpa
+					rodadaExibir = [];
+				}
+
+                const rotuloFaseHeader = (typeof obterRotuloFaseMataMataSaaS === 'function') 
+                    ? obterRotuloFaseMataMataSaaS(potAlvo) 
+                    : "Mata-Mata";
+
+                const buscarPartidaGenericaMM = (idA, idB) => {
+                    if (!idA || !idB) return null;
+                    if (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) {
+                        const pFound = Object.values(rankingPartidasGlobal).find(p => {
+                            if (p.categoria !== chaveTabela || p.status !== 'finalizada') return false;
+
+                            // 🛡️ FILTRO PRECISO: Descarte estrito de partidas da Fase de Grupos
+                            const dp = p.dadosPlacar || {};
+                            const ehPartidaDeGrupo = !!(p.tagGrupoRanking || dp.tagGrupoRanking);
+                            if (ehPartidaDeGrupo) return false;
+
+                            return (p.jogador1Id === idA && p.jogador2Id === idB) || (p.jogador1Id === idB && p.jogador2Id === idA);
+                        });
+                        if (pFound) {
+                            return {
+                                vencedorId: pFound.vencedorId,
+                                placarFormatado: pFound.dadosPlacar?.placarFormatado || ''
+                            };
+                        }
+                    }
+                    return null;
+                };
+
+                const buscarNomeMM = (id) => {
+                    if (!id) return 'A definir';
+                    const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
+                    const nomeStr = j.apelido || j.nomeCompleto || 'A definir';
+                    return (id === idLogado) ? `${nomeStr} <span style="font-size: 11px; color: #15803d; font-weight: 800;">(Você)</span>` : nomeStr;
+                };
+
+                let cardsConfrontosHtml = '';
+
+                if (rodadaExibir.length > 0) {
+                    rodadaExibir.forEach((confItem, idx) => {
+                        const p1 = confItem.jogador1Id;
+                        const p2 = confItem.jogador2Id;
+                        const ehBye = confItem.isBye || !p2;
+
+                        // 🌟 CARD VISUAL DE FOLGA / BYE
+                        if (ehBye) {
+                            const name1 = buscarNomeMM(p1);
+                            const ehVoceNoJogo = (idLogado && idLogado === p1);
+                            const styleCard = ehVoceNoJogo
+                                ? 'background: #f0fdf4; border: 1.5px solid #16a34a; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);'
+                                : 'background: #ffffff; border: 1.5px solid #8b5cf6; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);';
+
+                            cardsConfrontosHtml += `
+                                <div style="${styleCard}">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="font-size: 11px; font-weight: 800; color: ${ehVoceNoJogo ? '#15803d' : '#8b5cf6'}; text-transform: uppercase;">⚔️ Jogo ${idx + 1} • Folga (BYE)</div>
+                                        <span style="font-size: 10.5px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 10px; border: 1px solid #86efac;">Classificado(a)</span>
+                                    </div>
+                                    <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; padding: 4px 0;">
+                                        ${name1} <span style="font-size: 11px; color: #64748b; font-weight: 600;">(Avança direto para a próxima fase)</span>
+                                    </div>
+                                </div>
+                            `;
+                            return;
+                        }
+
+                        const partida = buscarPartidaGenericaMM(p1, p2);
+                        const vitoriosoId = partida ? partida.vencedorId : null;
+
+                        let name1 = buscarNomeMM(p1);
+                        let name2 = buscarNomeMM(p2);
+
+                        if (vitoriosoId) {
+                            if (p1 === vitoriosoId) name1 += ' <span style="font-size: 10px; background: #dcfce7; color: #15803d; font-weight: 800; padding: 2px 6px; border-radius: 8px; margin-left: 6px;">✓ Vencedor</span>';
+                            if (p2 === vitoriosoId) name2 += ' <span style="font-size: 10px; background: #dcfce7; color: #15803d; font-weight: 800; padding: 2px 6px; border-radius: 8px; margin-left: 6px;">✓ Vencedor</span>';
+                        }
+
+                        const ehVoceNoJogo = (idLogado && (idLogado === p1 || idLogado === p2));
+                        const styleCard = ehVoceNoJogo
+                            ? 'background: #f0fdf4; border: 1.5px solid #16a34a; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);'
+                            : 'background: #ffffff; border: 1.5px solid #8b5cf6; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);';
+
+                        const headerCard = partida
+                            ? `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><div style="font-size: 11px; font-weight: 800; color: ${ehVoceNoJogo ? '#15803d' : '#8b5cf6'}; text-transform: uppercase;">⚔️ Jogo ${idx + 1}</div><span style="font-size: 10.5px; font-weight: 800; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 10px; border: 1px solid #86efac;">Placar: ${partida.placarFormatado}</span></div>`
+                            : `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><div style="font-size: 11px; font-weight: 800; color: ${ehVoceNoJogo ? '#15803d' : '#8b5cf6'}; text-transform: uppercase;">⚔️ Jogo ${idx + 1}</div></div>`;
+
+                        cardsConfrontosHtml += `
+                            <div style="${styleCard}">
+                                ${headerCard}
+                                <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; padding: 4px 0; border-bottom: 1px dashed #e2e8f0;">
+                                    ${name1}
+                                </div>
+                                <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; padding: 4px 0;">
+                                    ${name2}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    cardsConfrontosHtml = `
+                        <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 16px; text-align: center; color: #64748b; font-size: 13px;">
+                            Aguardando consolidação dos confrontos do Quadro Eliminatório.
+                        </div>
+                    `;
+                }
+
+                htmlMataMata = `
+                    <div class="box-dica-leaderboard">
+                        🌳 <b>Fase 4 - ${rotuloFaseHeader}:</b> Confrontos decisivos do torneio.
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        ${cardsConfrontosHtml}
+                    </div>
+                `;
+            }
+
+            if (faseAtual >= 4) {
+                if (abaFaseAtivaSaaS === 'GRUPOS') {
+                    bodyList.innerHTML = htmlGrupos;
+                } else if (abaFaseAtivaSaaS === 'TODAS') {
+                    const htmlSeparador = `
+                        <div style="display:flex; align-items:center; gap:8px; margin:18px 0 10px 0;">
+                            <span style="font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; white-space:nowrap;">📊 Histórico da Fase de Grupos</span>
+                            <div style="height:1px; background:#e2e8f0; width:100%;"></div>
+                        </div>
+                    `;
+                    bodyList.innerHTML = htmlMataMata + htmlSeparador + htmlGrupos;
+                } else {
+                    bodyList.innerHTML = htmlMataMata;
+                }
+            } else {
+                bodyList.innerHTML = htmlGrupos; 
+            }
         }
 
     } catch (err) {
@@ -3328,7 +3687,7 @@ function renderizarLeaderboardSaaS() {
  * Alterna a expansão/recolhimento dos atletas a partir do 4º lugar no Hall de Campeões
  */
 function toggleSanfonaHallCampeoesSaaS(totalAtletas) {
-    const boxResto = document.getElementById('box-restante-hall');
+    const boxResto = document.getElementById('box-restante-hall'); 
     const btn = document.getElementById('btn-sanfona-hall');
 
     if (!boxResto || !btn) return;
@@ -3459,9 +3818,15 @@ async function processarResultadoPiramideSaaS(reserva, configRanking) {
     if (reserva.quadra) {
         const match = reserva.quadra.match(/\d+/);
         quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
+    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
     }
 
     const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
+
+    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
+
     const payloadPartida = {
         categoria: chaveTabela,
         status: 'finalizada',
@@ -3470,11 +3835,11 @@ async function processarResultadoPiramideSaaS(reserva, configRanking) {
         vencedorId: idVencedor,
         gamesP1: gamesP1,
         gamesP2: gamesP2,
-        dadosPlacar: dadosPlacar,
+        dadosPlacar: dadosPlacarTratados,
         dataHora: Date.now()
     };
     await database.ref(`${raizBanco}/ranking/partidas/${partidaId}`).set(payloadPartida);
-
+	
     // 2. Realiza a troca de posição na escada se o desafiante vencer
     if (idVencedor === idDesafiante) {
         if (mecanicaTroca === 'escada') {
@@ -3535,10 +3900,15 @@ async function processarResultadoBarragemSaaS(reserva, configRanking) {
     if (reserva.quadra) {
         const match = reserva.quadra.match(/\d+/);
         quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
+    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
     }
 
     const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
     const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
+
+    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
 
     const payloadPartida = {
         categoria: chaveTabela,
@@ -3548,12 +3918,12 @@ async function processarResultadoBarragemSaaS(reserva, configRanking) {
         vencedorId: idVencedor,
         gamesP1: gamesP1,
         gamesP2: gamesP2,
-        dadosPlacar: dadosPlacar,
+        dadosPlacar: dadosPlacarTratados,
         dataHora: Date.now()
     };
 
     await database.ref(refPartida).set(payloadPartida);
-
+	
     // 2. Busca o histórico de partidas da categoria e a tabela de inscritos
     const [snapPartidas, snapTabela] = await Promise.all([
         database.ref(`${raizBanco}/ranking/partidas`).once('value'),
@@ -3634,7 +4004,7 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
     const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
 
     const venciCodigo = dadosPlacar.vencedorCodigo;
-    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (vencedorCodigo === 'J2' ? idJ2 : null);
+    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
 
     if (!idVencedor && dadosPlacar.vencedor) {
         idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
@@ -3655,10 +4025,18 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
     if (reserva.quadra) {
         const match = reserva.quadra.match(/\d+/);
         quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
+    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
     }
 
     const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
     const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
+
+    const tagGrupo = reserva.tagGrupoRanking || (dadosPlacar ? dadosPlacar.tagGrupoRanking : null);
+
+    // Clona os dados do placar sem propriedades undefined para não travar a gravação do Firebase
+    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
 
     const payloadPartida = {
         categoria: chaveTabela,
@@ -3668,9 +4046,15 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
         vencedorId: idVencedor,
         gamesP1: gamesP1,
         gamesP2: gamesP2,
-        dadosPlacar: dadosPlacar,
+        dadosPlacar: dadosPlacarTratados,
         dataHora: Date.now()
     };
+
+    // Adiciona a tag de grupo apenas se ela de fato existir (Fase de Chaves)
+    if (tagGrupo) {
+        payloadPartida.tagGrupoRanking = tagGrupo;
+        payloadPartida.dadosPlacar.tagGrupoRanking = tagGrupo;
+    }
 
     await database.ref(refPartida).set(payloadPartida);
 
@@ -3694,31 +4078,44 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
     });
 
     Object.values(partidasGlobal).forEach(partida => {
-        if (partida.status === 'finalizada' && partida.categoria === chaveTabela) {
-            const p1 = partida.jogador1Id;
-            const p2 = partida.jogador2Id;
-            const vitorioso = partida.vencedorId;
-            const g1 = parseInt(partida.gamesP1) || 0;
-            const g2 = parseInt(partida.gamesP2) || 0;
+            if (partida.status === 'finalizada' && partida.categoria === chaveTabela) {
+                const dp = partida.dadosPlacar || {};
+                const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
 
-            confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
-            confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
+                const idx1 = partida.jogador1Id ? listaIDs.indexOf(partida.jogador1Id) : -1;
+                const idx2 = partida.jogador2Id ? listaIDs.indexOf(partida.jogador2Id) : -1;
+                const grp1 = idx1 !== -1 ? Math.floor(idx1 / tamanhoGrupo) : -1;
+                const grp2 = idx2 !== -1 ? Math.floor(idx2 / tamanhoGrupo) : -2;
 
-            if (estatisticas[p1]) {
-                estatisticas[p1].j++;
-                estatisticas[p1].sg += (g1 - g2);
-                if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
-                else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+                const ehPartidaGrupo = !!tagG || (grp1 !== -1 && grp1 === grp2);
+
+                // 🛑 TRAVA DE SEGURANÇA: Ignora jogos do Mata-Mata no reprocessamento dos grupos
+                if (!ehPartidaGrupo) return;
+
+                const p1 = partida.jogador1Id;
+                const p2 = partida.jogador2Id;
+                const vitorioso = partida.vencedorId;
+                const g1 = parseInt(partida.gamesP1) || 0;
+                const g2 = parseInt(partida.gamesP2) || 0;
+
+                confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
+                confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
+
+                if (estatisticas[p1]) {
+                    estatisticas[p1].j++;
+                    estatisticas[p1].sg += (g1 - g2);
+                    if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
+                    else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+                }
+
+                if (estatisticas[p2]) {
+                    estatisticas[p2].j++;
+                    estatisticas[p2].sg += (g2 - g1);
+                    if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
+                    else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
+                }
             }
-
-            if (estatisticas[p2]) {
-                estatisticas[p2].j++;
-                estatisticas[p2].sg += (g2 - g1);
-                if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
-                else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
-            }
-        }
-    });
+        });
 
     // 4. Ordenação ISOLADA dentro de cada grupo (Chave)
     const novaListaOrdenada = [];
@@ -3906,6 +4303,7 @@ async function zerarRankingSaaS() {
                 // Expurgo das tabelas operacionais
                 updates['ranking/partidas'] = null;
                 updates['ranking/tabelas'] = null;
+                updates['ranking/chaves'] = null;
                 updates['convites_ranking'] = null;
 
                 caminhosReservasExcluir.forEach(path => { updates[path] = null; });
@@ -4030,8 +4428,48 @@ function renderizarGestaoTemporadaSaaS() {
             btnAcaoFase3.style.display = 'none';
         }
     }
+	
+	// 3.2 DINAMIZAÇÃO ESPECÍFICA DO PAINEL DA FASE 4 (MATA-MATA)
+    const panelFase4 = document.querySelectorAll('#container-fases-gestor .fase-panel')[3];
+    if (panelFase4 && modelo === 'grupos' && faseAtual === 4) {
+        const elBoxAviso4 = panelFase4.children[0];
+        if (elBoxAviso4) {
+            const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+            let maiorTamanhoChave = 2;
+            const chavesList = Object.values(chavesMap);
+            if (chavesList.length > 0) {
+                const tamanhos = chavesList.map(c => parseInt(c.faseAtual || (c.rodada1 ? c.rodada1.length * 2 : 2), 10));
+                maiorTamanhoChave = Math.max(...tamanhos);
+            }
 
-    // 3.2 Oculta o botão duplicado de dentro do painel 5 se o botão fixo do rodapé já estiver ativo
+            const rotuloAtual = (typeof obterRotuloFaseMataMataSaaS === 'function')
+                ? obterRotuloFaseMataMataSaaS(maiorTamanhoChave)
+                : "Mata-Mata"; 
+            
+            const artigoAtual = (maiorTamanhoChave === 2) ? "da" : "das";
+
+            let bulletInstrucao = "";
+            if (maiorTamanhoChave > 2) {
+                const proximoTamanho = maiorTamanhoChave / 2;
+                const rotuloProximo = (typeof obterRotuloFaseMataMataSaaS === 'function')
+                    ? obterRotuloFaseMataMataSaaS(proximoTamanho)
+                    : "Próxima Fase";
+                const artigoProximo = (proximoTamanho === 2) ? "para a" : "para as";
+
+                bulletInstrucao = `• Finalizados os jogos, avance ${artigoProximo} ${rotuloProximo}.`;
+            } else {
+                bulletInstrucao = "• Finalizados os jogos, conclua a temporada para pontuar os atletas.";
+            }
+
+            elBoxAviso4.innerHTML = `
+                <p style="margin: 0 0 4px 0; font-weight: 700; color: #6b21a8;">📍 Fase 4: Quadro Eliminatório (Mata-Mata)</p>
+                <span style="display: block; font-size: 12.5px; color: #7e22ce; line-height: 1.4;">• Confrontos decisivos ${artigoAtual} ${rotuloAtual} em andamento.</span>
+                <span style="display: block; font-size: 12.5px; color: #7e22ce; line-height: 1.4;">${bulletInstrucao}</span>
+            `;
+        }
+    }
+
+    // 3.3 Oculta o botão duplicado de dentro do painel 5 se o botão fixo do rodapé já estiver ativo
     const panelFase5 = document.getElementById('fase-panel-5');
     if (panelFase5) {
         const btnPainelAbrir = panelFase5.querySelector('button[onclick*="reiniciarEsteiraNovoTorneioSaaS"]');
@@ -4102,6 +4540,104 @@ function renderizarGestaoTemporadaSaaS() {
         const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && faseAtual >= 5);
         const exibirZerar = (faseAtual > 1 && !torneioConcluido);
         btnZerar.parentElement.style.display = exibirZerar ? 'block' : 'none';
+    }
+	
+	// Sincroniza o texto e ícone do botão mestre do rodapé
+    if (typeof atualizarBotaoRodapeRankingSaaS === 'function') {
+        atualizarBotaoRodapeRankingSaaS();
+    }
+}
+
+/**
+ * Sincroniza dinamicamente o botão fixo do rodapé (.regras-footer) conforme a aba ativa
+ */
+function atualizarBotaoRodapeRankingSaaS() {
+    const modalConfig = document.getElementById('modal-config-ranking');
+    if (!modalConfig) return;
+
+    const btnFooter = modalConfig.querySelector('.regras-footer button');
+    if (!btnFooter) return;
+
+    // Descobre qual aba está ativa no sanfona-container (0 a 5)
+    const items = modalConfig.querySelectorAll('.sanfona-container .accordion-item');
+    let idxAbaAtiva = 0;
+    items.forEach((item, idx) => {
+        if (item.classList.contains('active')) {
+            idxAbaAtiva = idx;
+        }
+    });
+
+    // Configurações do Ranking no banco
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const modelo = conf.modeloAtivo || "grupos";
+    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+
+    // 1. ABA 5: GESTÃO DA TEMPORADA (INDEX 4)
+    if (idxAbaAtiva === 4) {
+        let textoBotao = '';
+        let corBotao = '#8b5cf6'; // Roxo padrão
+        let acaoOnClick = 'encerrarFase3EAvancarSaaS()';
+
+        if (faseAtual === 1) {
+            textoBotao = '<i class="material-icons">event_available</i> Salvar Calendário e Abrir Inscrições';
+            corBotao = '#16a34a';
+            acaoOnClick = 'salvarCalendarioEAbrirInscricoesSaaS()';
+        } else if (faseAtual === 2) {
+            textoBotao = '<i class="material-icons">lock</i> Encerrar Inscrições e Congelar Chaves';
+            corBotao = '#f59e0b';
+            acaoOnClick = 'encerrarInscricoesECriarChavesSaaS()';
+        } else if (faseAtual === 3) {
+            textoBotao = '<i class="material-icons">alt_route</i> Encerrar Chaves e Gerar Mata-Mata';
+            corBotao = '#f59e0b';
+            acaoOnClick = 'encerrarFase3EAvancarSaaS()';
+        } else if (modelo === 'grupos' && faseAtual === 4) {
+            const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+            const chavesList = Object.values(chavesMap);
+            
+            let maiorTamanhoChave = 2; 
+            if (chavesList.length > 0) {
+                const tamanhos = chavesList.map(c => parseInt(c.faseAtual || (c.rodada1 ? c.rodada1.length * 2 : 2), 10));
+                maiorTamanhoChave = Math.max(...tamanhos);
+            }
+
+            if (maiorTamanhoChave > 2) {
+                const proximaFaseTamanho = maiorTamanhoChave / 2;
+                const rotuloProxima = (typeof obterRotuloFaseMataMataSaaS === 'function')
+                    ? obterRotuloFaseMataMataSaaS(proximaFaseTamanho)
+                    : "Próxima Fase";
+
+                const artigo = (proximaFaseTamanho === 2) ? "para a" : "para as";
+                textoBotao = `<i class="material-icons">east</i> Avançar ${artigo} ${rotuloProxima}`;
+                corBotao = '#8b5cf6';
+            } else {
+                textoBotao = '<i class="material-icons">workspace_premium</i> Concluir Torneio e Somar Pontos no Ranking';
+                corBotao = '#16a34a';
+            }
+        } else if (faseAtual >= 5) {
+            textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
+            corBotao = '#2563eb';
+            acaoOnClick = 'reiniciarEsteiraNovoTorneioSaaS()';
+        } else {
+            textoBotao = 'Salvar Parâmetros do Ranking';
+            corBotao = '#28a745';
+            acaoOnClick = 'salvarConfigRankingSaas()';
+        }
+
+        btnFooter.innerHTML = textoBotao;
+        btnFooter.setAttribute('onclick', acaoOnClick);
+        btnFooter.style.cssText = `background-color: ${corBotao} !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;`;
+		
+    // 2. ABA 6: HISTÓRICO DE TORNEIOS (INDEX 5)
+    } else if (idxAbaAtiva === 5) {
+        btnFooter.innerHTML = '<i class="material-icons">picture_as_pdf</i> Exportar Relatório Geral do Acervo (PDF)';
+        btnFooter.setAttribute('onclick', 'exportarRelatorioHistoricoSaaS()');
+        btnFooter.style.cssText = 'background-color: #8b5cf6 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+
+    // 3. ABAS 1 A 4: PARÂMETROS / TIPO DE TORNEIO / REGRAS / PIX (INDEX 0, 1, 2, 3)
+    } else {
+        btnFooter.innerHTML = 'Salvar Parâmetros do Ranking';
+        btnFooter.setAttribute('onclick', 'salvarConfigRankingSaas()');
+        btnFooter.style.cssText = 'background-color: #28a745 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
     }
 }
 
@@ -4508,7 +5044,7 @@ function encerrarInscricoesECriarChavesSaaS() {
     const fmtData = (str) => str ? str.split('-').reverse().join('/') : '--/--';
     const dataFimFormatada = fmtData(fimInscricoesStr);
 
-    const executarEncerramento = () => {
+    const executarEncerramento = async () => {
         if (navigator.vibrate) navigator.vibrate(40);
 
         const updates = {};
@@ -4533,29 +5069,87 @@ function encerrarInscricoesECriarChavesSaaS() {
             inscritosPorCategoria[chaveTabela].push(idAtleta);
         });
 
-        // 2. Para cada categoria, ordena os atletas usando a Fila Mestre (ranking_geral)
+        // 2. Busca a configuração de ordenação escolhida no disparo dos convites
+        const snapConvitesInfo = await database.ref(`${raizBanco}/convites_ranking`).once('value');
+        const tipoOrdenacao = snapConvitesInfo.exists() ? (snapConvitesInfo.val().tipoOrdenacao || 'herdada') : 'herdada';
+
+        // 3. Para cada categoria, ordena os atletas respeitando a escolha do gestor
         Object.keys(inscritosPorCategoria).forEach(chaveTab => {
             const idsInscritosCat = inscritosPorCategoria[chaveTab];
-            const ordemMestre = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal[chaveTab]) 
-                ? rankingGeralGlobal[chaveTab] 
-                : [];
 
-            idsInscritosCat.sort((a, b) => {
-                let idxA = ordemMestre.indexOf(a);
-                let idxB = ordemMestre.indexOf(b);
-                if (idxA === -1) idxA = 9999;
-                if (idxB === -1) idxB = 9999;
+            if (tipoOrdenacao === 'livre') {
+                // 🟢 Inscrição Livre (Estaca Zero): Ordena puramente por quem aceitou primeiro no app
+                idsInscritosCat.sort((a, b) => {
+                    const dataA = inscritos[a]?.dataAceite || 0;
+                    const dataB = inscritos[b]?.dataAceite || 0;
+                    return dataA - dataB;
+                });
+            } else {
+                // 🟢 Herdar Classificação: Usa a Fila Mestre (ranking_geral) como cabeças de chave
+                const ordemMestre = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal[chaveTab]) 
+                    ? rankingGeralGlobal[chaveTab] 
+                    : [];
 
-                if (idxA !== idxB) return idxA - idxB;
+                idsInscritosCat.sort((a, b) => {
+                    let idxA = ordemMestre.indexOf(a);
+                    let idxB = ordemMestre.indexOf(b);
+                    if (idxA === -1) idxA = 9999;
+                    if (idxB === -1) idxB = 9999;
 
-                // Desempate secundário pela data de aceite do convite
-                const dataA = inscritos[a]?.dataAceite || 0;
-                const dataB = inscritos[b]?.dataAceite || 0;
-                return dataA - dataB;
-            });
+                    if (idxA !== idxB) return idxA - idxB;
 
-            // Grava na tabela do Torneio Atual sem alterar a Fila Mestre
-            updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
+                    // Desempate secundário pela data de aceite do convite
+                    const dataA = inscritos[a]?.dataAceite || 0;
+                    const dataB = inscritos[b]?.dataAceite || 0;
+                    return dataA - dataB;
+                });
+            }
+
+            // 4. Aplica o Algoritmo de Serpentina (Cabeças de Chave + Equilíbrio para N Atletas com Preenchimento Simétrico)
+            const tamanhoGrupoConfig = parseInt(conf.grupos?.tamanhoGrupo, 10) || 3;
+            const totalAtletasCat = idsInscritosCat.length;
+
+            if (totalAtletasCat > 0) {
+                const numGrupos = Math.ceil(totalAtletasCat / tamanhoGrupoConfig);
+                const matrizGrupos = Array.from({ length: numGrupos }, () => []);
+
+                // Distribuição em Serpentina
+                let direcaoInversa = false;
+                let grupoAtual = 0;
+
+                idsInscritosCat.forEach((idAtleta) => {
+                    matrizGrupos[grupoAtual].push(idAtleta);
+
+                    if (!direcaoInversa) {
+                        if (grupoAtual === numGrupos - 1) {
+                            direcaoInversa = true; // Chegou ao último grupo, inverte a direção
+                        } else {
+                            grupoAtual++;
+                        }
+                    } else {
+                        if (grupoAtual === 0) {
+                            direcaoInversa = false; // Chegou ao primeiro grupo, inverte de novo
+                        } else {
+                            grupoAtual--;
+                        }
+                    }
+                });
+
+                // Completa os grupos menores com 'null' no grupo diretamente
+                const listaIDsSemeada = [];
+                matrizGrupos.forEach(grupo => {
+                    while (grupo.length < tamanhoGrupoConfig) {
+                        grupo.push(null);
+                    }
+                    listaIDsSemeada.push(...grupo);
+                });
+
+                // Grava a lista redistribuída e padronizada no banco
+                updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaIDsSemeada;
+            } else {
+                updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
+            }
+			
         });
 
         // Disparo automático de notificação no padrão mestre para todos os inscritos
@@ -4684,8 +5278,10 @@ async function exportarLeaderboardPDFSaaS() {
     let linha3Subtitulo = "";
     let tipoModelo = 'piramide';
     const leaderboardItems = [];
+    const mataMataItems = [];
+    const grupoItems = [];
 
-    // 4. CONSTRUÇÃO DOS DADOS DO RELATÓRIO (BIFURCAÇÃO HISTÓRICO VS. TORNEIO ATUAL)
+    // 4. CONSTRUÇÃO DOS DADOS DO RELATÓRIO
     if (ehHistorico) {
         const cal = edicaoHistoricaFocoSaaS.contrato || {};
         const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio');
@@ -4707,17 +5303,12 @@ async function exportarLeaderboardPDFSaaS() {
             const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
             const nomeStr = limparTextoPdf(capitalizar(j.nomeCompleto || j.apelido || 'Atleta'));
             const pos = `${idx + 1}º`;
-            let sub = 'Atleta Homologado';
-            if (idx === 0) sub = 'Líder Homologado';
-            else if (idx === 1) sub = 'Vice-Líder da Categoria';
+            let sub = '';
+            if (idx === 0) sub = 'Campeão do Torneio';
+            else if (idx === 1) sub = 'Vice-Campeão do Torneio';
             else if (idx === 2) sub = '3ª Posição Final';
 
-            leaderboardItems.push({
-                pos,
-                nome: nomeStr,
-                sub,
-                ehVoce: idAtleta === idLogado
-            });
+            leaderboardItems.push({ pos, nome: nomeStr, sub, ehVoce: idAtleta === idLogado });
         });
     } else {
         const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
@@ -4726,9 +5317,13 @@ async function exportarLeaderboardPDFSaaS() {
 
         const selClasse = document.getElementById('select-leaderboard-classe');
         const selGenero = document.getElementById('select-leaderboard-genero');
+        const selFase = document.getElementById('select-leaderboard-fase');
+
         const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
         const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
-        const categoriaAtivaTxt = limparTextoPdf([txtClasse, txtGenero].filter(Boolean).join(' - '));
+        const txtFase = selFase ? (selFase.options[selFase.selectedIndex]?.text || '') : '';
+
+        const categoriaAtivaTxt = limparTextoPdf([txtClasse, txtGenero, txtFase].filter(Boolean).join(' - '));
 
         linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} - ${categoriaAtivaTxt}` : nomeTorneio;
         
@@ -4736,94 +5331,146 @@ async function exportarLeaderboardPDFSaaS() {
         modeloTxt = limparTextoPdf(modeloTxt);
         linha3Subtitulo = modeloTxt ? `Tabela de Classificação - ${modeloTxt}` : "Tabela de Classificação";
 
-        // 🟢 DETECTA SE A TELA ESTÁ NO MODO "HALL DE CAMPEÕES" (TORNEIO HOMOLOGADO)
-        const isHomologado = txtSub && txtSub.innerText.includes('Hall de Campeões');
+        // EXTRAÇÃO DE DADOS MATA-MATA
+        const cardsMataMataDOM = Array.from(bodyLeaderboard.querySelectorAll('div[style*="border: 1.5px solid"], div[style*="border: 2px solid"]'));
+        
+		if (cardsMataMataDOM.length > 0 && (abaFaseAtivaSaaS === 'MATA_MATA' || abaFaseAtivaSaaS === 'SEMI' || abaFaseAtivaSaaS === 'FINAL' || abaFaseAtivaSaaS === 'TODAS' || abaFaseAtivaSaaS === 'AUTO' || (typeof abaFaseAtivaSaaS === 'string' && abaFaseAtivaSaaS.startsWith('MM_')))) {            cardsMataMataDOM.forEach(card => {
+                const tagEl = card.querySelector('div[style*="text-transform: uppercase"]');
+                const playerRows = Array.from(card.querySelectorAll('div[style*="font-size: 13.5px"], div[style*="font-size: 12px"]'));
 
-        if (isHomologado) {
-            tipoModelo = 'piramide'; // Reutiliza o design de lista limpo para o PDF
-            linha3Subtitulo = "Hall de Campeões [Edição Homologada]";
+                // Extrai o placar se houver
+                let placarTxt = '';
+                const placarSpan = Array.from(card.querySelectorAll('span')).find(s => s.innerText && s.innerText.includes('Placar:'));
+                if (placarSpan) {
+                    placarTxt = limparTextoPdf(placarSpan.innerText.replace('Placar:', '').trim());
+                }
 
-            // Card Ouro (1º Lugar)
-            const cardOuro = bodyLeaderboard.querySelector('div[style*="linear-gradient"]');
-            if (cardOuro) {
-                const nomeDiv = cardOuro.querySelector('div[style*="font-size: 16px"]');
-                const subDiv = cardOuro.querySelector('div[style*="font-size: 11.5px"]');
-                leaderboardItems.push({
-                    pos: "1º",
-                    nome: limparTextoPdf(nomeDiv ? nomeDiv.innerText.replace('(Você)', '').trim() : ''),
-                    sub: limparTextoPdf(subDiv ? subDiv.innerText.trim() : ''),
-                    ehVoce: cardOuro.innerText.includes('(Você)')
-                });
-            }
+                if (tagEl && playerRows.length > 0) {
+                    const extrairAtleta = (rowEl) => {
+                        if (!rowEl) return { nome: '', ehVencedor: false, ehCampeao: false };
+                        const clone = rowEl.cloneNode(true);
+                        const txtFull = clone.innerText || '';
+                        const ehVencedor = txtFull.includes('Vencedor');
+                        const ehCampeao = txtFull.includes('Campeão') || txtFull.includes('Campeao');
 
-            // Demais posições (Cards prateados, bronze e lista)
-            const rowsOutros = Array.from(bodyLeaderboard.querySelectorAll('div[style*="justify-content: space-between"]'));
-            rowsOutros.forEach(row => {
-                const posSpan = row.querySelector('span[style*="width: 26px"]');
-                const nomeStrong = row.querySelector('strong');
-                const subSpan = row.querySelector('span[style*="font-size: 11px"]');
-                
-                if (posSpan && nomeStrong) {
-                    leaderboardItems.push({
-                        pos: limparTextoPdf(posSpan.innerText.trim()),
-                        nome: limparTextoPdf(nomeStrong.innerText.replace('(Você)', '').trim()),
-                        sub: limparTextoPdf(subSpan ? subSpan.innerText.trim() : ''),
-                        ehVoce: row.innerText.includes('(Você)')
+                        // Limpa badges e tags para deixar só o nome limpo do jogador
+                        clone.querySelectorAll('span').forEach(sp => sp.remove());
+                        let nomeLimpo = limparTextoPdf(clone.innerText.replace(/\(Você\)/gi, '').trim());
+
+                        return { nome: nomeLimpo, ehVencedor, ehCampeao };
+                    };
+
+                    const p1 = extrairAtleta(playerRows[0]);
+                    const p2 = extrairAtleta(playerRows[1]);
+
+                    let faseTxt = limparTextoPdf(tagEl.innerText.replace(/[⚔️🏆]/g, '').trim());
+
+                    mataMataItems.push({
+                        fase: faseTxt,
+                        placar: placarTxt,
+                        p1Name: p1.nome,
+                        p1Vencedor: p1.ehVencedor,
+                        p1Campeao: p1.ehCampeao,
+                        p2Name: p2.nome,
+                        p2Vencedor: p2.ehVencedor,
+                        p2Campeao: p2.ehCampeao
                     });
                 }
             });
+        }
 
-        } else {
-            // Lógica original: Extrai os dados se o torneio ainda estiver rodando nas tabelas
-            const rowsPiramide = Array.from(bodyLeaderboard.querySelectorAll('.item-leaderboard-piramide'));
-            const rowsBarragem = Array.from(bodyLeaderboard.querySelectorAll('.tabela-leaderboard-barragem tbody tr'));
-            const cardsGrupos = Array.from(bodyLeaderboard.querySelectorAll('.card-leaderboard-grupo'));
+        // EXTRAÇÃO DE DADOS GRUPOS
+        const cardsGruposDOM = Array.from(bodyLeaderboard.querySelectorAll('.card-leaderboard-grupo'));
+        if (cardsGruposDOM.length > 0 && (abaFaseAtivaSaaS === 'GRUPOS' || abaFaseAtivaSaaS === 'TODAS' || abaFaseAtivaSaaS === 'AUTO')) {
+            cardsGruposDOM.forEach(cardG => {
+                const headerTxt = limparTextoPdf(cardG.querySelector('.header-leaderboard-grupo')?.innerText.replace(/\n/g, ' - ').trim() || 'GRUPO');
+                const membros = Array.from(cardG.querySelectorAll('.item-membro-grupo')).map(mEl => {
+					const posNomeEl = mEl.querySelector('div[style*="font-size: 13px"]');
+					let pos = '', nome = '', pts = '', isClassificado = mEl.classList.contains('classificado');
+					let tagTexto = '';
+					if (posNomeEl) {
+						const clone = posNomeEl.cloneNode(true);
+						const badge = clone.querySelector('.badge-classificado');
+						if (badge) {
+							tagTexto = limparTextoPdf(badge.innerText.trim());
+							badge.remove();
+						}
+						const bTag = clone.querySelector('b');
+						if (bTag) { pos = limparTextoPdf(bTag.innerText); bTag.remove(); }
+						nome = limparTextoPdf(clone.innerText.replace('(Você)', '').trim());
+					}
+					const ptsEl = mEl.querySelector('span[style*="font-size: 14px"]');
+					if (ptsEl) pts = limparTextoPdf(ptsEl.innerText);
 
-            if (rowsBarragem.length > 0) {
-                tipoModelo = 'barragem';
-                rowsBarragem.forEach(tr => {
-                    const tds = Array.from(tr.querySelectorAll('td'));
-                    if (tds.length >= 7) {
-                        leaderboardItems.push({
-                            pos: limparTextoPdf(tds[0].innerText.trim()),
-                            nome: limparTextoPdf(tds[1].innerText.trim()),
-                            j: limparTextoPdf(tds[2].innerText.trim()),
-                            v: limparTextoPdf(tds[3].innerText.trim()),
-                            d: limparTextoPdf(tds[4].innerText.trim()),
-                            sg: limparTextoPdf(tds[5].innerText.trim()),
-                            pts: limparTextoPdf(tds[6].innerText.trim()),
-                            ehVoce: tr.classList.contains('voce') || tr.style.background.includes('f0fdf4')
-                        });
-                    }
-                });
-            } else if (cardsGrupos.length > 0) {
-                tipoModelo = 'grupos';
-                cardsGrupos.forEach(cardG => {
-                    const headerTxt = limparTextoPdf(cardG.querySelector('.header-leaderboard-grupo')?.innerText.replace(/\n/g, ' - ').trim() || 'GRUPO');
-                    const membros = Array.from(cardG.querySelectorAll('.item-membro-grupo')).map(mEl => {
-                        const linha1 = limparTextoPdf(mEl.children[0]?.innerText.trim() || '');
-                        const linha2 = limparTextoPdf(mEl.children[1]?.innerText.trim() || '');
-                        return {
-                            infoAtleta: linha1,
-                            pills: linha2,
-                            isClassificado: mEl.classList.contains('classificado')
-                        };
+					const pills = Array.from(mEl.querySelectorAll('.micro-pill')).map(p => limparTextoPdf(p.innerText)).join(' | ');
+
+					return { pos, nome, pts, pills, isClassificado, tagTexto };
+				});
+                grupoItems.push({ grupoHeader: headerTxt, membros });
+            });
+        }
+
+        // FALLBACK PARA BARRAGEM E PIRÂMIDE
+        const rowsBarragem = Array.from(bodyLeaderboard.querySelectorAll('.tabela-leaderboard-barragem tbody tr'));
+        const rowsPiramide = Array.from(bodyLeaderboard.querySelectorAll('.item-leaderboard-piramide'));
+
+        if (rowsBarragem.length > 0 && mataMataItems.length === 0 && grupoItems.length === 0) {
+            tipoModelo = 'barragem';
+            rowsBarragem.forEach(tr => {
+                const tds = Array.from(tr.querySelectorAll('td'));
+                if (tds.length >= 7) {
+                    leaderboardItems.push({
+                        pos: limparTextoPdf(tds[0].innerText.trim()),
+                        nome: limparTextoPdf(tds[1].innerText.trim()),
+                        j: limparTextoPdf(tds[2].innerText.trim()),
+                        v: limparTextoPdf(tds[3].innerText.trim()),
+                        d: limparTextoPdf(tds[4].innerText.trim()),
+                        sg: limparTextoPdf(tds[5].innerText.trim()),
+                        pts: limparTextoPdf(tds[6].innerText.trim()),
+                        ehVoce: tr.classList.contains('voce') || tr.style.background.includes('f0fdf4')
                     });
-                    leaderboardItems.push({ grupoHeader: headerTxt, membros });
-                });
-            } else {
-                tipoModelo = 'piramide';
-                rowsPiramide.forEach(itemEl => {
-                    const pos = limparTextoPdf(itemEl.querySelector('span[style*="font-weight: 800"]')?.innerText.trim() || '');
-                    const nome = limparTextoPdf(itemEl.querySelector('strong')?.innerText.trim() || '');
-                    const sub = limparTextoPdf(itemEl.querySelector('span[style*="font-size: 11px"]')?.innerText.trim() || '');
-                    leaderboardItems.push({ pos, nome, sub, ehVoce: itemEl.classList.contains('voce') });
-                });
+                }
+            });
+        } else if (rowsPiramide.length > 0 && mataMataItems.length === 0 && grupoItems.length === 0) {
+            tipoModelo = 'piramide';
+            rowsPiramide.forEach(itemEl => {
+                const pos = limparTextoPdf(itemEl.querySelector('span[style*="font-weight: 800"]')?.innerText.trim() || '');
+                const nome = limparTextoPdf(itemEl.querySelector('strong')?.innerText.trim() || '');
+                const sub = limparTextoPdf(itemEl.querySelector('span[style*="font-size: 11px"]')?.innerText.trim() || '');
+                leaderboardItems.push({ pos, nome, sub, ehVoce: itemEl.classList.contains('voce') });
+            });
+        } else if ((bodyLeaderboard.innerText.includes('Líder Homologado') || bodyLeaderboard.innerText.includes('Vice-Líder') || bodyLeaderboard.innerText.includes('Campeão do Torneio') || bodyLeaderboard.innerText.includes('Vice-Campeão') || bodyLeaderboard.innerText.includes('1º LUGAR')) && mataMataItems.length === 0 && grupoItems.length === 0) {
+            tipoModelo = 'piramide';
+
+            // 1. Captura o 1º Lugar (Card Dourado do Pódio)
+            const card1 = bodyLeaderboard.querySelector('div[style*="fffbeb"]') || bodyLeaderboard.querySelector('div[style*="fef3c7"]');
+            if (card1) {
+                const nome1 = limparTextoPdf(card1.querySelector('div[style*="font-size: 16px"]')?.innerText.replace(/\(Você\)/gi, '').trim() || '');
+                const sub1 = limparTextoPdf(card1.querySelector('div[style*="font-size: 11.5px"]')?.innerText.trim() || 'Líder Homologado');
+                const ehVoce1 = card1.innerText.includes('(Você)');
+                if (nome1) leaderboardItems.push({ pos: '1º', nome: nome1, sub: sub1, ehVoce: ehVoce1 });
             }
+
+            // 2. Captura os demais colocados (2º, 3º, 4º...)
+            const outrosCards = Array.from(bodyLeaderboard.querySelectorAll('div[style*="display: flex; align-items: center; justify-content: space-between"]'));
+            outrosCards.forEach(cEl => {
+                const posEl = cEl.querySelector('span[style*="font-weight: 800"]');
+                const nomeEl = cEl.querySelector('strong');
+                const subEl = cEl.querySelector('span[style*="font-size: 11px"]');
+                if (posEl && nomeEl) {
+                    const pos = limparTextoPdf(posEl.innerText.trim());
+                    const nome = limparTextoPdf(nomeEl.innerText.replace(/\(Você\)/gi, '').trim());
+                    const sub = limparTextoPdf(subEl ? subEl.innerText.trim() : '');
+                    const ehVoce = cEl.innerText.includes('(Você)');
+                    if (nome && pos !== '1º') {
+                        leaderboardItems.push({ pos, nome, sub, ehVoce });
+                    }
+                }
+            });
         }
     }
 
-    // 5. DESENHO VETORIAL NO JSPDF (A4: 210mm x 297mm)
+    // 5. DESENHO VETORIAL NO JSPDF (A4)
     const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
     const pageWidth = 210;
     const pageHeight = 297;
@@ -4832,7 +5479,6 @@ async function exportarLeaderboardPDFSaaS() {
 
     let currentY = 15;
 
-    // Cabeçalho Mestre
     const drawHeader = () => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
@@ -4862,7 +5508,6 @@ async function exportarLeaderboardPDFSaaS() {
         currentY += 6;
     };
 
-    // Rodapé Mestre
     const drawFooter = (finalY) => {
         doc.setDrawColor(203, 213, 225);
         doc.setLineWidth(0.2);
@@ -4893,8 +5538,175 @@ async function exportarLeaderboardPDFSaaS() {
 
     drawHeader();
 
-    // RENDERIZAÇÃO CONFORME MODELO
-    if (tipoModelo === 'barragem') {
+    // RENDERIZAÇÃO MATA-MATA (SEMI / FINAL / TODAS)
+    if (mataMataItems.length > 0) {
+        doc.setFillColor(245, 243, 255);
+        doc.setDrawColor(139, 92, 246);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(marginX, currentY, contentWidth, 6.5, 1, 1, "FD");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(139, 92, 246);
+        doc.text("QUADRO ELIMINATÓRIO (MATA-MATA)", marginX + 4, currentY + 4.5);
+        currentY += 9;
+
+        mataMataItems.forEach(item => {
+            const boxH = 17;
+            if (currentY + boxH > pageHeight - 20) { doc.addPage(); currentY = 15; }
+
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(255, 255, 255);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(marginX, currentY, contentWidth, boxH, 2, 2, "FD");
+
+            // Título da Fase (e.g., SEMIFINAL 1)
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.setTextColor(139, 92, 246);
+            doc.text(item.fase, marginX + 4, currentY + 4.5);
+
+            // Placar Badge em Pílula Verde no Canto Superior Direito
+            if (item.placar) {
+                const txtPlacar = `Placar: ${item.placar}`;
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(7.5);
+                const pW = doc.getTextWidth(txtPlacar) + 4;
+                const pX = marginX + contentWidth - 4 - pW;
+
+                doc.setFillColor(220, 252, 231);
+                doc.setDrawColor(134, 239, 172);
+                doc.setLineWidth(0.15);
+                doc.roundedRect(pX, currentY + 1.5, pW, 4.2, 1, 1, "FD");
+
+                doc.setTextColor(22, 163, 74);
+                doc.text(txtPlacar, pX + 2, currentY + 4.4);
+            }
+
+            // Jogador 1
+            let row1Y = currentY + 9.5;
+            doc.setFont("helvetica", item.p1Vencedor || item.p1Campeao ? "bold" : "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(item.p1Name, marginX + 4, row1Y);
+
+            // Pílula Vencedor / Campeão para P1
+            if (item.p1Vencedor || item.p1Campeao) {
+                const nameW = doc.getTextWidth(item.p1Name);
+                const tagTxt = item.p1Campeao ? "Campeão" : "Vencedor";
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(6.5);
+                const tagW = doc.getTextWidth(tagTxt) + 4;
+                const tagX = marginX + 6 + nameW;
+
+                if (item.p1Campeao) {
+                    doc.setFillColor(254, 243, 199);
+                    doc.setDrawColor(252, 211, 77);
+                    doc.setTextColor(180, 83, 9);
+                } else {
+                    doc.setFillColor(220, 252, 231);
+                    doc.setDrawColor(134, 239, 172);
+                    doc.setTextColor(22, 163, 74);
+                }
+                doc.setLineWidth(0.15);
+                doc.roundedRect(tagX, row1Y - 3.2, tagW, 3.8, 0.8, 0.8, "FD");
+                doc.text(tagTxt, tagX + 2, row1Y - 0.5);
+            }
+
+            // Linha divisória sutil entre os dois atletas
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.15);
+            doc.line(marginX + 4, currentY + 11.2, pageWidth - marginX - 4, currentY + 11.2);
+
+            // Jogador 2
+            let row2Y = currentY + 15;
+            doc.setFont("helvetica", item.p2Vencedor || item.p2Campeao ? "bold" : "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(item.p2Name, marginX + 4, row2Y);
+
+            // Pílula Vencedor / Campeão para P2
+            if (item.p2Vencedor || item.p2Campeao) {
+                const nameW2 = doc.getTextWidth(item.p2Name);
+                const tagTxt2 = item.p2Campeao ? "Campeão" : "Vencedor";
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(6.5);
+                const tagW2 = doc.getTextWidth(tagTxt2) + 4;
+                const tagX2 = marginX + 6 + nameW2;
+
+                if (item.p2Campeao) {
+                    doc.setFillColor(254, 243, 199);
+                    doc.setDrawColor(252, 211, 77);
+                    doc.setTextColor(180, 83, 9);
+                } else {
+                    doc.setFillColor(220, 252, 231);
+                    doc.setDrawColor(134, 239, 172);
+                    doc.setTextColor(22, 163, 74);
+                }
+                doc.setLineWidth(0.15);
+                doc.roundedRect(tagX2, row2Y - 3.2, tagW2, 3.8, 0.8, 0.8, "FD");
+                doc.text(tagTxt2, tagX2 + 2, row2Y - 0.5);
+            }
+
+            currentY += boxH + 3;
+        });
+        currentY += 2;
+    }
+
+    // RENDERIZAÇÃO GRUPOS (GRUPOS / TODAS)
+    if (grupoItems.length > 0) {
+        if (mataMataItems.length > 0) {
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.line(marginX, currentY, pageWidth - marginX, currentY);
+            currentY += 5;
+        }
+
+        grupoItems.forEach((grupo) => {
+            const grupoHeight = 8 + (grupo.membros.length * 10);
+            if (currentY + grupoHeight > pageHeight - 20) { doc.addPage(); currentY = 15; }
+
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(203, 213, 225);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(marginX, currentY, contentWidth, 6.5, 1, 1, "FD");
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(grupo.grupoHeader, marginX + 4, currentY + 4.5);
+
+            currentY += 8;
+
+            grupo.membros.forEach((membro) => {
+			doc.setFont("helvetica", "bold");
+			doc.setFontSize(8.5);
+			doc.setTextColor(15, 23, 42);
+			const labelAtleta = `${membro.pos} ${membro.nome}${membro.tagTexto ? `  [${membro.tagTexto}]` : ''}`;
+			doc.text(labelAtleta, marginX + 4, currentY + 4);
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8.5);
+                doc.setTextColor(21, 128, 61);
+                doc.text(membro.pts, marginX + contentWidth - 4, currentY + 4, { align: "right" });
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7.5);
+                doc.setTextColor(100, 116, 139);
+                doc.text(membro.pills, marginX + 4, currentY + 8);
+
+                currentY += 10;
+                doc.setDrawColor(241, 245, 249);
+                doc.setLineWidth(0.15);
+                doc.line(marginX + 2, currentY - 1, pageWidth - marginX - 2, currentY - 1);
+            });
+
+            currentY += 3;
+        });
+    }
+
+    // RENDERIZAÇÃO BARRAGEM
+    if (tipoModelo === 'barragem' && leaderboardItems.length > 0) {
         doc.setFillColor(248, 250, 252);
         doc.rect(marginX, currentY, contentWidth, 6, "F");
         doc.setFont("helvetica", "bold");
@@ -4915,10 +5727,7 @@ async function exportarLeaderboardPDFSaaS() {
         doc.line(marginX, currentY, pageWidth - marginX, currentY);
 
         leaderboardItems.forEach((item) => {
-            if (currentY + 8 > pageHeight - 20) {
-                doc.addPage();
-                currentY = 15;
-            }
+            if (currentY + 8 > pageHeight - 20) { doc.addPage(); currentY = 15; }
 
             if (item.ehVoce) {
                 doc.setFillColor(240, 253, 244);
@@ -4952,71 +5761,70 @@ async function exportarLeaderboardPDFSaaS() {
             doc.setLineWidth(0.15);
             doc.line(marginX, currentY, pageWidth - marginX, currentY);
         });
+    }
 
-    } else if (tipoModelo === 'grupos') {
-        leaderboardItems.forEach((grupo) => {
-            const grupoHeight = 8 + (grupo.membros.length * 10);
-            if (currentY + grupoHeight > pageHeight - 20) {
-                doc.addPage();
-                currentY = 15;
+    // RENDERIZAÇÃO PIRÂMIDE / HALL DE CAMPEÕES
+    if (tipoModelo === 'piramide' && leaderboardItems.length > 0) {
+        leaderboardItems.forEach((item, index) => {
+            if (currentY + 11 > pageHeight - 20) { doc.addPage(); currentY = 15; }
+
+            // Configuração dinâmica de cores por posição no pódio
+            let bgRGB = [255, 255, 255];
+            let borderRGB = [226, 232, 240];
+            let posRGB = [100, 116, 139];
+            let subRGB = [100, 116, 139];
+            let borderWidth = 0.15;
+
+            if (index === 0) {
+                // 1º Lugar (Ouro)
+                bgRGB = [255, 251, 235];
+                borderRGB = [245, 158, 11];
+                posRGB = [180, 83, 9];
+                subRGB = [120, 53, 15];
+                borderWidth = 0.35;
+            } else if (index === 1) {
+                // 2º Lugar (Prata)
+                bgRGB = [241, 245, 249];
+                borderRGB = [203, 213, 225];
+                posRGB = [71, 85, 105];
+                subRGB = [71, 85, 105];
+                borderWidth = 0.25;
+            } else if (index === 2) {
+                // 3º Lugar (Bronze)
+                bgRGB = [255, 247, 237];
+                borderRGB = [254, 215, 170];
+                posRGB = [194, 65, 12];
+                subRGB = [194, 65, 12];
+                borderWidth = 0.25;
+            } else if (item.ehVoce) {
+                bgRGB = [240, 253, 244];
+                borderRGB = [134, 239, 172];
+                posRGB = [21, 128, 61];
             }
 
-            doc.setFillColor(245, 243, 255);
-            doc.setDrawColor(221, 214, 254);
-            doc.setLineWidth(0.2);
-            doc.roundedRect(marginX, currentY, contentWidth, 6.5, 1, 1, "FD");
-
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(8.5);
-            doc.setTextColor(139, 92, 246);
-            doc.text(grupo.grupoHeader, marginX + 4, currentY + 4.5);
-
-            currentY += 8;
-
-            grupo.membros.forEach((membro) => {
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(8.5);
-                doc.setTextColor(15, 23, 42);
-                doc.text(membro.infoAtleta, marginX + 4, currentY + 4);
-
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(7.5);
-                doc.setTextColor(100, 116, 139);
-                doc.text(membro.pills, marginX + 4, currentY + 8);
-
-                currentY += 9.5;
-                doc.setDrawColor(241, 245, 249);
-                doc.setLineWidth(0.15);
-                doc.line(marginX + 2, currentY, pageWidth - marginX - 2, currentY);
-            });
-
-            currentY += 3;
-        });
-
-    } else {
-        leaderboardItems.forEach((item) => {
-            if (currentY + 11 > pageHeight - 20) {
-                doc.addPage();
-                currentY = 15;
-            }
-
-            doc.setDrawColor(203, 213, 225);
-            doc.setFillColor(item.ehVoce ? 240 : 255, item.ehVoce ? 253 : 255, item.ehVoce ? 244 : 255);
-            doc.setLineWidth(item.ehVoce ? 0.3 : 0.15);
+            // Desenha o Card com as cores da posição
+            doc.setFillColor(bgRGB[0], bgRGB[1], bgRGB[2]);
+            doc.setDrawColor(borderRGB[0], borderRGB[1], borderRGB[2]);
+            doc.setLineWidth(borderWidth);
             doc.roundedRect(marginX, currentY, contentWidth, 9, 1.5, 1.5, "FD");
 
+            // Posição Ordinal (1º, 2º, 3º...)
             doc.setFont("helvetica", "bold");
             doc.setFontSize(9);
-            doc.setTextColor(item.ehVoce ? 21 : 100, item.ehVoce ? 128 : 116, item.ehVoce ? 61 : 139);
+            doc.setTextColor(posRGB[0], posRGB[1], posRGB[2]);
             doc.text(item.pos, marginX + 4, currentY + 5.8);
 
+            // Nome do Atleta
             doc.setTextColor(15, 23, 42);
             doc.text(item.nome, marginX + 18, currentY + 5.8);
 
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            doc.text(item.sub, marginX + contentWidth - 4, currentY + 5.8, { align: "right" });
+            // Subtítulo à direita (apenas se houver texto em item.sub)
+            if (item.sub) {
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8);
+                doc.setTextColor(subRGB[0], subRGB[1], subRGB[2]);
+                doc.text(item.sub, marginX + contentWidth - 4, currentY + 5.8, { align: "right" });
+            }
 
             currentY += 11; 
         });
@@ -5036,6 +5844,7 @@ async function exportarLeaderboardPDFSaaS() {
         showToast("Erro ao gerar PDF da classificação.", "error");
     }
 }
+
 
 /**
  * 📲 PONTE NATIVA CAPACITOR / WEB: Compatível com jsPDF e html2pdf
@@ -5462,6 +6271,10 @@ async function exportarSumulasPDFSaaS() {
         }
         badgeCategoria = limparTextoPdf(badgeCategoria);
         
+        // Extração do rótulo da Fase (ex: Grupos - G1, Pirâmide, Barragem)
+        let labelFase = cardEl.querySelector('th[style*="text-align: left"], th')?.innerText.trim() || '';
+        labelFase = limparTextoPdf(labelFase);
+
         const dateMatch = txtFull.match(/\b\d{2}\/\d{2}\/\d{4}\b/);
         const matchDate = dateMatch ? dateMatch[0] : '';
 
@@ -5512,7 +6325,7 @@ async function exportarSumulasPDFSaaS() {
             players.push({ name, isWinner, hasRET, scores });
         });
 
-        return { badgeCategoria, matchDate, statusTag, statusColor, players, noteText };
+        return { badgeCategoria, matchDate, statusTag, statusColor, players, noteText, labelFase };
     });
 
     const totalPartidas = matchesData.length;
@@ -5605,7 +6418,7 @@ async function exportarSumulasPDFSaaS() {
 
     matchesData.forEach((match, index) => {
         const hasNote = Boolean(match.noteText);
-        const cardHeight = hasNote ? 27 : 22; 
+        const cardHeight = hasNote ? 31 : 26; 
         const isLastMatch = (index === matchesData.length - 1);
         const neededSpace = isLastMatch ? (cardHeight + 22) : cardHeight;
 
@@ -5663,8 +6476,19 @@ async function exportarSumulasPDFSaaS() {
         doc.setTextColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
         doc.text(statusTxt, statusX, cardY + 5, { align: "right" });
 
+        // Rótulo da Fase (ex: Grupos - G1) discreto e encostado na linha horizontal
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text(match.labelFase || 'Ranking', cardX + 5, cardY + 10.2);
+
+        // Linha Divisória Superior (Acima dos Jogadores)
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.15);
+        doc.line(cardX + 3, cardY + 11, cardX + contentWidth - 3, cardY + 11);
+
         const p1 = match.players[0] || { name: '--', isWinner: false, hasRET: false, scores: [] };
-        const row1Y = cardY + 11.5;
+        const row1Y = cardY + 15.5;
 
         doc.setFont("helvetica", p1.isWinner ? "bold" : "normal");
         doc.setFontSize(p1.isWinner ? 9.5 : 9);
@@ -5702,10 +6526,10 @@ async function exportarSumulasPDFSaaS() {
 
         doc.setDrawColor(241, 245, 249);
         doc.setLineWidth(0.15);
-        doc.line(cardX + 3, cardY + 13.5, cardX + contentWidth - 3, cardY + 13.5);
+        doc.line(cardX + 3, cardY + 17.5, cardX + contentWidth - 3, cardY + 17.5);
 
         const p2 = match.players[1] || { name: '--', isWinner: false, hasRET: false, scores: [] };
-        const row2Y = cardY + 18;
+        const row2Y = cardY + 22;
 
         doc.setFont("helvetica", p2.isWinner ? "bold" : "normal");
         doc.setFontSize(p2.isWinner ? 9.5 : 9);
@@ -5785,14 +6609,66 @@ async function encerrarFase3EAvancarSaaS() {
     const modelo = conf.modeloAtivo || "grupos";
     const faseAtual = parseInt(conf.faseAtual, 10) || 3;
 
-    // 1. VARREDURA DE SEGURANÇA: Busca partidas de ranking com placar pendente ou contestado
+    // ========================================================
+    // 🛡️ TRAVA 1: VALIDAÇÃO SILENCIOSA DA FASE 4 (MATA-MATA)
+    // ========================================================
+    if (modelo === 'grupos' && faseAtual === 4) {
+        const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+        const partidasMap = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
+
+        for (const chaveCat of Object.keys(chavesMap)) {
+            const chaveInfo = chavesMap[chaveCat] || {};
+            const rodadaAtual = chaveInfo.rodada1 || [];
+
+            if (typeof gerarProximaRodadaMataMataSaaS === 'function') {
+                const checagem = gerarProximaRodadaMataMataSaaS(rodadaAtual, partidasMap, chaveCat);
+                if (!checagem.concluida) {
+                    const tamChave = parseInt(chaveInfo.faseAtual, 10) || 2;
+                    const nomeFaseAtual = (typeof obterRotuloFaseMataMataSaaS === 'function') 
+                        ? obterRotuloFaseMataMataSaaS(tamChave) 
+                        : "fase atual";
+
+                    // 🧮 Conta em tempo real quantas partidas da rodada não possuem vencedor
+                    let totalPendentes = 0;
+                    rodadaAtual.forEach(conf => {
+                        if (conf.isBye || !conf.jogador2Id) return; // Ignora jogos com folga/BYE
+
+                        const partidaSalva = Object.values(partidasMap || {}).find(p => {
+							if (p.categoria !== chaveCat || p.status !== 'finalizada') return false;
+
+							// 🛡️ Ignora jogos da Fase de Grupos para não misturar com o Mata-Mata
+							const dp = p.dadosPlacar || {};
+							if (p.tagGrupoRanking || dp.tagGrupoRanking) return false;
+
+							return (p.jogador1Id === conf.jogador1Id && p.jogador2Id === conf.jogador2Id) ||
+								   (p.jogador1Id === conf.jogador2Id && p.jogador2Id === conf.jogador1Id);
+						});
+
+                        if (!partidaSalva || !partidaSalva.vencedorId) {
+                            totalPendentes++;
+                        }
+                    });
+
+                    // 📝 Monta a frase com concordância verbal e nominal perfeita
+                    const verbo = (totalPendentes === 1) ? "Existe" : "Existem";
+                    const substantivo = (totalPendentes === 1) ? "partida pendente" : "partidas pendentes";
+
+                    showToast(`${verbo} ${totalPendentes} ${substantivo} nas ${nomeFaseAtual}.`, "warning");
+                    return; // Bloqueia e encerra
+                }
+            }
+        }
+    }
+
+    // ========================================================
+    // 🛡️ TRAVA 2: VARREDURA DE RESERVAS PENDENTES / CONTESTADAS
+    // ========================================================
     try {
         const snapReservas = await database.ref(`${raizBanco}/reservas`).once('value');
         const todasReservas = snapReservas.exists() ? snapReservas.val() : {};
         
         const pendentes = [];
         const contestadas = [];
-
         const diasSemana = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
         Object.keys(todasReservas).forEach(quadraKey => {
@@ -5804,7 +6680,6 @@ async function encerrarFase3EAvancarSaaS() {
                 const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
                 if (!ehRanking) return;
 
-                // Ignora o 2º slot de reservas de 2h para não duplicar na lista
                 if (r.borda === undefined && parseInt(r.duracao) === 2) return;
 
                 const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
@@ -5812,8 +6687,6 @@ async function encerrarFase3EAvancarSaaS() {
                 if (stPlacar === 'pendente_validacao' || stPlacar === 'contestado') {
                     const nomeDia = diasSemana[r.dia] || "Dia";
                     const hInicio = String(r.hora).padStart(2, '0') + ":00";
-                    
-                    // 🌟 MÁGICA DO ALINHAMENTO: "baseline" garante alinhamento de texto perfeito e "flex: 1" respeita a margem na quebra de linha
                     const detalheLimpo = `
                         <div style="display: flex; align-items: baseline;">
                             <span style="white-space: nowrap; margin-right: 6px;">${nomeDia} às ${hInicio}:</span>
@@ -5832,48 +6705,19 @@ async function encerrarFase3EAvancarSaaS() {
 
         const totalPendencias = pendentes.length + contestadas.length;
 
-        // 🛑 TRAVA DE BLOQUEIO: Se houver súmulas pendentes/contestadas, monta os painéis dinâmicos
         if (totalPendencias > 0) {
-            let textoSubtitulo = "";
-            let textoAvisoRodape = "";
-            
-            if (pendentes.length > 0 && contestadas.length === 0) {
-                textoSubtitulo = pendentes.length === 1 
-                    ? "Foi localizada <b>1 partida</b> com placar aguardando validação." 
-                    : `Foram localizadas <b>${pendentes.length} partidas</b> com placar aguardando validação.`;
-                
-                textoAvisoRodape = pendentes.length === 1 
-                    ? "Valide este placar antes de homologar a temporada."
-                    : "Valide estes placares antes de homologar a temporada.";
-                    
-            } else if (contestadas.length > 0 && pendentes.length === 0) {
-                textoSubtitulo = contestadas.length === 1 
-                    ? "Foi localizada <b>1 partida</b> aguardando arbitragem." 
-                    : `Foram localizadas <b>${contestadas.length} partidas</b> aguardando arbitragem.`;
-                    
-                textoAvisoRodape = contestadas.length === 1 
-                    ? "Arbitre este placar antes de homologar a temporada."
-                    : "Arbitre estes placares antes de homologar a temporada.";
-                    
-            } else {
-                textoSubtitulo = `Foram localizadas <b>${totalPendencias} partidas</b>: ${pendentes.length} aguardando validação e ${contestadas.length} em arbitragem.`;
-                textoAvisoRodape = "Valide ou arbitre estes placares antes de homologar a temporada.";
-            }
-
+            let textoSubtitulo = `Foram localizadas <b>${totalPendencias} partidas</b> com pendências de súmula/arbitragem.`;
             let fieldsetsHtml = "";
 
             if (pendentes.length > 0) {
                 let listHtml = "";
                 pendentes.forEach(p => {
-                    // O <li> também passa a usar baseline para alinhar o "•" perfeitamente
                     listHtml += `<li class="prompt-saas-item" style="display: flex; align-items: baseline; margin-bottom: 6px;"><span class="prompt-saas-bullet" style="margin-right: 6px;">•</span> <div style="flex: 1;">${p}</div></li>`;
                 });
                 fieldsetsHtml += `
                     <fieldset class="prompt-saas-fieldset" style="margin-bottom: 12px;">
                         <legend class="prompt-saas-legend">SÚMULAS PENDENTES</legend>
-                        <ul class="prompt-saas-list" style="padding: 0; margin: 0; list-style: none;">
-                            ${listHtml}
-                        </ul>
+                        <ul class="prompt-saas-list" style="padding: 0; margin: 0; list-style: none;">${listHtml}</ul>
                     </fieldset>
                 `;
             }
@@ -5886,32 +6730,22 @@ async function encerrarFase3EAvancarSaaS() {
                 fieldsetsHtml += `
                     <fieldset class="prompt-saas-fieldset" style="border-color: #fecaca; margin-bottom: 12px;">
                         <legend class="prompt-saas-legend" style="color: #dc2626;">SÚMULAS CONTESTADAS</legend>
-                        <ul class="prompt-saas-list" style="padding: 0; margin: 0; list-style: none;">
-                            ${listHtml}
-                        </ul>
+                        <ul class="prompt-saas-list" style="padding: 0; margin: 0; list-style: none;">${listHtml}</ul>
                     </fieldset>
                 `;
             }
 
             const htmlBloqueio = `
                 <div class="prompt-saas-container">
-                    <p style="margin: 0 0 12px 0; font-size: 13.5px; color: #475569; line-height: 1.5;">
-                        ${textoSubtitulo}
-                    </p>
-
+                    <p style="margin: 0 0 12px 0; font-size: 13.5px; color: #475569; line-height: 1.5;">${textoSubtitulo}</p>
                     ${fieldsetsHtml}
-
                     <p class="prompt-saas-warning" style="color: #dc2626; font-weight: 700; margin-top: 12px; text-align: center;">
-                        ${textoAvisoRodape}
+                        Valide ou arbitre estes placares antes de prosseguir.
                     </p>
                 </div>
             `;
 
-            showPrompt("Súmulas Pendentes", htmlBloqueio, () => {
-                // Clique em Entendi / Fechar
-            });
-            
-            // Oculta o botão de confirmação para agir apenas como um aviso/bloqueio
+            showPrompt("Súmulas Pendentes", htmlBloqueio, () => {});
             const btnConfirm = document.getElementById('btnPromptConfirm');
             if (btnConfirm) btnConfirm.style.display = 'none';
             return;
@@ -5921,35 +6755,150 @@ async function encerrarFase3EAvancarSaaS() {
         console.error("❌ Erro ao auditar reservas pendentes antes de encerrar:", err);
     }
 
-    // 2. FLUXO NORMAL DE ENCERRAMENTO (Se não houver pendências)
-    const hojeStr = new Date().toISOString().split('T')[0];
-    const fimTorneioStr = cal.fimTorneio || "";
-    const fmtData = (str) => str ? str.split('-').reverse().join('/') : '--/--';
-    const dataFimFormatada = fmtData(fimTorneioStr);
-
-    const titulosPrompt = {
-        piramide: "Encerrar Pirâmide e Homologar Posições",
-        barragem: "Encerrar Barragem e Consolidar Ranking",
-        grupos: faseAtual === 3 ? "Avançar para o Mata-Mata" : "Encerrar Torneio e Homologar Campeões"
-    };
-
-    const msgsPrompt = {
-        piramide: "Deseja encerrar o ciclo de desafios da Pirâmide, atualizar o Ranking Geral e arquivar esta edição no Histórico?",
-        barragem: "Deseja encerrar a disputa por pontos corridos, atualizar o Ranking Geral e arquivar esta edição no Histórico?",
-        grupos: faseAtual === 3 
-            ? "Deseja consolidar a classificação atual das chaves e avançar para o Mata-Mata?" 
-            : "Deseja encerrar a fase final, atualizar o Ranking Geral e arquivar esta edição no Histórico?"
-    };
-
+    // ========================================================
+    // 🚀 EXECUTOR DE TRANSIÇÃO E AVANÇO
+    // ========================================================
     const executarEncerramentoFase3 = async () => {
         if (navigator.vibrate) navigator.vibrate(40);
 
-        const novaFase = (modelo === "grupos" && faseAtual === 3) ? 4 : (modelo === "grupos" ? 5 : 4);
-        const eHomologacaoFinal = (novaFase === 5 || (modelo !== "grupos" && novaFase === 4));
+        let novaFase = (modelo === "grupos" && faseAtual === 3) ? 4 : (modelo === "grupos" ? 5 : 4);
+        let eHomologacaoFinal = (novaFase === 5 || (modelo !== "grupos" && novaFase === 4));
 
         try {
             const updates = {};
-            updates[`${raizBanco}/config/ranking/faseAtual`] = novaFase;
+            
+            // TRANSIÇÃO DA FASE 3 (GRUPOS) PARA FASE 4 (MATA-MATA)
+            if (modelo === 'grupos' && faseAtual === 3) {
+                const [snapTabelas, snapPartidas] = await Promise.all([
+                    database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
+                    database.ref(`${raizBanco}/ranking/partidas`).once('value')
+                ]);
+
+                const tabelasMap = snapTabelas.exists() ? snapTabelas.val() : {};
+                const partidasMap = snapPartidas.exists() ? snapPartidas.val() : {};
+
+                const tamanhoGrupo = parseInt(conf.grupos?.tamanhoGrupo, 10) || 3;
+                const classificadosQtd = parseInt(conf.grupos?.classificadosGrupo, 10) || 2;
+                const criterioDesempate = conf.grupos?.criterioDesempate || 'games_confronto_sorteio';
+                const ptsVit = parseInt(conf.grupos?.pontosVitoria, 10) || 3;
+                const ptsDer = parseInt(conf.grupos?.pontosDerrota, 10) || 1;
+
+                Object.keys(tabelasMap).forEach(chaveCat => {
+                    const idsArray = tabelasMap[chaveCat] || [];
+                    if (!Array.isArray(idsArray) || idsArray.length === 0) return;
+
+                    const estatisticas = {};
+                    const confrontosDiretos = {};
+                    idsArray.forEach(id => { estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 }; });
+
+                    Object.values(partidasMap).forEach(partida => {
+                        if (partida.status === 'finalizada' && partida.categoria === chaveCat) {
+                            const p1 = partida.jogador1Id;
+                            const p2 = partida.jogador2Id;
+                            const vitorioso = partida.vencedorId;
+                            const g1 = parseInt(partida.gamesP1) || 0;
+                            const g2 = parseInt(partida.gamesP2) || 0;
+
+                            confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
+                            confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
+
+                            if (estatisticas[p1]) {
+                                estatisticas[p1].j++;
+                                estatisticas[p1].sg += (g1 - g2);
+                                if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
+                                else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+                            }
+                            if (estatisticas[p2]) {
+                                estatisticas[p2].j++;
+                                estatisticas[p2].sg += (g2 - g1);
+                                if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
+                                else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
+                            }
+                        }
+                    });
+
+                    const classificadosMataMata = [];
+                    for (let i = 0; i < idsArray.length; i += tamanhoGrupo) {
+                        const membrosChave = idsArray.slice(i, i + tamanhoGrupo);
+                        membrosChave.sort((a, b) => {
+                            const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+                            const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+                            if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+                            if (criterioDesempate === 'confronto_games') {
+                                const vDir = confrontosDiretos[`${a}_vs_${b}`];
+                                if (vDir) return vDir === a ? -1 : 1;
+                                if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                            } else {
+                                if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                                const vDir = confrontosDiretos[`${a}_vs_${b}`];
+                                if (vDir) return vDir === a ? -1 : 1;
+                            }
+                            return stB.v - stA.v;
+                        });
+                        classificadosMataMata.push(...membrosChave.slice(0, classificadosQtd));
+                    }
+
+                    const resultadoMM = gerarCruzamentosMataMataSaaS(classificadosMataMata, classificadosQtd);
+
+                    updates[`${raizBanco}/ranking/chaves/${chaveCat}`] = {
+                        totalClassificados: resultadoMM.totalClassificados,
+                        faseAtual: resultadoMM.faseAtual,
+                        rodada1: resultadoMM.rodada1
+                    };
+                });
+                
+                updates[`${raizBanco}/config/ranking/faseAtual`] = 4;
+            } 
+            // PROGRESSÃO INTERNA DO MATA-MATA (FASE 4)
+            else if (modelo === 'grupos' && faseAtual === 4) {
+                const [snapChaves, snapPartidas] = await Promise.all([
+                    database.ref(`${raizBanco}/ranking/chaves`).once('value'),
+                    database.ref(`${raizBanco}/ranking/partidas`).once('value')
+                ]);
+
+                const chavesMap = snapChaves.exists() ? snapChaves.val() : {};
+                const partidasMap = snapPartidas.exists() ? snapPartidas.val() : {};
+
+                let temProximaRodada = false;
+
+                for (const chaveCat of Object.keys(chavesMap)) {
+                    const chaveInfo = chavesMap[chaveCat] || {};
+                    const rodadaAtual = chaveInfo.rodada1 || [];
+
+                    const res = gerarProximaRodadaMataMataSaaS(rodadaAtual, partidasMap, chaveCat);
+
+                    if (!res.concluida) {
+                        showToast(res.motivo || "Existem partidas pendentes no Mata-Mata.", "warning");
+                        return;
+                    }
+
+                    if (rodadaAtual.length > 1) {
+                        temProximaRodada = true;
+						
+						// Preserva o histórico das rodadas anteriores no banco
+						const historico = chaveInfo.historicoRodadas || {};
+						const faseAnteriorNum = parseInt(chaveInfo.faseAtual, 10) || (rodadaAtual.length * 2);
+						historico[faseAnteriorNum] = rodadaAtual;
+						
+                        updates[`${raizBanco}/ranking/chaves/${chaveCat}`] = {
+                            totalClassificados: chaveInfo.totalClassificados || 0,
+                            faseAtual: res.faseAtual,
+                            rodada1: res.rodada1,
+                            historicoRodadas: historico
+                        };
+                    }
+                }
+
+                if (temProximaRodada) {
+                    novaFase = 4;
+                    eHomologacaoFinal = false;
+                    updates[`${raizBanco}/config/ranking/faseAtual`] = 4;
+                } else {
+                    novaFase = 5;
+                    eHomologacaoFinal = true;
+                    updates[`${raizBanco}/config/ranking/faseAtual`] = 5;
+                }
+            }
 
             if (eHomologacaoFinal) {
                 const edicaoId = `${new Date().getFullYear()}_${(cal.nomeTorneio || 'Torneio').replace(/\s+/g, '_')}`;
@@ -5962,27 +6911,27 @@ async function encerrarFase3EAvancarSaaS() {
                 ]);
 
                 const tabelasTorneio = snapTabelasTorneio.exists() ? snapTabelasTorneio.val() : {};
-                const rankingGeralAtual = snapRankingGeral.exists() ? snapRankingGeral.val() : {};
                 const partidasTorneio = snapPartidas.exists() ? snapPartidas.val() : {};
                 const pontosGeralAtual = snapPontosGeral.exists() ? snapPontosGeral.val() : {};
 
-                // 🏆 TABELA DE PONTOS DA TEMPORADA (Padrão CBT / ATP)
-                const TABELA_PONTOS_SaaS = {
-                    0: 250, // 1º Lugar (Campeão)
-                    1: 180, // 2º Lugar (Vice)
-                    2: 120, // 3º Lugar
-                    3: 60   // 4º Lugar
-                };
-                const PONTOS_PARTICIPACAO_DEFAULT = 20; // 5º Lugar em diante
+                const TABELA_PONTOS_SaaS = { 0: 250, 1: 180, 2: 120, 3: 60 };
+                const PONTOS_PARTICIPACAO_DEFAULT = 20;
 
-                // 1. Atualização do Ranking Geral por Pontuação Acumulada
+                const chavesMapGlobal = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+
                 Object.keys(tabelasTorneio).forEach(chaveCat => {
-                    const classificacaoTorneio = tabelasTorneio[chaveCat] || [];
+                    let classificacaoTorneio = tabelasTorneio[chaveCat] || [];
                     if (!Array.isArray(classificacaoTorneio) || classificacaoTorneio.length === 0) return;
+
+                    // Se for modelo de Grupos, recalcula a classificação final com base nos resultados do Mata-Mata
+                    if (modelo === 'grupos') {
+                        classificacaoTorneio = obterClassificacaoFinalGruposMataMataSaaS(chaveCat, classificacaoTorneio, chavesMapGlobal, partidasTorneio);
+                        updates[`${raizBanco}/ranking/tabelas/${chaveCat}`] = classificacaoTorneio;
+                        tabelasTorneio[chaveCat] = classificacaoTorneio; // Atualiza a referência que vai para o histórico
+                    }
 
                     let pontosCat = pontosGeralAtual[chaveCat] || {};
 
-                    // A) Soma os pontos conquistados na edição ao saldo do atleta
                     classificacaoTorneio.forEach((idAtleta, posicaoIdx) => {
                         const pontosGanhos = TABELA_PONTOS_SaaS[posicaoIdx] !== undefined 
                             ? TABELA_PONTOS_SaaS[posicaoIdx] 
@@ -5992,21 +6941,13 @@ async function encerrarFase3EAvancarSaaS() {
                         pontosCat[idAtleta] = pontosAtuais + pontosGanhos;
                     });
 
-                    // Grava os novos saldos no banco
                     updates[`${raizBanco}/ranking/pontos_geral/${chaveCat}`] = pontosCat;
 
-                    // B) Reordena o Ranking Geral por total de pontos acumulados (Decrescente)
                     const todosAtletasCat = Object.keys(pontosCat);
-                    todosAtletasCat.sort((a, b) => {
-                        const ptsA = parseInt(pontosCat[a], 10) || 0;
-                        const ptsB = parseInt(pontosCat[b], 10) || 0;
-                        return ptsB - ptsA; // Maior pontuação fica no topo
-                    });
+                    todosAtletasCat.sort((a, b) => (parseInt(pontosCat[b], 10) || 0) - (parseInt(pontosCat[a], 10) || 0));
 
-                    // Grava a nova Fila Mestre do clube
                     updates[`${raizBanco}/ranking/ranking_geral/${chaveCat}`] = todosAtletasCat;
 
-                    // 2. Gravação do Pódio no Hall de Campeões
                     updates[`${raizBanco}/hall_de_campeoes/${edicaoId}/${chaveCat}`] = {
                         campeao: classificacaoTorneio[0] || null,
                         vice: classificacaoTorneio[1] || null,
@@ -6014,7 +6955,6 @@ async function encerrarFase3EAvancarSaaS() {
                     };
                 });
 
-                // 3. Snapshot Histórico Permanente da Edição
                 updates[`${raizBanco}/historico_torneios/${edicaoId}`] = {
                     dataHomologacao: Date.now(),
                     modelo: modelo,
@@ -6026,7 +6966,10 @@ async function encerrarFase3EAvancarSaaS() {
 
             await database.ref().update(updates);
 
-            showToast("Torneio homologado e arquivado com sucesso no Histórico!", "success");
+            const msgSucesso = eHomologacaoFinal 
+                ? "Torneio homologado e arquivado com sucesso no Histórico!" 
+                : "Rodada avançada com sucesso!";
+            showToast(msgSucesso, "success");
 
             if (typeof renderizarGestaoTemporadaSaaS === "function") {
                 renderizarGestaoTemporadaSaaS();
@@ -6037,29 +6980,48 @@ async function encerrarFase3EAvancarSaaS() {
         }
     };
 
-    // Garante que o botão de confirmação volte a aparecer nos prompts normais
+    // Restaurador do botão do prompt
     const btnConfirm = document.getElementById('btnPromptConfirm');
     if (btnConfirm) btnConfirm.style.display = '';
 
-    if (fimTorneioStr && hojeStr < fimTorneioStr) {
-        showPrompt("Encerrar Torneio Antecipadamente", `
-            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
-                <p style="margin: 0 0 10px 0;">⚠️ Término oficial previsto para <b>${dataFimFormatada}</b>.</p>
-                <p style="margin: 0; font-size: 13px; color: #64748b;">Deseja encerrar e arquivar os resultados agora?</p>
-            </div>
-        `, () => {
-            executarEncerramentoFase3();
-        });
-    } else {
-        showPrompt(titulosPrompt[modelo] || "Encerrar Fase", `
-            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
-                <p style="margin: 0;">${msgsPrompt[modelo] || msgsPrompt.grupos}</p>
-            </div>
-        `, () => {
-            executarEncerramentoFase3();
-        });
+    // ========================================================
+    // 💬 TÍTULOS E MENSAGENS PERSONALIZADAS DA CONFIRMAÇÃO
+    // ========================================================
+    let tituloPrompt = "Avançar Fase";
+    let msgPrompt = "Deseja avançar para a próxima fase?";
+
+    if (modelo === 'grupos' && faseAtual === 4) {
+        const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+        let maiorTamanhoChave = 2;
+        const chavesList = Object.values(chavesMap);
+        if (chavesList.length > 0) {
+            const tamanhos = chavesList.map(c => parseInt(c.faseAtual || (c.rodada1 ? c.rodada1.length * 2 : 2), 10));
+            maiorTamanhoChave = Math.max(...tamanhos);
+        }
+
+        if (maiorTamanhoChave > 2) {
+            const proximaTamanho = maiorTamanhoChave / 2;
+            const rotuloProxima = (typeof obterRotuloFaseMataMataSaaS === 'function')
+                ? obterRotuloFaseMataMataSaaS(proximaTamanho)
+                : "Próxima Fase";
+            const artigo = (proximaTamanho === 2) ? "para a" : "para as";
+            
+            tituloPrompt = `Avançar ${artigo} ${rotuloProxima}`;
+            msgPrompt = `Todas as partidas da rodada atual foram concluídas. Deseja consolidar os vencedores e avançar ${artigo} <b>${rotuloProxima}</b>?`;
+        } else {
+            tituloPrompt = "Concluir e Homologar Torneio";
+            msgPrompt = "A Grande Final foi concluída! Deseja encerrar o torneio, creditar a pontuação no Ranking Geral e arquivar esta edição no Histórico?";
+        }
+    } else if (faseAtual === 3) {
+        tituloPrompt = "Encerrar Chaves e Gerar Mata-Mata";
+        msgPrompt = "Deseja consolidar a classificação da Fase de Grupos e gerar os confrontos do Mata-Mata?";
     }
+
+    showPrompt(tituloPrompt, `<div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;"><p style="margin: 0;">${msgPrompt}</p></div>`, () => {
+        executarEncerramentoFase3();
+    });
 }
+
 
 /* ======================================================== */
 /* 10.4 AÇÕES DA FASE CONCLUÍDA E HOMOLOGAÇÃO (FASE 4)      */
@@ -6088,19 +7050,20 @@ function reiniciarEsteiraNovoTorneioSaaS() {
 
     const htmlPrompt = `
         <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
-            <p style="margin: 0 0 10px 0;">🚀 <b>Abrir Novo Torneio / Nova Temporada</b></p>
+            <p style="margin: 0 0 10px 0;">🏆 <b>Criar Novo Torneio</b></p>
             <p style="margin: 0; font-size: 13px; color: #64748b;">
-                Deseja reiniciar a esteira para a <b>Fase 1 (Calendário)</b>? Os dados do torneio encerrado estão salvos no Histórico e no Ranking Geral.
+                Deseja iniciar a criação de um novo torneio? Os dados e resultados do torneio concluído já estão salvos em seu <b>Histórico</b> e no <b>Ranking Geral</b>.
             </p>
         </div>
     `;
 
-    showPrompt("Abrir Nova Temporada", htmlPrompt, () => {
+    showPrompt("Criar Novo Torneio", htmlPrompt, () => {
         if (navigator.vibrate) navigator.vibrate(40);
 
-        // Expurgo Atômico de Nós Operacionais da edição anterior
+        // Expurgo Atômico de Nós Operacionais da edição anterior para abrir espaço ao novo torneio
         const updates = {};
         updates[`${raizBanco}/config/ranking/faseAtual`] = 1;
+        updates[`${raizBanco}/config/ranking/calendario`] = null;
         updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
         updates[`${raizBanco}/convites_ranking`] = null;
         updates[`${raizBanco}/ranking/tabelas`] = null;
@@ -6108,7 +7071,10 @@ function reiniciarEsteiraNovoTorneioSaaS() {
 
         database.ref().update(updates)
         .then(() => {
-            showToast("Esteira reiniciada e limpa para a nova temporada!", "success");
+            if (typeof limparFormularioFase1SaaS === "function") {
+                limparFormularioFase1SaaS();
+            }
+            showToast("Módulo pronto para o novo torneio!", "success");
             if (typeof renderizarGestaoTemporadaSaaS === "function") {
                 renderizarGestaoTemporadaSaaS();
             }
@@ -6424,7 +7390,7 @@ function renderizarHTMLPodioAcervoSaaS() {
             <div style="font-size: 28px; margin-bottom: -4px;">👑</div>
             <span style="background: #f59e0b; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 10px; display: inline-block;">${txtBadgeCampeao}</span>
             <div style="font-size: 16px; font-weight: 800; color: #78350f; margin: 4px 0;">${buscarNome(idCampeao)} ${idCampeao === idLogado ? '(Você)' : ''}</div>
-            <div style="font-size: 11.5px; color: #92400e; font-weight: 600;">Líder Homologado (${labelCatFormatada})</div>
+            <div style="font-size: 11.5px; color: #92400e; font-weight: 600;">Campeão do Torneio</div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
     `;
@@ -6437,7 +7403,7 @@ function renderizarHTMLPodioAcervoSaaS() {
                     <span style="font-weight: 800; font-size: 13px; width: 26px; color: #475569;">2º</span>
                     <div>
                         <strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${buscarNome(idVice)} ${idVice === idLogado ? '(Você)' : ''}</strong>
-                        <span style="font-size: 11px; color: #64748b;">Vice-Líder da Categoria</span>
+                        <span style="font-size: 11px; color: #64748b;">Vice-Campeão do Torneio</span>
                     </div>
                 </div>
             </div>
@@ -6471,7 +7437,6 @@ function renderizarHTMLPodioAcervoSaaS() {
                         <span style="font-weight: 800; font-size: 13px; width: 26px; color: #64748b;">${i + 1}º</span>
                         <div>
                             <strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${buscarNome(idOutro)} ${idOutro === idLogado ? '(Você)' : ''}</strong>
-                            <span style="font-size: 11px; color: #64748b;">Atleta Homologado</span>
                         </div>
                     </div>
                 </div>
@@ -7281,3 +8246,274 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+/* ======================================================== */
+/* 13. QUADRO ELIMINATÓRIO (MATA-MATA)                      */
+/* ======================================================== */
+function abrirQuadroMataMataSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    // Força a abertura direta na aba 'Torneio Atual' com o filtro dinâmico de Mata-Mata
+    abaVisaoLeaderboardSaaS = 'TORNEIO';
+    abaFaseAtivaSaaS = 'MATA_MATA';
+
+    if (typeof abrirLeaderboardSaaS === 'function') {
+        abrirLeaderboardSaaS();
+    } else {
+        showToast("Exibindo quadro eliminatório do torneio.", "info");
+    }
+}
+
+/* ======================================================== */
+/* 14. MOTOR V2: FUNÇÕES MATEMÁTICAS E ALGORITMOS DE MATA-MATA */
+/* ======================================================== */
+
+/**
+ * Retorna o rótulo textual correto da fase do Mata-Mata baseado no tamanho da chave eliminatória (fase)
+ * @param {number} fase - Tamanho da chave (2, 4, 8, 16, 32) ou número de jogos
+ * @returns {string} Rótulo oficial da fase
+ */
+function obterRotuloFaseMataMataSaaS(fase) {
+    const numFase = parseInt(fase, 10) || 2;
+
+    switch (numFase) {
+        case 2:
+            return "Grande Final";
+        case 4:
+            return "Semi-Finais";
+        case 8:
+            return "Quartas de Final";
+        case 16:
+            return "Oitavas de Final";
+        case 32:
+            return "16avos de Final";
+        default:
+            if (numFase > 32) return "Fase Eliminatória"; 
+            return "Mata-Mata"; 
+    }
+}
+
+/**
+ * Valida e calcula a menor potência de 2 igual ou superior a um determinado valor
+ * @param {number} valor - Quantidade base
+ * @returns {number} Próxima potência de 2
+ */
+function calcularPotenciaDeDoisSuperiorSaaS(valor) {
+    let pot = 2;
+    while (pot < valor) {
+        pot *= 2;
+    }
+    return pot;
+}
+
+/**
+ * Algoritmo Generativo de Seeding para N Atletas / G Grupos
+ * Garante o cruzamento de 1ºs contra 2ºs lugares e concede BYE (folga) aos 1ºs de melhor campanha.
+ * @param {Array} listaClassificados - Array dos atletas classificados por grupo
+ * @param {number} classificadosPorGrupo - Quantidade de classificados por grupo (Padrão: 2)
+ * @returns {Object} Objeto com totalClassificados, faseAtual (tamanho da chave) e array rodada1 de confrontos
+ */
+function gerarCruzamentosMataMataSaaS(listaClassificados, classificadosPorGrupo = 2) {
+    if (!Array.isArray(listaClassificados) || listaClassificados.length === 0) {
+        return { totalClassificados: 0, faseAtual: 0, rodada1: [] };
+    }
+
+    // 1. Organiza a lista em grupos (seja enviada em sub-arrays ou array achatado)
+    let grupos = [];
+    if (Array.isArray(listaClassificados[0])) {
+        grupos = listaClassificados;
+    } else {
+        const c = parseInt(classificadosPorGrupo) || 2;
+        for (let i = 0; i < listaClassificados.length; i += c) {
+            grupos.push(listaClassificados.slice(i, i + c));
+        }
+    }
+
+    const primeiros = [];
+    const segundos = [];
+
+    grupos.forEach(g => {
+        if (g[0]) primeiros.push(g[0]);
+        if (g[1]) segundos.push(g[1]);
+    });
+
+    const totalClassificados = primeiros.length + segundos.length;
+    if (totalClassificados === 0) {
+        return { totalClassificados: 0, faseAtual: 0, rodada1: [] };
+    }
+
+    // 2. Calcula o tamanho da chave eliminatória (próxima potência de 2: 2, 4, 8, 16, 32...)
+    let tamanhoChave = 2;
+    while (tamanhoChave < totalClassificados) {
+        tamanhoChave *= 2;
+    }
+
+    const qtdByes = tamanhoChave - totalClassificados;
+    const rodada1 = [];
+
+    // 3. Os BYEs (folgas) são concedidos prioritariamente aos 1ºs colocados
+    const primeirosComBye = primeiros.slice(0, qtdByes);
+    const primeirosParaJogar = primeiros.slice(qtdByes);
+
+    const segundosDisponiveis = [...segundos];
+
+    // 4. Cruza os 1ºs colocados restantes com os 2ºs colocados (evitando mesmo grupo)
+    primeirosParaJogar.forEach(p1Id => {
+        let idxAdversario = segundosDisponiveis.findIndex(p2Id => {
+            const mesmoGrupo = grupos.some(g => g.includes(p1Id) && g.includes(p2Id));
+            return !mesmoGrupo;
+        });
+
+        if (idxAdversario === -1 && segundosDisponiveis.length > 0) {
+            idxAdversario = 0;
+        }
+
+        const p2Id = segundosDisponiveis.length > 0 ? segundosDisponiveis.splice(idxAdversario, 1)[0] : null;
+
+        rodada1.push({
+            fase: tamanhoChave,
+            jogador1Id: p1Id,
+            jogador2Id: p2Id
+        });
+    });
+
+    // 5. Registra os 1ºs colocados que ganharam BYE (folga para a próxima rodada)
+    primeirosComBye.forEach(byeId => {
+        rodada1.push({
+            fase: tamanhoChave,
+            jogador1Id: byeId,
+            jogador2Id: null,
+            isBye: true
+        });
+    });
+
+    return {
+        totalClassificados: totalClassificados,
+        faseAtual: tamanhoChave,
+        rodada1: rodada1
+    };
+}
+
+/**
+ * Gera a próxima rodada do Mata-Mata coletando os vencedores da rodada encerrada.
+ * @param {Array} rodadaAnterior - Array de confrontos da rodada recém-encerrada
+ * @param {Object} partidasGlobal - Objeto de partidas na RAM para mapear os vencedores
+ * @param {string} chaveCat - Categoria do torneio (ex: "B_MASCULINO")
+ * @returns {Object} Resultado do processamento com a nova rodada ou o status de pendência
+ */
+function gerarProximaRodadaMataMataSaaS(rodadaAnterior, partidasGlobal, chaveCat) {
+    if (!Array.isArray(rodadaAnterior) || rodadaAnterior.length === 0) {
+        return { concluida: false, motivo: "Rodada inválida ou vazia." };
+    }
+
+    const vencedores = [];
+
+    // 1. Varre os confrontos da rodada anterior e identifica quem avançou
+    rodadaAnterior.forEach(conf => {
+        if (conf.isBye || !conf.jogador2Id) {
+            // Atleta que avançou por BYE (folga)
+            if (conf.jogador1Id) vencedores.push(conf.jogador1Id);
+        } else {
+            // Busca a partida finalizada na memória para pegar o vencedorId
+            const p = Object.values(partidasGlobal || {}).find(partida => {
+                if (partida.categoria !== chaveCat || partida.status !== 'finalizada') return false;
+
+                // 🛡️ TRAVA DE DESCARTE: Ignora partidas da Fase de Grupos no cálculo do Mata-Mata
+                const dp = partida.dadosPlacar || {};
+                if (partida.tagGrupoRanking || dp.tagGrupoRanking) return false;
+
+                return (partida.jogador1Id === conf.jogador1Id && partida.jogador2Id === conf.jogador2Id) ||
+                       (partida.jogador1Id === conf.jogador2Id && partida.jogador2Id === conf.jogador1Id);
+            });
+            if (p && p.vencedorId) {
+                vencedores.push(p.vencedorId);
+            }
+        }
+    });
+
+    // 2. Trava de Segurança: se o número de vencedores for menor que os confrontos, há jogos pendentes
+    if (vencedores.length < rodadaAnterior.length) {
+        return { 
+            concluida: false, 
+            motivo: `Existem partidas pendentes na rodada atual (${vencedores.length} de ${rodadaAnterior.length} concluídas).` 
+        };
+    }
+
+    // 3. Calcula o tamanho da nova fase (metade do tamanho da rodada anterior)
+    const novaFase = rodadaAnterior.length; // Ex: 4 jogos em Quartas -> faseAtual vira 4 (Semi com 4 atletas)
+    const novaRodada = [];
+
+    // 4. Monta os novos pares de confronto sequencialmente (1º x 2º, 3º x 4º)
+    for (let i = 0; i < vencedores.length; i += 2) {
+        novaRodada.push({
+            fase: novaFase,
+            jogador1Id: vencedores[i] || null,
+            jogador2Id: vencedores[i + 1] || null
+        });
+    }
+
+    return {
+        concluida: true,
+        faseAtual: novaFase,
+        rodada1: novaRodada,
+        eFinal: (novaRodada.length === 1) // Indica se a nova rodada é a Grande Final
+    };
+}
+
+/**
+ * Recalcula a classificação final do torneio de Grupos ordenando
+ * Campeão (1º), Vice (2º), Perdedores da Semi (3º/4º) e demais eliminados.
+ */
+function obterClassificacaoFinalGruposMataMataSaaS(chaveCat, ordemGruposOriginal, chavesMap, partidasMap) {
+    const chaveInfo = (chavesMap && chavesMap[chaveCat]) ? chavesMap[chaveCat] : {};
+    const rodadaFinal = chaveInfo.rodada1 || [];
+
+    if (!rodadaFinal || rodadaFinal.length === 0) return ordemGruposOriginal;
+
+    const finalMatch = rodadaFinal[0];
+    if (!finalMatch || !finalMatch.jogador1Id || !finalMatch.jogador2Id) return ordemGruposOriginal;
+
+    // Localiza a partida da Grande Final no histórico
+    const partidaFinal = Object.values(partidasMap || {}).find(p => 
+        p.categoria === chaveCat && p.status === 'finalizada' &&
+        ((p.jogador1Id === finalMatch.jogador1Id && p.jogador2Id === finalMatch.jogador2Id) ||
+         (p.jogador1Id === finalMatch.jogador2Id && p.jogador2Id === finalMatch.jogador1Id))
+    );
+
+    if (!partidaFinal || !partidaFinal.vencedorId) return ordemGruposOriginal;
+
+    const campeaoId = partidaFinal.vencedorId;
+    const viceId = (campeaoId === finalMatch.jogador1Id) ? finalMatch.jogador2Id : finalMatch.jogador1Id;
+
+    const atletasProcessados = new Set([campeaoId, viceId]);
+    const ordemFinal = [campeaoId, viceId];
+
+    // Coleta os eliminados das Semi-Finais
+    const partidasMM = Object.values(partidasMap || {}).filter(p => p.categoria === chaveCat && p.status === 'finalizada');
+    const perdedoresSemis = [];
+
+    partidasMM.forEach(p => {
+        if (p.vencedorId && (p.jogador1Id === campeaoId || p.jogador2Id === campeaoId || p.jogador1Id === viceId || p.jogador2Id === viceId)) {
+            const perdedor = (p.vencedorId === p.jogador1Id) ? p.jogador2Id : p.jogador1Id;
+            if (perdedor && !atletasProcessados.has(perdedor)) {
+                perdedoresSemis.push(perdedor);
+                atletasProcessados.add(perdedor); 
+            }
+        }
+    });
+
+    // Desempata os perdedores das semis usando o critério de melhor campanha dos grupos
+    perdedoresSemis.sort((a, b) => ordemGruposOriginal.indexOf(a) - ordemGruposOriginal.indexOf(b));
+    ordemFinal.push(...perdedoresSemis);
+
+    // Mantém a ordem dos demais participantes eliminados nas fases anteriores
+    ordemGruposOriginal.forEach(id => {
+        if (!atletasProcessados.has(id)) {
+            ordemFinal.push(id);
+            atletasProcessados.add(id);
+        }
+    });
+
+    return ordemFinal;
+}

@@ -17,7 +17,7 @@ const dicNomesRegras = {
     OrganizadorEdicao: "Edição pelo Organizador",
     Quorum1h: "Quórum Mínimo (1 Hora)",
 	Quorum2h: "Quórum Mínimo (2 Horas)",
-    ReservasPorConfirmacao: "Confirmação Obrigatória",
+    ReservasPorConfirmacao: "Confirmação Obrigatória", 
     horasParaExpirar: "Prazo para Confirmação",
     FilaEspera: "Fila de Espera",
     PartidasAbertas: "Partidas Abertas",
@@ -170,7 +170,7 @@ function atualizarBotaoRodapeRankingSaaS() {
                 btnSalvar.style.backgroundColor = '#8b5cf6';
                 btnSalvar.style.borderColor = '#8b5cf6';
                 btnSalvar.textContent = 'Concluir Torneio e Somar Pontos no Ranking';
-                btnSalvar.onclick = () => concluirTorneioEHomologarSaaS();
+                btnSalvar.onclick = () => encerrarFase3EAvancarSaaS();
             }
             break;
 

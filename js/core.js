@@ -16,7 +16,7 @@ const firebaseConfig = {
 
 // Evita inicialização duplicada do Firebase
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);  
+    firebase.initializeApp(firebaseConfig);   
 }
 
 const database = firebase.database();   
@@ -59,6 +59,8 @@ let configQuadrasGlobal = {};    // Espelho local em tempo real da Infraestrutur
 let configRegrasGlobal = {};    // Espelho local em tempo real dos Parâmetros operacionais e controle de uso da arena. 
 
 let rankingPartidasGlobal = {}; // Espelho local das partidas do ranking na memória RAM
+
+let rankingChavesGlobal = {}; // Espelho local da árvore de chaves do Mata-Mata na memória RAM
 
 let saasUsuariosOnlineCache = {}; // Espelho local dos usuários conectados em tempo real (RAM)
 
@@ -689,6 +691,20 @@ function iniciarOuvinteMestreSaaS() {
         }
     });
 	
+	// --- 4.9. OUVINTE MESTRE DE CHAVES DO MATA-MATA (RANKING) ---
+    console.log("🌳 [Core] Sincronizando Chaves do Mata-Mata em tempo real...");
+    database.ref(`${raizBanco}/ranking/chaves`).on('value', (snapshot) => {
+        rankingChavesGlobal = snapshot.val() || {};
+        console.log("✓ [Core] Chaves do Mata-Mata sincronizadas na memória RAM.");
+        
+        const telaQuadras = document.getElementById('tela-visao-quadras');
+        if (telaQuadras && telaQuadras.classList.contains('ativa')) {
+            if (typeof forcarRepinturaPlanilha === 'function') {
+                forcarRepinturaPlanilha();
+            }
+        }
+    });
+	
 	// --- 5. OUVINTE MESTRE DE INFRAESTRUTURA E STATUS DE QUADRAS ---
     console.log("🏟️ [Core] Sincronizando infraestrutura e status das quadras em tempo real...");
     database.ref(`${raizBanco}/config/Quadras`).on('value', (snapshot) => {
@@ -905,15 +921,8 @@ function iniciarOuvinteMestreSaaS() {
 			elTxtSubtítulo.textContent = `${totalOnlineSocio} usuário${totalOnlineSocio !== 1 ? 's' : ''} online agora`;
 		}
 
-		// Portaria de Exclusividade: Controla se os ícones mestres devem aparecer nas telas
-		let ehAdminLogado = false;
-		try {
-			const perfisRaw = localStorage.getItem('jogadorLogadoPerfis') || '{}';
-			const perfisObj = JSON.parse(perfisRaw);
-			ehAdminLogado = perfisObj['Admin'] === true;
-		} catch(e) {}
-
-		const temPermissaoDeVisao = isGestorLogado || ehAdminLogado;
+		// Portaria de Exclusividade: Controla se os ícones mestres devem aparecer nas telas (Restrito ao Gestor/God Mode)
+		const temPermissaoDeVisao = isGestorLogado;
 
 		if (elContainer) {
 			elContainer.style.display = temPermissaoDeVisao ? 'flex' : 'none';

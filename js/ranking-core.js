@@ -1,0 +1,2570 @@
+"use strict";
+
+/**
+ * ========================================================
+ * 🏆 MÓDULO RANKING SAAS - CORE & MOTOR DE SÚMULAS (1/3)
+ * Contém: Permissões, Árbitro Invisível, Validação de
+ * Placar, Arbitragem Neutra e Gravações no Firebase.
+ * ========================================================
+ */
+
+// --------------------------------------------------------
+// MEMÓRIA LOCAL E ESTADOS DA SÚMULA E ARBITRAGEM
+// --------------------------------------------------------
+let partidaRankingEmFoco = null;
+let regrasSessaoRanking = null;
+
+let modoWOAtivoSaaS = false;
+let vencedorWOSaaS = null;
+let nomeVencedorWOSaaS = "";
+let motivoCustomizadoWOSaaS = "";
+
+let modoRETAtivoSaaS = false;
+let desistenteRETSaaS = null; 
+let nomeDesistenteRETSaaS = "";
+let motivoRETSaaS = "";
+let motivoCustomizadoRETSaaS = "";
+
+let eModoArbitroAtivoSumula = false;
+let intervaloTimerValidacao = null;
+
+/* ======================================================== */
+/* 1. GATILHO DA SÚMULA: REGRAS DE VISIBILIDADE E ESTADOS   */
+/* ======================================================== */
+function configurarGatilhoSumulaRanking(reserva) {
+    const btnGatilho = document.getElementById('btn-saas-gatilho-placar');
+    if (!btnGatilho) return;
+
+    const ehRanking = (reserva.tipo === 'ranking' || reserva.isRanking === true || reserva.isRanking === 'true');
+
+    if (!ehRanking || !verificarAcessoSocioRanking(reserva)) {
+        btnGatilho.style.setProperty('display', 'none', 'important');
+        return;
+    }
+
+    const norm = (txt) => (txt || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+
+    const statusPlacar = reserva.statusPlacar || 'sem_placar';
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+    const normNomeLogado = norm(nomeLogado);
+
+    const jogadoresComp = norm(reserva.jogadores_completo || '');
+    const jogadoresAp = norm(reserva.jogadores || '');
+    const souJogador = normNomeLogado !== "" && (jogadoresComp.includes(normNomeLogado) || jogadoresAp.includes(normNomeLogado));
+
+    if (statusPlacar === 'contestado') {
+        if (souJogador) {
+            btnGatilho.style.setProperty('display', 'none', 'important');
+            return;
+        } else if (podeArbitrarRankingSaaS()) {
+            btnGatilho.style.setProperty('display', 'flex', 'important');
+            btnGatilho.classList.remove('btn-bloqueado');
+            const spanTexto = btnGatilho.querySelector('span');
+            const icone = btnGatilho.querySelector('i');
+            if (spanTexto) spanTexto.textContent = "Placar Contestado";
+            if (icone) icone.textContent = "gavel";
+            btnGatilho.onclick = () => abrirModalArbitroPlacar(reserva);
+            return;
+        } else {
+            btnGatilho.style.setProperty('display', 'none', 'important');
+            return;
+        }
+    }
+
+    const horaInicioPartida = converterDataHoraParaTimestamp(reserva.dataCompleta, reserva.hora);
+    const horaAtual = new Date().getTime();
+
+    if (horaAtual < horaInicioPartida && statusPlacar === 'sem_placar') {
+        btnGatilho.style.setProperty('display', 'flex', 'important');
+        btnGatilho.classList.add('btn-bloqueado');
+        const spanTexto = btnGatilho.querySelector('span');
+        const icone = btnGatilho.querySelector('i');
+        if (spanTexto) spanTexto.textContent = "Placar Bloqueado";
+        if (icone) icone.textContent = "lock";
+        btnGatilho.onclick = () => showToast("O placar só destrava no horário do jogo.", "warning");
+        return;
+    }
+
+    btnGatilho.style.setProperty('display', 'flex', 'important');
+    btnGatilho.classList.remove('btn-bloqueado');
+
+    const spanTexto = btnGatilho.querySelector('span');
+    const icone = btnGatilho.querySelector('i');
+    const autorSumula = norm(reserva.dadosPlacar ? reserva.dadosPlacar.autorSumula : "");
+    const souOAutor = (normNomeLogado !== "" && normNomeLogado === autorSumula);
+
+    if (spanTexto) {
+        if (statusPlacar === 'consolidado' || statusPlacar === 'anulado') {
+            spanTexto.textContent = "Ver Placar";
+        } else if (statusPlacar === 'pendente_validacao') {
+            spanTexto.textContent = souOAutor ? "Editar Placar" : "Validar Placar";
+        } else {
+            spanTexto.textContent = "Lançar Placar";
+        }
+    }
+
+    if (icone) {
+        if (statusPlacar === 'consolidado' || statusPlacar === 'anulado') {
+            icone.textContent = "visibility";
+        } else if (statusPlacar === 'pendente_validacao') {
+            icone.textContent = souOAutor ? "edit" : "fact_check";
+        } else {
+            icone.textContent = "emoji_events";
+        }
+    }
+
+    btnGatilho.onclick = (e) => {
+        if (statusPlacar === 'pendente_validacao' && !souOAutor) {
+            abrirModalValidacaoAdversario(reserva);
+        } else {
+            const modoLeitura = (statusPlacar === 'consolidado' || statusPlacar === 'anulado');
+            abrirModalSumulaPrincipal(reserva, modoLeitura);
+        }
+    };
+}
+
+function converterDataHoraParaTimestamp(dataYMD, horaInteira) {
+    if (!dataYMD || horaInteira === undefined) return 0;
+    const partesData = dataYMD.split('-'); 
+    if (partesData.length !== 3) return 0;
+    const dataIso = new Date(partesData[0], partesData[1] - 1, partesData[2], horaInteira, 0, 0);
+    return dataIso.getTime();
+}
+
+function podeArbitrarRankingSaaS() {
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.permiteArbitrar) 
+                 ? configRegrasGlobal.ranking.permiteArbitrar 
+                 : {};
+
+    if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+        return conf.Gestor === true;
+    }
+
+    let perfisObj = {};
+    try { perfisObj = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+
+    if (perfisObj['Árbitro'] === true) return true;
+    const isGod = !!localStorage.getItem('god_mode_clube');
+    if (conf.Dev === true && isGod) return true;
+    if (conf.Admin === true && perfisObj['Admin'] === true) return true;
+    if (conf.Professor === true && perfisObj['Professor'] === true) return true;
+
+    return false;
+}
+
+function verificarAcessoSocioRanking(reserva) {
+    if (!reserva) return false; 
+    if (typeof isGestorLogado !== 'undefined' && isGestorLogado) return true;
+    if (typeof podeArbitrarRankingSaaS === 'function' && podeArbitrarRankingSaaS()) return true;
+
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim().toUpperCase();
+    if (!nomeLogado) return false; 
+
+    const jogadoresCompleto = (reserva.jogadores_completo || '').toUpperCase();
+    const jogadoresApelidos = (reserva.jogadores || '').toUpperCase();
+    const organizador = (reserva.organizador || '').toUpperCase();
+
+    return (
+        jogadoresCompleto.includes(nomeLogado) ||
+        jogadoresApelidos.includes(nomeLogado) ||
+        organizador.includes(nomeLogado)
+    );
+}
+
+/* ======================================================== */
+/* 2. AUXILIARES DE FORMATAÇÃO INTELIGENTE DE NOMES         */
+/* ======================================================== */
+function obterIdJogadorPorTextoSaaS(textoNomeOuApelido) {
+    if (!textoNomeOuApelido || typeof jogadoresGlobal === 'undefined' || !jogadoresGlobal) return null;
+    const norm = (txt) => (txt || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+
+    const alvo = norm(textoNomeOuApelido);
+    if (!alvo) return null;
+
+    return Object.keys(jogadoresGlobal).find(id => {
+        const j = jogadoresGlobal[id];
+        if (!j) return false;
+        return norm(j.nomeCompleto) === alvo || norm(j.apelido) === alvo;
+    }) || null;
+}
+
+function capitalizarNome(nome) {
+    if (!nome) return "";
+    return nome.split(' ')
+               .filter(p => p.trim().length > 0)
+               .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+               .join(' ');
+}
+
+function buscarInfoJogador(apelidoOuNome) {
+    if (!apelidoOuNome) return { nomeCompleto: "", apelido: "" };
+    const termo = apelidoOuNome.trim().toLowerCase();
+
+    if (typeof jogadoresData !== 'undefined' && jogadoresData) {
+        const lista = Object.values(jogadoresData);
+        const encontrado = lista.find(j => {
+            if (!j) return false;
+            const ap = (j.apelido || '').trim().toLowerCase();
+            const nc = (j.nomeCompleto || '').trim().toLowerCase();
+            return ap === termo || nc === termo;
+        });
+
+        if (encontrado) {
+            return {
+                nomeCompleto: encontrado.nomeCompleto || apelidoOuNome,
+                apelido: encontrado.apelido || apelidoOuNome
+            };
+        }
+
+        const chaveEncontrada = Object.keys(jogadoresData).find(
+            k => k.trim().toLowerCase() === termo
+        );
+        if (chaveEncontrada && jogadoresData[chaveEncontrada]) {
+            return {
+                nomeCompleto: jogadoresData[chaveEncontrada].nomeCompleto || chaveEncontrada,
+                apelido: jogadoresData[chaveEncontrada].apelido || chaveEncontrada
+            };
+        }
+    }
+
+    return { nomeCompleto: apelidoOuNome, apelido: apelidoOuNome };
+}
+
+function formatarNomeInteligente(nomeCompletoRaw, apelidoRaw, isHorizontal = true) {
+    if (!nomeCompletoRaw && !apelidoRaw) return "";
+    const nomeCompleto = capitalizarNome(nomeCompletoRaw || apelidoRaw);
+    const apelido = capitalizarNome(apelidoRaw);
+
+    if (!isHorizontal) return apelido;
+
+    const apelidoWords = apelido.split(' ').filter(w => w.trim().length > 0);
+    const todasPalavrasPresentes = apelidoWords.length > 0 && apelidoWords.every(word => 
+        nomeCompleto.toLowerCase().includes(word.toLowerCase())
+    );
+
+    if (todasPalavrasPresentes) {
+        let nomeFinal = nomeCompleto;
+        apelidoWords.forEach(word => {
+            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+            nomeFinal = nomeFinal.replace(regex, '<b>$&</b>');
+        });
+        return nomeFinal;
+    } else {
+        return `${nomeCompleto} (<b>${apelido}</b>)`;
+    }
+}
+
+function limparCamposSumulaRanking() {
+    const modalSumula = document.getElementById('modal-sumula-ranking');
+    if (!modalSumula) return;
+
+    const inputs = modalSumula.querySelectorAll('input[type="number"]');
+    inputs.forEach(input => { input.value = ''; });
+
+    ['inp-tb1-j1', 'inp-tb1-j2', 'inp-tb2-j1', 'inp-tb2-j2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    ['head-set-3', 'wrap-s3-j1', 'wrap-s3-j2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = '--';
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) btnSalvar.disabled = true;
+}
+
+/* ======================================================== */
+/* 3. ECOSSISTEMA DE TELAS (ABERTURA E UI DINÂMICA)         */
+/* ======================================================== */
+function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false) {
+    eModoArbitroAtivoSumula = !!eEdicaoArbitro;
+	
+    desativarModoWOSaaS();
+    desativarModoRETSaaS();
+    limparCamposSumulaRanking();
+
+    partidaRankingEmFoco = reserva;
+    regrasSessaoRanking = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.sumula) 
+                          ? configRegrasGlobal.ranking.sumula 
+                          : { formatoPartida: "melhor_3_sets", decisaoTerceiroSet: "super_tiebreak" };
+
+    if (typeof fecharMenuAcoesReservaSaaS === 'function') {
+        fecharMenuAcoesReservaSaaS();
+    }
+
+    const partesApelidos = (reserva.jogadores || '').split(', ');
+    const partesCompleto = (reserva.jogadores_completo || '').split(', ');
+
+    const apelidoJ1 = partesApelidos[0] || "Desafiante";
+    const apelidoJ2 = partesApelidos[1] || "Desafiado";
+
+    let nomeCompletoJ1 = partesCompleto[0] || "";
+    let nomeCompletoJ2 = partesCompleto[1] || "";
+
+    if (!nomeCompletoJ1 || nomeCompletoJ1.trim().toLowerCase() === apelidoJ1.trim().toLowerCase()) {
+        const info = buscarInfoJogador(apelidoJ1);
+        if (info.nomeCompleto) nomeCompletoJ1 = info.nomeCompleto;
+    }
+    if (!nomeCompletoJ2 || nomeCompletoJ2.trim().toLowerCase() === apelidoJ2.trim().toLowerCase()) {
+        const info = buscarInfoJogador(apelidoJ2);
+        if (info.nomeCompleto) nomeCompletoJ2 = info.nomeCompleto;
+    }
+
+    const elJ1 = document.getElementById('sumula-nome-j1');
+    const elJ2 = document.getElementById('sumula-nome-j2');
+
+    if (elJ1) elJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+    if (elJ2) elJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    const btnKebab = document.querySelector('#modal-sumula-ranking button[onclick*="toggleKebabSumulaSaaS"]');
+    const menuKebab = document.getElementById('menu-excecoes-sumula');
+
+    if (menuKebab) menuKebab.classList.remove('ativo');
+
+    const statusPlacar = reserva.statusPlacar || 'sem_placar';
+
+    if (eEdicaoArbitro) {
+        if (elTituloHeader) elTituloHeader.innerHTML = '⚖️ Edição de Súmula';
+        if (elSubtituloHeader) elSubtituloHeader.textContent = 'Modo de Arbitragem • Ajuste de Resultado';
+        if (btnSalvar) { btnSalvar.textContent = 'Atualizar e Consolidar Placar'; btnSalvar.style.display = 'block'; }
+        if (btnKebab) btnKebab.style.display = 'inline-flex';
+    } else if (statusPlacar === 'anulado') {
+        if (elTituloHeader) elTituloHeader.innerHTML = '🔴 Súmula Anulada';
+        const motivo = reserva.dadosPlacar?.motivoAnulacao || "Anulada pela arbitragem";
+        const juiz = reserva.dadosPlacar?.arbitroResponsavel || "Árbitro";
+        if (elSubtituloHeader) elSubtituloHeader.textContent = `Anulada por ${juiz}: "${motivo}"`;
+        if (btnSalvar) btnSalvar.style.display = 'none';
+        if (btnKebab) btnKebab.style.display = 'none';
+    } else if (modoLeitura || statusPlacar === 'consolidado') {
+        if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula Consolidada';
+        if (elSubtituloHeader) elSubtituloHeader.textContent = 'Resultado homologado no ranking';
+        if (btnSalvar) btnSalvar.style.display = 'none';
+        if (btnKebab) btnKebab.style.display = 'none';
+    } else {
+        if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
+        if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
+        if (btnSalvar) { btnSalvar.textContent = 'Salvar Súmula'; btnSalvar.style.display = 'block'; }
+        if (btnKebab) btnKebab.style.display = 'inline-flex';
+    }
+
+    adaptarRenderizacaoMatematica(regrasSessaoRanking);
+
+    if (reserva.dadosPlacar && reserva.dadosPlacar.parciais) {
+        const p = reserva.dadosPlacar.parciais;
+        if (p.set1) {
+            if (p.set1.j1 !== undefined && p.set1.j1 !== null && !isNaN(p.set1.j1)) document.getElementById('inp-s1-j1').value = p.set1.j1;
+            if (p.set1.j2 !== undefined && p.set1.j2 !== null && !isNaN(p.set1.j2)) document.getElementById('inp-s1-j2').value = p.set1.j2;
+            if (p.set1.tbJ1 !== undefined && p.set1.tbJ1 !== null && !isNaN(p.set1.tbJ1)) document.getElementById('inp-tb1-j1').value = p.set1.tbJ1;
+            if (p.set1.tbJ2 !== undefined && p.set1.tbJ2 !== null && !isNaN(p.set1.tbJ2)) document.getElementById('inp-tb1-j2').value = p.set1.tbJ2;
+        }
+        if (p.set2) {
+            if (p.set2.j1 !== undefined && p.set2.j1 !== null && !isNaN(p.set2.j1)) document.getElementById('inp-s2-j1').value = p.set2.j1;
+            if (p.set2.j2 !== undefined && p.set2.j2 !== null && !isNaN(p.set2.j2)) document.getElementById('inp-s2-j2').value = p.set2.j2;
+            if (p.set2.tbJ1 !== undefined && p.set2.tbJ1 !== null && !isNaN(p.set2.tbJ1)) document.getElementById('inp-tb2-j1').value = p.set2.tbJ1;
+            if (p.set2.tbJ2 !== undefined && p.set2.tbJ2 !== null && !isNaN(p.set2.tbJ2)) document.getElementById('inp-tb2-j2').value = p.set2.tbJ2;
+        }
+        if (p.set3) {
+            if (p.set3.j1 !== undefined && p.set3.j1 !== null && !isNaN(p.set3.j1)) document.getElementById('inp-s3-j1').value = p.set3.j1;
+            if (p.set3.j2 !== undefined && p.set3.j2 !== null && !isNaN(p.set3.j2)) document.getElementById('inp-s3-j2').value = p.set3.j2;
+            const { inputTbS3J1, inputTbS3J2 } = garantirInputsTiebreakSet3();
+            if (p.set3.tbJ1 !== undefined && p.set3.tbJ1 !== null && !isNaN(p.set3.tbJ1) && inputTbS3J1) inputTbS3J1.value = p.set3.tbJ1;
+            if (p.set3.tbJ2 !== undefined && p.set3.tbJ2 !== null && !isNaN(p.set3.tbJ2) && inputTbS3J2) inputTbS3J2.value = p.set3.tbJ2;
+        }
+    }
+
+    const modalSumula = document.getElementById('modal-sumula-ranking');
+    if (modalSumula) {
+        modalSumula.style.setProperty('display', 'flex', 'important');
+        const inputsSumula = modalSumula.querySelectorAll('input');
+        inputsSumula.forEach(input => {
+            input.disabled = !!modoLeitura;
+            if (!modoLeitura) {
+                input.oninput = acionarArbitroInvisivelSaaS;
+                input.onkeyup = acionarArbitroInvisivelSaaS;
+            }
+        });
+    }
+
+    acionarArbitroInvisivelSaaS();
+
+    if (modoLeitura && btnSalvar) {
+        btnSalvar.disabled = true;
+    }
+
+    const dadosPlacar = reserva.dadosPlacar || {};
+    const eWO = dadosPlacar.isWO || (dadosPlacar.placarFormatado && dadosPlacar.placarFormatado.includes("W.O."));
+
+    if (eWO) {
+        modoWOAtivoSaaS = true;
+
+        const subNormal = document.getElementById('subpainel-normal-sumula');
+        const subWO = document.getElementById('subpainel-wo-sumula');
+        if (subNormal) subNormal.style.display = 'none';
+        if (subWO) subWO.style.display = 'block';
+
+        const elWOJ1 = document.getElementById('sumula-wo-nome-j1');
+        const elWOJ2 = document.getElementById('sumula-wo-nome-j2');
+        if (elWOJ1) elWOJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+        if (elWOJ2) elWOJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+
+        if (dadosPlacar.vencedorCodigo) {
+            selecionarVencedorWOSaaS(dadosPlacar.vencedorCodigo);
+        }
+
+        const elMotivo = document.getElementById('select-motivo-wo');
+        if (elMotivo && dadosPlacar.motivoWO) {
+            let achou = false;
+            for (let i = 0; i < elMotivo.options.length; i++) {
+                if (elMotivo.options[i].text.trim().toLowerCase() === dadosPlacar.motivoWO.trim().toLowerCase()) {
+                    elMotivo.selectedIndex = i;
+                    achou = true;
+                    break;
+                }
+            }
+            if (!achou) {
+                elMotivo.value = 'outros';
+                motivoCustomizadoWOSaaS = dadosPlacar.motivoWO;
+            }
+        }
+
+        if (modoLeitura || statusPlacar === 'consolidado') {
+            const cardJ1 = document.getElementById('card-wo-j1');
+            const cardJ2 = document.getElementById('card-wo-j2');
+            if (cardJ1) cardJ1.onclick = null;
+            if (cardJ2) cardJ2.onclick = null;
+            if (elMotivo) elMotivo.disabled = true;
+        }
+    }
+	
+    const eRET = dadosPlacar.isRET || (dadosPlacar.placarFormatado && dadosPlacar.placarFormatado.includes("(RET)"));
+
+    if (eRET) {
+        modoRETAtivoSaaS = true;
+
+        const subNormal = document.getElementById('subpainel-normal-sumula');
+        const subRET = document.getElementById('subpainel-ret-sumula');
+        if (subNormal) subNormal.style.display = 'block';
+        if (subRET) subRET.style.display = 'block';
+
+        const elRETJ1 = document.getElementById('sumula-ret-nome-j1');
+        const elRETJ2 = document.getElementById('sumula-ret-nome-j2');
+        if (elRETJ1) elRETJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+        if (elRETJ2) elRETJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+
+        if (dadosPlacar.desistenteCodigo) {
+            selecionarDesistenteRETSaaS(dadosPlacar.desistenteCodigo);
+        }
+
+        const elMotivo = document.getElementById('select-motivo-ret');
+        if (elMotivo && dadosPlacar.motivoRET) {
+            let achou = false;
+            for (let i = 0; i < elMotivo.options.length; i++) {
+                if (elMotivo.options[i].text.trim().toLowerCase() === dadosPlacar.motivoRET.trim().toLowerCase()) {
+                    elMotivo.selectedIndex = i;
+                    achou = true;
+                    break;
+                }
+            }
+            if (!achou) {
+                elMotivo.value = 'outros';
+                motivoCustomizadoRETSaaS = dadosPlacar.motivoRET;
+            }
+        }
+
+        if (modoLeitura || statusPlacar === 'consolidado') {
+            const cardJ1 = document.getElementById('card-ret-j1');
+            const cardJ2 = document.getElementById('card-ret-j2');
+            if (cardJ1) cardJ1.onclick = null;
+            if (cardJ2) cardJ2.onclick = null;
+            if (elMotivo) elMotivo.disabled = true;
+        }
+    }
+}
+
+function adaptarRenderizacaoMatematica(regras) {
+    if (!regras) return;
+    const formato = regras.formatoPartida || "set_unico_6";
+
+    const headSet2 = document.getElementById('head-set-2');
+    const headSet3 = document.getElementById('head-set-3');
+    const wrapS2J1 = document.getElementById('wrap-s2-j1');
+    const wrapS2J2 = document.getElementById('wrap-s2-j2');
+    const wrapS3J1 = document.getElementById('wrap-s3-j1');
+    const wrapS3J2 = document.getElementById('wrap-s3-j2');
+
+    if (formato === "set_unico_6" || formato === "pro_set_8") {
+        if (headSet2) headSet2.style.display = 'none';
+        if (headSet3) headSet3.style.display = 'none';
+        if (wrapS2J1) wrapS2J1.style.display = 'none';
+        if (wrapS2J2) wrapS2J2.style.display = 'none';
+        if (wrapS3J1) wrapS3J1.style.display = 'none';
+        if (wrapS3J2) wrapS3J2.style.display = 'none';
+    } else {
+        if (headSet2) headSet2.style.display = 'inline-block';
+        if (headSet3) headSet3.style.display = 'none';
+        if (wrapS2J1) wrapS2J1.style.display = 'block';
+        if (wrapS2J2) wrapS2J2.style.display = 'block';
+        if (wrapS3J1) wrapS3J1.style.display = 'none';
+        if (wrapS3J2) wrapS3J2.style.display = 'none';
+    }
+}
+
+/* ======================================================== */
+/* 4. MOTOR DE VALIDAÇÃO DINÂMICO (O ÁRBITRO INVISÍVEL)    */
+/* ======================================================== */
+function calcularVencedorTiebreak(p1, p2) {
+    if (isNaN(p1) || isNaN(p2)) return null;
+    if (p1 >= 7 && p1 - p2 >= 2) return "J1";
+    if (p2 >= 7 && p2 - p1 >= 2) return "J2";
+    return null;
+}
+
+function calcularVencedorSuperTiebreak(p1, p2) {
+    if (isNaN(p1) || isNaN(p2)) return null;
+    if (p1 >= 10 && p1 - p2 >= 2) return "J1";
+    if (p2 >= 10 && p2 - p1 >= 2) return "J2";
+    return null;
+}
+
+function calcularVencedorSet(gamesJ1, gamesJ2, formato, tbJ1, tbJ2) {
+    if (isNaN(gamesJ1) || isNaN(gamesJ2)) return null;
+
+    const limite = (formato === "m3_curtos_4") ? 4 : (formato === "pro_set_8" ? 8 : 6);
+
+    const isTiebreakScore = (gamesJ1 === limite && gamesJ2 === limite) || 
+                            (gamesJ1 === limite + 1 && gamesJ2 === limite) || 
+                            (gamesJ1 === limite && gamesJ2 === limite + 1);
+
+    if (isTiebreakScore) {
+        const winnerTb = calcularVencedorTiebreak(tbJ1, tbJ2);
+        if (!winnerTb) return null;
+
+        if (gamesJ1 === limite + 1 && gamesJ2 === limite && winnerTb !== "J1") return null;
+        if (gamesJ1 === limite && gamesJ2 === limite + 1 && winnerTb !== "J2") return null;
+
+        return winnerTb;
+    }
+
+    if (gamesJ1 === limite && gamesJ2 <= limite - 2) return "J1";
+    if (gamesJ2 === limite && gamesJ1 <= limite - 2) return "J2";
+
+    if (gamesJ1 === limite + 1 && gamesJ2 === limite - 1) return "J1";
+    if (gamesJ2 === limite + 1 && gamesJ1 === limite - 1) return "J2";
+
+    return null;
+}
+
+function garantirInputsTiebreakSet3() {
+    let inputTbS3J1 = document.getElementById('inp-tb3-j1');
+    let inputTbS3J2 = document.getElementById('inp-tb3-j2');
+    const refTb1 = document.getElementById('inp-tb1-j1');
+    const refTb2 = document.getElementById('inp-tb1-j2');
+
+    if (!inputTbS3J1 && refTb1) {
+        const inpS3J1 = document.getElementById('inp-s3-j1');
+        if (inpS3J1 && inpS3J1.parentNode) {
+            inputTbS3J1 = refTb1.cloneNode(true);
+            inputTbS3J1.id = 'inp-tb3-j1';
+            inputTbS3J1.value = '';
+            inputTbS3J1.style.display = 'none';
+            inpS3J1.parentNode.appendChild(inputTbS3J1);
+            inputTbS3J1.addEventListener('input', acionarArbitroInvisivelSaaS);
+        }
+    }
+
+    if (!inputTbS3J2 && refTb2) {
+        const inpS3J2 = document.getElementById('inp-s3-j2');
+        if (inpS3J2 && inpS3J2.parentNode) {
+            inputTbS3J2 = refTb2.cloneNode(true);
+            inputTbS3J2.id = 'inp-tb3-j2';
+            inputTbS3J2.value = '';
+            inputTbS3J2.style.display = 'none';
+            inpS3J2.parentNode.appendChild(inputTbS3J2);
+            inputTbS3J2.addEventListener('input', acionarArbitroInvisivelSaaS);
+        }
+    }
+
+    return { inputTbS3J1, inputTbS3J2 };
+}
+
+function acionarArbitroInvisivelSaaS() {
+    if (!partidaRankingEmFoco) return;
+
+    const formato = (regrasSessaoRanking && regrasSessaoRanking.formatoPartida) || "m3_tradicional_6";
+    const decisaoTerceiroSet = (regrasSessaoRanking && regrasSessaoRanking.decisaoTerceiroSet) || "super_tiebreak";
+
+    const limiteTb = (formato === "pro_set_8") ? 8 : (formato === "m3_curtos_4" ? 4 : 6);
+    const maximoAbsoluto = limiteTb + 1;
+    const isSuperTiebreak3Set = (decisaoTerceiroSet === "super_tiebreak");
+
+    const camposGames = ['inp-s1-j1', 'inp-s1-j2', 'inp-s2-j1', 'inp-s2-j2'];
+    if (!isSuperTiebreak3Set) {
+        camposGames.push('inp-s3-j1', 'inp-s3-j2');
+    }
+
+    camposGames.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el === document.activeElement && el.value !== "") {
+            const val = parseInt(el.value, 10);
+            if (isNaN(val) || val > maximoAbsoluto) {
+                el.value = '';
+            }
+        }
+    });
+
+    const getVal = (id) => {
+        const el = document.getElementById(id);
+        if (!el || el.value === "" || el.value === undefined) return NaN;
+        return parseInt(el.value, 10);
+    };
+
+    const inputTbS1J1 = document.getElementById('inp-tb1-j1');
+    const inputTbS1J2 = document.getElementById('inp-tb1-j2');
+    const inputTbS2J1 = document.getElementById('inp-tb2-j1');
+    const inputTbS2J2 = document.getElementById('inp-tb2-j2');
+
+    const { inputTbS3J1, inputTbS3J2 } = garantirInputsTiebreakSet3();
+
+    const inputS1J1 = document.getElementById('inp-s1-j1');
+    const inputS1J2 = document.getElementById('inp-s1-j2');
+    const inputS2J1 = document.getElementById('inp-s2-j1');
+    const inputS2J2 = document.getElementById('inp-s2-j2');
+    const inputS3J1 = document.getElementById('inp-s3-j1');
+    const inputS3J2 = document.getElementById('inp-s3-j2');
+
+    const headSet3 = document.getElementById('head-set-3');
+    const wrapS3J1 = document.getElementById('wrap-s3-j1');
+    const wrapS3J2 = document.getElementById('wrap-s3-j2');
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+
+    if ((document.activeElement === inputS1J1 || document.activeElement === inputS1J2) && inputTbS1J1) {
+        inputTbS1J1.value = ''; inputTbS1J2.value = '';
+    }
+    if ((document.activeElement === inputS2J1 || document.activeElement === inputS2J2) && inputTbS2J1) {
+        inputTbS2J1.value = ''; inputTbS2J2.value = '';
+    }
+    if ((document.activeElement === inputS3J1 || document.activeElement === inputS3J2) && inputTbS3J1) {
+        inputTbS3J1.value = ''; inputTbS3J2.value = '';
+    }
+
+    let valS1J1 = getVal('inp-s1-j1');
+    let valS1J2 = getVal('inp-s1-j2');
+    let valS2J1 = getVal('inp-s2-j1');
+    let valS2J2 = getVal('inp-s2-j2');
+    let valS3J1 = getVal('inp-s3-j1');
+    let valS3J2 = getVal('inp-s3-j2');
+
+    const ocultarEResetarSet3 = () => {
+        if (headSet3) headSet3.style.display = 'none';
+        if (wrapS3J1) wrapS3J1.style.display = 'none';
+        if (wrapS3J2) wrapS3J2.style.display = 'none';
+        if (inputS3J1) inputS3J1.value = '';
+        if (inputS3J2) inputS3J2.value = '';
+        if (inputTbS3J1) { inputTbS3J1.value = ''; inputTbS3J1.style.display = 'none'; }
+        if (inputTbS3J2) { inputTbS3J2.value = ''; inputTbS3J2.style.display = 'none'; }
+    };
+
+    const checkTbVisibility = (v1, v2, el1, el2) => {
+        if (!el1 || !el2) return;
+        const isValid = (!isNaN(v1) && !isNaN(v2) && 
+                        ((v1 === limiteTb && v2 === limiteTb) || 
+                         (v1 === limiteTb + 1 && v2 === limiteTb) || 
+                         (v1 === limiteTb && v2 === limiteTb + 1)));
+        if (isValid) {
+            el1.style.display = 'block'; el2.style.display = 'block';
+        } else {
+            el1.style.display = 'none'; el2.style.display = 'none';
+            el1.value = ''; el2.value = '';
+        }
+    };
+
+    checkTbVisibility(valS1J1, valS1J2, inputTbS1J1, inputTbS1J2);
+    checkTbVisibility(valS2J1, valS2J2, inputTbS2J1, inputTbS2J2);
+
+    if (!isSuperTiebreak3Set) {
+        checkTbVisibility(valS3J1, valS3J2, inputTbS3J1, inputTbS3J2);
+    }
+
+    const valTb1J1 = getVal('inp-tb1-j1');
+    const valTb1J2 = getVal('inp-tb1-j2');
+    const valTb2J1 = getVal('inp-tb2-j1');
+    const valTb2J2 = getVal('inp-tb2-j2');
+    const valTb3J1 = getVal('inp-tb3-j1');
+    const valTb3J2 = getVal('inp-tb3-j2');
+
+    const aplicarResultadoTb = (vTb, valJ1, valJ2, inpJ1, inpJ2) => {
+        if (vTb === "J1" && (valJ1 !== limiteTb + 1 || valJ2 !== limiteTb)) {
+            if (inpJ1) inpJ1.value = limiteTb + 1;
+            if (inpJ2) inpJ2.value = limiteTb;
+        } else if (vTb === "J2" && (valJ1 !== limiteTb || valJ2 !== limiteTb + 1)) {
+            if (inpJ1) inpJ1.value = limiteTb;
+            if (inpJ2) inpJ2.value = limiteTb + 1;
+        }
+    };
+
+    if (document.activeElement !== inputS1J1 && document.activeElement !== inputS1J2) {
+        aplicarResultadoTb(calcularVencedorTiebreak(valTb1J1, valTb1J2), valS1J1, valS1J2, inputS1J1, inputS1J2);
+        valS1J1 = getVal('inp-s1-j1'); valS1J2 = getVal('inp-s1-j2');
+    }
+    if (document.activeElement !== inputS2J1 && document.activeElement !== inputS2J2) {
+        aplicarResultadoTb(calcularVencedorTiebreak(valTb2J1, valTb2J2), valS2J1, valS2J2, inputS2J1, inputS2J2);
+        valS2J1 = getVal('inp-s2-j1'); valS2J2 = getVal('inp-s2-j2');
+    }
+    if (!isSuperTiebreak3Set && document.activeElement !== inputS3J1 && document.activeElement !== inputS3J2) {
+        aplicarResultadoTb(calcularVencedorTiebreak(valTb3J1, valTb3J2), valS3J1, valS3J2, inputS3J1, inputS3J2);
+        valS3J1 = getVal('inp-s3-j1'); valS3J2 = getVal('inp-s3-j2');
+    }
+
+    const isMelhor3 = (formato === "m3_tradicional_6" || formato === "m3_curtos_4" || formato === "melhor_3_sets");
+    const vSet1 = calcularVencedorSet(valS1J1, valS1J2, formato, valTb1J1, valTb1J2);
+    let vSet2 = null;
+    let vSet3 = null;
+    let vencedorPartida = null;
+
+    if (isMelhor3) {
+        if (vSet1) {
+            vSet2 = calcularVencedorSet(valS2J1, valS2J2, formato, valTb2J1, valTb2J2);
+
+            if (vSet1 === vSet2) {
+                vencedorPartida = vSet1;
+                ocultarEResetarSet3();
+            } else if (vSet2 && vSet1 !== vSet2) {
+                if (headSet3) headSet3.style.display = 'inline-block';
+                if (wrapS3J1) wrapS3J1.style.display = 'block';
+                if (wrapS3J2) wrapS3J2.style.display = 'block';
+
+                if (isSuperTiebreak3Set) {
+                    vSet3 = calcularVencedorSuperTiebreak(valS3J1, valS3J2);
+                } else {
+                    vSet3 = calcularVencedorSet(valS3J1, valS3J2, formato, valTb3J1, valTb3J2);
+                }
+                if (vSet3) vencedorPartida = vSet3;
+            } else {
+                ocultarEResetarSet3();
+            }
+        } else {
+            ocultarEResetarSet3();
+        }
+    } else {
+        vencedorPartida = vSet1;
+        ocultarEResetarSet3();
+    }
+
+    const partesJogadores = (partidaRankingEmFoco.jogadores || '').split(', ');
+    const infoJ1 = buscarInfoJogador(partesJogadores[0] || "");
+    const infoJ2 = buscarInfoJogador(partesJogadores[1] || "");
+
+    if (vencedorPartida) {
+        const nomeVencedor = (vencedorPartida === "J1") 
+            ? (infoJ1.nomeCompleto || partesJogadores[0]) 
+            : (infoJ2.nomeCompleto || partesJogadores[1]);
+            
+        if (txtVencedor) txtVencedor.textContent = capitalizarNome(nomeVencedor);
+        if (btnSalvar) btnSalvar.disabled = false;
+    } else {
+        if (txtVencedor) txtVencedor.textContent = "--";
+        if (btnSalvar) btnSalvar.disabled = true;
+    }
+}
+
+/* ======================================================== */
+/* 5. AÇÕES DA CONFIRMAÇÃO E DO ÁRBITRO                    */
+/* ======================================================== */
+function abrirModalValidacaoAdversario(reserva) {
+    if (!reserva || !reserva.dadosPlacar) return;
+
+    partidaRankingEmFoco = reserva;
+
+    if (typeof fecharMenuAcoesReservaSaaS === 'function') {
+        fecharMenuAcoesReservaSaaS();
+    }
+
+    const dados = reserva.dadosPlacar;
+    
+    const partesJogadores = (reserva.jogadores || '').split(', ');
+    const infoJ1 = buscarInfoJogador(partesJogadores[0] || "");
+    const infoJ2 = buscarInfoJogador(partesJogadores[1] || "");
+
+    const nomeJ1 = capitalizarNome(infoJ1.nomeCompleto || partesJogadores[0]);
+    const nomeJ2 = capitalizarNome(infoJ2.nomeCompleto || partesJogadores[1]);
+
+    const nomeVencedor = capitalizarNome(dados.vencedor || "");
+    const nomePerdedor = (nomeVencedor.toLowerCase() === nomeJ1.toLowerCase()) ? nomeJ2 : nomeJ1;
+
+    const diasSemana = ["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+    const nomeDia = diasSemana[reserva.dia] || "Dia";
+    const duracao = parseInt(reserva.duracao) || 1;
+    const hInicio = String(reserva.hora).padStart(2, '0') + ":00";
+    const hFim = String(reserva.hora + duracao).padStart(2, '0') + ":00";
+
+    const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+    const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
+    const nomeQuadra = quadraSelecionadaSaaS || "Quadra";
+
+    const elDataHora = document.getElementById('val-txt-data-horario');
+    const elQuadraModelo = document.getElementById('val-txt-quadra-modelo');
+    const elVencedor = document.getElementById('val-txt-vencedor');
+    const elPerdedor = document.getElementById('val-txt-perdedor');
+    const elPlacar = document.getElementById('val-txt-placar');
+
+    if (elDataHora) elDataHora.textContent = `${nomeDia} • ${hInicio} - ${hFim}`;
+    if (elQuadraModelo) elQuadraModelo.textContent = `${nomeQuadra} • Ranking ${nomesModelos[modeloAtivo] || "Oficial"}`;
+    if (elVencedor) elVencedor.textContent = nomeVencedor;
+    if (elPerdedor) elPerdedor.textContent = nomePerdedor;
+    
+	if (elPlacar) {
+        if (dados.isWO || (dados.placarFormatado && dados.placarFormatado.includes("W.O."))) {
+            const txtMotivo = dados.motivoWO || "Não informado";
+            elPlacar.innerHTML = `
+                W.O.
+                <span class="txt-motivo-wo">(Motivo: ${txtMotivo})</span>
+            `;
+        } else if (dados.isRET || (dados.placarFormatado && dados.placarFormatado.includes("RET"))) {
+            const txtMotivoRET = dados.motivoRET || "Não informado";
+            const placarLimpo = (dados.placarFormatado || "").replace(/\s*\(?RET\)?/gi, "").trim();
+            const placarComBadge = placarLimpo 
+                ? `<span class="placar-com-badge"><span>${placarLimpo}</span><span class="badge-ret">RET</span></span>` 
+                : `<span class="badge-ret">RET</span>`;
+
+            elPlacar.innerHTML = `
+                ${placarComBadge}
+                <span class="txt-motivo-ret">(Desistência: ${txtMotivoRET})</span>
+            `;
+        } else {
+            elPlacar.textContent = dados.placarFormatado || "--";
+        }
+    }
+
+    iniciarRelogioValidacaoSaaS(dados.expiraValidacaoAt);
+
+    const modalVal = document.getElementById('modal-validacao-placar');
+    if (modalVal) {
+        modalVal.style.display = 'flex';
+    }
+}
+
+function iniciarRelogioValidacaoSaaS(expiraEm) {
+    if (intervaloTimerValidacao) clearInterval(intervaloTimerValidacao);
+
+    const elTimer = document.getElementById('val-timer-countdown');
+    if (!elTimer || !expiraEm) return;
+
+    const atualizar = () => {
+        const agora = Date.now();
+        const diff = expiraEm - agora;
+
+        if (diff <= 0) {
+            elTimer.textContent = "Expirado";
+            clearInterval(intervaloTimerValidacao);
+        } else {
+            const horas = Math.floor(diff / (1000 * 60 * 60));
+            const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const segundos = Math.floor((diff % (1000 * 60)) / 1000);
+            elTimer.textContent = `${String(horas).padStart(2, '0')}h ${String(minutos).padStart(2, '0')}m ${String(segundos).padStart(2, '0')}s`;
+        }
+    };
+
+    atualizar();
+    intervaloTimerValidacao = setInterval(atualizar, 1000);
+}
+
+function confirmarPlacarAdversarioSaaS() {
+    if (!partidaRankingEmFoco || !raizBanco) return;
+
+    let quadraKey = "Quadra - 1";
+    if (partidaRankingEmFoco.quadra) {
+        const match = partidaRankingEmFoco.quadra.match(/\d+/);
+        quadraKey = match ? `Quadra - ${match[0]}` : partidaRankingEmFoco.quadra;
+    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraKey = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
+    }
+
+    const dia = partidaRankingEmFoco.dia;
+    const hora = partidaRankingEmFoco.hora;
+    const duracao = parseInt(partidaRankingEmFoco.duracao) || 1;
+
+    const pathSlot1 = `reservas/${quadraKey}/${dia}_${hora}`;
+    const updates = {};
+
+    updates[`${pathSlot1}/statusPlacar`] = "consolidado";
+    updates[`${pathSlot1}/dadosPlacar/statusPlacar`] = "consolidado";
+    updates[`${pathSlot1}/dadosPlacar/dataHoraValidacao`] = Date.now();
+
+    if (duracao === 2) {
+        const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
+        updates[`${pathSlot2}/statusPlacar`] = "consolidado";
+        updates[`${pathSlot2}/dadosPlacar/statusPlacar`] = "consolidado";
+        updates[`${pathSlot2}/dadosPlacar/dataHoraValidacao`] = Date.now();
+    }
+
+    database.ref(raizBanco).update(updates)
+    .then(() => {
+        showToast("Placar confirmado com sucesso! O ranking será atualizado.", "success");
+        if (intervaloTimerValidacao) clearInterval(intervaloTimerValidacao);
+		
+        processarResultadoRankingSaaS(partidaRankingEmFoco);
+        notificarAutorSumulaSaaS(partidaRankingEmFoco, 'confirmado');
+		
+        fecharModalConfig('modal-validacao-placar');
+    })
+    .catch(err => {
+        console.error("❌ [Validação] Erro ao confirmar placar:", err);
+        showToast("Erro ao confirmar o placar.", "error");
+    });
+}
+
+function recusarPlacarAdversarioSaaS() {
+    if (!partidaRankingEmFoco || !raizBanco) return;
+
+    let quadraKey = "Quadra - 1";
+    if (partidaRankingEmFoco.quadra) {
+        const match = partidaRankingEmFoco.quadra.match(/\d+/);
+        quadraKey = match ? `Quadra - ${match[0]}` : partidaRankingEmFoco.quadra;
+    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraKey = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
+    }
+
+    const dia = partidaRankingEmFoco.dia;
+    const hora = partidaRankingEmFoco.hora;
+    const duracao = parseInt(partidaRankingEmFoco.duracao) || 1;
+
+    const pathSlot1 = `reservas/${quadraKey}/${dia}_${hora}`;
+    const updates = {};
+
+    updates[`${pathSlot1}/statusPlacar`] = "contestado";
+    updates[`${pathSlot1}/dadosPlacar/statusPlacar`] = "contestado";
+    updates[`${pathSlot1}/dadosPlacar/dataHoraContestacao`] = Date.now();
+
+    if (duracao === 2) {
+        const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
+        updates[`${pathSlot2}/statusPlacar`] = "contestado";
+        updates[`${pathSlot2}/dadosPlacar/statusPlacar`] = "contestado";
+        updates[`${pathSlot2}/dadosPlacar/dataHoraContestacao`] = Date.now();
+    }
+
+    database.ref(raizBanco).update(updates)
+    .then(() => {
+        showToast("Súmula contestada! Encaminhada para a arbitragem.", "warning");
+        if (intervaloTimerValidacao) clearInterval(intervaloTimerValidacao);
+		
+        notificarAutorSumulaSaaS(partidaRankingEmFoco, 'recusado');
+        fecharModalConfig('modal-validacao-placar');
+    })
+    .catch(err => {
+        console.error("❌ [Validação] Erro ao contestar placar:", err);
+        showToast("Erro ao registrar contestação.", "error");
+    });
+}
+
+function abrirPainelArbitroSaaS(reserva) {
+    console.log("Abre a gaveta com status 'Contestado' com botões: Manter, Editar, Anular (Fase 3).");
+}
+
+function salvarSumulaSaaS() {
+    if (!partidaRankingEmFoco || !raizBanco) {
+        showToast("Erro ao identificar a partida. Tente novamente.", "error");
+        return;
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar && btnSalvar.disabled) return;
+
+    const partesJogadores = (partidaRankingEmFoco.jogadores || '').split(', ');
+    const infoJ1 = buscarInfoJogador(partesJogadores[0] || "");
+    const infoJ2 = buscarInfoJogador(partesJogadores[1] || "");
+    const nomeJ1 = capitalizarNome(infoJ1.nomeCompleto || partesJogadores[0]);
+    const nomeJ2 = capitalizarNome(infoJ2.nomeCompleto || partesJogadores[1]);
+
+    let nomeVencedor = "";
+    let vencedorCodigo = "";
+    let placarFormatado = "";
+    let parciais = {};
+    let isWO = false;
+    let motivoWO = "";
+
+    let isRET = false;
+    let motivoRET = "";
+    let desistenteCodigo = "";
+
+    if (modoWOAtivoSaaS) {
+        if (!vencedorWOSaaS) {
+            showToast("Selecione o atleta vencedor por W.O.", "warning");
+            return;
+        }
+        
+        const elMotivo = document.getElementById('select-motivo-wo');
+        const valMotivo = elMotivo ? elMotivo.value : "";
+
+        if (valMotivo === 'outros') {
+            if (!motivoCustomizadoWOSaaS) {
+                showToast("Por favor, especifique o motivo do W.O.", "warning");
+                return;
+            }
+            motivoWO = `Outros: ${motivoCustomizadoWOSaaS}`;
+        } else {
+            motivoWO = elMotivo ? elMotivo.options[elMotivo.selectedIndex].text : "Ausência";
+        }
+        
+        isWO = true;
+        vencedorCodigo = vencedorWOSaaS;
+        nomeVencedor = nomeVencedorWOSaaS;
+        placarFormatado = `W.O. (${motivoWO})`;
+    } else {
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            if (!el || el.value === "" || el.value === undefined) return NaN;
+            return parseInt(el.value, 10);
+        };
+
+        const s1j1 = getVal('inp-s1-j1'), s1j2 = getVal('inp-s1-j2');
+        const tb1j1 = getVal('inp-tb1-j1'), tb1j2 = getVal('inp-tb1-j2');
+        const s2j1 = getVal('inp-s2-j1'), s2j2 = getVal('inp-s2-j2');
+        const tb2j1 = getVal('inp-tb2-j1'), tb2j2 = getVal('inp-tb2-j2');
+        const s3j1 = getVal('inp-s3-j1'), s3j2 = getVal('inp-s3-j2');
+        const tb3j1 = getVal('inp-tb3-j1'), tb3j2 = getVal('inp-tb3-j2');
+
+        const formatarSetStr = (g1, g2, tb1, tb2) => {
+            if (isNaN(g1) || isNaN(g2)) return null;
+            if (!isNaN(tb1) && !isNaN(tb2)) {
+                const perdedorTb = (g1 > g2) ? tb2 : tb1; 
+                return `${g1}/${g2}(${perdedorTb})`;
+            }
+            return `${g1}/${g2}`;
+        };
+
+        const partesPlacar = [];
+        if (!isNaN(s1j1) && !isNaN(s1j2)) {
+            partesPlacar.push(formatarSetStr(s1j1, s1j2, tb1j1, tb1j2));
+            parciais.set1 = { j1: s1j1, j2: s1j2, tbJ1: isNaN(tb1j1) ? null : tb1j1, tbJ2: isNaN(tb1j2) ? null : tb1j2 };
+        }
+        if (!isNaN(s2j1) && !isNaN(s2j2)) {
+            partesPlacar.push(formatarSetStr(s2j1, s2j2, tb2j1, tb2j2));
+            parciais.set2 = { j1: s2j1, j2: s2j2, tbJ1: isNaN(tb2j1) ? null : tb2j1, tbJ2: isNaN(tb2j2) ? null : tb2j2 };
+        }
+        if (!isNaN(s3j1) && !isNaN(s3j2)) {
+            partesPlacar.push(formatarSetStr(s3j1, s3j2, tb3j1, tb3j2));
+            parciais.set3 = { j1: s3j1, j2: s3j2, tbJ1: isNaN(tb3j1) ? null : tb3j1, tbJ2: isNaN(tb3j2) ? null : tb3j2 };
+        }
+
+        if (modoRETAtivoSaaS) {
+            if (!desistenteRETSaaS) {
+                showToast("Selecione o atleta que desistiu da partida.", "warning");
+                return;
+            }
+
+            const elMotivoRET = document.getElementById('select-motivo-ret');
+            const valMotivoRET = elMotivoRET ? elMotivoRET.value : "";
+
+            if (valMotivoRET === 'outros') {
+                if (!motivoCustomizadoRETSaaS) {
+                    showToast("Por favor, especifique o motivo da desistência.", "warning");
+                    return;
+                }
+                motivoRET = `Outros: ${motivoCustomizadoRETSaaS}`;
+            } else {
+                motivoRET = elMotivoRET ? elMotivoRET.options[elMotivoRET.selectedIndex].text : "Lesão";
+            }
+
+            isRET = true;
+            desistenteCodigo = desistenteRETSaaS;
+            vencedorCodigo = (desistenteRETSaaS === 'J1') ? "J2" : "J1";
+            nomeVencedor = (vencedorCodigo === 'J1') ? nomeJ1 : nomeJ2;
+            placarFormatado = partesPlacar.length > 0 ? `${partesPlacar.join(' ')} (RET)` : "RET";
+        } else {
+            const txtVencedorDOM = document.getElementById('label-vencedor-sumula');
+            nomeVencedor = txtVencedorDOM ? txtVencedorDOM.textContent.trim() : "";
+            vencedorCodigo = (nomeVencedor.toLowerCase() === nomeJ1.toLowerCase()) ? "J1" : "J2";
+            placarFormatado = partesPlacar.join(' ');
+        }
+    }
+
+    const norm = (txt) => (txt || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || 'Atleta').trim();
+    const normNomeLogado = norm(nomeLogado);
+    const jogadoresComp = norm(partidaRankingEmFoco.jogadores_completo || '');
+    const jogadoresAp = norm(partidaRankingEmFoco.jogadores || '');
+    
+    const souJogadorDaPartida = normNomeLogado !== "" && (jogadoresComp.includes(normNomeLogado) || jogadoresAp.includes(normNomeLogado));
+    const ehContestado = (partidaRankingEmFoco.statusPlacar === 'contestado');
+    const ehArbitragemNeutra = !souJogadorDaPartida && ((typeof isGestorLogado !== 'undefined' && isGestorLogado) || podeArbitrarRankingSaaS());
+
+    const executarGravacaoBanco = () => {
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        if (btnSalvar) {
+            btnSalvar.disabled = true;
+            btnSalvar.textContent = "Gravando placar...";
+        }
+
+        const agora = Date.now();
+        const prazoHorasAutoconf = (regrasSessaoRanking && regrasSessaoRanking.prazoAutoconf) || 24;
+        const statusNovo = ehArbitragemNeutra ? "consolidado" : "pendente_validacao";
+
+        const dadosPlacar = {
+            statusPlacar: statusNovo,
+            isWO: isWO,
+            motivoWO: motivoWO,
+            isRET: isRET,                       
+            desistenteCodigo: desistenteCodigo, 
+            motivoRET: motivoRET,               
+            vencedor: nomeVencedor,
+            vencedorCodigo: vencedorCodigo,
+            placarFormatado: placarFormatado,
+            parciais: parciais,
+            autorSumula: (ehContestado && ehArbitragemNeutra) ? (partidaRankingEmFoco.dadosPlacar?.autorSumula || nomeLogado) : nomeLogado,
+            dataHoraLancamento: partidaRankingEmFoco.dadosPlacar?.dataHoraLancamento || agora,
+            expiraValidacaoAt: agora + (prazoHorasAutoconf * 60 * 60 * 1000)
+        };
+
+        if (ehContestado && ehArbitragemNeutra) {
+            dadosPlacar.decisaoArbitro = "editado_pelo_arbitro";
+            dadosPlacar.dataHoraArbitragem = agora;
+            dadosPlacar.arbitroResponsavel = nomeLogado;
+        }
+
+        let quadraKey = "Quadra - 1";
+        if (partidaRankingEmFoco.quadra) {
+            const match = partidaRankingEmFoco.quadra.match(/\d+/);
+            quadraKey = match ? `Quadra - ${match[0]}` : partidaRankingEmFoco.quadra;
+        } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+            const match = quadraSelecionadaSaaS.match(/\d+/);
+            quadraKey = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
+        }
+
+        const dia = partidaRankingEmFoco.dia;
+        const hora = partidaRankingEmFoco.hora;
+        const duracao = parseInt(partidaRankingEmFoco.duracao) || 1;
+
+        const pathSlot1 = `reservas/${quadraKey}/${dia}_${hora}`;
+        const updates = {};
+
+        updates[`${pathSlot1}/statusPlacar`] = statusNovo;
+        updates[`${pathSlot1}/dadosPlacar`] = dadosPlacar;
+
+        if (duracao === 2) {
+            const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
+            updates[`${pathSlot2}/statusPlacar`] = statusNovo;
+            updates[`${pathSlot2}/dadosPlacar`] = statusNovo;
+        }
+
+        database.ref(raizBanco).update(updates)
+        .then(() => {
+            const msgSucesso = isWO 
+                ? (ehArbitragemNeutra ? "W.O. confirmado e homologado!" : "W.O. registrado! Enviado para validação.")
+                : (ehArbitragemNeutra ? "Placar corrigido e homologado com sucesso!" : "Súmula enviada para validação do adversário!");
+            
+            showToast(msgSucesso, "success");
+
+            if (ehContestado && ehArbitragemNeutra) {
+                notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'editado', placarFormatado);
+            }
+
+            partidaRankingEmFoco.statusPlacar = statusNovo;
+            partidaRankingEmFoco.dadosPlacar = dadosPlacar;
+
+            if (statusNovo === "consolidado") {
+                processarResultadoRankingSaaS(partidaRankingEmFoco);
+            }
+
+            fecharModalConfig('modal-sumula-ranking');
+        })
+        .catch(err => {
+            console.error("❌ [Súmula] Erro ao gravar no Firebase:", err);
+            showToast("Erro de comunicação ao salvar a súmula.", "error");
+        })
+        .finally(() => {
+            if (btnSalvar) {
+                btnSalvar.disabled = false;
+                btnSalvar.textContent = modoWOAtivoSaaS ? "Confirmar e Enviar W.O." : (ehArbitragemNeutra ? "Atualizar e Consolidar Placar" : "Salvar Súmula");
+            }
+        });
+    };
+
+    if (ehContestado && ehArbitragemNeutra) {
+        let placarAntigoStr = partidaRankingEmFoco.dadosPlacar?.placarFormatado || "--";
+        if (partidaRankingEmFoco.dadosPlacar?.isWO || (placarAntigoStr && placarAntigoStr.includes("W.O."))) {
+            const motAntigo = partidaRankingEmFoco.dadosPlacar?.motivoWO || "Ausência";
+            placarAntigoStr = `W.O. (${motAntigo})`;
+        }
+
+        const vencedorAntigoStr = partidaRankingEmFoco.dadosPlacar?.vencedor || "--";
+
+        let placarNovoStr = placarFormatado;
+        if (isWO) {
+            placarNovoStr = `W.O. (${motivoWO})`;
+        }
+
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; line-height: 1.5; color: #334155;">
+                <div style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                    <strong style="color: #991b1b; display: block; font-size: 12px; text-transform: uppercase;">Placar Anterior (Contestado)</strong>
+                    <span style="color: #7f1d1d; font-weight: 700; font-size: 16px;">${placarAntigoStr}</span>
+                    <span style="display: block; font-size: 12px; color: #b91c1c;">Vencedor: ${vencedorAntigoStr}</span>
+                </div>
+
+                <div style="background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                    <strong style="color: #166534; display: block; font-size: 12px; text-transform: uppercase;">Novo Placar (Sua Edição)</strong>
+                    <span style="color: #14532d; font-weight: 800; font-size: 18px;">${placarNovoStr}</span>
+                    <span style="display: block; font-size: 12.5px; color: #15803d; font-weight: 700;">Vencedor: ${nomeVencedor}</span>
+                </div>
+
+                <p style="margin: 0; font-size: 12.5px; color: #64748b;">
+                    Ao confirmar, este resultado será definido como final e homologado no ranking do clube.
+                </p>
+            </div>
+        `;
+
+        showPrompt("Confirmar Alteração de Súmula", htmlPrompt, () => {
+            executarGravacaoBanco();
+        });
+    } else {
+        executarGravacaoBanco();
+    }
+}
+
+function atualizarEstadoKebabSumulaSaaS() {
+    const btnWO = document.querySelector('#menu-excecoes-sumula button[onclick*="declararWoSumulaSaaS"]');
+    const btnRET = document.querySelector('#menu-excecoes-sumula button[onclick*="declararDesistenciaSumulaSaaS"]');
+    const itemLive = document.querySelector('#menu-excecoes-sumula .item-menu-live');
+    const chkLive = document.querySelector('#menu-excecoes-sumula .switch-mini input');
+
+    if (!btnWO || !btnRET) return;
+
+    const ehArbitragem = eModoArbitroAtivoSumula || (partidaRankingEmFoco && partidaRankingEmFoco.statusPlacar === 'contestado');
+
+    if (ehArbitragem) {
+        if (chkLive) { chkLive.disabled = true; chkLive.checked = false; }
+        if (itemLive) {
+            itemLive.classList.add('desabilitado');
+            itemLive.onclick = (e) => {
+                e.stopPropagation();
+                showToast("Transmissão ao vivo indisponível no modo de arbitragem.", "warning");
+            };
+        }
+    } else {
+        if (chkLive) chkLive.disabled = false;
+        if (itemLive) {
+            itemLive.classList.remove('desabilitado');
+            itemLive.onclick = null;
+        }
+    }
+
+    if (ehArbitragem) {
+        btnWO.classList.remove('desabilitado');
+        btnWO.onclick = () => declararWoSumulaSaaS();
+
+        btnRET.classList.remove('desabilitado');
+        btnRET.onclick = () => declararDesistenciaSumulaSaaS();
+
+    } else {
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            if (!el || el.value === "" || el.value === undefined) return NaN;
+            return parseInt(el.value, 10);
+        };
+
+        const s1j1 = getVal('inp-s1-j1'), s1j2 = getVal('inp-s1-j2');
+        const s2j1 = getVal('inp-s2-j1'), s2j2 = getVal('inp-s2-j2');
+        const s3j1 = getVal('inp-s3-j1'), s3j2 = getVal('inp-s3-j2');
+
+        const temAlgumGame = (!isNaN(s1j1) && s1j1 > 0) || (!isNaN(s1j2) && s1j2 > 0) ||
+                             (!isNaN(s2j1) && s2j1 > 0) || (!isNaN(s2j2) && s2j2 > 0) ||
+                             (!isNaN(s3j1) && s3j1 > 0) || (!isNaN(s3j2) && s3j2 > 0);
+
+        const txtVencedor = document.getElementById('label-vencedor-sumula');
+        const jogoFinalizado = txtVencedor && txtVencedor.textContent.trim() !== "--" && txtVencedor.textContent.trim() !== "";
+
+        if (jogoFinalizado) {
+            btnWO.classList.add('desabilitado');
+            btnWO.onclick = () => showToast("Partida já finalizada por placar.", "warning");
+
+            btnRET.classList.add('desabilitado');
+            btnRET.onclick = () => showToast("Partida já finalizada por placar.", "warning");
+
+        } else if (temAlgumGame) {
+            btnWO.classList.add('desabilitado');
+            btnWO.onclick = () => showToast("W.O. só é permitido antes do início da contagem de games.", "warning");
+
+            btnRET.classList.remove('desabilitado');
+            btnRET.onclick = () => declararDesistenciaSumulaSaaS();
+
+        } else {
+            btnWO.classList.remove('desabilitado');
+            btnWO.onclick = () => declararWoSumulaSaaS();
+
+            btnRET.classList.add('desabilitado');
+            btnRET.onclick = () => showToast("Desistência (RET) exige ao menos 1 game em andamento.", "warning");
+        }
+    }
+}
+
+function toggleKebabSumulaSaaS(event) {
+    event.stopPropagation();
+    const menu = document.getElementById('menu-excecoes-sumula');
+    if (menu) {
+        atualizarEstadoKebabSumulaSaaS();
+        menu.classList.toggle('ativo');
+    }
+}
+
+function toggleModoLiveSumula(chk) {
+    if (chk.checked) {
+        showToast("Em breve: Transmissão e pontuação ponto a ponto ao vivo!", "info");
+        setTimeout(() => {
+            chk.checked = false;
+        }, 1200);
+    }
+}
+
+function declararWoSumulaSaaS() {
+    if (!partidaRankingEmFoco) return;
+
+    const toleranciaMinutos = (regrasSessaoRanking && regrasSessaoRanking.toleranciaWO !== undefined) 
+        ? parseInt(regrasSessaoRanking.toleranciaWO, 10) 
+        : 15;
+
+    const horaInicioPartida = converterDataHoraParaTimestamp(partidaRankingEmFoco.dataCompleta, partidaRankingEmFoco.hora);
+    const horaLiberaWO = horaInicioPartida + (toleranciaMinutos * 60 * 1000);
+    const agora = Date.now();
+
+    if (agora < horaLiberaWO) {
+        const dataLibera = new Date(horaLiberaWO);
+        const hFim = String(dataLibera.getHours()).padStart(2, '0');
+        const mFim = String(dataLibera.getMinutes()).padStart(2, '0');
+
+        showToast(`O W.O. só pode ser declarado após a tolerância de ${toleranciaMinutos} min (às ${hFim}:${mFim}).`, "warning");
+        return;
+    }
+
+    const menu = document.getElementById('menu-excecoes-sumula');
+    if (menu) menu.classList.remove('ativo');
+
+    modoWOAtivoSaaS = true;
+
+    const subNormal = document.getElementById('subpainel-normal-sumula');
+    const subWO = document.getElementById('subpainel-wo-sumula');
+    if (subNormal) subNormal.style.display = 'none';
+    if (subWO) subWO.style.display = 'block';
+
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    if (elTituloHeader) elTituloHeader.innerHTML = 'Declaração de W.O.';
+    if (elSubtituloHeader) elSubtituloHeader.textContent = 'Registro de Ausência / Impossibilidade';
+
+    if (partidaRankingEmFoco) {
+        const partesApelidos = (partidaRankingEmFoco.jogadores || '').split(', ');
+        const partesCompleto = (partidaRankingEmFoco.jogadores_completo || '').split(', ');
+
+        const apelidoJ1 = partesApelidos[0] || "Desafiante";
+        const apelidoJ2 = partesApelidos[1] || "Desafiado";
+
+        let nomeCompletoJ1 = partesCompleto[0] || "";
+        let nomeCompletoJ2 = partesCompleto[1] || "";
+
+        if (!nomeCompletoJ1 || nomeCompletoJ1.trim().toLowerCase() === apelidoJ1.trim().toLowerCase()) {
+            const info = buscarInfoJogador(apelidoJ1);
+            if (info.nomeCompleto) nomeCompletoJ1 = info.nomeCompleto;
+        }
+        if (!nomeCompletoJ2 || nomeCompletoJ2.trim().toLowerCase() === apelidoJ2.trim().toLowerCase()) {
+            const info = buscarInfoJogador(apelidoJ2);
+            if (info.nomeCompleto) nomeCompletoJ2 = info.nomeCompleto;
+        }
+
+        const elWOJ1 = document.getElementById('sumula-wo-nome-j1');
+        const elWOJ2 = document.getElementById('sumula-wo-nome-j2');
+
+        if (elWOJ1) elWOJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+        if (elWOJ2) elWOJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Confirmar e Enviar W.O.';
+        btnSalvar.style.backgroundColor = '#dc2626';
+        btnSalvar.disabled = true;
+    }
+
+    resetarSelecaoWOSaaS();
+}
+
+function desativarModoWOSaaS() {
+    modoWOAtivoSaaS = false;
+
+    const cardJ1 = document.getElementById('card-wo-j1');
+    const cardJ2 = document.getElementById('card-wo-j2');
+    const selectMotivo = document.getElementById('select-motivo-wo');
+
+    if (cardJ1) cardJ1.onclick = () => selecionarVencedorWOSaaS('J1');
+    if (cardJ2) cardJ2.onclick = () => selecionarVencedorWOSaaS('J2');
+    if (selectMotivo) selectMotivo.disabled = false;
+
+    const subNormal = document.getElementById('subpainel-normal-sumula');
+    const subWO = document.getElementById('subpainel-wo-sumula');
+    if (subNormal) subNormal.style.display = 'block';
+    if (subWO) subWO.style.display = 'none';
+
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
+    
+    if (partidaRankingEmFoco) {
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
+        if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Salvar Súmula';
+        btnSalvar.style.backgroundColor = 'var(--cor-primaria, #28a745)';
+        btnSalvar.disabled = true;
+    }
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = '--';
+    
+    const boxVencedor = document.querySelector('#modal-sumula-ranking .vencedor-box');
+    if (boxVencedor) boxVencedor.classList.remove('wo-ativo');
+}
+
+function selecionarVencedorWOSaaS(codigo) {
+    if (!partidaRankingEmFoco) return;
+
+    vencedorWOSaaS = codigo;
+
+    const partesApelidos = (partidaRankingEmFoco.jogadores || '').split(', ');
+    const partesCompleto = (partidaRankingEmFoco.jogadores_completo || '').split(', ');
+
+    const infoJ1 = buscarInfoJogador(partesApelidos[0] || "");
+    const infoJ2 = buscarInfoJogador(partesApelidos[1] || "");
+
+    nomeVencedorWOSaaS = (codigo === 'J1') 
+        ? capitalizarNome(infoJ1.nomeCompleto || partesCompleto[0] || partesApelidos[0])
+        : capitalizarNome(infoJ2.nomeCompleto || partesCompleto[1] || partesApelidos[1]);
+
+    const cardJ1 = document.getElementById('card-wo-j1');
+    const cardJ2 = document.getElementById('card-wo-j2');
+    const tagJ1 = document.getElementById('tag-wo-j1');
+    const tagJ2 = document.getElementById('tag-wo-j2');
+
+    if (cardJ1) cardJ1.classList.remove('selecionado');
+    if (cardJ2) cardJ2.classList.remove('selecionado');
+    if (tagJ1) tagJ1.textContent = 'Selecionar';
+    if (tagJ2) tagJ2.textContent = 'Selecionar';
+
+    if (codigo === 'J1') {
+        if (cardJ1) cardJ1.classList.add('selecionado');
+        if (tagJ1) tagJ1.textContent = 'Vencedor';
+    } else {
+        if (cardJ2) cardJ2.classList.add('selecionado');
+        if (tagJ2) tagJ2.textContent = 'Vencedor';
+    }
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = nomeVencedorWOSaaS;
+
+    const boxVencedor = document.querySelector('#modal-sumula-ranking .vencedor-box');
+    if (boxVencedor) boxVencedor.classList.remove('wo-ativo');
+	
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) btnSalvar.disabled = false;
+}
+
+function resetarSelecaoWOSaaS() {
+    const selectMotivo = document.getElementById('select-motivo-wo');
+    if (selectMotivo) selectMotivo.selectedIndex = 0;
+    motivoCustomizadoWOSaaS = "";
+
+    vencedorWOSaaS = null;
+    nomeVencedorWOSaaS = "";
+
+    const cardJ1 = document.getElementById('card-wo-j1');
+    const cardJ2 = document.getElementById('card-wo-j2');
+    const tagJ1 = document.getElementById('tag-wo-j1');
+    const tagJ2 = document.getElementById('tag-wo-j2');
+
+    if (cardJ1) cardJ1.classList.remove('selecionado');
+    if (cardJ2) cardJ2.classList.remove('selecionado');
+    if (tagJ1) tagJ1.textContent = 'Selecionar';
+    if (tagJ2) tagJ2.textContent = 'Selecionar';
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = '--';
+
+    const boxVencedor = document.querySelector('#modal-sumula-ranking .vencedor-box');
+    if (boxVencedor) boxVencedor.classList.remove('wo-ativo');
+}
+
+function tratarSelecaoMotivoWOSaaS(valor) {
+    if (valor === 'outros') {
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <p style="margin: 0 0 10px 0;">Informe a justificativa do W.O.:</p>
+                <input type="text" id="inp-motivo-outros-popup" class="input-app" placeholder="Ex: Problema de saúde, viagem..." style="width: 100%; box-sizing: border-box; font-size: 14px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+            </div>
+        `;
+
+        showPrompt("Motivo do W.O.", htmlPrompt, () => {
+            const elInp = document.getElementById('inp-motivo-outros-popup');
+            const txt = elInp ? elInp.value.trim() : "";
+            if (txt) {
+                motivoCustomizadoWOSaaS = txt;
+            } else {
+                showToast("Nenhuma justificativa digitada.", "warning");
+                document.getElementById('select-motivo-wo').selectedIndex = 0;
+                motivoCustomizadoWOSaaS = "";
+            }
+        }, () => {
+            document.getElementById('select-motivo-wo').selectedIndex = 0;
+            motivoCustomizadoWOSaaS = "";
+        });
+    } else {
+        motivoCustomizadoWOSaaS = ""; 
+    }
+}
+
+function clicarBotaoVoltarSumulaSaaS() {
+    const stPlacar = partidaRankingEmFoco ? (partidaRankingEmFoco.statusPlacar || 'sem_placar') : 'sem_placar';
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    const ehModoLeitura = (stPlacar === 'consolidado' || stPlacar === 'anulado' || (btnSalvar && btnSalvar.style.display === 'none'));
+
+    if (ehModoLeitura) {
+        fecharModalConfig('modal-sumula-ranking');
+        return;
+    }
+
+    if (modoWOAtivoSaaS) {
+        desativarModoWOSaaS();
+    } else if (modoRETAtivoSaaS) {
+        desativarModoRETSaaS();
+    } else {
+        fecharModalConfig('modal-sumula-ranking');
+    }
+}
+
+function declararDesistenciaSumulaSaaS() {
+    if (!partidaRankingEmFoco) return;
+
+    const menu = document.getElementById('menu-excecoes-sumula');
+    if (menu) menu.classList.remove('ativo');
+
+    modoWOAtivoSaaS = false;
+    modoRETAtivoSaaS = true;
+
+    const subNormal = document.getElementById('subpainel-normal-sumula');
+    const subWO = document.getElementById('subpainel-wo-sumula');
+    const subRET = document.getElementById('subpainel-ret-sumula');
+
+    if (subNormal) subNormal.style.display = 'none';
+    if (subWO) subWO.style.display = 'none';
+    if (subRET) subRET.style.display = 'block';
+
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    if (elTituloHeader) elTituloHeader.innerHTML = 'Declaração de Desistência';
+    if (elSubtituloHeader) elSubtituloHeader.textContent = 'Informe os placares parciais e o atleta que desistiu';
+
+    if (partidaRankingEmFoco) {
+        const partesApelidos = (partidaRankingEmFoco.jogadores || '').split(', ');
+        const partesCompleto = (partidaRankingEmFoco.jogadores_completo || '').split(', ');
+
+        const apelidoJ1 = partesApelidos[0] || "Desafiante";
+        const apelidoJ2 = partesApelidos[1] || "Desafiado";
+
+        let nomeCompletoJ1 = partesCompleto[0] || "";
+        let nomeCompletoJ2 = partesCompleto[1] || "";
+
+        if (!nomeCompletoJ1 || nomeCompletoJ1.trim().toLowerCase() === apelidoJ1.trim().toLowerCase()) {
+            const info = buscarInfoJogador(apelidoJ1);
+            if (info.nomeCompleto) nomeCompletoJ1 = info.nomeCompleto;
+        }
+        if (!nomeCompletoJ2 || nomeCompletoJ2.trim().toLowerCase() === apelidoJ2.trim().toLowerCase()) {
+            const info = buscarInfoJogador(apelidoJ2);
+            if (info.nomeCompleto) nomeCompletoJ2 = info.nomeCompleto;
+        }
+
+        const elRETJ1 = document.getElementById('sumula-ret-nome-j1');
+        const elRETJ2 = document.getElementById('sumula-ret-nome-j2');
+
+        if (elRETJ1) elRETJ1.innerHTML = formatarNomeInteligente(nomeCompletoJ1, apelidoJ1, true);
+        if (elRETJ2) elRETJ2.innerHTML = formatarNomeInteligente(nomeCompletoJ2, apelidoJ2, true);
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Confirmar e Enviar Desistência';
+        btnSalvar.style.backgroundColor = '#dc2626';
+        btnSalvar.disabled = true;
+    }
+
+    resetarSelecaoRETSaaS();
+}
+
+function selecionarDesistenteRETSaaS(codigo) {
+    if (!partidaRankingEmFoco) return;
+
+    desistenteRETSaaS = codigo;
+    const vencedorCodigo = (codigo === 'J1') ? 'J2' : 'J1';
+
+    const partesApelidos = (partidaRankingEmFoco.jogadores || '').split(', ');
+    const partesCompleto = (partidaRankingEmFoco.jogadores_completo || '').split(', ');
+
+    const infoJ1 = buscarInfoJogador(partesApelidos[0] || "");
+    const infoJ2 = buscarInfoJogador(partesApelidos[1] || "");
+
+    nomeDesistenteRETSaaS = (codigo === 'J1') 
+        ? capitalizarNome(infoJ1.nomeCompleto || partesCompleto[0] || partesApelidos[0])
+        : capitalizarNome(infoJ2.nomeCompleto || partesCompleto[1] || partesApelidos[1]);
+
+    const nomeVencedor = (vencedorCodigo === 'J1')
+        ? capitalizarNome(infoJ1.nomeCompleto || partesCompleto[0] || partesApelidos[0])
+        : capitalizarNome(infoJ2.nomeCompleto || partesCompleto[1] || partesApelidos[1]);
+
+    const cardJ1 = document.getElementById('card-ret-j1');
+    const cardJ2 = document.getElementById('card-ret-j2');
+    const tagJ1 = document.getElementById('tag-ret-j1');
+    const tagJ2 = document.getElementById('tag-ret-j2');
+
+    if (cardJ1) cardJ1.classList.remove('desistente-selecionado');
+    if (cardJ2) cardJ2.classList.remove('desistente-selecionado');
+    if (tagJ1) tagJ1.textContent = 'Selecionar';
+    if (tagJ2) tagJ2.textContent = 'Selecionar';
+
+    if (codigo === 'J1') {
+        if (cardJ1) cardJ1.classList.add('desistente-selecionado');
+        if (tagJ1) tagJ1.textContent = 'Desistiu (RET)';
+    } else {
+        if (cardJ2) cardJ2.classList.add('desistente-selecionado');
+        if (tagJ2) tagJ2.textContent = 'Desistiu (RET)';
+    }
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = nomeVencedor;
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) btnSalvar.disabled = false;
+}
+
+function resetarSelecaoRETSaaS() {
+    const selectMotivo = document.getElementById('select-motivo-ret');
+    if (selectMotivo) selectMotivo.selectedIndex = 0;
+    motivoCustomizadoRETSaaS = "";
+
+    desistenteRETSaaS = null;
+    nomeDesistenteRETSaaS = "";
+
+    const cardJ1 = document.getElementById('card-ret-j1');
+    const cardJ2 = document.getElementById('card-ret-j2');
+    const tagJ1 = document.getElementById('tag-ret-j1');
+    const tagJ2 = document.getElementById('tag-ret-j2');
+
+    if (cardJ1) cardJ1.classList.remove('desistente-selecionado');
+    if (cardJ2) cardJ2.classList.remove('desistente-selecionado');
+    if (tagJ1) tagJ1.textContent = 'Selecionar';
+    if (tagJ2) tagJ2.textContent = 'Selecionar';
+
+    const txtVencedor = document.getElementById('label-vencedor-sumula');
+    if (txtVencedor) txtVencedor.textContent = '--';
+}
+
+function desativarModoRETSaaS() {
+    modoRETAtivoSaaS = false;
+
+    const cardJ1 = document.getElementById('card-ret-j1');
+    const cardJ2 = document.getElementById('card-ret-j2');
+    const selectMotivo = document.getElementById('select-motivo-ret');
+
+    if (cardJ1) cardJ1.onclick = () => selecionarDesistenteRETSaaS('J1');
+    if (cardJ2) cardJ2.onclick = () => selecionarDesistenteRETSaaS('J2');
+    if (selectMotivo) selectMotivo.disabled = false;
+
+    const subNormal = document.getElementById('subpainel-normal-sumula');
+    const subRET = document.getElementById('subpainel-ret-sumula');
+    if (subNormal) subNormal.style.display = 'block';
+    if (subRET) subRET.style.display = 'none';
+
+    const elTituloHeader = document.querySelector('#modal-sumula-ranking .court-title-detalhes');
+    const elSubtituloHeader = document.getElementById('sumula-txt-modelo');
+    if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
+    
+    if (partidaRankingEmFoco) {
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
+        if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-sumula-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Salvar Súmula';
+        btnSalvar.style.backgroundColor = 'var(--cor-primaria, #28a745)';
+        btnSalvar.disabled = true;
+    }
+
+    resetarSelecaoRETSaaS();
+}
+
+function tratarSelecaoMotivoRETSaaS(valor) {
+    if (valor === 'outros') {
+        const htmlPrompt = `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+                <p style="margin: 0 0 10px 0;">Informe a justificativa da desistência:</p>
+                <input type="text" id="inp-motivo-ret-outros-popup" class="input-app" placeholder="Ex: Cãibra forte no 2º set..." style="width: 100%; box-sizing: border-box; font-size: 14px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+            </div>
+        `;
+
+        showPrompt("Motivo da Desistência", htmlPrompt, () => {
+            const elInp = document.getElementById('inp-motivo-ret-outros-popup');
+            const txt = elInp ? elInp.value.trim() : "";
+            if (txt) {
+                motivoCustomizadoRETSaaS = txt;
+            } else {
+                showToast("Nenhuma justificativa digitada.", "warning");
+                document.getElementById('select-motivo-ret').selectedIndex = 0;
+                motivoCustomizadoRETSaaS = "";
+            }
+        }, () => {
+            document.getElementById('select-motivo-ret').selectedIndex = 0;
+            motivoCustomizadoRETSaaS = "";
+        });
+    } else {
+        motivoCustomizadoRETSaaS = "";
+    }
+}
+
+/* ======================================================== */
+/* 6. AÇÕES DO PAINEL DO ÁRBITRO (FASING - ARBITRAGEM)      */
+/* ======================================================== */
+function renderizarGavetaArbitroSaaS(listaContestacoes) {
+    const modalArb = document.getElementById('modal-arbitro-placar');
+    const container = document.getElementById('lista-arbitro-container');
+    const elTitulo = document.getElementById('arb-txt-titulo');
+
+    if (!modalArb || !container || !elTitulo) return;
+
+    const total = listaContestacoes.length;
+    elTitulo.textContent = total === 1 ? '1 Súmula Contestada' : `${total} Súmulas Contestadas`;
+    container.innerHTML = '';
+
+    const diasSemana = ["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+    listaContestacoes.forEach((reserva, index) => {
+        const dados = reserva.dadosPlacar || {};
+        const partesJogadores = (reserva.jogadores || '').split(', ');
+        const infoJ1 = buscarInfoJogador(partesJogadores[0] || "");
+        const infoJ2 = buscarInfoJogador(partesJogadores[1] || "");
+
+        const nomeJ1 = capitalizarNome(infoJ1.nomeCompleto || partesJogadores[0]);
+        const nomeJ2 = capitalizarNome(infoJ2.nomeCompleto || partesJogadores[1]);
+
+        const nomeVencedor = capitalizarNome(dados.vencedor || "");
+        const nomePerdedor = (nomeVencedor.toLowerCase() === nomeJ1.toLowerCase()) ? nomeJ2 : nomeJ1;
+
+        const nomeDia = diasSemana[reserva.dia] || "Dia";
+        const duracao = parseInt(reserva.duracao) || 1;
+        const hInicio = String(reserva.hora).padStart(2, '0') + ":00";
+        const hFim = String(reserva.hora + duracao).padStart(2, '0') + ":00";
+
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
+
+        let nomeQuadra = reserva.quadra || quadraSelecionadaSaaS || "Quadra";
+        const numQuadra = nomeQuadra.match(/\d+/);
+        if (numQuadra && configQuadrasGlobal && configQuadrasGlobal.nomes) {
+            const dadosQ = configQuadrasGlobal.nomes[numQuadra[0]];
+            if (dadosQ) {
+                nomeQuadra = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${numQuadra[0]}`) : dadosQ;
+            }
+        }
+
+        let txtResultado = dados.placarFormatado || "--";
+        if (dados.isWO || (dados.placarFormatado && dados.placarFormatado.includes("W.O."))) {
+            const motivoWO = dados.motivoWO || "Ausência";
+            txtResultado = `W.O. (${motivoWO})`;
+        } else if (dados.isRET || (dados.placarFormatado && dados.placarFormatado.includes("RET"))) {
+            const motivoRET = dados.motivoRET || "Desistência";
+            const placarTxt = dados.placarFormatado || "RET";
+            txtResultado = `
+                <span>${placarTxt}</span>
+                <span class="txt-motivo-wo">Motivo: ${motivoRET}</span>
+            `;
+        }
+
+        const cardHtml = `
+            <div class="convite-item" style="margin-bottom: 15px;">
+                <div class="convite-header">
+                    <span class="convite-data">${nomeDia} • ${hInicio} - ${hFim}</span>
+                    <span class="txt-alerta">Contestada</span>
+                </div>
+                
+                <div class="convite-info">
+                    <span>${nomeQuadra} • Ranking ${nomesModelos[modeloAtivo] || "Oficial"}</span><br>
+                    
+                    <div class="box-placar">
+                        <span><span class="vencedor-txt">${nomeVencedor}</span> lançou vitória contra <span class="perdedor-txt">${nomePerdedor}</span></span>
+                        <strong class="placar-numeros" style="display: block; margin-top: 6px;">${txtResultado}</strong>
+                        <div class="motivo-recusa" style="margin-top: 8px;">
+                            <i class="material-icons" style="font-size: 14px;">front_hand</i> 
+                            <span>${nomePerdedor}</span> recusou este placar.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="botoes-acao">
+                    <button class="btn-universal btn-success" onclick="manterPlacarArbitroItemSaaS(${index})">Manter</button>
+                    <button class="btn-universal btn-warning" onclick="editarPlacarArbitroItemSaaS(${index})">Editar</button>
+                    <button class="btn-universal btn-danger" onclick="anularPlacarArbitroItemSaaS(${index})">Anular</button>
+                </div>
+            </div>
+        `;
+        container.innerHTML += cardHtml;
+    });
+
+    window.contestacoesAbertasSaaS = listaContestacoes;
+    modalArb.style.display = 'flex';
+}
+
+function abrirModalArbitroPlacar(reserva) {
+    if (!reserva || !reserva.dadosPlacar) return;
+
+    if (typeof fecharMenuAcoesReservaSaaS === 'function') {
+        fecharMenuAcoesReservaSaaS();
+    }
+
+    renderizarGavetaArbitroSaaS([reserva]);
+}
+
+function manterPlacarArbitroSaaS() {
+    if (!partidaRankingEmFoco || !raizBanco) return;
+
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || 'Árbitro').trim();
+    const agora = Date.now();
+
+    let quadraKey = "Quadra - 1";
+    if (partidaRankingEmFoco.quadra) {
+        const match = partidaRankingEmFoco.quadra.match(/\d+/);
+        quadraKey = match ? `Quadra - ${match[0]}` : partidaRankingEmFoco.quadra;
+    }
+
+    const dia = partidaRankingEmFoco.dia;
+    const hora = partidaRankingEmFoco.hora;
+    const duracao = parseInt(partidaRankingEmFoco.duracao) || 1;
+
+    const pathSlot1 = `reservas/${quadraKey}/${dia}_${hora}`;
+    const updates = {};
+
+    updates[`${pathSlot1}/statusPlacar`] = "consolidado";
+    updates[`${pathSlot1}/dadosPlacar/statusPlacar`] = "consolidado";
+    updates[`${pathSlot1}/dadosPlacar/decisaoArbitro`] = "mantido_pelo_arbitro";
+    updates[`${pathSlot1}/dadosPlacar/arbitroResponsavel`] = nomeLogado;
+    updates[`${pathSlot1}/dadosPlacar/dataHoraArbitragem`] = agora;
+
+    if (duracao === 2) {
+        const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
+        updates[`${pathSlot2}/statusPlacar`] = "consolidado";
+        updates[`${pathSlot2}/dadosPlacar/statusPlacar`] = "consolidado";
+        updates[`${pathSlot2}/dadosPlacar/decisaoArbitro`] = "mantido_pelo_arbitro";
+        updates[`${pathSlot2}/dadosPlacar/arbitroResponsavel`] = nomeLogado;
+        updates[`${pathSlot2}/dadosPlacar/dataHoraArbitragem`] = agora;
+    }
+
+    database.ref(raizBanco).update(updates)
+    .then(() => {
+        showToast("Placar mantido e homologado pelo árbitro!", "success");
+
+        partidaRankingEmFoco.statusPlacar = "consolidado";
+        if (partidaRankingEmFoco.dadosPlacar) {
+            partidaRankingEmFoco.dadosPlacar.statusPlacar = "consolidado";
+            partidaRankingEmFoco.dadosPlacar.decisaoArbitro = "mantido_pelo_arbitro";
+            partidaRankingEmFoco.dadosPlacar.arbitroResponsavel = nomeLogado;
+            partidaRankingEmFoco.dadosPlacar.dataHoraArbitragem = agora;
+        }
+
+        processarResultadoRankingSaaS(partidaRankingEmFoco);
+
+        const placarTxt = partidaRankingEmFoco.dadosPlacar?.placarFormatado || "";
+        notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'mantido', placarTxt);
+
+        fecharModalConfig('modal-arbitro-placar');
+    })
+    .catch(err => {
+        console.error("❌ [Arbitragem] Erro ao manter placar:", err);
+        showToast("Erro ao processar decisão.", "error");
+    });
+}
+
+function editarPlacarArbitroSaaS() {
+    if (!partidaRankingEmFoco) return;
+    const reservaTemp = partidaRankingEmFoco;
+    fecharModalConfig('modal-arbitro-placar');
+    abrirModalSumulaPrincipal(reservaTemp, false, true);
+}
+
+function anularPlacarArbitroSaaS() {
+    if (!partidaRankingEmFoco || !raizBanco) return;
+
+    fecharModalConfig('modal-arbitro-placar');
+
+    const htmlPrompt = `
+        <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+            <p style="margin: 0 0 10px 0;">Informe o <strong>motivo da anulação</strong> desta partida:</p>
+            <textarea id="inp-motivo-anulacao" class="input-app" placeholder="Ex: Divergência de placar / Infração ao regulamento..." style="width: 100%; height: 70px; resize: none; box-sizing: border-box; font-size: 13px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 8px;"></textarea>
+            <span style="font-size: 12px; color: #64748b; display: block; line-height: 1.4;">
+                ⚠️ A partida será marcada como <strong>Anulada</strong> no histórico. O resultado será mantido para auditoria, sem contagem de pontos no ranking.
+            </span>
+        </div>
+    `;
+
+    showPrompt("Anular Súmula", htmlPrompt, () => {
+        const elMotivo = document.getElementById('inp-motivo-anulacao');
+        const motivo = elMotivo ? elMotivo.value.trim() : "";
+
+        if (!motivo) {
+            showToast("Informe a justificativa da anulação.", "warning");
+            return;
+        }
+
+        const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || 'Árbitro').trim();
+        const agora = Date.now();
+
+        let quadraKey = "Quadra - 1";
+        if (partidaRankingEmFoco.quadra) {
+            const match = partidaRankingEmFoco.quadra.match(/\d+/);
+            quadraKey = match ? `Quadra - ${match[0]}` : partidaRankingEmFoco.quadra;
+        }
+
+        const dia = partidaRankingEmFoco.dia;
+        const hora = partidaRankingEmFoco.hora;
+        const duracao = parseInt(partidaRankingEmFoco.duracao) || 1;
+
+        const pathSlot1 = `reservas/${quadraKey}/${dia}_${hora}`;
+        const updates = {};
+
+        updates[`${pathSlot1}/statusPlacar`] = "anulado";
+        updates[`${pathSlot1}/dadosPlacar/statusPlacar`] = "anulado";
+        updates[`${pathSlot1}/dadosPlacar/decisaoArbitro`] = "anulado_pelo_arbitro";
+        updates[`${pathSlot1}/dadosPlacar/motivoAnulacao`] = motivo;
+        updates[`${pathSlot1}/dadosPlacar/arbitroResponsavel`] = nomeLogado;
+        updates[`${pathSlot1}/dadosPlacar/dataHoraArbitragem`] = agora;
+
+        if (duracao === 2) {
+            const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
+            updates[`${pathSlot2}/statusPlacar`] = "anulado";
+            updates[`${pathSlot2}/dadosPlacar/statusPlacar`] = "anulado";
+            updates[`${pathSlot2}/dadosPlacar/decisaoArbitro`] = "anulado_pelo_arbitro";
+            updates[`${pathSlot2}/dadosPlacar/motivoAnulacao`] = motivo;
+            updates[`${pathSlot2}/dadosPlacar/arbitroResponsavel`] = nomeLogado;
+            updates[`${pathSlot2}/dadosPlacar/dataHoraArbitragem`] = agora;
+        }
+
+        const partesApelidos = (partidaRankingEmFoco.jogadores || "").split(',').map(s => s.trim());
+        const partesCompletos = (partidaRankingEmFoco.jogadores_completo || "").split(',').map(s => s.trim());
+        const idJ1 = obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]);
+        const idJ2 = obterIdJogadorPorTextoSaaS(partesCompletos[1] || partesApelidos[1]);
+
+        if (idJ1 && idJ2) {
+            const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
+            const classe = (atletaBase.classe || 'B').toUpperCase();
+            const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+            const divGenero = confRanking.divisaoGenero || 'separado';
+            let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+            if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+            const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+            let qKeyLimpa = "Quadra1";
+            if (partidaRankingEmFoco.quadra) {
+                const m = partidaRankingEmFoco.quadra.match(/\d+/);
+                qKeyLimpa = m ? `Quadra${m[0]}` : partidaRankingEmFoco.quadra;
+            }
+
+            const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${dia}_${hora}_${idJ1}_${idJ2}`;
+            
+            const dadosPlacarFinal = {
+                ...(partidaRankingEmFoco.dadosPlacar || {}),
+                statusPlacar: "anulado",
+                decisaoArbitro: "anulado_pelo_arbitro",
+                motivoAnulacao: motivo,
+                arbitroResponsavel: nomeLogado,
+                dataHoraArbitragem: agora
+            };
+
+            updates[`ranking/partidas/${partidaId}`] = {
+                categoria: chaveTabela,
+                status: "anulado",
+                jogador1Id: idJ1,
+                jogador2Id: idJ2,
+                vencedorId: null,
+                gamesP1: 0,
+                gamesP2: 0,
+                dadosPlacar: dadosPlacarFinal,
+                dataHora: agora
+            };
+        }
+
+        database.ref(raizBanco).update(updates)
+        .then(() => {
+            showToast("Partida anulada com sucesso e arquivada no histórico.", "success");
+            notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'anulado', motivo);
+        })
+        .catch(err => {
+            console.error("❌ [Arbitragem] Erro ao anular súmula:", err);
+            showToast("Erro ao registrar anulação.", "error");
+        });
+    });
+}
+
+function manterPlacarArbitroItemSaaS(index) {
+    const lista = window.contestacoesAbertasSaaS || [];
+    if (!lista[index]) return;
+    partidaRankingEmFoco = lista[index];
+    manterPlacarArbitroSaaS();
+}
+
+function editarPlacarArbitroItemSaaS(index) {
+    const lista = window.contestacoesAbertasSaaS || [];
+    if (!lista[index]) return;
+    partidaRankingEmFoco = lista[index];
+    editarPlacarArbitroSaaS();
+}
+
+function anularPlacarArbitroItemSaaS(index) {
+    const lista = window.contestacoesAbertasSaaS || [];
+    if (!lista[index]) return;
+    partidaRankingEmFoco = lista[index];
+    anularPlacarArbitroSaaS();
+}
+
+function adiarValidacaoAdversarioSaaS() {
+    if (partidaRankingEmFoco) {
+        let quadraKey = "Quadra - 1";
+        if (partidaRankingEmFoco.quadra) {
+            const match = partidaRankingEmFoco.quadra.match(/\d+/);
+            quadraKey = match ? `Quadra - ${match[0]}` : partidaRankingEmFoco.quadra;
+        }
+        const slotKey = `${partidaRankingEmFoco.dia}_${partidaRankingEmFoco.hora}`;
+        const chaveUnica = `${quadraKey}_${slotKey}`;
+        
+        if (!window.ignoradosSessaoSaaS.includes(chaveUnica)) {
+            window.ignoradosSessaoSaaS.push(chaveUnica);
+        }
+    }
+    fecharModalConfig('modal-validacao-placar');
+}
+
+function adiarDecisaoArbitroSaaS() {
+    if (partidaRankingEmFoco) {
+        let quadraKey = "Quadra - 1";
+        if (partidaRankingEmFoco.quadra) {
+            const match = partidaRankingEmFoco.quadra.match(/\d+/);
+            quadraKey = match ? `Quadra - ${match[0]}` : partidaRankingEmFoco.quadra;
+        }
+        const slotKey = `${partidaRankingEmFoco.dia}_${partidaRankingEmFoco.hora}`;
+        const chaveUnica = `${quadraKey}_${slotKey}`;
+
+        if (!window.ignoradosSessaoSaaS.includes(chaveUnica)) {
+            window.ignoradosSessaoSaaS.push(chaveUnica);
+        }
+    }
+    fecharModalConfig('modal-arbitro-placar');
+}
+
+function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
+    if (!reserva || !raizBanco) return;
+
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+
+    const partesApelidos = (reserva.jogadores || '').split(',').map(s => norm(s));
+    const partesCompleto = (reserva.jogadores_completo || '').split(',').map(s => norm(s));
+
+    const termosBusca = [...partesCompleto, ...partesApelidos].filter(t => t.length > 0);
+    const idsParaNotificar = [];
+
+    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) {
+        termosBusca.forEach(normTermo => {
+            const idEncontrado = Object.keys(jogadoresGlobal).find(id => {
+                const j = jogadoresGlobal[id];
+                if (!j) return false;
+                const nc = norm(j.nomeCompleto);
+                const ap = norm(j.apelido);
+                return nc === normTermo || ap === normTermo;
+            });
+            if (idEncontrado && !idsParaNotificar.includes(idEncontrado)) {
+                idsParaNotificar.push(idEncontrado);
+            }
+        });
+    }
+
+    if (idsParaNotificar.length === 0) return;
+
+    let categoria = "geral";
+    if (tipoDecisao === 'mantido') categoria = "homologado_arb";
+    else if (tipoDecisao === 'editado') categoria = "ajustado_arb";
+    else if (tipoDecisao === 'anulado') categoria = "anulado_arb";
+
+    const partesApelidosOrig = (reserva.jogadores || '').split(',');
+    const partesCompletoOrig = (reserva.jogadores_completo || '').split(',');
+    const adversarioNome = partesApelidosOrig.length > 1 ? partesApelidosOrig[1].trim() : (partesCompletoOrig.length > 1 ? partesCompletoOrig[1].trim() : 'seu adversário');
+
+    const payloadNotif = {
+        categoria: categoria,
+        detalhe: detalhe,
+        adversario: adversarioNome,
+        timestamp: Date.now()
+    };
+
+    idsParaNotificar.forEach(idJogador => {
+        database.ref(`${raizBanco}/jogadores/${idJogador}/notificacoes`).push(payloadNotif);
+    });
+}
+
+function notificarAutorSumulaSaaS(reserva, categoria) {
+    if (!reserva || !raizBanco || !reserva.dadosPlacar) return;
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+
+    const autorSumulaNorm = norm(reserva.dadosPlacar.autorSumula || '');
+    const nomeConfirmadorNorm = norm(localStorage.getItem('jogadorLogadoNome') || '');
+
+    if (!autorSumulaNorm) return;
+
+    const idAutor = Object.keys(jogadoresGlobal || {}).find(id => {
+        const j = jogadoresGlobal[id];
+        if (!j) return false;
+        return norm(j.nomeCompleto) === autorSumulaNorm || norm(j.apelido) === autorSumulaNorm;
+    });
+
+    if (idAutor) {
+        const confirmadorAtleta = Object.values(jogadoresGlobal || {}).find(j => norm(j.nomeCompleto) === nomeConfirmadorNorm || norm(j.apelido) === nomeConfirmadorNorm);
+        const nomeConfirmadorFormatado = confirmadorAtleta ? (confirmadorAtleta.apelido || confirmadorAtleta.nomeCompleto) : (localStorage.getItem('jogadorLogadoNome') || 'Adversário');
+
+        const payload = {
+            categoria: categoria,
+            adversario: nomeConfirmadorFormatado,
+            timestamp: Date.now()
+        };
+
+        database.ref(`${raizBanco}/jogadores/${idAutor}/notificacoes`).push(payload);
+    }
+}
+
+/* ======================================================== */
+/* 7. ENGINE DE PROCESSAMENTO DE RESULTADOS DO RANKING       */
+/* ======================================================== */
+async function processarResultadoRankingSaaS(reservaConsolidada) {
+    if (!reservaConsolidada || !raizBanco) return;
+
+    try {
+        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+        const configRanking = snapConfig.val() || {};
+        const modeloAtivo = configRanking.modeloAtivo || 'piramide';
+
+        if (modeloAtivo === 'piramide') {
+            await processarResultadoPiramideSaaS(reservaConsolidada, configRanking);
+        } else if (modeloAtivo === 'barragem') {
+            await processarResultadoBarragemSaaS(reservaConsolidada, configRanking);
+        } else if (modeloAtivo === 'grupos') {
+            await processarResultadoGruposSaaS(reservaConsolidada, configRanking);
+        }
+    } catch (err) {
+        console.error("❌ [Ranking Engine] Erro ao processar resultado:", err);
+    }
+}
+
+async function processarResultadoPiramideSaaS(reserva, configRanking) {
+    const dadosPlacar = reserva.dadosPlacar;
+    if (!dadosPlacar || !dadosPlacar.vencedor) return;
+
+    const piramideConfig = configRanking.piramide || {};
+    const mecanicaTroca = piramideConfig.mecanicaTroca || 'direta';
+    const divGenero = configRanking.divisaoGenero || 'separado';
+
+    const listaApelidosStr = (reserva.jogadores || "").split(',').map(s => s.trim());
+    const listaCompletosStr = (reserva.jogadores_completo || "").split(',').map(s => s.trim());
+
+    const idJ1 = obterIdJogadorPorTextoSaaS(listaCompletosStr[0] || listaApelidosStr[0]);
+    const idJ2 = obterIdJogadorPorTextoSaaS(listaCompletosStr[1] || listaApelidosStr[1]);
+
+    if (!idJ1 || !idJ2) return;
+
+    const atletaBase = jogadoresGlobal[idJ1] || {};
+    const classe = (atletaBase.classe || 'B').toUpperCase();
+    let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+
+    const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+    const refTabela = `${raizBanco}/ranking/tabelas/${chaveTabela}`;
+
+    const snapTabela = await database.ref(refTabela).once('value');
+    let listaIDs = snapTabela.exists() ? snapTabela.val() : [];
+
+    if (!Array.isArray(listaIDs)) return;
+
+    const idxJ1 = listaIDs.indexOf(idJ1);
+    const idxJ2 = listaIDs.indexOf(idJ2);
+
+    if (idxJ1 === -1 || idxJ2 === -1) return;
+
+    const idxDesafiante = Math.max(idxJ1, idxJ2);
+    const idxDesafiado = Math.min(idxJ1, idxJ2);
+    const idDesafiante = listaIDs[idxDesafiante];
+
+    const venciCodigo = dadosPlacar.vencedorCodigo;
+    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
+
+    if (!idVencedor && dadosPlacar.vencedor) {
+        idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
+    }
+
+    let gamesP1 = 0, gamesP2 = 0;
+    if (dadosPlacar.parciais) {
+        Object.values(dadosPlacar.parciais).forEach(st => {
+            gamesP1 += parseInt(st.j1) || 0;
+            gamesP2 += parseInt(st.j2) || 0;
+        });
+    }
+
+    let quadraKey = "Quadra1";
+    if (reserva.quadra) {
+        const match = reserva.quadra.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
+    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
+    }
+
+    const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
+    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
+
+    const payloadPartida = {
+        categoria: chaveTabela,
+        status: 'finalizada',
+        jogador1Id: idJ1,
+        jogador2Id: idJ2,
+        vencedorId: idVencedor,
+        gamesP1: gamesP1,
+        gamesP2: gamesP2,
+        dadosPlacar: dadosPlacarTratados,
+        dataHora: Date.now()
+    };
+    await database.ref(`${raizBanco}/ranking/partidas/${partidaId}`).set(payloadPartida);
+
+    if (idVencedor === idDesafiante) {
+        if (mecanicaTroca === 'escada') {
+            const [desafianteID] = listaIDs.splice(idxDesafiante, 1);
+            listaIDs.splice(idxDesafiado, 0, desafianteID);
+        } else {
+            const temp = listaIDs[idxDesafiante];
+            listaIDs[idxDesafiante] = listaIDs[idxDesafiado];
+            listaIDs[idxDesafiado] = temp;
+        }
+
+        await database.ref(refTabela).set(listaIDs);
+    }
+}
+
+async function processarResultadoBarragemSaaS(reserva, configRanking) {
+    const dadosPlacar = reserva.dadosPlacar;
+    if (!dadosPlacar || !dadosPlacar.vencedor) return;
+
+    const divGenero = configRanking.divisaoGenero || 'separado';
+    const ptsVit = parseInt(configRanking.barragem?.pontosVitoria) || 3;
+    const ptsDer = parseInt(configRanking.barragem?.pontosDerrota) || 1;
+
+    const listaApelidosStr = (reserva.jogadores || "").split(',').map(s => s.trim());
+    const listaCompletosStr = (reserva.jogadores_completo || "").split(',').map(s => s.trim());
+
+    const idJ1 = obterIdJogadorPorTextoSaaS(listaCompletosStr[0] || listaApelidosStr[0]);
+    const idJ2 = obterIdJogadorPorTextoSaaS(listaCompletosStr[1] || listaApelidosStr[1]);
+
+    if (!idJ1 || !idJ2) return;
+
+    const atletaBase = jogadoresGlobal[idJ1] || {};
+    const classe = (atletaBase.classe || 'B').toUpperCase();
+    let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+
+    const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+
+    const venciCodigo = dadosPlacar.vencedorCodigo;
+    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
+
+    if (!idVencedor && dadosPlacar.vencedor) {
+        idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
+    }
+
+    let gamesP1 = 0;
+    let gamesP2 = 0;
+
+    if (dadosPlacar.parciais) {
+        Object.values(dadosPlacar.parciais).forEach(st => {
+            gamesP1 += parseInt(st.j1) || 0;
+            gamesP2 += parseInt(st.j2) || 0;
+        });
+    }
+
+    let quadraKey = "Quadra1";
+    if (reserva.quadra) {
+        const match = reserva.quadra.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
+    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
+    }
+
+    const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
+    const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
+
+    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
+
+    const payloadPartida = {
+        categoria: chaveTabela,
+        status: 'finalizada',
+        jogador1Id: idJ1,
+        jogador2Id: idJ2,
+        vencedorId: idVencedor,
+        gamesP1: gamesP1,
+        gamesP2: gamesP2,
+        dadosPlacar: dadosPlacarTratados,
+        dataHora: Date.now()
+    };
+
+    await database.ref(refPartida).set(payloadPartida);
+
+    const [snapPartidas, snapTabela] = await Promise.all([
+        database.ref(`${raizBanco}/ranking/partidas`).once('value'),
+        database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).once('value')
+    ]);
+
+    const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
+    let listaIDs = snapTabela.exists() ? snapTabela.val() : [];
+
+    if (!Array.isArray(listaIDs) || listaIDs.length === 0) return;
+
+    const estatisticas = {};
+    listaIDs.forEach(id => {
+        estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+    });
+
+    Object.values(partidasGlobal).forEach(partida => {
+        if (partida.status === 'finalizada' && partida.categoria === chaveTabela) {
+            const p1 = partida.jogador1Id;
+            const p2 = partida.jogador2Id;
+            const vitorioso = partida.vencedorId;
+            const g1 = parseInt(partida.gamesP1) || 0;
+            const g2 = parseInt(partida.gamesP2) || 0;
+
+            if (estatisticas[p1]) {
+                estatisticas[p1].j++;
+                estatisticas[p1].sg += (g1 - g2);
+                if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
+                else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+            }
+
+            if (estatisticas[p2]) {
+                estatisticas[p2].j++;
+                estatisticas[p2].sg += (g2 - g1);
+                if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
+                else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
+            }
+        }
+    });
+
+    listaIDs.sort((a, b) => {
+        const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+        const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+        if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+        if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+        return stB.v - stA.v;
+    });
+
+    await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).set(listaIDs);
+}
+
+async function processarResultadoGruposSaaS(reserva, configRanking) {
+    const dadosPlacar = reserva.dadosPlacar;
+    if (!dadosPlacar || !dadosPlacar.vencedor) return;
+
+    const divGenero = configRanking.divisaoGenero || 'separado';
+    const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo) || 4;
+    const ptsVit = parseInt(configRanking.grupos?.pontosVitoria) || 3;
+    const ptsDer = parseInt(configRanking.grupos?.pontosDerrota) || 1;
+    const criterioDesempate = configRanking.grupos?.criterioDesempate || 'games_confronto_sorteio';
+
+    const listaApelidosStr = (reserva.jogadores || "").split(',').map(s => s.trim());
+    const listaCompletosStr = (reserva.jogadores_completo || "").split(',').map(s => s.trim());
+
+    const idJ1 = obterIdJogadorPorTextoSaaS(listaCompletosStr[0] || listaApelidosStr[0]);
+    const idJ2 = obterIdJogadorPorTextoSaaS(listaCompletosStr[1] || listaApelidosStr[1]);
+
+    if (!idJ1 || !idJ2) return;
+
+    const atletaBase = jogadoresGlobal[idJ1] || {};
+    const classe = (atletaBase.classe || 'B').toUpperCase();
+    let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+
+    const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+
+    const venciCodigo = dadosPlacar.vencedorCodigo;
+    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
+
+    if (!idVencedor && dadosPlacar.vencedor) {
+        idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
+    }
+
+    let gamesP1 = 0;
+    let gamesP2 = 0;
+
+    if (dadosPlacar.parciais) {
+        Object.values(dadosPlacar.parciais).forEach(st => {
+            gamesP1 += parseInt(st.j1) || 0;
+            gamesP2 += parseInt(st.j2) || 0;
+        });
+    }
+
+    let quadraKey = "Quadra1";
+    if (reserva.quadra) {
+        const match = reserva.quadra.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
+    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
+    }
+
+    const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
+    const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
+
+    const tagGrupo = reserva.tagGrupoRanking || (dadosPlacar ? dadosPlacar.tagGrupoRanking : null);
+    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
+
+    const payloadPartida = {
+        categoria: chaveTabela,
+        status: 'finalizada',
+        jogador1Id: idJ1,
+        jogador2Id: idJ2,
+        vencedorId: idVencedor,
+        gamesP1: gamesP1,
+        gamesP2: gamesP2,
+        dadosPlacar: dadosPlacarTratados,
+        dataHora: Date.now()
+    };
+
+    if (tagGrupo) {
+        payloadPartida.tagGrupoRanking = tagGrupo;
+        payloadPartida.dadosPlacar.tagGrupoRanking = tagGrupo;
+    }
+
+    await database.ref(refPartida).set(payloadPartida);
+
+    const [snapPartidas, snapTabela] = await Promise.all([
+        database.ref(`${raizBanco}/ranking/partidas`).once('value'),
+        database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).once('value')
+    ]);
+
+    const partidasGlobal = snapPartidas.exists() ? snapPartidas.val() : {};
+    let listaIDs = snapTabela.exists() ? snapTabela.val() : [];
+
+    if (!Array.isArray(listaIDs) || listaIDs.length === 0) return;
+
+    const estatisticas = {};
+    const confrontosDiretos = {};
+
+    listaIDs.forEach(id => {
+        estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+    });
+
+    Object.values(partidasGlobal).forEach(partida => {
+        if (partida.status === 'finalizada' && partida.categoria === chaveTabela) {
+            const dp = partida.dadosPlacar || {};
+            const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
+
+            const idx1 = partida.jogador1Id ? listaIDs.indexOf(partida.jogador1Id) : -1;
+            const idx2 = partida.jogador2Id ? listaIDs.indexOf(partida.jogador2Id) : -1;
+            const grp1 = idx1 !== -1 ? Math.floor(idx1 / tamanhoGrupo) : -1;
+            const grp2 = idx2 !== -1 ? Math.floor(idx2 / tamanhoGrupo) : -2;
+
+            const ehPartidaGrupo = !!tagG || (grp1 !== -1 && grp1 === grp2);
+
+            if (!ehPartidaGrupo) return;
+
+            const p1 = partida.jogador1Id;
+            const p2 = partida.jogador2Id;
+            const vitorioso = partida.vencedorId;
+            const g1 = parseInt(partida.gamesP1) || 0;
+            const g2 = parseInt(partida.gamesP2) || 0;
+
+            confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
+            confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
+
+            if (estatisticas[p1]) {
+                estatisticas[p1].j++;
+                estatisticas[p1].sg += (g1 - g2);
+                if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
+                else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+            }
+
+            if (estatisticas[p2]) {
+                estatisticas[p2].j++;
+                estatisticas[p2].sg += (g2 - g1);
+                if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
+                else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
+            }
+        }
+    });
+
+    const novaListaOrdenada = [];
+    for (let i = 0; i < listaIDs.length; i += tamanhoGrupo) {
+        const membrosChave = listaIDs.slice(i, i + tamanhoGrupo);
+
+        membrosChave.sort((a, b) => {
+            const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+            const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+
+            if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+
+            if (criterioDesempate === 'confronto_games') {
+                const vencedorDireto = confrontosDiretos[`${a}_vs_${b}`];
+                if (vencedorDireto) return vencedorDireto === a ? -1 : 1;
+                if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+            } else {
+                if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                const vencedorDireto = confrontosDiretos[`${a}_vs_${b}`];
+                if (vencedorDireto) return vencedorDireto === a ? -1 : 1;
+            }
+
+            return stB.v - stA.v;
+        });
+
+        novaListaOrdenada.push(...membrosChave);
+    }
+
+    await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).set(novaListaOrdenada);
+}
