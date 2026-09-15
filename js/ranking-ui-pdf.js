@@ -43,17 +43,53 @@ function abrirLeaderboardSaaS() {
     if (selectGenero) selectGenero.style.display = '';
     if (containerDropdowns) containerDropdowns.style.display = '';
 
+    // INTEGRAÇÃO INTELIGENTE DE SELEÇÃO DE CLASSE & GÊNERO
+    const conf = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+    const temTorneioAtivo = (faseAtual >= 2 && cal.nomeTorneio);
+
     const idLogado = localStorage.getItem('jogadorLogadoId');
-    if (idLogado && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) {
-        const atleta = jogadoresGlobal[idLogado];
-        if (atleta.classe) {
-            abaClasseAtivaSaaS = atleta.classe.toUpperCase().replace('CLASSE_', '').trim();
+    const atleta = (idLogado && typeof jogadoresGlobal !== 'undefined') ? jogadoresGlobal[idLogado] : null;
+
+    let classeAtleta = atleta?.classe ? atleta.classe.toUpperCase().replace('CLASSE_', '').trim() : '';
+    let generoAtleta = atleta?.genero ? atleta.genero.toUpperCase().trim() : '';
+    if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+
+    if (temTorneioAtivo && Array.isArray(cal.categoriasHabilitadas) && cal.categoriasHabilitadas.length > 0) {
+        const catsHabilitadas = cal.categoriasHabilitadas;
+
+        const classesTorneio = catsHabilitadas
+            .filter(c => c.startsWith('CLASSE_'))
+            .map(c => c.replace('CLASSE_', '').trim());
+
+        const generosTorneio = catsHabilitadas
+            .filter(c => ['MASCULINO', 'FEMININO'].includes(c));
+
+        const atletaTemClasseNoTorneio = classeAtleta && classesTorneio.includes(classeAtleta);
+        const atletaTemGeneroNoTorneio = generoAtleta && (generosTorneio.length === 0 || generosTorneio.includes(generoAtleta));
+
+        // Prioridade 1: Classe/Gênero do Atleta se estiver no torneio
+        if (atletaTemClasseNoTorneio) {
+            abaClasseAtivaSaaS = classeAtleta;
+        } else if (classesTorneio.length > 0) {
+            // Prioridade 2: 1ª Classe participante do Torneio
+            abaClasseAtivaSaaS = classesTorneio[0];
+        } else {
+            abaClasseAtivaSaaS = classeAtleta || 'A';
         }
-        if (atleta.genero) {
-            let gen = atleta.genero.toUpperCase().trim();
-            if (gen === 'NAO_INFORMAR') gen = 'MASCULINO';
-            abaGeneroAtivaSaaS = gen;
+
+        if (atletaTemGeneroNoTorneio && generoAtleta) {
+            abaGeneroAtivaSaaS = generoAtleta;
+        } else if (generosTorneio.length > 0) {
+            abaGeneroAtivaSaaS = generosTorneio[0];
+        } else {
+            abaGeneroAtivaSaaS = generoAtleta || 'MASCULINO';
         }
+    } else {
+        // Se não houver torneio ativo, usa perfil do atleta ou padrão A/Masculino
+        abaClasseAtivaSaaS = classeAtleta || 'A';
+        abaGeneroAtivaSaaS = generoAtleta || 'MASCULINO';
     }
 
     sheet.style.display = 'flex';
@@ -137,7 +173,7 @@ function renderizarLeaderboardSaaS() {
         const configRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
 
         const modelo = configRanking.modeloAtivo || 'piramide';
-        const divGenero = configRanking.divisaoGenero || 'separado';
+        const divisaoGenero = configRanking.divisaoGenero || 'separado';
         const ptsVit = parseInt(configRanking.barragem?.pontosVitoria) || 3;
         const ptsDer = parseInt(configRanking.barragem?.pontosDerrota) || 1;
         const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
@@ -154,6 +190,7 @@ function renderizarLeaderboardSaaS() {
             }
         }
 
+        // MANTÉM SEMPRE AS 3 CLASSES A, B e C
         const classesAvulsa = ['A', 'B', 'C'];
         if (selectClasse) {
             selectClasse.innerHTML = classesAvulsa.map(cls => `
@@ -161,8 +198,9 @@ function renderizarLeaderboardSaaS() {
             `).join('');
         }
 
+        // MANTÉM OS GÊNEROS DISPONÍVEIS
         if (selectGenero) {
-            if (divGenero === 'unificado') {
+            if (divisaoGenero === 'unificado') {
                 selectGenero.innerHTML = `<option value="UNIFICADO" selected>Geral / Unificado</option>`;
                 selectGenero.disabled = true;
                 abaGeneroAtivaSaaS = 'UNIFICADO';
@@ -175,7 +213,7 @@ function renderizarLeaderboardSaaS() {
             }
         }
 
-        const chaveTabela = (divGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
+        const chaveTabela = (divisaoGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
         
         const listaIDs = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
             ? rankingTabelasGlobal[chaveTabela]
@@ -185,11 +223,11 @@ function renderizarLeaderboardSaaS() {
             ? rankingGeralGlobal[chaveTabela]
             : [];
 
-        const temTorneioAtivo = (faseAtual >= 3 && Array.isArray(listaIDs) && listaIDs.length > 0);
+        const temTorneioAtivoNaCategoria = (faseAtual >= 3 && Array.isArray(listaIDs) && listaIDs.length > 0);
         const temRankingGeral = (Array.isArray(listaGeralIDs) && listaGeralIDs.length > 0);
 
-        if (!temTorneioAtivo) {
-            abaVisaoLeaderboardSaaS = 'GERAL';
+        if (!temTorneioAtivoNaCategoria && abaVisaoLeaderboardSaaS === 'TORNEIO' && !temRankingGeral) {
+            // Se estiver na visão de torneio mas essa classe específica não tiver dados
         }
 
         let selectFase = document.getElementById('select-leaderboard-fase');
@@ -248,42 +286,28 @@ function renderizarLeaderboardSaaS() {
             }
         }
 
-        if (!temRankingGeral && !temTorneioAtivo) {
-            if (containerAbas) containerAbas.style.display = 'none';
-            bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum torneio em andamento ou histórico registrado.</p>';
-            return;
-        }
-
         if (containerAbas) containerAbas.style.display = 'flex';
 
-        if (btnTorneio) btnTorneio.style.display = temTorneioAtivo ? 'flex' : 'none';
-        if (btnSumulas) btnSumulas.style.display = temTorneioAtivo ? 'flex' : 'none';
-        if (btnGeral) btnGeral.style.display = temRankingGeral ? 'flex' : 'none';
+        if (btnTorneio) btnTorneio.style.display = 'flex';
+        if (btnSumulas) btnSumulas.style.display = 'flex';
+        if (btnGeral) btnGeral.style.display = 'flex';
 
-        const botoesVisiveis = [btnTorneio, btnSumulas, btnGeral].filter(b => b && b.style.display !== 'none');
+        [btnTorneio, btnSumulas, btnGeral].forEach(btn => {
+            if (btn) {
+                btn.style.flex = '1';
+                btn.style.cursor = 'pointer';
+                btn.style.pointerEvents = 'auto';
+                btn.classList.remove('active');
+            }
+        });
 
-        if (botoesVisiveis.length === 1 && btnGeral && btnGeral.style.display !== 'none') {
-            btnGeral.style.flex = '1';
-            btnGeral.style.cursor = 'default';
-            btnGeral.style.pointerEvents = 'none';
-            btnGeral.classList.add('active');
-        } else {
-            botoesVisiveis.forEach(b => {
-                b.style.flex = '1';
-                b.style.cursor = 'pointer';
-                b.style.pointerEvents = 'auto';
-            });
-
-            [btnTorneio, btnSumulas, btnGeral].forEach(btn => {
-                if (btn) btn.classList.remove('active');
-            });
-            if (abaVisaoLeaderboardSaaS === 'TORNEIO' && btnTorneio) btnTorneio.classList.add('active');
-            if (abaVisaoLeaderboardSaaS === 'SUMULAS' && btnSumulas) btnSumulas.classList.add('active');
-            if (abaVisaoLeaderboardSaaS === 'GERAL' && btnGeral) btnGeral.classList.add('active');
-        }
+        if (abaVisaoLeaderboardSaaS === 'TORNEIO' && btnTorneio) btnTorneio.classList.add('active');
+        if (abaVisaoLeaderboardSaaS === 'SUMULAS' && btnSumulas) btnSumulas.classList.add('active');
+        if (abaVisaoLeaderboardSaaS === 'GERAL' && btnGeral) btnGeral.classList.add('active');
 
         const idLogado = localStorage.getItem('jogadorLogadoId');
 
+        // VISÃO A: RANKING GERAL
         if (abaVisaoLeaderboardSaaS === 'GERAL') {
             let htmlGeral = `
                 <div class="box-dica-leaderboard">
@@ -292,7 +316,7 @@ function renderizarLeaderboardSaaS() {
             `;
 
             if (!Array.isArray(listaGeralIDs) || listaGeralIDs.length === 0) {
-                bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum atleta cadastrado no Ranking Geral.</p>';
+                bodyList.innerHTML = `<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum atleta cadastrado no Ranking Geral para a Classe ${abaClasseAtivaSaaS} (${abaGeneroAtivaSaaS.toLowerCase()}).</p>`;
                 return;
             }
 
@@ -335,6 +359,7 @@ function renderizarLeaderboardSaaS() {
             ? rankingPartidasGlobal
             : {};
 
+        // VISÃO B: SÚMULAS
         if (abaVisaoLeaderboardSaaS === 'SUMULAS') {
             let listaPartidas = Object.values(partidasGlobal).filter(p => p.categoria === chaveTabela);
 
@@ -380,7 +405,7 @@ function renderizarLeaderboardSaaS() {
             }
 
             if (listaPartidas.length === 0) {
-                bodyList.innerHTML = '<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhuma súmula lançada para esta categoria no torneio atual.</p>';
+                bodyList.innerHTML = `<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhuma súmula lançada para a Classe ${abaClasseAtivaSaaS} (${abaGeneroAtivaSaaS.toLowerCase()}) no torneio atual.</p>`;
                 return;
             }
 
@@ -471,7 +496,6 @@ function renderizarLeaderboardSaaS() {
                 const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
                 const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
 
-                // Leitura 100% passiva dos metadados gravados na partida
                 let labelFasePartida = partida.tagFaseRanking || dp.tagFaseRanking;
 
                 if (!labelFasePartida) {
@@ -684,6 +708,12 @@ function renderizarLeaderboardSaaS() {
             return;
         }
 
+        // VISÃO C: TORNEIO ATUAL - MENSAGEM CONTEXTUAL CASO A CATEGORIA NÃO TENHA DADOS
+        if (!temTorneioAtivoNaCategoria) {
+            bodyList.innerHTML = `<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhum torneio em andamento para a Classe ${abaClasseAtivaSaaS} (${abaGeneroAtivaSaaS.toLowerCase()}).</p>`;
+            return;
+        }
+
         const estatisticas = {};
         const confrontosDiretos = {};
 
@@ -815,21 +845,21 @@ function renderizarLeaderboardSaaS() {
                 `;
 
                 for (let i = 3; i < listaIDs.length; i++) {
-					const idOutro = listaIDs[i];
-					const objOutro = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idOutro]) ? jogadoresGlobal[idOutro] : {};
-					const nomeOutro = capitalizarNome(objOutro.nomeCompleto || objOutro.apelido || 'Atleta');
+                    const idOutro = listaIDs[i];
+                    const objOutro = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idOutro]) ? jogadoresGlobal[idOutro] : {};
+                    const nomeOutro = capitalizarNome(objOutro.nomeCompleto || objOutro.apelido || 'Atleta');
 
-					htmlHall += `
-						<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
-							<div style="display: flex; align-items: center; gap: 8px;">
-								<span style="font-weight: 800; font-size: 13px; width: 26px; color: #64748b;">${i + 1}º</span>
-								<div>
-									<strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${nomeOutro} ${idOutro === idLogado ? '(Você)' : ''}</strong>
-								</div>
-							</div>
-						</div>
-					`;
-				}
+                    htmlHall += `
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: 800; font-size: 13px; width: 26px; color: #64748b;">${i + 1}º</span>
+                                <div>
+                                    <strong style="font-size: 13px; font-weight: 700; color: #1e293b; display: block;">${nomeOutro} ${idOutro === idLogado ? '(Você)' : ''}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
 
                 htmlHall += `</div>`;
 
@@ -1053,8 +1083,8 @@ function renderizarLeaderboardSaaS() {
                 numGrupo++;
             }
             
-			let htmlMataMata = '';
-			
+            let htmlMataMata = '';
+            
             if (faseAtual >= 4) {
                 const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) 
                     ? rankingChavesGlobal[chaveTabela] 
@@ -1068,15 +1098,15 @@ function renderizarLeaderboardSaaS() {
                     potAlvo = parseInt(abaFaseAtivaSaaS.replace('MM_', ''), 10);
                 }
 
-				let rodadaExibir = [];
+                let rodadaExibir = [];
 
-				if (potAlvo === tamanhoChaveAtual && rodadaAtualBanco.length > 0) {
-					rodadaExibir = rodadaAtualBanco;
-				} else if (dadosChaveCat && dadosChaveCat.historicoRodadas && dadosChaveCat.historicoRodadas[potAlvo]) {
-					rodadaExibir = dadosChaveCat.historicoRodadas[potAlvo];
-				} else {
-					rodadaExibir = [];
-				}
+                if (potAlvo === tamanhoChaveAtual && rodadaAtualBanco.length > 0) {
+                    rodadaExibir = rodadaAtualBanco;
+                } else if (dadosChaveCat && dadosChaveCat.historicoRodadas && dadosChaveCat.historicoRodadas[potAlvo]) {
+                    rodadaExibir = dadosChaveCat.historicoRodadas[potAlvo];
+                } else {
+                    rodadaExibir = [];
+                }
 
                 const rotuloFaseHeader = (typeof obterRotuloFaseMataMataSaaS === 'function') 
                     ? obterRotuloFaseMataMataSaaS(potAlvo) 
@@ -1120,26 +1150,26 @@ function renderizarLeaderboardSaaS() {
                         const ehBye = confItem.isBye || !p2;
 
                         if (ehBye) {
-							const idBye = p1 || p2; // Captura p1 ou p2 caso um deles seja nulo
-							const name1 = buscarNomeMM(idBye);
-							const ehVoceNoJogo = (idLogado && idLogado === idBye);
-							const styleCard = ehVoceNoJogo
-								? 'background: #f0fdf4; border: 1.5px solid #16a34a; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);'
-								: 'background: #ffffff; border: 1.5px solid #8b5cf6; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);';
+                            const idBye = p1 || p2;
+                            const name1 = buscarNomeMM(idBye);
+                            const ehVoceNoJogo = (idLogado && idLogado === idBye);
+                            const styleCard = ehVoceNoJogo
+                                ? 'background: #f0fdf4; border: 1.5px solid #16a34a; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);'
+                                : 'background: #ffffff; border: 1.5px solid #8b5cf6; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);';
 
-							cardsConfrontosHtml += `
-								<div style="${styleCard}">
-									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-										<div style="font-size: 11px; font-weight: 800; color: ${ehVoceNoJogo ? '#15803d' : '#8b5cf6'}; text-transform: uppercase;">⚔️ Jogo ${idx + 1} • Folga (BYE)</div>
-										<span style="font-size: 10.5px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 10px; border: 1px solid #86efac;">Classificado(a)</span>
-									</div>
-									<div style="font-size: 13.5px; font-weight: 700; color: #1e293b; padding: 4px 0;">
-										${name1} <span style="font-size: 11px; color: #64748b; font-weight: 600;">(Avança direto para a próxima fase)</span>
-									</div>
-								</div>
-							`;
-							return; 
-						}
+                            cardsConfrontosHtml += `
+                                <div style="${styleCard}">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="font-size: 11px; font-weight: 800; color: ${ehVoceNoJogo ? '#15803d' : '#8b5cf6'}; text-transform: uppercase;">⚔️ Jogo ${idx + 1} • Folga (BYE)</div>
+                                        <span style="font-size: 10.5px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 10px; border: 1px solid #86efac;">Classificado(a)</span>
+                                    </div>
+                                    <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; padding: 4px 0;">
+                                        ${name1} <span style="font-size: 11px; color: #64748b; font-weight: 600;">(Avança direto para a próxima fase)</span>
+                                    </div>
+                                </div>
+                            `;
+                            return; 
+                        }
 
                         const partida = buscarPartidaGenericaMM(p1, p2);
                         const vitoriosoId = partida ? partida.vencedorId : null;
@@ -1240,6 +1270,64 @@ function trocarClasseLeaderboardSaaS(cls) {
 function trocarGeneroLeaderboardSaaS(gen) {
     abaGeneroAtivaSaaS = gen;
     renderizarLeaderboardSaaS();
+}
+
+/* RENDERING E FILTRO DA TABELA DO RANKING GERAL (ABA 7) */
+function renderizarTabelaRankingGeralSaaS() {
+    const tbody = document.getElementById('tbody-ranking-geral-saas');
+    const selClasse = document.getElementById('sel-classe-geral');
+    const selGenero = document.getElementById('sel-genero-geral');
+
+    if (!tbody) return;
+
+    const classe = selClasse ? selClasse.value : 'B';
+    const genero = selGenero ? selGenero.value : 'MASCULINO';
+    const chaveTabela = `${classe}_${genero}`;
+
+    const listaGeralIDs = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal && rankingGeralGlobal[chaveTabela])
+        ? rankingGeralGlobal[chaveTabela]
+        : [];
+
+    const dictPontos = (typeof rankingPontosGeralGlobal !== 'undefined' && rankingPontosGeralGlobal && rankingPontosGeralGlobal[chaveTabela])
+        ? rankingPontosGeralGlobal[chaveTabela]
+        : ((typeof pontosGeralGlobal !== 'undefined' && pontosGeralGlobal && pontosGeralGlobal[chaveTabela])
+            ? pontosGeralGlobal[chaveTabela]
+            : {});
+
+    if (!Array.isArray(listaGeralIDs) || listaGeralIDs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: #94a3b8;">Nenhum atleta cadastrado nesta categoria do Ranking Geral.</td></tr>';
+        return;
+    }
+
+    let html = '';
+    listaGeralIDs.forEach((idAtleta, index) => {
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+        const pos = index + 1;
+        const nomeAtleta = atleta.nomeCompleto || atleta.apelido || 'Atleta';
+        const pts = parseInt(dictPontos[idAtleta], 10) || 0;
+
+        html += `
+            <tr class="row-atleta-geral-item" data-nome="${nomeAtleta.toLowerCase()}">
+                <td style="text-align: left; padding-left: 8px; font-weight: 800; color: #64748b;">${pos}º</td>
+                <td style="text-align: left; font-weight: 700; color: #1e293b;">${nomeAtleta}</td>
+                <td style="text-align: right; padding-right: 8px; font-weight: 800; color: ${pts > 0 ? '#15803d' : '#94a3b8'};">${pts} pts</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+function filtrarTabelaRankingGeralSaaS() {
+    const inp = document.getElementById('inp-busca-atleta-geral');
+    if (!inp) return;
+    const termo = inp.value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#tbody-ranking-geral-saas .row-atleta-geral-item');
+
+    rows.forEach(tr => {
+        const nome = tr.getAttribute('data-nome') || '';
+        tr.style.display = nome.includes(termo) ? '' : 'none';
+    });
 }
 
 /* ======================================================== */
@@ -3183,7 +3271,7 @@ async function exportarSumulasPDFSaaS() {
         p2.scores.forEach(s => {
             doc.setFont("helvetica", p2.isWinner ? "bold" : "normal");
             doc.setFontSize(9);
-            doc.setTextColor(15, 23, 42);
+            doc.setTextColor(15, 23, 42); 
 
             if (s.val === 'W.O.') {
                 ehWO = true;
@@ -3634,6 +3722,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (idx === 5) {
                     carregarHistoricoTorneiosSaaS(); 
+                }
+				if (idx === 6) {
+                    if (typeof renderizarTabelaRankingGeralSaaS === 'function') {
+                        renderizarTabelaRankingGeralSaaS();
+                    }
+                    if (typeof preencherCamposParametrosRankingGeralSaaS === 'function') {
+                        preencherCamposParametrosRankingGeralSaaS();
+                    }
                 }
                 
                 if (window.innerWidth <= 768) {

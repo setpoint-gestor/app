@@ -256,7 +256,7 @@ async function zerarRankingSaaS() {
                 updates['convites_ranking'] = null;
 
                 caminhosReservasExcluir.forEach(path => { updates[path] = null; });
-                caminhosNotificacoesExcluir.forEach(path => { updates[path] = null; });
+                caminhosNotificacoesExcluir.forEach(path => { updates[path] = null; }); 
 
                 await database.ref(raizBanco).update(updates); 
 
@@ -281,6 +281,8 @@ async function zerarRankingSaaS() {
         showToast("Erro ao auditar dados do ranking no banco.", "error");
     }
 }
+
+
 
 /* ======================================================== */
 /* 3. ESTEIRA DINÂMICA DA TEMPORADA (MÁQUINA DE ESTADOS)   */
@@ -581,6 +583,20 @@ function atualizarBotaoRodapeRankingSaaS() {
         btnFooter.setAttribute('onclick', 'exportarRelatorioHistoricoSaaS()');
         btnFooter.style.cssText = 'background-color: #8b5cf6 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
 
+    } else if (idxAbaAtiva === 6) { // 7ª ABA: RANKING GERAL
+        const vConfig = document.getElementById('visao-config-ranking-geral');
+        const estaEmConfig = vConfig && vConfig.style.display !== 'none';
+
+        if (estaEmConfig) {
+            btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">save</i> Salvar Parâmetros do Ranking Geral';
+            btnFooter.setAttribute('onclick', 'salvarParametrosRankingGeralSaaS()');
+            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+        } else {
+            btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">picture_as_pdf</i> Exportar Ranking Geral (PDF)';
+            btnFooter.setAttribute('onclick', 'exportarRankingGeralPDFSaaS()');
+            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+        }
+
     } else {
         btnFooter.innerHTML = 'Salvar Parâmetros do Ranking';
         btnFooter.setAttribute('onclick', 'salvarConfigRankingSaas()');
@@ -588,9 +604,252 @@ function atualizarBotaoRodapeRankingSaaS() {
     }
 }
 
+/* GRAVAÇÃO DOS PARÂMETROS DE PONTUAÇÃO DO RANKING GERAL */
+function salvarParametrosRankingGeralSaaS() {
+    if (!isGestorLogado || !raizBanco) {
+        showToast("Apenas o gestor pode alterar os parâmetros do Ranking Geral.", "warning");
+        return;
+    }
+
+    const pts1 = parseInt(document.getElementById('cfg-pts-1')?.value, 10) || 0;
+    const pts2 = parseInt(document.getElementById('cfg-pts-2')?.value, 10) || 0;
+    const pts3 = parseInt(document.getElementById('cfg-pts-3')?.value, 10) || 0;
+    const pts4 = parseInt(document.getElementById('cfg-pts-4')?.value, 10) || 0;
+    const ptsPart = parseInt(document.getElementById('cfg-pts-part')?.value, 10) || 0;
+    const descarteN = parseInt(document.getElementById('cfg-descarte-n')?.value, 10) || 0;
+    const validadeMeses = parseInt(document.getElementById('cfg-validade-meses')?.value, 10) || 12;
+
+    const descarteAtivo = document.getElementById('chk-descarte-ativo')?.checked ?? true;
+    const validadeAtiva = document.getElementById('chk-validade-ativa')?.checked ?? true;
+
+    if (pts1 <= 0 || pts2 <= 0) {
+        showToast("Informe pontuações válidas para o campeão e vice.", "warning");
+        return;
+    }
+
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const payloadParametros = {
+        pontos1: pts1,
+        pontos2: pts2,
+        pontos3: pts3,
+        pontos4: pts4,
+        pontosParticipacao: ptsPart,
+        descarteN: descarteN,
+        descarteAtivo: descarteAtivo,
+        validadeMeses: validadeMeses,
+        validadeAtiva: validadeAtiva,
+        dataAtualizacao: Date.now()
+    };
+
+    database.ref(`${raizBanco}/config/ranking/parametrosGeral`).update(payloadParametros)
+    .then(() => {
+        showToast("Parâmetros do Ranking Geral salvos com sucesso!", "success");
+    })
+    .catch(err => {
+        console.error("❌ Erro ao salvar parâmetros do Ranking Geral:", err);
+        showToast("Erro ao gravar parâmetros no Firebase.", "error");
+    });
+}
+
+
+/* LEITURA E PREENCHIMENTO DOS PARÂMETROS DO RANKING GERAL */
+function preencherCamposParametrosRankingGeralSaaS() {
+    const conf = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const p = conf.parametrosGeral || {};
+
+    const el1 = document.getElementById('cfg-pts-1');
+    const el2 = document.getElementById('cfg-pts-2');
+    const el3 = document.getElementById('cfg-pts-3');
+    const el4 = document.getElementById('cfg-pts-4');
+    const elPart = document.getElementById('cfg-pts-part');
+    const elDesc = document.getElementById('cfg-descarte-n');
+    const elVal = document.getElementById('cfg-validade-meses');
+
+    const chkDesc = document.getElementById('chk-descarte-ativo');
+    const chkVal = document.getElementById('chk-validade-ativa');
+
+    if (el1) el1.value = p.pontos1 !== undefined ? p.pontos1 : 250;
+    if (el2) el2.value = p.pontos2 !== undefined ? p.pontos2 : 180;
+    if (el3) el3.value = p.pontos3 !== undefined ? p.pontos3 : 120;
+    if (el4) el4.value = p.pontos4 !== undefined ? p.pontos4 : 60;
+    if (elPart) elPart.value = p.pontosParticipacao !== undefined ? p.pontosParticipacao : 20;
+    if (elDesc) elDesc.value = p.descarteN !== undefined ? p.descarteN : 5;
+    if (elVal) elVal.value = p.validadeMeses !== undefined ? p.validadeMeses : 12;
+
+    const isDescAtivo = p.descarteAtivo !== undefined ? p.descarteAtivo : true;
+    const isValAtiva = p.validadeAtiva !== undefined ? p.validadeAtiva : true;
+
+    if (chkDesc) {
+        chkDesc.checked = isDescAtivo;
+        toggleCampoConfigSaaS('cfg-descarte-n', isDescAtivo);
+    }
+    if (chkVal) {
+        chkVal.checked = isValAtiva;
+        toggleCampoConfigSaaS('cfg-validade-meses', isValAtiva);
+    }
+}
+
+
+/* BALÃO EXPLICATIVO AO CLICAR NO ÍCONE (?) */
+function mostrarAjudaIconeSaaS(e, el, texto) {
+    if (e) e.stopPropagation();
+
+    let balaoExistente = el.parentElement.querySelector('.mini-tooltip-ajuda');
+    if (balaoExistente) {
+        balaoExistente.remove();
+        return;
+    }
+
+    document.querySelectorAll('.mini-tooltip-ajuda').forEach(b => b.remove());
+
+    const balao = document.createElement('div');
+    balao.className = 'mini-tooltip-ajuda';
+    balao.innerText = texto;
+    balao.style.cssText = 'position: absolute; top: 22px; left: 0; z-index: 99; background: #1e293b; color: #ffffff; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 500; width: 220px; box-shadow: 0 4px 14px rgba(0,0,0,0.2); line-height: 1.35; text-transform: none; pointer-events: auto;';
+
+    el.parentElement.style.position = 'relative';
+    el.parentElement.appendChild(balao);
+
+    const fechar = () => {
+        balao.remove();
+        document.removeEventListener('click', fechar);
+    };
+    setTimeout(() => document.addEventListener('click', fechar), 10);
+}
+
+/* HABILITA OU DESABILITA O CAMPO DE INPUT CONFORME O SWITCH */
+function toggleCampoConfigSaaS(inputId, ativo) {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) return;
+
+    inputEl.disabled = !ativo;
+    if (ativo) {
+        inputEl.style.opacity = "1";
+        inputEl.style.background = "#ffffff";
+        inputEl.style.cursor = "text";
+    } else {
+        inputEl.style.opacity = "0.5";
+        inputEl.style.background = "#f1f5f9";
+        inputEl.style.cursor = "not-allowed";
+    }
+}
+
+/* ABERTURA DO MODAL DE ZERAMENTO COM DADOS EM MEMÓRIA RAM (core.js) */
+function zerarPontuacaoRankingGeralSaaS() {
+    if (!isGestorLogado || !raizBanco) {
+        showToast("Apenas o gestor pode zerar a pontuação do Ranking Geral.", "warning");
+        return;
+    }
+
+    // Leitura síncrona diretamente da memória RAM mantida pelo core.js
+    const dadosPontosGeral = (typeof rankingPontosGeralGlobal !== 'undefined' && rankingPontosGeralGlobal)
+        ? rankingPontosGeralGlobal
+        : {};
+
+    const atletasUnicos = new Set();
+    let totalPontos = 0;
+
+    Object.keys(dadosPontosGeral).forEach(catKey => {
+        const catObj = dadosPontosGeral[catKey] || {};
+        if (typeof catObj === 'object') {
+            Object.keys(catObj).forEach(idAtleta => {
+                atletasUnicos.add(idAtleta);
+                const pts = Number(catObj[idAtleta] || 0);
+                totalPontos += pts;
+            });
+        }
+    });
+
+    const qtdAtletas = atletasUnicos.size;
+
+    // Trava de segurança: Se não houver dados acumulados, apenas avisa via Toast
+    if (qtdAtletas === 0 || totalPontos === 0) {
+        showToast("O Ranking Geral já se encontra completamente zerado.", "info");
+        return;
+    }
+
+    const modal = document.getElementById('modal-zerar-ranking-geral');
+    const ulBalanco = modal ? modal.querySelector('ul') : null;
+
+    if (!modal) {
+        console.error("❌ Modal #modal-zerar-ranking-geral não foi encontrado no HTML.");
+        showToast("Erro: Estrutura do modal não localizada na tela.", "error");
+        return;
+    }
+
+    if (ulBalanco) {
+        ulBalanco.innerHTML = `
+            <li><b>${qtdAtletas} atleta(s)</b> com pontuação ativa na Fila Mestre;</li>
+            <li><b>${totalPontos.toLocaleString('pt-BR')} ponto(s)</b> acumulados que serão zerados;</li>
+            <li>Histórico de edições e súmulas homologadas <b>NÃO</b> serão afetados.</li>
+        `;
+    }
+
+    modal.style.display = 'flex';
+}
+
+/* FECHAR MODAL DE ZERAMENTO */
+function fecharModalZerarRankingGeralSaaS() {
+    const modal = document.getElementById('modal-zerar-ranking-geral');
+    if (modal) modal.style.display = 'none';
+}
+
+/* EXECUÇÃO DEFINITIVA DO ZERAMENTO */
+function executarZeramentoRankingGeralSaaS() {
+    if (!isGestorLogado || !raizBanco) {
+        showToast("Operação não autorizada.", "warning");
+        return;
+    }
+
+    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+
+    const updates = {};
+    updates[`${raizBanco}/ranking/pontos_geral`] = null;
+    updates[`${raizBanco}/ranking/ranking_geral`] = null;
+
+    database.ref().update(updates)
+    .then(() => {
+        fecharModalZerarRankingGeralSaaS();
+        showToast("Pontuação do Ranking Geral zerada com sucesso!", "success");
+        if (typeof renderizarTabelaRankingGeralSaaS === 'function') {
+            renderizarTabelaRankingGeralSaaS();
+        }
+    })
+    .catch(err => {
+        console.error("❌ Erro ao zerar pontuação do Ranking Geral:", err);
+        showToast("Erro ao zerar pontuação no Firebase.", "error");
+    });
+}
+
 /* ======================================================== */
 /* 3.1 GRAVAÇÃO E EDIÇÃO DO CALENDÁRIO (FASE 1)             */
 /* ======================================================== */
+
+/* ALTERNÂNCIA DE VISÃO DA 7ª ABA (TABELA vs CONFIGURAÇÕES) */
+function toggleVisaoRankingGeralSaaS(e) {
+    if (e) e.stopPropagation();
+
+    const vTabela = document.getElementById('visao-tabela-ranking-geral');
+    const vConfig = document.getElementById('visao-config-ranking-geral');
+    const topBar = document.querySelector('#accordion-item-ranking-geral .ranking-top-bar');
+
+    if (!vTabela || !vConfig) return;
+
+    if (vTabela.style.display === 'none') {
+        vTabela.style.display = 'block';
+        vConfig.style.display = 'none';
+        if (topBar) topBar.style.display = '';
+    } else {
+        vTabela.style.display = 'none';
+        vConfig.style.display = 'block';
+        if (topBar) topBar.style.display = 'none';
+    }
+
+    if (typeof atualizarBotaoRodapeRankingSaaS === 'function') {
+        atualizarBotaoRodapeRankingSaaS();
+    }
+}
 
 function atualizarStatusPdfSaaS(input) {
     const lbl = document.getElementById('pdf-file-name');
