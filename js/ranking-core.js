@@ -2463,6 +2463,7 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
     const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
 
     const tagGrupo = reserva.tagGrupoRanking || (dadosPlacar ? dadosPlacar.tagGrupoRanking : null);
+    const tagFase = reserva.tagFaseRanking || (dadosPlacar ? dadosPlacar.tagFaseRanking : null);
     const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
 
     const payloadPartida = {
@@ -2480,6 +2481,11 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
     if (tagGrupo) {
         payloadPartida.tagGrupoRanking = tagGrupo;
         payloadPartida.dadosPlacar.tagGrupoRanking = tagGrupo;
+    }
+
+    if (tagFase) {
+        payloadPartida.tagFaseRanking = tagFase;
+        payloadPartida.dadosPlacar.tagFaseRanking = tagFase;
     }
 
     await database.ref(refPartida).set(payloadPartida);
@@ -2568,3 +2574,4 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
 
     await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).set(novaListaOrdenada);
 }
+ 

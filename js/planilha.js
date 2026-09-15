@@ -1562,10 +1562,18 @@ async function aplicarFiltroRankingModalSaaS() {
 
         const idsArray = Array.isArray(listaIdsRanking) ? listaIdsRanking : Object.values(listaIdsRanking);
 
-        // Busca histórico de partidas para cálculo de desempate e cruzamentos
-        const snapPartidas = await database.ref(`${raizBanco}/ranking/partidas`).once('value');
-        const partidasRanking = snapPartidas.val() || {};
+        // 🛡️ LEITURA SÍNCRONA EM RAM: Histórico e Reservas Globais mantidas pelo core.js
+        const partidasRanking = rankingPartidasGlobal || {};
         const nomeLogadoNorm = (dadosLogado.nomeCompleto || dadosLogado.apelido || '').trim().toUpperCase();
+
+        // Extrai todas as reservas de todas as quadras da memória RAM global
+        const listaTodasReservasGeral = [];
+        Object.keys(reservasGeralGlobal || {}).forEach(qKey => {
+            const slots = reservasGeralGlobal[qKey] || {};
+            Object.values(slots).forEach(r => {
+                if (r) listaTodasReservasGeral.push(r);
+            });
+        });
 
         // 🎯 FILTRAGEM RESTRITA DE ADVERSÁRIOS POR MODELO DE DISPUTA
         let idsPermitidos = idsArray;
@@ -1664,11 +1672,11 @@ async function aplicarFiltroRankingModalSaaS() {
                 if (jaEnfrentou) return false;
             }
 
-            // 2. Impede agendar com quem já tem partida PENDENTE/AGENDADA no futuro
+            // 2. Impede agendar com quem já tem partida PENDENTE/AGENDADA no futuro (em qualquer quadra do clube)
             const atletaObj = jogadoresGlobal[idAtleta] || {};
             const nomeAtletaNorm = (atletaObj.nomeCompleto || atletaObj.apelido || '').trim().toUpperCase();
 
-            const jaAgendado = Object.values(reservasLocaisCache || {}).some(r => {
+            const jaAgendado = listaTodasReservasGeral.some(r => {
                 if (!r || r.status === 'aula_cancelada') return false;
                 const ehRanking = (r.isRanking === true || r.tipo === 'ranking');
                 if (!ehRanking) return false;
@@ -2130,11 +2138,16 @@ function validarEAgendarPartidaSaas() {
             confirmacoes: objetoConfirmacoes            
         };
 		
-        // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES E TAGS DE GRUPO / MATA-MATA
+        // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES, TAGS DE GRUPO / MATA-MATA E CARIMBO DE TEMPORADA
         if (pacote.isRanking) {
             const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
             const modeloAtivo = confRanking.modeloAtivo || 'piramide';
             const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
+
+            // Carimbo imutável da temporada ativa para isolamento do zeramento
+            if (window.dadosTemporadaRankingAtiva && window.dadosTemporadaRankingAtiva.temporadaId) {
+                objetoReservaReferencia.temporadaId = window.dadosTemporadaRankingAtiva.temporadaId;
+            }
 
             if (modeloAtivo === 'grupos' && faseAtualRanking === 3) {
                 const idAtleta1 = Object.keys(bancoJogadores).find(key => 

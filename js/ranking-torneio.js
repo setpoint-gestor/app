@@ -166,8 +166,10 @@ async function zerarRankingSaaS() {
             if (Array.isArray(arr)) totalInscritos += arr.length;
         });
 
+        const temporadaIdAtiva = convites.temporadaId || null;
         let totalReservasRanking = 0;
         const caminhosReservasExcluir = [];
+
         Object.keys(reservas).forEach(quadraKey => {
             const slots = reservas[quadraKey] || {};
             Object.keys(slots).forEach(slotKey => {
@@ -178,9 +180,13 @@ async function zerarRankingSaaS() {
                 const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
                 if (!ehRanking) return;
 
-                // 🛡️ TRAVA 2: Filtra estritamente por reservas dentro do calendário do torneio atual
-                if (dtInicioTorneio && r.dataCompleta && r.dataCompleta < dtInicioTorneio) return;
-                if (dtFimTorneio && r.dataCompleta && r.dataCompleta > dtFimTorneio) return;
+                // 🛡️ TRAVA 2: Filtro Estrito por ID Único de Temporada
+                if (r.temporadaId) {
+                    if (temporadaIdAtiva && r.temporadaId !== temporadaIdAtiva) return;
+                } else {
+                    if (dtInicioTorneio && r.dataCompleta && r.dataCompleta < dtInicioTorneio) return;
+                    if (dtFimTorneio && r.dataCompleta && r.dataCompleta > dtFimTorneio) return;
+                }
 
                 caminhosReservasExcluir.push(`reservas/${quadraKey}/${slotKey}`);
                 if (r.borda === undefined && parseInt(r.duracao) === 2) return;
@@ -230,7 +236,7 @@ async function zerarRankingSaaS() {
                 </div>
 
                 <p style="margin: 0; font-size: 12.5px; color: #64748b; font-weight: 500;">
-                    <b>Nota de Segurança:</b> Reservas comuns dos sócios (1h e 2h) não serão afetadas. Deseja prosseguir?
+                    <b>Nota de Segurança:</b> Deseja prosseguir?
                 </p>
             </div>
         `;
@@ -320,7 +326,8 @@ function renderizarGestaoTemporadaSaaS() {
     });
     containerStepper.innerHTML = htmlStepper;
 
-    const painelAlvo = (modelo !== "grupos" && faseAtual === 4) ? 5 : faseAtual;
+    // Se a fase for 1 (início/zerado), direciona para o painel neutro (Painel 5)
+    const painelAlvo = (faseAtual === 1 || (modelo !== "grupos" && faseAtual === 4)) ? 5 : faseAtual;
     document.querySelectorAll('#container-fases-gestor .fase-panel').forEach((panel, idx) => {
         if ((idx + 1) === painelAlvo) {
             panel.classList.add('ativa');
@@ -405,6 +412,22 @@ function renderizarGestaoTemporadaSaaS() {
         const btnPainelAbrir = panelFase5.querySelector('button[onclick*="reiniciarEsteiraNovoTorneioSaaS"]');
         if (btnPainelAbrir) {
             btnPainelAbrir.style.display = 'none';
+        }
+
+        const elBoxAviso5 = panelFase5.children[0];
+        if (elBoxAviso5) {
+            if (faseAtual === 1) {
+                elBoxAviso5.innerHTML = `
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #854d0e;">📍 Status: Nenhuma Temporada em Andamento</p>
+                    <span style="display: block; font-size: 12.5px; color: #a16207; line-height: 1.4;">Seja bem-vindo à Gestão da Temporada! Nenhuma competição está ativa no momento. Clique no botão <b>"+ Criar Novo Torneio"</b> abaixo para configurar o calendário e abrir as inscrições.</span>
+                `;
+            } else {
+                const nomeTorneio = cal.nomeTorneio || 'Torneio';
+                elBoxAviso5.innerHTML = `
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #854d0e;">📍 Status: ${nomeTorneio} Finalizado & Homologado 🏆</p>
+                    <span style="display: block; font-size: 12.5px; color: #a16207; line-height: 1.4;">Os resultados desta edição foram consolidados no histórico e a pontuação creditada no ranking anual do clube.</span>
+                `;
+            }
         }
     }
 
@@ -498,9 +521,16 @@ function atualizarBotaoRodapeRankingSaaS() {
         let acaoOnClick = 'encerrarFase3EAvancarSaaS()';
 
         if (faseAtual === 1) {
-            textoBotao = '<i class="material-icons">event_available</i> Salvar Calendário e Abrir Inscrições';
-            corBotao = '#16a34a';
-            acaoOnClick = 'salvarCalendarioEAbrirInscricoesSaaS()';
+            const painel1Ativo = document.querySelectorAll('#container-fases-gestor .fase-panel')[0]?.classList.contains('ativa');
+            if (painel1Ativo) {
+                textoBotao = '<i class="material-icons">event_available</i> Salvar Calendário e Abrir Inscrições';
+                corBotao = '#16a34a';
+                acaoOnClick = 'salvarCalendarioEAbrirInscricoesSaaS()';
+            } else {
+                textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
+                corBotao = '#2563eb';
+                acaoOnClick = 'editarCalendarioAtivoSaaS()';
+            }
         } else if (faseAtual === 2) {
             textoBotao = '<i class="material-icons">lock</i> Encerrar Inscrições e Congelar Chaves';
             corBotao = '#f59e0b';
@@ -1135,10 +1165,11 @@ async function encerrarFase3EAvancarSaaS() {
                         }
                     });
 
+                    const artigoFase = (tamChave === 2) ? "na" : "nas";
                     const verbo = (totalPendentes === 1) ? "Existe" : "Existem";
                     const substantivo = (totalPendentes === 1) ? "partida pendente" : "partidas pendentes";
 
-                    showToast(`${verbo} ${totalPendentes} ${substantivo} nas ${nomeFaseAtual}.`, "warning");
+                    showToast(`${verbo} ${totalPendentes} ${substantivo} ${artigoFase} ${nomeFaseAtual}.`, "warning");
                     return;
                 }
             }
@@ -1710,7 +1741,7 @@ function gerarProximaRodadaMataMataSaaS(rodadaAnterior, partidasGlobal, chaveCat
 
 /**
  * Recalcula a classificação final do torneio de Grupos ordenando
- * Campeão (1º), Vice (2º), Perdedores da Semi (3º/4º) e demais eliminados.
+ * Campeão (1º), Vice (2º), Perdedores reais da Semi (3º/4º) e demais eliminados.
  */
 function obterClassificacaoFinalGruposMataMataSaaS(chaveCat, ordemGruposOriginal, chavesMap, partidasMap) {
     const chaveInfo = (chavesMap && chavesMap[chaveCat]) ? chavesMap[chaveCat] : {};
@@ -1721,9 +1752,10 @@ function obterClassificacaoFinalGruposMataMataSaaS(chaveCat, ordemGruposOriginal
     const finalMatch = rodadaFinal[0];
     if (!finalMatch || !finalMatch.jogador1Id || !finalMatch.jogador2Id) return ordemGruposOriginal;
 
-    // Localiza a partida da Grande Final no histórico
+    // Localiza a partida da Grande Final no histórico (excluindo jogos de grupo)
     const partidaFinal = Object.values(partidasMap || {}).find(p => 
         p.categoria === chaveCat && p.status === 'finalizada' &&
+        !p.tagGrupoRanking && !p.dadosPlacar?.tagGrupoRanking &&
         ((p.jogador1Id === finalMatch.jogador1Id && p.jogador2Id === finalMatch.jogador2Id) ||
          (p.jogador1Id === finalMatch.jogador2Id && p.jogador2Id === finalMatch.jogador1Id))
     );
@@ -1736,19 +1768,31 @@ function obterClassificacaoFinalGruposMataMataSaaS(chaveCat, ordemGruposOriginal
     const atletasProcessados = new Set([campeaoId, viceId]);
     const ordemFinal = [campeaoId, viceId];
 
-    // Coleta os eliminados das Semi-Finais
-    const partidasMM = Object.values(partidasMap || {}).filter(p => p.categoria === chaveCat && p.status === 'finalizada');
+    // Coleta os eliminados EXCLUSIVAMENTE das Semi-Finais (Fase 4 no histórico)
+    const historico = chaveInfo.historicoRodadas || {};
+    const rodadaSemis = historico[4] || historico["4"] || [];
     const perdedoresSemis = [];
 
-    partidasMM.forEach(p => {
-        if (p.vencedorId && (p.jogador1Id === campeaoId || p.jogador2Id === campeaoId || p.jogador1Id === viceId || p.jogador2Id === viceId)) {
-            const perdedor = (p.vencedorId === p.jogador1Id) ? p.jogador2Id : p.jogador1Id;
-            if (perdedor && !atletasProcessados.has(perdedor)) {
-                perdedoresSemis.push(perdedor);
-                atletasProcessados.add(perdedor); 
+    if (rodadaSemis.length > 0) {
+        rodadaSemis.forEach(conf => {
+            if (conf.isBye || !conf.jogador2Id) return;
+
+            const partidaSemi = Object.values(partidasMap || {}).find(p =>
+                p.categoria === chaveCat && p.status === 'finalizada' &&
+                !p.tagGrupoRanking && !p.dadosPlacar?.tagGrupoRanking &&
+                ((p.jogador1Id === conf.jogador1Id && p.jogador2Id === conf.jogador2Id) ||
+                 (p.jogador1Id === conf.jogador2Id && p.jogador2Id === conf.jogador1Id)) // 🟢 Corrigido: jogador2Id
+            );
+
+            if (partidaSemi && partidaSemi.vencedorId) {
+                const perdedor = (partidaSemi.vencedorId === partidaSemi.jogador1Id) ? partidaSemi.jogador2Id : partidaSemi.jogador1Id;
+                if (perdedor && !atletasProcessados.has(perdedor)) {
+                    perdedoresSemis.push(perdedor);
+                    atletasProcessados.add(perdedor);
+                }
             }
-        }
-    });
+        }); 
+    }
 
     // Desempata os perdedores das semis usando o critério de melhor campanha dos grupos
     perdedoresSemis.sort((a, b) => ordemGruposOriginal.indexOf(a) - ordemGruposOriginal.indexOf(b));

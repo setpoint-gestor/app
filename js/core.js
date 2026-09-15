@@ -64,6 +64,8 @@ let rankingChavesGlobal = {}; // Espelho local da árvore de chaves do Mata-Mata
 
 let saasUsuariosOnlineCache = {}; // Espelho local dos usuários conectados em tempo real (RAM)
 
+let reservasGeralGlobal = {};     // Espelho local de TODAS as reservas do clube na memória RAM
+
 // ==========================================
 // 2. LISTENERS GLOBAIS (Ouvintes de Eventos)
 // ========================================== 
@@ -703,6 +705,13 @@ function iniciarOuvinteMestreSaaS() {
                 forcarRepinturaPlanilha();
             }
         }
+    });
+	
+	// --- 4.10. OUVINTE MESTRE DE TODAS AS RESERVAS DA ARENA ---
+    console.log("📅 [Core] Sincronizando todas as reservas da arena em tempo real...");
+    database.ref(`${raizBanco}/reservas`).on('value', (snapshot) => {
+        reservasGeralGlobal = snapshot.val() || {};
+        console.log("✓ [Core] Reservas globais da arena atualizadas na memória RAM.");
     });
 	
 	// --- 5. OUVINTE MESTRE DE INFRAESTRUTURA E STATUS DE QUADRAS ---

@@ -471,68 +471,17 @@ function renderizarLeaderboardSaaS() {
                 const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
                 const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
 
-                let labelFasePartida = 'Ranking';
-                let tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
+                // Leitura 100% passiva dos metadados gravados na partida
+                let labelFasePartida = partida.tagFaseRanking || dp.tagFaseRanking;
 
-                if (modelo === 'grupos') {
-                    const idsArr = Array.isArray(listaIDs) ? listaIDs : Object.values(listaIDs);
-                    const idx1 = partida.jogador1Id ? idsArr.indexOf(partida.jogador1Id) : -1;
-                    const idx2 = partida.jogador2Id ? idsArr.indexOf(partida.jogador2Id) : -1;
-                    const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo, 10) || 3;
-
-                    const grp1 = idx1 !== -1 ? Math.floor(idx1 / tamanhoGrupo) : -1;
-                    const grp2 = idx2 !== -1 ? Math.floor(idx2 / tamanhoGrupo) : -2;
-
+                if (!labelFasePartida) {
+                    const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
                     if (tagG) {
                         labelFasePartida = `Grupos - ${tagG}`;
-                    } else if (grp1 !== -1 && grp1 === grp2) {
-                        tagG = `G${grp1 + 1}`;
-                        labelFasePartida = `Grupos - ${tagG}`;
                     } else {
-                        if (faseAtual >= 4) {
-                            let rotuloFaseMM = "Mata-Mata";
-                            const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal[chaveTabela] : null;
-
-                            if (dadosChaveCat) {
-                                const tamAtual = parseInt(dadosChaveCat.faseAtual, 10) || 0;
-                                const ehNaRodadaAtiva = (dadosChaveCat.rodada1 || []).some(c => 
-                                    (c.jogador1Id === partida.jogador1Id && c.jogador2Id === partida.jogador2Id) ||
-                                    (c.jogador1Id === partida.jogador2Id && c.jogador2Id === partida.jogador1Id)
-                                );
-
-                                if (ehNaRodadaAtiva) {
-                                    rotuloFaseMM = (typeof obterRotuloFaseMataMataSaaS === 'function') ? obterRotuloFaseMataMataSaaS(tamAtual) : "Mata-Mata";
-                                } else if (dadosChaveCat.historicoRodadas) {
-                                    const potEncontrada = Object.keys(dadosChaveCat.historicoRodadas).find(pot => {
-                                        const confs = dadosChaveCat.historicoRodadas[pot] || [];
-                                        return confs.some(c => 
-                                            (c.jogador1Id === partida.jogador1Id && c.jogador2Id === partida.jogador2Id) ||
-                                            (c.jogador1Id === partida.jogador2Id && c.jogador2Id === partida.jogador1Id)
-                                        );
-                                    });
-
-                                    if (potEncontrada) {
-                                        rotuloFaseMM = (typeof obterRotuloFaseMataMataSaaS === 'function') ? obterRotuloFaseMataMataSaaS(parseInt(potEncontrada, 10)) : "Mata-Mata";
-                                    }
-                                }
-                            }
-
-                            if (rotuloFaseMM === "Mata-Mata" && typeof abaFaseAtivaSaaS === 'string' && abaFaseAtivaSaaS.startsWith('MM_')) {
-                                const potSel = parseInt(abaFaseAtivaSaaS.replace('MM_', ''), 10);
-                                if (!isNaN(potSel) && typeof obterRotuloFaseMataMataSaaS === 'function') {
-                                    rotuloFaseMM = obterRotuloFaseMataMataSaaS(potSel);
-                                }
-                            }
-
-                            labelFasePartida = rotuloFaseMM;
-                        } else {
-                            labelFasePartida = 'Mata-Mata';
-                        }
+                        const nomesModelos = { barragem: 'Barragem', piramide: 'Pirâmide', grupos: 'Mata-Mata' };
+                        labelFasePartida = nomesModelos[modelo] || 'Ranking';
                     }
-                } else if (modelo === 'barragem') {
-                    labelFasePartida = 'Barragem';
-                } else if (modelo === 'piramide') {
-                    labelFasePartida = 'Pirâmide';
                 }
 
                 let badgeHtml = '';
@@ -1171,25 +1120,26 @@ function renderizarLeaderboardSaaS() {
                         const ehBye = confItem.isBye || !p2;
 
                         if (ehBye) {
-                            const name1 = buscarNomeMM(p1);
-                            const ehVoceNoJogo = (idLogado && idLogado === p1);
-                            const styleCard = ehVoceNoJogo
-                                ? 'background: #f0fdf4; border: 1.5px solid #16a34a; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);'
-                                : 'background: #ffffff; border: 1.5px solid #8b5cf6; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);';
+							const idBye = p1 || p2; // Captura p1 ou p2 caso um deles seja nulo
+							const name1 = buscarNomeMM(idBye);
+							const ehVoceNoJogo = (idLogado && idLogado === idBye);
+							const styleCard = ehVoceNoJogo
+								? 'background: #f0fdf4; border: 1.5px solid #16a34a; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);'
+								: 'background: #ffffff; border: 1.5px solid #8b5cf6; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);';
 
-                            cardsConfrontosHtml += `
-                                <div style="${styleCard}">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                        <div style="font-size: 11px; font-weight: 800; color: ${ehVoceNoJogo ? '#15803d' : '#8b5cf6'}; text-transform: uppercase;">⚔️ Jogo ${idx + 1} • Folga (BYE)</div>
-                                        <span style="font-size: 10.5px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 10px; border: 1px solid #86efac;">Classificado(a)</span>
-                                    </div>
-                                    <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; padding: 4px 0;">
-                                        ${name1} <span style="font-size: 11px; color: #64748b; font-weight: 600;">(Avança direto para a próxima fase)</span>
-                                    </div>
-                                </div>
-                            `;
-                            return;
-                        }
+							cardsConfrontosHtml += `
+								<div style="${styleCard}">
+									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+										<div style="font-size: 11px; font-weight: 800; color: ${ehVoceNoJogo ? '#15803d' : '#8b5cf6'}; text-transform: uppercase;">⚔️ Jogo ${idx + 1} • Folga (BYE)</div>
+										<span style="font-size: 10.5px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 10px; border: 1px solid #86efac;">Classificado(a)</span>
+									</div>
+									<div style="font-size: 13.5px; font-weight: 700; color: #1e293b; padding: 4px 0;">
+										${name1} <span style="font-size: 11px; color: #64748b; font-weight: 600;">(Avança direto para a próxima fase)</span>
+									</div>
+								</div>
+							`;
+							return; 
+						}
 
                         const partida = buscarPartidaGenericaMM(p1, p2);
                         const vitoriosoId = partida ? partida.vencedorId : null;
@@ -2997,9 +2947,9 @@ async function exportarSumulasPDFSaaS() {
             const isWinner = nameEl.classList.contains('match-winner') || r.querySelector('.winner-arrow') !== null;
             const hasRET = r.querySelector('.badge-ret') !== null;
 
-            const scoreTds = Array.from(r.querySelectorAll('.atp-score, td.col-score'));
+            const scoreTds = Array.from(r.querySelectorAll('.atp-score, td.col-score, td:not(:first-child):not(.col-arrow)'));
             const scores = scoreTds.map(td => {
-                const sup = td.querySelector('sup')?.innerText || '';
+                const sup = td.querySelector('sup')?.innerText || ''; 
                 const mainVal = td.innerText.replace(sup, '').trim();
                 return { val: mainVal, sup: sup };
             });
@@ -3181,13 +3131,21 @@ async function exportarSumulasPDFSaaS() {
         }
 
         let scoreX1 = cardX + contentWidth - 28;
+        let ehWO = false;
+
         p1.scores.forEach(s => {
             doc.setFont("helvetica", p1.isWinner ? "bold" : "normal");
             doc.setFontSize(9);
             doc.setTextColor(15, 23, 42);
-            doc.text(s.val, scoreX1, row1Y, { align: "center" });
 
-            if (s.sup) {
+            if (s.val === 'W.O.') {
+                ehWO = true;
+                doc.text(s.val, cardX + contentWidth - 5, row1Y, { align: "right" });
+            } else {
+                doc.text(s.val, scoreX1, row1Y, { align: "center" });
+            }
+
+            if (s.sup && !ehWO) {
                 doc.setFontSize(5.5);
                 doc.setTextColor(148, 163, 184);
                 doc.text(s.sup, scoreX1 + 2.2, row1Y - 1.8);
@@ -3195,7 +3153,7 @@ async function exportarSumulasPDFSaaS() {
             scoreX1 += 9;
         });
 
-        if (p1.isWinner) {
+        if (p1.isWinner && !ehWO) {
             drawWinnerArrow(cardX + contentWidth - 4, row1Y - 0.8);
         }
 
@@ -3226,9 +3184,15 @@ async function exportarSumulasPDFSaaS() {
             doc.setFont("helvetica", p2.isWinner ? "bold" : "normal");
             doc.setFontSize(9);
             doc.setTextColor(15, 23, 42);
-            doc.text(s.val, scoreX2, row2Y, { align: "center" });
 
-            if (s.sup) {
+            if (s.val === 'W.O.') {
+                ehWO = true;
+                doc.text(s.val, cardX + contentWidth - 5, row2Y, { align: "right" });
+            } else {
+                doc.text(s.val, scoreX2, row2Y, { align: "center" });
+            }
+
+            if (s.sup && !ehWO) {
                 doc.setFontSize(5.5);
                 doc.setTextColor(148, 163, 184);
                 doc.text(s.sup, scoreX2 + 2.2, row2Y - 1.8);
@@ -3236,7 +3200,7 @@ async function exportarSumulasPDFSaaS() {
             scoreX2 += 9;
         });
 
-        if (p2.isWinner) {
+        if (p2.isWinner && !ehWO) {
             drawWinnerArrow(cardX + contentWidth - 4, row2Y - 0.8);
         }
 
@@ -3665,7 +3629,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const abas = modalRanking.querySelectorAll('.accordion-header');
         abas.forEach((aba, idx) => {
             aba.addEventListener('click', () => {
-                if (idx === 5) carregarHistoricoTorneiosSaaS(); 
+                if (idx === 4 && typeof renderizarGestaoTemporadaSaaS === 'function') {
+                    renderizarGestaoTemporadaSaaS();
+                }
+                if (idx === 5) {
+                    carregarHistoricoTorneiosSaaS(); 
+                }
                 
                 if (window.innerWidth <= 768) {
                     setTimeout(() => {
