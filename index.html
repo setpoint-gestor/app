@@ -1890,7 +1890,7 @@
 			<div class="header-painel">
 				<div>
 					<h2>🏆 Configurações do Ranking</h2>
-					<span style="font-size: 13px; color: #888;">Parâmetros da temporada, formato de disputa, súmulas e cobrança.</span>
+					<span style="font-size: 13px; color: #888;">Parâmetros da temporada, regras e súmulas.</span>
 				</div>
 				<button class="material-icons" style="background:none; border:none; cursor:pointer; color:var(--cor-escura); font-size: 28px;" onclick="fecharModalConfig('modal-config-ranking')" title="Voltar ao QG">arrow_back</button>
 			</div> 
@@ -2690,7 +2690,146 @@
 							</div>
 						</div>
 					</div>
+					
+					<!-- ABA 7: RANKING GERAL -->
+					<div class="accordion-item" id="accordion-item-ranking-geral" onclick="toggleGavetaRegras(this)">
+						<div class="accordion-header">
+							<div class="accordion-header-left">
+								<i class="material-icons" style="color: #f97316;">leaderboard</i>
+								<div class="header-title-block">
+									<span class="sidebar-title">Ranking Geral</span>
+									<span class="sidebar-desc">Fila Mestre, pontuação acumulada e regras.</span>
+								</div>
+							</div>
+							<i class="material-icons icon-arrow">expand_more</i>
+						</div>
+						<div class="accordion-content">
+							<div class="accordion-content-inner">
+								
+								<!-- BARRA SUPERIOR DE CONTROLES -->
+								<div class="ranking-top-bar">
+									<div class="filter-group" style="display: flex; gap: 8px; align-items: center; width: 100%;">
+										<select class="modern-select" id="sel-classe-geral" onchange="renderizarTabelaRankingGeralSaaS()" style="flex: 1;">
+											<option value="B">Classe B</option>
+											<option value="A">Classe A</option>
+											<option value="C">Classe C</option>
+										</select>
+										<select class="modern-select" id="sel-genero-geral" onchange="renderizarTabelaRankingGeralSaaS()" style="flex: 1;">
+											<option value="MASCULINO">Masculino</option>
+											<option value="FEMININO">Feminino</option>
+										</select>
 
+										<div class="mob-search-inline-row" id="mob-inline-row-geral" style="display: flex; gap: 6px; flex: 2;">
+											<div class="search-box" id="box-busca-ranking" style="flex: 1; display: flex; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 10px;">
+												<i class="material-icons" style="color: #94a3b8; font-size: 18px;">search</i>
+												<input type="text" id="inp-busca-atleta-geral" placeholder="Buscar atleta..." oninput="filtrarTabelaRankingGeralSaaS()" style="border: none; background: transparent; outline: none; font-size: 12px; width: 100%;">
+											</div>
+											<button type="button" class="btn-mob-icon-gear" id="btn-toggle-config-geral" onclick="toggleVisaoRankingGeralSaaS(event)" title="Configurações" style="width: 36px; height: 32px; border-radius: 8px; background: #fff; border: 1px solid #cbd5e1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+												<i class="material-icons" style="font-size: 18px;">settings</i>
+											</button>
+										</div>
+									</div>
+								</div>
+
+								<!-- VISÃO A: TABELA DO RANKING GERAL -->
+								<div id="visao-tabela-ranking-geral">
+									<div style="margin-bottom: 12px; font-size: 12px; color: #64748b; text-align: left;">
+										💡 Saldo acumulado de pontos e o Ranking oficial do clube.
+									</div>
+									<div style="overflow-x: auto; width: 100%;">
+										<table class="table-exec-striped" style="width: 100%;">
+											<thead>
+												<tr>
+													<th style="text-align: left; padding-left: 8px;">Posição</th>
+													<th style="text-align: left;">Atleta</th>
+													<th style="text-align: right; padding-right: 8px;">Pontos Acumulados</th>
+												</tr>
+											</thead>
+											<tbody id="tbody-ranking-geral-saas">
+												<!-- Injetado via JS -->
+											</tbody>
+										</table>
+									</div>
+								</div>
+
+								<!-- VISÃO B: PAINEL DE CONFIGURAÇÕES -->
+								<div id="visao-config-ranking-geral" style="display: none;">
+									<button type="button" class="btn-mob-full-table" onclick="toggleVisaoRankingGeralSaaS(event)" style="width: 100%; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #ea580c; background: #fff7ed; border: 1px solid #fed7aa; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; margin-bottom: 14px; transition: all 0.2s;">
+										<i class="material-icons" style="font-size: 18px; color: #ea580c;">table_chart</i> Ver Tabela do Ranking Geral
+									</button>
+
+									<div class="config-box-full" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+										<div class="config-section-title" style="font-size: 12.5px; font-weight: 800; color: #1e293b; text-transform: uppercase; display: flex; align-items: center; gap: 6px; text-align: left;">
+											<i class="material-icons" style="font-size: 18px; color: #64748b;">format_list_numbered</i>
+											Tabela Flexível de Pontuação por Torneio
+										</div>
+										<div class="config-grid-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+											<div class="config-field" style="display: flex; flex-direction: column; gap: 4px; text-align: left;"><label style="font-size: 11px; font-weight: 700; color: #64748b;">1º Campeão (Pts)</label><input type="number" id="cfg-pts-1" value="250" class="input-app" style="margin:0; padding:8px 10px; font-size: 13px !important; font-weight: 600; color: #1e293b; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;"></div>
+											<div class="config-field" style="display: flex; flex-direction: column; gap: 4px; text-align: left;"><label style="font-size: 11px; font-weight: 700; color: #64748b;">2º Vice (Pts)</label><input type="number" id="cfg-pts-2" value="180" class="input-app" style="margin:0; padding:8px 10px; font-size: 13px !important; font-weight: 600; color: #1e293b; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;"></div>
+											<div class="config-field" style="display: flex; flex-direction: column; gap: 4px; text-align: left;"><label style="font-size: 11px; font-weight: 700; color: #64748b;">3º Lugar (Pts)</label><input type="number" id="cfg-pts-3" value="120" class="input-app" style="margin:0; padding:8px 10px; font-size: 13px !important; font-weight: 600; color: #1e293b; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;"></div>
+											<div class="config-field" style="display: flex; flex-direction: column; gap: 4px; text-align: left;"><label style="font-size: 11px; font-weight: 700; color: #64748b;">4º Lugar (Pts)</label><input type="number" id="cfg-pts-4" value="60" class="input-app" style="margin:0; padding:8px 10px; font-size: 13px !important; font-weight: 600; color: #1e293b; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;"></div>
+											<div class="config-field" style="display: flex; flex-direction: column; gap: 4px; text-align: left;"><label style="font-size: 11px; font-weight: 700; color: #64748b;">Participação (Pts)</label><input type="number" id="cfg-pts-part" value="20" class="input-app" style="margin:0; padding:8px 10px; font-size: 13px !important; font-weight: 600; color: #1e293b; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;"></div>
+										</div>
+
+										<div class="config-section-title" style="font-size: 12.5px; font-weight: 800; color: #1e293b; text-transform: uppercase; display: flex; align-items: center; gap: 6px; text-align: left; margin-top: 6px;">
+											<i class="material-icons" style="font-size: 18px; color: #64748b;">auto_awesome</i>
+											Regras de Acúmulo, Descarte & Validade
+										</div>
+										
+										<div class="config-grid-2" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+											
+											<!-- DESCARTE -->
+											<div class="config-field" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+												<label style="font-size: 11px; font-weight: 700; color: #64748b; display: flex; align-items: center; gap: 4px;">
+													Descarte (N Melhores)
+													<i class="material-icons" title="Quando ativo, considera apenas os N melhores torneios do atleta no cálculo do saldo, descartando as piores pontuações." onclick="mostrarAjudaIconeSaaS(event, this, 'Quando ativo, considera apenas as N melhores pontuações do atleta no cálculo do saldo, descartando as piores.')" style="font-size: 14px; color: #f97316; cursor: pointer;">help_outline</i>
+												</label>
+												<div style="display: flex; align-items: center; gap: 8px;">
+													<input type="number" id="cfg-descarte-n" value="5" placeholder="Ex: 5" class="input-app" style="margin:0; padding:8px 10px; font-size: 13px !important; font-weight: 600; color: #1e293b; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; flex: 1;">
+													<label class="switch-mini" style="margin: 0; flex-shrink: 0;">
+														<input type="checkbox" id="chk-descarte-ativo" checked onchange="toggleCampoConfigSaaS('cfg-descarte-n', this.checked)">
+														<span class="slider-mini"></span>
+													</label>
+												</div>
+											</div>
+
+											<!-- VALIDADE -->
+											<div class="config-field" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+												<label style="font-size: 11px; font-weight: 700; color: #64748b; display: flex; align-items: center; gap: 4px;">
+													Validade (Meses)
+													<i class="material-icons" title="Quando ativo, os pontos conquistados expiram após N meses da data do torneio." onclick="mostrarAjudaIconeSaaS(event, this, 'Quando ativo, os pontos conquistados expiram após o prazo em meses definido a partir da data da prova.')" style="font-size: 14px; color: #f97316; cursor: pointer;">help_outline</i>
+												</label>
+												<div style="display: flex; align-items: center; gap: 8px;">
+													<input type="number" id="cfg-validade-meses" value="12" placeholder="Ex: 12" class="input-app" style="margin:0; padding:8px 10px; font-size: 13px !important; font-weight: 600; color: #1e293b; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; flex: 1;">
+													<label class="switch-mini" style="margin: 0; flex-shrink: 0;">
+														<input type="checkbox" id="chk-validade-ativa" checked onchange="toggleCampoConfigSaaS('cfg-validade-meses', this.checked)">
+														<span class="slider-mini"></span>
+													</label>
+												</div>
+											</div>
+
+										</div>
+
+										<div class="config-section-title" style="font-size: 12.5px; font-weight: 800; color: #dc2626; text-transform: uppercase; display: flex; align-items: center; gap: 6px; text-align: left; margin-top: 6px;">
+											<i class="material-icons" style="font-size: 18px; color: #dc2626;">warning</i>
+											Zona Perigosa (Ações Globais)
+										</div>
+										<div class="danger-card-box" style="background: #fff5f5; border: 1px solid #fecaca; border-radius: 10px; padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;">
+											<div>
+												<h5 style="margin: 0; font-size: 12px; font-weight: 800; color: #dc2626;">Zerar Pontuação do Ranking Geral</h5>
+												<p style="margin: 2px 0 0 0; font-size: 11px; color: #991b1b;">Apaga todo o acumulado de pontos sem afetar o histórico.</p>
+											</div>
+											<button type="button" style="background: #dc2626; color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; white-space: nowrap;" onclick="zerarPontuacaoRankingGeralSaaS(event)">
+												Zerar
+											</button>
+										</div>
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+					
 				</div>
 			</div>
 
@@ -3041,9 +3180,56 @@
 				</button>
 			</div>
 
-			<!-- Lista de Classificação do Ranking -->
+			<!-- Lista de Classificação do Ranking --> 
 			<div id="body-leaderboard-scroll" class="body-leaderboard-list">
 				<p style="text-align: center; color: #888; margin-top: 30px;">Carregando posições...</p>
+			</div>
+
+		</div>
+	</div>
+	
+	<!-- MODAL CUSTOMIZADO: ZERAR RANKING GERAL -->
+	<div id="modal-zerar-ranking-geral" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+		<div style="background: #ffffff; border-radius: 16px; padding: 24px; max-width: 460px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); text-align: left; animation: fadeInModal 0.2s ease-out;">
+			
+			<h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 800; color: #1e293b; text-align: center;">
+				Balanço do Zeramento do Ranking
+			</h3>
+
+			<!-- ALERTA IRREVERSÍVEL -->
+			<div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+				<div style="font-size: 12px; font-weight: 800; color: #dc2626; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+					⚠️ AÇÃO IRREVERSÍVEL DE ZERAMENTO
+				</div>
+				<div style="font-size: 11.5px; color: #991b1b; line-height: 1.4;">
+					Foram localizados registros ativos referentes à pontuação acumulada na Fila Mestre do clube.
+				</div>
+			</div>
+
+			<!-- BALANÇO DE DADOS -->
+			<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+				<div style="font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 8px;">
+					Balanço de dados que serão apagados:
+				</div>
+				<ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #334155; line-height: 1.6;">
+					<li><b>Pontuação acumulada</b> de todos os atletas no Ranking Geral;</li>
+					<li><b>Posições atuais</b> na Fila Mestre do clube;</li>
+					<li>Histórico de edições e súmulas homologadas <b>NÃO</b> serão afetados.</li>
+				</ul>
+			</div>
+
+			<div style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 16px;">
+				Nota de Segurança: Deseja prosseguir?
+			</div>
+
+			<!-- BOTÕES DE AÇÃO -->
+			<div style="display: flex; gap: 12px;">
+				<button type="button" onclick="fecharModalZerarRankingGeralSaaS()" style="flex: 1; background: #64748b; color: #ffffff; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#64748b'">
+					Cancelar
+				</button>
+				<button type="button" onclick="executarZeramentoRankingGeralSaaS()" style="flex: 1; background: #dc2626; color: #ffffff; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+					Confirmar
+				</button>
 			</div>
 
 		</div>
