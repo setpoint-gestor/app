@@ -505,13 +505,26 @@ function atualizarBotaoRodapeRankingSaaS() {
     const btnFooter = modalConfig.querySelector('.regras-footer button');
     if (!btnFooter) return;
 
+    const isMobile = window.innerWidth <= 768;
     const items = modalConfig.querySelectorAll('.sanfona-container .accordion-item');
-    let idxAbaAtiva = 0;
+    
+    let idxAbaAtiva = -1;
     items.forEach((item, idx) => {
-        if (item.classList.contains('active')) {
-            idxAbaAtiva = idx;
+        if (item.classList.contains('active') || item.classList.contains('mobile-opened')) {
+            idxAbaAtiva = idx; 
         }
     });
+
+    // TRAVA MOBILE: Se estiver no celular e nenhuma sanfona estiver aberta, oculta o botão do rodapé
+    if (isMobile && idxAbaAtiva === -1) {
+        btnFooter.style.setProperty('display', 'none', 'important');
+        return;
+    }
+
+    // Se estiver no Desktop e nenhuma aba tiver a classe active, assume a primeira aba (0)
+    if (idxAbaAtiva === -1) {
+        idxAbaAtiva = 0;
+    }
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const modelo = conf.modeloAtivo || "grupos";
@@ -774,7 +787,7 @@ function zerarPontuacaoRankingGeralSaaS() {
 
     if (!modal) {
         console.error("❌ Modal #modal-zerar-ranking-geral não foi encontrado no HTML.");
-        showToast("Erro: Estrutura do modal não localizada na tela.", "error");
+        showToast("Erro: Estrutura do modal não localizada na tela.", "warning");
         return;
     }
 
