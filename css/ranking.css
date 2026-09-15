@@ -15,7 +15,7 @@
     padding: 0 !important; 
     display: flex;
     flex-direction: column;
-    background-color: var(--bg-site, #f4f6f8); 
+    background-color: var(--bg-site, #f4f6f8);  
 }
 
 #modal-config-ranking .header-painel {
@@ -173,8 +173,8 @@
     #modal-config-ranking .sanfona-container {
         display: grid;
         grid-template-columns: 340px 1fr;
-        /* Atualizado de 5 para 6 abas */
-        grid-template-rows: repeat(6, max-content) 1fr; 
+        /* Atualizado para 7 abas */
+        grid-template-rows: repeat(7, max-content) 1fr; 
         gap: 16px 24px;
         align-items: start; 
         max-width: 1100px;
@@ -231,6 +231,7 @@
     #modal-config-ranking .accordion-item:nth-of-type(4) .accordion-header { grid-row: 4; }
     #modal-config-ranking .accordion-item:nth-of-type(5) .accordion-header { grid-row: 5; }
     #modal-config-ranking .accordion-item:nth-of-type(6) .accordion-header { grid-row: 6; } /* NOVA ABA 6 */
+	#modal-config-ranking .accordion-item:nth-of-type(7) .accordion-header { grid-row: 7; } /* ABA 7: RANKING GERAL */
 
     #modal-config-ranking .accordion-item.active .accordion-header {
         background: var(--cor-primaria, #2E8B57);
@@ -244,6 +245,13 @@
         border-color: #8b5cf6 !important;
         box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25) !important;
     }
+	
+	/* Destaque Laranja (#f97316) quando a Aba 7 (Ranking Geral) estiver Ativa */
+    #modal-config-ranking .accordion-item:nth-of-type(7).active .accordion-header {
+        background: #f97316 !important;
+        border-color: #f97316 !important;
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25) !important;
+    }
 
     #modal-config-ranking .accordion-item.active .accordion-header i { color: #ffffff !important; }
     #modal-config-ranking .accordion-item.active .sidebar-title { color: #ffffff !important; }
@@ -254,8 +262,8 @@
     #modal-config-ranking .accordion-content {
         display: none;
         grid-column: 2;
-        /* Atualizado de span 6 para span 7 para cobrir todas as abas */
-        grid-row: 1 / span 7; 
+        /* Span 8 para cobrir as 7 abas da sidebar */
+        grid-row: 1 / span 8; 
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 16px;
@@ -371,11 +379,18 @@
 
 .col-edicao {
     white-space: nowrap;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
     padding-right: 12px !important;
+    vertical-align: middle;
+}
+
+/* Garante a célula alinhada como tabela no PC sem quebrar a borda inferior */
+td.col-edicao {
+    display: table-cell;
+}
+
+td.col-edicao .pdf-link-inline {
+    float: right;
+    margin-left: 12px;
 }
 
 .col-periodo {
@@ -806,7 +821,7 @@
     /* 4. Cores das Abas Ativas (Sanfona Mobile) */
     #modal-config-ranking .accordion-item.active .accordion-header {
         background: var(--cor-primaria, #2E8B57) !important;
-        border-color: var(--cor-primaria, #2E8B57) !important;
+        border-color: var(--cor-primaria, #2E8B57) !important; 
     }
     #modal-config-ranking .accordion-item:nth-of-type(5).active .accordion-header {
         background: #3b82f6 !important;
@@ -815,6 +830,10 @@
     #modal-config-ranking .accordion-item:nth-of-type(6).active .accordion-header {
         background: #8b5cf6 !important;
         border-color: #8b5cf6 !important;
+    }
+	#modal-config-ranking .accordion-item:nth-of-type(7).active .accordion-header {
+        background: #f97316 !important;
+        border-color: #f97316 !important;
     }
     #modal-config-ranking .accordion-item.active .accordion-header i,
     #modal-config-ranking .accordion-item.active .accordion-header .sidebar-title { 
@@ -2201,3 +2220,67 @@ body.dark-mode .badge-pix.pendente { background: #78350f; color: #fde047; border
     #sheet-leaderboard-ranking { position: absolute; left: 0; top: 0; width: 100%; }
 }
 
+
+/* ======================================================== */
+/* 17. ABA 7 - RANKING GERAL (FILA MESTRE & CONTROLES)     */
+/* ======================================================== */
+@media (max-width: 768px) {
+    /* 1. Espaçamento entre o cabeçalho laranja e os filtros */
+    #accordion-item-ranking-geral .ranking-top-bar {
+        margin-top: 16px !important;
+    }
+
+    /* 2. Quebra do grupo de filtros em 2 linhas */
+    #accordion-item-ranking-geral .filter-group {
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+    }
+
+    /* 3. Linha 1: Selects de Classe e Gênero dividindo 50% da tela cada */
+    #accordion-item-ranking-geral #sel-classe-geral,
+    #accordion-item-ranking-geral #sel-genero-geral {
+        flex: 1 1 calc(50% - 5px) !important;
+        min-width: 0 !important;
+    }
+
+    /* 4. Linha 2: Busca (largura total) + Botão de Configuração */
+    #accordion-item-ranking-geral #mob-inline-row-geral {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+    }
+
+    /* 5. Exibe o cabeçalho da tabela no mobile */
+    #accordion-item-ranking-geral .table-exec-striped thead {
+        display: table-header-group !important;
+    }
+
+    #accordion-item-ranking-geral .table-exec-striped thead th {
+        font-size: 10px !important;
+        padding: 8px 4px !important;
+        background: #f8fafc !important;
+        color: #64748b !important;
+    }
+
+    /* 6. Remove o formato de cartão individual e restaura as linhas de tabela */
+    #accordion-item-ranking-geral .table-exec-striped tr {
+        display: table-row !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* 7. Alinhamento e espaçamento compacto das células de jogador */
+    #accordion-item-ranking-geral .table-exec-striped td {
+        display: table-cell !important;
+        padding: 10px 4px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-size: 12px !important;
+    }
+
+    /* 8. Espaçamento entre o cabeçalho laranja e o painel de configurações */
+    #accordion-item-ranking-geral #visao-config-ranking-geral {
+        margin-top: 16px !important;
+    }
+}
