@@ -1,4 +1,4 @@
-const CACHE_NAME = 'setpoint-gestor-v5'; // 🔄 Subimos para v5 para renovar os arquivos do fatiamento do Ranking
+const CACHE_NAME = 'setpoint-gestor-v6'; // 🔄 Subimos para v6 para incluir o sorteio por potes
 
 const urlsToCache = [
   './',
@@ -14,7 +14,7 @@ const urlsToCache = [
   './css/logs.css?v=4',
   './css/ranking.css?v=4',
   './js/core.js?v=4',
-  './js/autenticacao.js?v=4',
+  './js/autenticacao.js?v=4', 
   './js/cadastro.js?v=4',
   './js/quadras.js?v=4',
   './js/planilha.js?v=4',
@@ -23,7 +23,8 @@ const urlsToCache = [
   './js/logs.js?v=4',
   './js/ranking-core.js?v=4',
   './js/ranking-torneio.js?v=4',
-  './js/ranking-ui-pdf.js?v=4'  
+  './js/ranking-ui-pdf.js?v=4',
+  './js/sorteio-potes.js?v=4'
 ];
 
 self.addEventListener('install', event => {
