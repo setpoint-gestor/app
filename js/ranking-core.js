@@ -2253,20 +2253,17 @@ async function processarResultadoPiramideSaaS(reserva, configRanking) {
         });
     }
 
-    let quadraKey = "Quadra1";
-    if (reserva.quadra) {
-        const match = reserva.quadra.match(/\d+/);
-        quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
-    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
-        const match = quadraSelecionadaSaaS.match(/\d+/);
-        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
-    }
+    const strQuadraOrigem = reserva.quadra || quadraSelecionadaSaaS || "";
+    const matchNum = strQuadraOrigem.match(/\d+/);
+    const quadraFormatada = matchNum ? `Quadra ${matchNum[0]}` : "Quadra 1";
+    const quadraKey = matchNum ? `Quadra${matchNum[0]}` : "Quadra1";
 
     const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
     const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
 
     const payloadPartida = {
         categoria: chaveTabela,
+        quadra: quadraFormatada,
         status: 'finalizada',
         jogador1Id: idJ1,
         jogador2Id: idJ2,
@@ -2331,14 +2328,10 @@ async function processarResultadoBarragemSaaS(reserva, configRanking) {
         });
     }
 
-    let quadraKey = "Quadra1";
-    if (reserva.quadra) {
-        const match = reserva.quadra.match(/\d+/);
-        quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
-    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
-        const match = quadraSelecionadaSaaS.match(/\d+/);
-        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
-    }
+    const strQuadraOrigem = reserva.quadra || quadraSelecionadaSaaS || "";
+    const matchNum = strQuadraOrigem.match(/\d+/);
+    const quadraFormatada = matchNum ? `Quadra ${matchNum[0]}` : "Quadra 1";
+    const quadraKey = matchNum ? `Quadra${matchNum[0]}` : "Quadra1";
 
     const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
     const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
@@ -2347,6 +2340,7 @@ async function processarResultadoBarragemSaaS(reserva, configRanking) {
 
     const payloadPartida = {
         categoria: chaveTabela,
+        quadra: quadraFormatada,
         status: 'finalizada',
         jogador1Id: idJ1,
         jogador2Id: idJ2,
@@ -2450,14 +2444,10 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
         });
     }
 
-    let quadraKey = "Quadra1";
-    if (reserva.quadra) {
-        const match = reserva.quadra.match(/\d+/);
-        quadraKey = match ? `Quadra${match[0]}` : reserva.quadra;
-    } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
-        const match = quadraSelecionadaSaaS.match(/\d+/);
-        quadraKey = match ? `Quadra${match[0]}` : quadraSelecionadaSaaS;
-    }
+    const strQuadraOrigem = reserva.quadra || quadraSelecionadaSaaS || "";
+    const matchNum = strQuadraOrigem.match(/\d+/);
+    const quadraFormatada = matchNum ? `Quadra ${matchNum[0]}` : "Quadra 1";
+    const quadraKey = matchNum ? `Quadra${matchNum[0]}` : "Quadra1";
 
     const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
     const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
@@ -2468,6 +2458,7 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
 
     const payloadPartida = {
         categoria: chaveTabela,
+        quadra: quadraFormatada,
         status: 'finalizada',
         jogador1Id: idJ1,
         jogador2Id: idJ2,

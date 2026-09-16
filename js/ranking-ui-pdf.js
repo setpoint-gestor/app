@@ -363,6 +363,79 @@ function renderizarLeaderboardSaaS() {
         if (abaVisaoLeaderboardSaaS === 'SUMULAS') {
             let listaPartidas = Object.values(partidasGlobal).filter(p => p.categoria === chaveTabela);
 
+            // Coleta agendamentos e placares pendentes de validação diretamente das reservas
+            const agendamentosAtivos = [];
+            const reservasGeral = (typeof reservasGeralGlobal !== 'undefined' && reservasGeralGlobal) ? reservasGeralGlobal : {};
+
+            Object.keys(reservasGeral).forEach(quadraKey => {
+                const slots = reservasGeral[quadraKey] || {};
+                Object.keys(slots).forEach(slotKey => {
+                    const r = slots[slotKey];
+                    if (!r) return;
+
+                    const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
+                    if (!ehRanking) return;
+
+                    if (r.borda === undefined && parseInt(r.duracao) === 2) return;
+
+                    // Verifica se bate com a categoria atual do filtro
+                    const catReserva = r.categoria || r.dadosPlacar?.categoria;
+                    if (catReserva && catReserva !== chaveTabela) return;
+
+                    const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
+
+                    // Captura jogos sem placar OU pendentes de validação pelo adversário
+                    if (stPlacar === 'sem_placar' || stPlacar === 'pendente_validacao' || !r.dadosPlacar) {
+                        const partesApelidos = (r.jogadores || '').split(', ');
+                        const partesCompletos = (r.jogadores_completo || '').split(', ');
+
+                        const idJ1 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
+                            ? obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]) 
+                            : null;
+                        const idJ2 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
+                            ? obterIdJogadorPorTextoSaaS(partesCompletos[1] || partesApelidos[1]) 
+                            : null;
+
+                        // Valida a categoria pelos atletas se não estiver cravada no nó
+                        if (!catReserva && idJ1) {
+                            const atleta1 = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
+                            const cls = (atleta1.classe || 'B').toUpperCase();
+                            let gen = (atleta1.genero || 'MASCULINO').toUpperCase();
+                            if (gen === 'NAO_INFORMAR') gen = 'MASCULINO';
+                            const catCalc = (divisaoGenero === 'unificado') ? `${cls}_UNIFICADO` : `${cls}_${gen}`;
+                            if (catCalc !== chaveTabela) return;
+                        }
+
+                        let dataPartidaStr = '--/--/----';
+                        if (r.dataCompleta) {
+                            const p = r.dataCompleta.split('-');
+                            if (p.length === 3) dataPartidaStr = `${p[2]}/${p[1]}/${p[0]}`;
+                        }
+
+                        // Formatação padronizada da quadra (ex: Quadra 3)
+                        const matchNum = quadraKey.match(/\d+/);
+                        const quadraAgendadaPadrao = matchNum ? `Quadra ${matchNum[0]}` : "Quadra";
+
+                        agendamentosAtivos.push({
+                            isAgendadoApenas: (stPlacar === 'sem_placar' || !r.dadosPlacar),
+                            isPendenteValidacao: (stPlacar === 'pendente_validacao' && !!r.dadosPlacar),
+                            statusPlacar: stPlacar,
+                            dadosPlacar: r.dadosPlacar || null,
+                            jogador1Id: idJ1,
+                            jogador2Id: idJ2,
+                            jogadoresTexto: r.jogadores,
+                            jogadoresCompletoTexto: r.jogadores_completo,
+                            quadraTexto: quadraAgendadaPadrao,
+                            dataPartidaStr: dataPartidaStr,
+                            horaInicio: r.hora,
+                            categoria: chaveTabela,
+                            tagFaseRanking: r.tagFaseRanking || r.dadosPlacar?.tagFaseRanking,
+                            tagGrupoRanking: r.tagGrupoRanking || r.dadosPlacar?.tagGrupoRanking
+                        });
+                    }
+                });
+            });
+
             if (modelo === 'grupos' && abaFaseAtivaSaaS && abaFaseAtivaSaaS !== 'TODAS' && abaFaseAtivaSaaS !== 'AUTO') {
                 let potAlvo = null;
                 if (typeof abaFaseAtivaSaaS === 'string' && abaFaseAtivaSaaS.startsWith('MM_')) {
@@ -384,13 +457,9 @@ function renderizarLeaderboardSaaS() {
                 listaPartidas = listaPartidas.filter(p => {
                     const dp = p.dadosPlacar || {};
                     const tagG = dp.tagGrupoRanking || p.tagGrupoRanking;
-
                     const ehPartidaGrupo = !!tagG;
 
-                    if (abaFaseAtivaSaaS === 'GRUPOS') {
-                        return ehPartidaGrupo;
-                    }
-
+                    if (abaFaseAtivaSaaS === 'GRUPOS') return ehPartidaGrupo;
                     if (ehPartidaGrupo) return false;
 
                     if (potAlvo && Array.isArray(confsFase) && confsFase.length > 0) {
@@ -399,20 +468,24 @@ function renderizarLeaderboardSaaS() {
                             (c.jogador1Id === p.jogador2Id && c.jogador2Id === p.jogador1Id)
                         );
                     }
-
                     return false;
                 });
             }
 
-            if (listaPartidas.length === 0) {
-                bodyList.innerHTML = `<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhuma súmula lançada para a Classe ${abaClasseAtivaSaaS} (${abaGeneroAtivaSaaS.toLowerCase()}) no torneio atual.</p>`;
+            const totalExibicao = listaPartidas.length + agendamentosAtivos.length;
+
+            if (totalExibicao === 0) {
+                bodyList.innerHTML = `<p style="text-align: center; color: #94a3b8; margin-top: 40px; font-weight: 500;">Nenhuma partida agendada ou súmula lançada para a Classe ${abaClasseAtivaSaaS} (${abaGeneroAtivaSaaS.toLowerCase()}) no torneio atual.</p>`;
                 return;
             }
 
-            const buscarNome = (id) => {
-                const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
-                const nomeStr = j.nomeCompleto || j.apelido || 'Atleta';
-                return nomeStr.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+            const buscarNome = (id, textoPadrao = '') => {
+                if (id && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) {
+                    const j = jogadoresGlobal[id];
+                    const nomeStr = j.nomeCompleto || j.apelido || 'Atleta';
+                    return nomeStr.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+                }
+                return textoPadrao ? capitalizarNome(textoPadrao) : 'Atleta';
             };
 
             const formatarNomeCurto = (nomeBruto) => {
@@ -463,20 +536,199 @@ function renderizarLeaderboardSaaS() {
 
             let htmlSumulas = `
                 <div style="margin-top: 2px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px; font-size: 12px; color: #64748b; text-align: center;">
-                    📋 Total de <b>${listaPartidas.length} partida(s)</b> nesta categoria.
+                    📋 Total de <b>${totalExibicao} partida(s)</b> nesta categoria.
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
             `;
 
+            // 1. CARDS DE JOGOS AGENDADOS E PENDENTES DE VALIDAÇÃO
+            agendamentosAtivos.forEach(itemAg => {
+                const partesComp = (itemAg.jogadoresCompletoTexto || '').split(', ');
+                const partesAp = (itemAg.jogadoresTexto || '').split(', ');
+
+                const j1NomeLongo = buscarNome(itemAg.jogador1Id, partesComp[0] || partesAp[0]);
+                const j2NomeLongo = buscarNome(itemAg.jogador2Id, partesComp[1] || partesAp[1]);
+                const j1Exibicao = formatarNomeCurto(j1NomeLongo);
+                const j2Exibicao = formatarNomeCurto(j2NomeLongo);
+
+                const quadraPill = itemAg.quadraTexto;
+                const horaStr = itemAg.horaInicio !== undefined ? `${String(itemAg.horaInicio).padStart(2, '0')}:00` : '';
+
+                let labelFasePartida = itemAg.tagFaseRanking;
+                if (!labelFasePartida && itemAg.tagGrupoRanking) {
+                    labelFasePartida = `Grupos - ${itemAg.tagGrupoRanking}`;
+                } else if (!labelFasePartida) {
+                    const nomesModelos = { barragem: 'Barragem', piramide: 'Pirâmide', grupos: 'Mata-Mata' };
+                    labelFasePartida = nomesModelos[modelo] || 'Ranking';
+                }
+
+                if (itemAg.isPendenteValidacao && itemAg.dadosPlacar) {
+                    const dp = itemAg.dadosPlacar;
+                    const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
+                    const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
+
+                    htmlSumulas += `
+                        <div style="background: #ffffff; border: 1px solid #fde68a; border-radius: 14px; padding: 12px 14px 6px 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #fef3c7; padding-bottom: 6px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 11px; font-weight: 700; color: #d97706; background: #fef3c7; padding: 2px 8px; border-radius: 8px; border: 1px solid #fde68a;">
+                                        ${quadraPill}
+                                    </span>
+                                    <span style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;">
+                                        <i class="material-icons" style="font-size: 12px;">event</i> ${itemAg.dataPartidaStr} ${horaStr ? '• ' + horaStr : ''}
+                                    </span>
+                                </div>
+                                <span style="font-size: 11px; color: #d97706; font-weight: 700;"><span style="margin-right: 3px;">🟡</span> Pendente</span>
+                            </div>
+                    `;
+
+                    if (isWO) {
+                        const j1EhVencedor = dp.vencedorCodigo === 'J1';
+                        htmlSumulas += `
+                            <table class="atp-table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td>
+                                        <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${j1EhVencedor ? 'W.O.' : ''}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span></td>
+                                        <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${!j1EhVencedor ? 'W.O.' : ''}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        `;
+                    } else if (dp.parciais) {
+                        const p = dp.parciais || {};
+                        const temSet1 = (p.set1 && p.set1.j1 !== undefined && p.set1.j1 !== null && p.set1.j1 !== "");
+                        const temSet2 = (p.set2 && p.set2.j1 !== undefined && p.set2.j1 !== null && p.set2.j1 !== "");
+                        const temSet3 = (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "");
+
+                        let thSetsHtml = '';
+                        if (temSet1) thSetsHtml += `<th class="col-score"></th>`;
+                        if (temSet2) thSetsHtml += `<th class="col-score"></th>`;
+                        if (temSet3) thSetsHtml += `<th class="col-score"></th>`;
+
+                        let tdSetsJ1Html = '';
+                        let tdSetsJ2Html = '';
+
+                        if (temSet1) {
+                            tdSetsJ1Html += `<td class="col-score atp-score">${fmtSet(p.set1.j1, p.set1.tbJ1)}</td>`;
+                            tdSetsJ2Html += `<td class="col-score atp-score">${fmtSet(p.set1.j2, p.set1.tbJ2)}</td>`;
+                        }
+                        if (temSet2) {
+                            tdSetsJ1Html += `<td class="col-score atp-score">${fmtSet(p.set2.j1, p.set2.tbJ1)}</td>`;
+                            tdSetsJ2Html += `<td class="col-score atp-score">${fmtSet(p.set2.j2, p.set2.tbJ2)}</td>`;
+                        }
+                        if (temSet3) {
+                            tdSetsJ1Html += `<td class="col-score atp-score">${fmtSet(p.set3.j1, p.set3.tbJ1)}</td>`;
+                            tdSetsJ2Html += `<td class="col-score atp-score">${fmtSet(p.set3.j2, p.set3.tbJ2)}</td>`;
+                        }
+
+                        htmlSumulas += `
+                            <table class="atp-table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                                        ${thSetsHtml}
+                                        <th class="col-arrow"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="atp-name">${j1Exibicao}</span></td>
+                                        ${tdSetsJ1Html}
+                                        <td class="col-arrow"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="atp-name">${j2Exibicao}</span></td>
+                                        ${tdSetsJ2Html}
+                                        <td class="col-arrow"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        `;
+                    } else {
+                        htmlSumulas += `
+                            <table class="atp-table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                                        <th class="col-score">-</th>
+                                        <th class="col-arrow"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="atp-name">${j1Exibicao}</span></td>
+                                        <td class="col-score atp-score">-</td>
+                                        <td class="col-arrow"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="atp-name">${j2Exibicao}</span></td>
+                                        <td class="col-score atp-score">-</td>
+                                        <td class="col-arrow"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        `;
+                    }
+
+                    htmlSumulas += `</div>`;
+                } else {
+                    htmlSumulas += `
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 14px 6px 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 11px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 8px; border: 1px solid #bae6fd;">
+                                        ${quadraPill}
+                                    </span>
+                                    <span style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;">
+                                        <i class="material-icons" style="font-size: 12px;">event</i> ${itemAg.dataPartidaStr} ${horaStr ? '• ' + horaStr : ''}
+                                    </span>
+                                </div>
+                                <span style="font-size: 11px; color: #0284c7; font-weight: 700;"><span style="margin-right: 3px;">📅</span> Agendado</span>
+                            </div>
+                            <table class="atp-table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                                        <th class="col-score">-</th>
+                                        <th class="col-arrow"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="atp-name">${j1Exibicao}</span></td>
+                                        <td class="col-score atp-score" style="color: #94a3b8;">-</td>
+                                        <td class="col-arrow"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="atp-name">${j2Exibicao}</span></td>
+                                        <td class="col-score atp-score" style="color: #94a3b8;">-</td>
+                                        <td class="col-arrow"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+            });
+
+            // 2. CARDS DE JOGOS CONCLUÍDOS / SÚMULAS CONSOLIDADAS
             listaPartidas.forEach(partida => {
                 const j1NomeLongo = buscarNome(partida.jogador1Id);
                 const j2NomeLongo = buscarNome(partida.jogador2Id);
                 const j1Exibicao = formatarNomeCurto(j1NomeLongo);
                 const j2Exibicao = formatarNomeCurto(j2NomeLongo);
 
-                const catKey = partida.categoria || '';
-                let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
-                catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                const quadraPill = partida.quadra || (partida.dadosPlacar && partida.dadosPlacar.quadra) || 'Quadra';
 
                 const dp = partida.dadosPlacar || {};
                 const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
@@ -544,7 +796,7 @@ function renderizarLeaderboardSaaS() {
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
                             <div style="display: flex; align-items: center; gap: 6px;">
                                 <span style="font-size: 11px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 8px; border-radius: 8px; border: 1px solid #ddd6fe;">
-                                    ${catLabel || 'Categoria Oficial'}
+                                    ${quadraPill}
                                 </span>
                                 <span style="font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;">
                                     <i class="material-icons" style="font-size: 12px;">event</i> ${dataPartidaStr}
@@ -592,9 +844,9 @@ function renderizarLeaderboardSaaS() {
                     const temSet3 = (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "");
 
                     let thSetsHtml = '';
-                    if (temSet1) thSetsHtml += `<th class="col-score">1</th>`;
-                    if (temSet2) thSetsHtml += `<th class="col-score">2</th>`;
-                    if (temSet3) thSetsHtml += `<th class="col-score">3</th>`;
+                    if (temSet1) thSetsHtml += `<th class="col-score"></th>`;
+                    if (temSet2) thSetsHtml += `<th class="col-score"></th>`;
+                    if (temSet3) thSetsHtml += `<th class="col-score"></th>`;
 
                     let tdSetsJ1Html = '';
                     let tdSetsJ2Html = '';
@@ -672,7 +924,7 @@ function renderizarLeaderboardSaaS() {
                             <thead>
                                 <tr>
                                     <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
-                                    <th class="col-score">1</th>
+                                    <th class="col-score"></th>
                                     <th class="col-arrow"></th>
                                 </tr>
                             </thead>
@@ -1237,7 +1489,7 @@ function renderizarLeaderboardSaaS() {
                     bodyList.innerHTML = htmlMataMata;
                 }
             } else {
-                bodyList.innerHTML = htmlGrupos; 
+                bodyList.innerHTML = htmlGrupos;  
             }
         }
 

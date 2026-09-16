@@ -587,7 +587,7 @@ function atualizarBotaoRodapeRankingSaaS() {
             acaoOnClick = 'salvarConfigRankingSaas()';
         }
 
-        btnFooter.innerHTML = textoBotao;
+        btnFooter.innerHTML = textoBotao; 
         btnFooter.setAttribute('onclick', acaoOnClick);
         btnFooter.style.cssText = `background-color: ${corBotao} !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;`;
 
@@ -1134,6 +1134,9 @@ function renderizarListaInscritosPixSaaS() {
     const inscritos = conf.inscritosConfirmados || {};
     const ids = Object.keys(inscritos);
 
+    // ORDENAÇÃO CRONOLÓGICA (Garante a ordem exata de aceite do convite)
+    ids.sort((a, b) => (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0));
+
     if (lblBadge) lblBadge.textContent = ids.length;
     if (btnInscritos) btnInscritos.disabled = (ids.length === 0);
     if (btnEncerrar) btnEncerrar.disabled = (ids.length === 0);
@@ -1187,6 +1190,7 @@ function renderizarListaInscritosPixSaaS() {
     container.innerHTML = html;
 }
 
+
 function togglePixStatusSaaS(idAtleta) {
     if (!isGestorLogado || !raizBanco) return;
 
@@ -1233,132 +1237,88 @@ function encerrarInscricoesECriarChavesSaaS() {
 
     const hojeStr = new Date().toISOString().split('T')[0];
     const fimInscricoesStr = cal.fimInscricoes || "";
+    const dataFimFormatada = fimInscricoesStr ? fimInscricoesStr.split('-').reverse().join('/') : '--/--';
 
-    const fmtData = (str) => str ? str.split('-').reverse().join('/') : '--/--';
-    const dataFimFormatada = fmtData(fimInscricoesStr);
-
-    const executarEncerramento = async () => {
+    const dispararSorteioEPersistir = () => {
         if (navigator.vibrate) navigator.vibrate(40);
 
-        const updates = {};
-        updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
+        const tamanhoGrupoConfig = parseInt(conf.grupos?.tamanhoGrupo, 10) || 4;
+        const nomeTorneio = cal.nomeTorneio || "ATP FINALS 2009";
 
-        const modoGenero = conf.divisaoGenero || 'separado';
-        const inscritosPorCategoria = {};
+        // Aciona a abertura do Globo de Sorteio por Potes (js/sorteio-potes.js)
+        SorteioPotes.abrirModalSorteioSaaS(nomeTorneio, inscritos, tamanhoGrupoConfig, async (gruposResultado) => {
+            try {
+                showToast("Gravando chaveamento sorteado no banco...", "info");
 
-        Object.keys(inscritos).forEach(idAtleta => {
-            const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-            const classe = (atleta.classe || 'B').toUpperCase();
-            let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
-            if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+                const updates = {};
+                updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
 
-            const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+                const modoGenero = conf.divisaoGenero || 'separado';
+                const inscritosPorCategoria = {};
 
-            if (!inscritosPorCategoria[chaveTabela]) {
-                inscritosPorCategoria[chaveTabela] = [];
-            }
-            inscritosPorCategoria[chaveTabela].push(idAtleta);
-        });
+                // Agrupa inscritos por Categoria/Gênero
+                Object.keys(inscritos).forEach(idAtleta => {
+                    const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+                    const classe = (atleta.classe || 'B').toUpperCase();
+                    let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
+                    if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
 
-        const snapConvitesInfo = await database.ref(`${raizBanco}/convites_ranking`).once('value');
-        const tipoOrdenacao = snapConvitesInfo.exists() ? (snapConvitesInfo.val().tipoOrdenacao || 'herdada') : 'herdada';
+                    const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
 
-        Object.keys(inscritosPorCategoria).forEach(chaveTab => {
-            const idsInscritosCat = inscritosPorCategoria[chaveTab];
-
-            if (tipoOrdenacao === 'livre') {
-                idsInscritosCat.sort((a, b) => {
-                    const dataA = inscritos[a]?.dataAceite || 0;
-                    const dataB = inscritos[b]?.dataAceite || 0;
-                    return dataA - dataB;
+                    if (!inscritosPorCategoria[chaveTabela]) {
+                        inscritosPorCategoria[chaveTabela] = [];
+                    }
+                    inscritosPorCategoria[chaveTabela].push(idAtleta);
                 });
-            } else {
-                const ordemMestre = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal[chaveTab]) 
-                    ? rankingGeralGlobal[chaveTab] 
-                    : [];
 
-                idsInscritosCat.sort((a, b) => {
-                    let idxA = ordemMestre.indexOf(a);
-                    let idxB = ordemMestre.indexOf(b);
-                    if (idxA === -1) idxA = 9999;
-                    if (idxB === -1) idxB = 9999;
+                // Aloca os grupos sorteados pelas pílulas dos potes nas tabelas do banco
+                Object.keys(inscritosPorCategoria).forEach(chaveTab => {
+                    const idsInscritosCat = inscritosPorCategoria[chaveTab];
+                    const listaIDsSemeada = [];
 
-                    if (idxA !== idxB) return idxA - idxB;
-
-                    const dataA = inscritos[a]?.dataAceite || 0;
-                    const dataB = inscritos[b]?.dataAceite || 0;
-                    return dataA - dataB;
-                });
-            }
-
-            const tamanhoGrupoConfig = parseInt(conf.grupos?.tamanhoGrupo, 10) || 3;
-            const totalAtletasCat = idsInscritosCat.length;
-
-            if (totalAtletasCat > 0) {
-                const numGrupos = Math.ceil(totalAtletasCat / tamanhoGrupoConfig);
-                const matrizGrupos = Array.from({ length: numGrupos }, () => []);
-
-                let direcaoInversa = false;
-                let grupoAtual = 0;
-
-                idsInscritosCat.forEach((idAtleta) => {
-                    matrizGrupos[grupoAtual].push(idAtleta);
-
-                    if (!direcaoInversa) {
-                        if (grupoAtual === numGrupos - 1) {
-                            direcaoInversa = true;
-                        } else {
-                            grupoAtual++;
-                        }
+                    if (gruposResultado && Object.keys(gruposResultado).length > 0) {
+                        Object.values(gruposResultado).forEach(grupoArray => {
+                            const grupoCompletado = [...grupoArray];
+                            while (grupoCompletado.length < tamanhoGrupoConfig) {
+                                grupoCompletado.push(null);
+                            }
+                            listaIDsSemeada.push(...grupoCompletado);
+                        });
+                        updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaIDsSemeada;
                     } else {
-                        if (grupoAtual === 0) {
-                            direcaoInversa = false;
-                        } else {
-                            grupoAtual--;
-                        }
+                        updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
                     }
                 });
 
-                const listaIDsSemeada = [];
-                matrizGrupos.forEach(grupo => {
-                    while (grupo.length < tamanhoGrupoConfig) {
-                        grupo.push(null);
-                    }
-                    listaIDsSemeada.push(...grupo);
+                // Envio de notificações para os inscritos
+                const payloadNotificacao = {
+                    categoria: "inicio_temporada",
+                    titulo: "A temporada começou!",
+                    detalhe: `Tabela do ${nomeTorneio} liberada via Sorteio de Potes.\nAgende sua partida no app.`,
+                    timestamp: Date.now()
+                };
+
+                Object.keys(inscritos).forEach(idAtleta => {
+                    const keyNotif = database.ref().push().key;
+                    updates[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
                 });
 
-                updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaIDsSemeada;
-            } else {
-                updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
+                await database.ref().update(updates);
+
+                showToast("Sorteio concluído! Fase de Grupos iniciada com sucesso.", "success");
+
+                if (typeof renderizarGestaoTemporadaSaaS === "function") {
+                    renderizarGestaoTemporadaSaaS();
+                }
+
+            } catch (err) {
+                console.error("❌ Erro ao persistir sorteio por potes:", err);
+                showToast("Erro ao gravar chaves sorteadas no Firebase.", "error");
             }
-        });
-
-        const nomeTorneio = cal.nomeTorneio || "Torneio";
-        const payloadNotificacao = {
-            categoria: "inicio_temporada",
-            titulo: "A temporada começou!",
-            detalhe: `Tabela do ${nomeTorneio} liberada.\nAgende sua partida de ranking no app.`,
-            timestamp: Date.now()
-        };
-
-        Object.keys(inscritos).forEach(idAtleta => {
-            const keyNotif = database.ref().push().key;
-            updates[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
-        });
-
-        database.ref().update(updates)
-        .then(() => {
-            showToast("Inscrições encerradas! Notificações enviadas e Fase 3 iniciada.", "success");
-            if (typeof renderizarGestaoTemporadaSaaS === "function") {
-                renderizarGestaoTemporadaSaaS();
-            }
-        })
-        .catch(err => {
-            console.error("❌ Erro ao encerrar inscrições:", err);
-            showToast("Erro ao gravar dados no Firebase.", "error");
         });
     };
 
+    // Alerta de encerramento antes do prazo ou confirmação direta
     if (fimInscricoesStr && hojeStr < fimInscricoesStr) {
         const htmlPrompt = `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
@@ -1366,23 +1326,23 @@ function encerrarInscricoesECriarChavesSaaS() {
                     ⚠️ <b>Atenção:</b> O prazo oficial de inscrições vai até <b>${dataFimFormatada}</b>.
                 </p>
                 <p style="margin: 0; font-size: 13px; color: #64748b;">
-                    Tem certeza que deseja encerrar antecipadamente com <b>${qtdInscritos} inscrito(s)</b> e congelar as chaves agora?
+                    Tem certeza que deseja encerrar antecipadamente com <b>${qtdInscritos} inscrito(s)</b> e abrir o <b>Globo de Sorteio</b> agora?
                 </p>
             </div>
         `;
-        showPrompt("Encerrar Inscrições Antecipadamente", htmlPrompt, () => {
-            executarEncerramento();
+        showPrompt("Encerrar Inscrições e Sortear Potes", htmlPrompt, () => {
+            dispararSorteioEPersistir();
         });
     } else {
         const htmlPrompt = `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
                 <p style="margin: 0;">
-                    Deseja encerrar as inscrições com <b>${qtdInscritos} atleta(s) confirmado(s)</b> e avançar para a próxima fase?
+                    Deseja encerrar as inscrições com <b>${qtdInscritos} atleta(s) confirmado(s)</b> e iniciar o <b>Sorteio Oficial por Potes</b>?
                 </p>
             </div>
         `;
-        showPrompt("Encerrar Inscrições e Congelar Grupos", htmlPrompt, () => {
-            executarEncerramento();
+        showPrompt("Encerrar Inscrições e Abrir Globo", htmlPrompt, () => {
+            dispararSorteioEPersistir();
         });
     }
 }
