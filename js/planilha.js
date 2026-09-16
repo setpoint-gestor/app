@@ -25,7 +25,7 @@ let contAtletas = 1;
 
 // Controles de sincronização para a trava da tela de carregamento (UX Premium)
 window.saasFaxinaPronta = false;
-window.saasSnapshotInicialRecebido = false;     
+window.saasSnapshotInicialRecebido = false;      
 
 
 // ==========================================
@@ -3701,15 +3701,16 @@ function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo) {
 
 
 /**
- * Motor de Faxina Automatizada (Fase 7 - Sobrevivência de Quórum): 
+ * Motor de Faxina Automatizada (Fase 7 - Sobrevivência de Quórum + Auto-Homologação): 
  * 1. Limpa dias antigos.
  * 2. Caça convites pendentes vencidos e APLICA A REGRA DE QUÓRUM.
  *    - Se tiver quórum, expulsa apenas os pendentes e salva a reserva.
  *    - Se não tiver quórum, exclui a reserva inteira e notifica o organizador.
- * 3. RESGATA logs que falharam por queda de internet no GitHub.
+ * 3. Auto-homologa súmulas com prazo de contestação expirado (expiraValidacaoAt).
+ * 4. RESGATA logs que falharam por queda de internet no GitHub.
  */
 function executarFaxinaAutomaticaSaaS() {
-    console.log("🤖 [SaaS Faxina] Iniciando varredura de histórico, convites expirados e resgates...");
+    console.log("🤖 [SaaS Faxina] Iniciando varredura de histórico, convites expirados, súmulas vencidas e resgates...");
     
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -3717,20 +3718,25 @@ function executarFaxinaAutomaticaSaaS() {
     const linhaDeCorte = new Date(hoje);
     linhaDeCorte.setDate(hoje.getDate() - DiasParaExibir); 
     const agoraMs = Date.now(); 
+
+    const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const prazoAutoconf = (confRanking.sumula && confRanking.sumula.prazoAutoconf !== undefined) ? parseInt(confRanking.sumula.prazoAutoconf, 10) : 24;
     
-    // 🔥 Consulta simultânea: Reservas + Fila de Falhas
+    // Consulta simultânea: Reservas + Fila de Falhas + Partidas do Ranking
     Promise.all([
         database.ref(`${raizBanco}/reservas`).once('value'),
-        database.ref(`${raizBanco}/logs_pendentes`).once('value')
-    ]).then(([snapReservas, snapPendentes]) => {
+        database.ref(`${raizBanco}/logs_pendentes`).once('value'),
+        database.ref(`${raizBanco}/ranking/partidas`).once('value')
+    ]).then(([snapReservas, snapPendentes, snapPartidasRanking]) => {
         const todasAsReservas = snapReservas.val() || {};
         const logsPendentesObj = snapPendentes.val() || {};
+        const todasPartidasRanking = snapPartidasRanking.val() || {};
         
         const updatePayload = {};
         const filaLogsPremium = [];
         let totalPartidasLimpas = 0;
 
-        // ♻️ PASSO 1: Resgata os Logs Encalhados
+        // 1. Resgata os Logs Encalhados
         const chavesPendentes = Object.keys(logsPendentesObj);
         if (chavesPendentes.length > 0) {
             console.log(`♻️ [SaaS Faxina] Resgatando ${chavesPendentes.length} log(s) pendente(s) da fila de falhas.`);
@@ -3740,7 +3746,22 @@ function executarFaxinaAutomaticaSaaS() {
             updatePayload['logs_pendentes'] = null; 
         }
 
-        // 🧹 PASSO 2: Varre as Reservas (Histórico e Convites Expirados)
+        // 2. Varredura e Auto-Homologação de Súmulas Expiradas nas Partidas do Ranking
+        Object.keys(todasPartidasRanking).forEach(pKey => {
+            const partida = todasPartidasRanking[pKey];
+            const dp = partida ? partida.dadosPlacar : null;
+
+            if (dp && dp.statusPlacar === 'pendente_validacao' && dp.expiraValidacaoAt && dp.expiraValidacaoAt <= agoraMs) {
+                updatePayload[`ranking/partidas/${pKey}/status`] = 'finalizada';
+                updatePayload[`ranking/partidas/${pKey}/dadosPlacar/statusPlacar`] = 'consolidado';
+                updatePayload[`ranking/partidas/${pKey}/dadosPlacar/autoHomologado`] = true;
+                updatePayload[`ranking/partidas/${pKey}/dadosPlacar/prazoAutoHoras`] = prazoAutoconf;
+                totalPartidasLimpas++;
+                console.log(`⏱️ [SaaS Faxina] Partida ${pKey} auto-homologada por decurso do prazo de ${prazoAutoconf}h.`);
+            }
+        });
+
+        // 3. Varre as Reservas de Quadras (Histórico, Convites e Súmulas Pendentes)
         Object.keys(todasAsReservas).forEach(quadraChave => {
             const slotsQuadra = todasAsReservas[quadraChave] || {};
             const chavesPuladas = new Set(); 
@@ -3761,7 +3782,35 @@ function executarFaxinaAutomaticaSaaS() {
                 if (chavesPuladas.has(slotKey)) return;
 
                 const r = slotsQuadra[slotKey];
-                if (!r || !r.dataCompleta || r.status === 'aula_cancelada') return;
+                if (!r) return;
+
+                const dp = r.dadosPlacar;
+                const stPlacar = r.statusPlacar || (dp ? dp.statusPlacar : '');
+
+                // Auto-Homologação de Súmula PENDENTE Expirada na Reserva de Quadra
+                if (dp && stPlacar === 'pendente_validacao' && dp.expiraValidacaoAt && dp.expiraValidacaoAt <= agoraMs) {
+                    updatePayload[`reservas/${quadraChave}/${slotKey}/statusPlacar`] = 'consolidado';
+                    updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/statusPlacar`] = 'consolidado';
+                    updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/autoHomologado`] = true;
+                    updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/prazoAutoHoras`] = prazoAutoconf;
+
+                    const dur = parseInt(r.duracao) || 1;
+                    if (dur === 2) {
+                        const partes = slotKey.split('_');
+                        if (partes.length === 2) {
+                            const proxSlot = `${partes[0]}_${parseInt(partes[1], 10) + 1}`;
+                            updatePayload[`reservas/${quadraChave}/${proxSlot}/statusPlacar`] = 'consolidado';
+                            if (slotsQuadra[proxSlot] && slotsQuadra[proxSlot].dadosPlacar) {
+                                updatePayload[`reservas/${quadraChave}/${proxSlot}/dadosPlacar/statusPlacar`] = 'consolidado';
+                            }
+                        }
+                    }
+                    totalPartidasLimpas++;
+                    console.log(`⏱️ [SaaS Faxina] Reserva ${slotKey} auto-homologada por decurso de prazo.`);
+                    return;
+                }
+
+                if (!r.dataCompleta || r.status === 'aula_cancelada') return;
 
                 const partesData = r.dataCompleta.split('-');
                 const dataReserva = new Date(parseInt(partesData[0]), parseInt(partesData[1]) - 1, parseInt(partesData[2]), 0, 0, 0, 0);
@@ -3777,9 +3826,6 @@ function executarFaxinaAutomaticaSaaS() {
                     const horaReserva = parseInt(partes[1], 10);
                     const duracaoReserva = parseInt(r.duracao) || 1;
 
-                    // ----------------------------------------------------
-                    // AVALIAÇÃO DE QUÓRUM PARA A SOBREVIVÊNCIA
-                    // ----------------------------------------------------
                     const isDuplaSlot = typeof configDuplasGlobal !== 'undefined' && configDuplasGlobal && 
                                         configDuplasGlobal[quadraKey] && 
                                         configDuplasGlobal[quadraKey].Ativo && 
@@ -3814,7 +3860,6 @@ function executarFaxinaAutomaticaSaaS() {
                             }
                         });
                         
-                        // O Organizador (índice 0) é sempre confirmado
                         if (idx === 0) isConfirmed = true;
 
                         if (isConfirmed) {
@@ -3835,9 +3880,6 @@ function executarFaxinaAutomaticaSaaS() {
                     let temAula2 = aulaAtiva && configAula.Grade[proximaChave] && configAula.Grade[proximaChave] !== "";
 
                     if (sobreviveuAoQuorum) {
-                        // ====================================================
-                        // 1. SOBREVIVÊNCIA: EXPULSA PENDENTES E MANTÉM RESERVA
-                        // ====================================================
                         const novosApelidos = indicesConfirmados.map(i => listApelidos[i]).join(', ');
                         const novosCompletos = indicesConfirmados.map(i => listCompleto[i]).join(', ');
 
@@ -3882,9 +3924,6 @@ function executarFaxinaAutomaticaSaaS() {
                         totalPartidasLimpas++;
 
                     } else {
-                        // ====================================================
-                        // 2. ÓBITO: EXCLUSÃO TOTAL (Histórico ou Falta de Quórum)
-                        // ====================================================
                         const slotsDestaPartida = [{ quadra: quadraChave, dia: diaReserva, hora: horaReserva }];
 
                         updatePayload[pathNode1] = temAula1 ? { status: 'aula_cancelada' } : null;
@@ -3896,7 +3935,6 @@ function executarFaxinaAutomaticaSaaS() {
                             chavesPuladas.add(proximaChave);
                         }
 
-                        // 🔔 NOTIFICAÇÃO AO ORGANIZADOR (CANCELA POR FALTA DE QUÓRUM EXPOSIÇÃO TEMPO)
                         if (conviteExpirou && r.organizador) {
                             const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
                             const orgNorm = norm(r.organizador);
@@ -3954,15 +3992,16 @@ function executarFaxinaAutomaticaSaaS() {
             });
         });
 
-        // 🚀 DISPARO FINAL
+        // Disparo final de gravação no banco
         if (totalPartidasLimpas > 0 || chavesPendentes.length > 0) {
             console.log(`🤖 [SaaS Faxina] Captura finalizada. Despachando lote para o Firebase...`);
             
             database.ref(raizBanco).update(updatePayload)
             .then(() => {
                 console.log(`🤖 [SaaS Faxina] Firebase atualizado. Tentando enviar ${filaLogsPremium.length} relatórios para o GitHub...`);
-                enviarFilaLogsAoGitHubSaaS(filaLogsPremium); 
-                
+                if (typeof enviarFilaLogsAoGitHubSaaS === 'function') {
+                    enviarFilaLogsAoGitHubSaaS(filaLogsPremium); 
+                }
                 window.saasFaxinaPronta = true;
                 if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') { verificarLiberacaoTelaLoadingSaaS(); }
             })
@@ -3972,7 +4011,7 @@ function executarFaxinaAutomaticaSaaS() {
                 if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') { verificarLiberacaoTelaLoadingSaaS(); }
             });
         } else {
-            console.log("🤖 [SaaS Faxina] Varredura encerrada. Nenhuma reserva expirada ou log encalhado.");
+            console.log("🤖 [SaaS Faxina] Varredura encerrada. Nenhuma reserva expirada, súmula pendente vencida ou log encalhado.");
             window.saasFaxinaPronta = true;
             if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') { verificarLiberacaoTelaLoadingSaaS(); }
         }

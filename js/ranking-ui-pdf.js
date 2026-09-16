@@ -156,6 +156,7 @@ function trocarVisaoLeaderboardSaaS(modo) {
     renderizarLeaderboardSaaS();
 }
 
+
 function renderizarLeaderboardSaaS() {
     const selectClasse = document.getElementById('select-leaderboard-classe');
     const selectGenero = document.getElementById('select-leaderboard-genero');
@@ -764,21 +765,25 @@ function renderizarLeaderboardSaaS() {
                 let footerArbHtml = '';
 
                 if (stPlacar === 'anulado' || decisaoArb === 'anulado_pelo_arbitro') {
-                    badgeHtml = `<span style="font-size: 11px; color: #dc2626; font-weight: 700;"><span style="margin-right: 3px;">🔴</span> Arbitrado</span>`;
-                    const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-                    const motivoAnul = dp.motivoAnulacao || 'partida inválida pelo torneio.';
-                    footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
-                } else if (decisaoArb === 'editado_pelo_arbitro') {
-                    badgeHtml = `<span style="font-size: 11px; color: #d97706; font-weight: 700;"><span style="margin-right: 3px;">🟠</span> Arbitrado</span>`;
-                    const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-                    footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Editado pela arbitragem: ${juizNome}</div>`;
-                } else if (decisaoArb === 'mantido_pelo_arbitro') {
-                    badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;"><span style="margin-right: 3px;">🟢</span> Arbitrado</span>`;
-                    const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-                    footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Homologado pela arbitragem: ${juizNome}</div>`;
-                } else {
-                    badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
-                }
+					badgeHtml = `<span style="font-size: 11px; color: #dc2626; font-weight: 700;"><span style="margin-right: 3px;">🔴</span> Arbitrado</span>`;
+					const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+					const motivoAnul = dp.motivoAnulacao || 'partida inválida pelo torneio.';
+					footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
+				} else if (decisaoArb === 'editado_pelo_arbitro') {
+					badgeHtml = `<span style="font-size: 11px; color: #d97706; font-weight: 700;"><span style="margin-right: 3px;">🟠</span> Arbitrado</span>`;
+					const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+					footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Editado pela arbitragem: ${juizNome}</div>`;
+				} else if (decisaoArb === 'mantido_pelo_arbitro') {
+					badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;"><span style="margin-right: 3px;">🟢</span> Arbitrado</span>`;
+					const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+					footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Homologado pela arbitragem: ${juizNome}</div>`;
+				} else if (dp.autoHomologado) {
+					badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
+					const horasAuto = dp.prazoAutoHoras || 24;
+					footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 12px; margin-top: 6px; margin-bottom: 2px;">Homologado automaticamente por decurso do prazo de ${horasAuto}h.</div>`;
+				} else {
+					badgeHtml = `<span style="font-size: 11px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
+				}
 
                 const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
                 const vencedorOficial = norm(dp.vencedor || "");
@@ -3130,7 +3135,6 @@ async function exportarSumulasPDFSaaS() {
     const limparTextoPdf = (txt) => {
         if (!txt) return '';
         return txt.replace(/[•—–]/g, '-')
-                  .replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
                   .replace(/\s+/g, ' ')
                   .trim();
     };
@@ -3204,80 +3208,70 @@ async function exportarSumulasPDFSaaS() {
         linha3Subtitulo = limparTextoPdf(`Súmulas e Resultados - ${modeloTxt}`);
     }
 
-    const atpTables = Array.from(bodyLeaderboard.querySelectorAll('.atp-table'));
-    let cardElements = atpTables.map(table => {
-        let el = table;
-        while (el.parentElement && el.parentElement !== bodyLeaderboard && el.parentElement.id !== 'box-restante-sumulas-acervo' && !el.parentElement.classList.contains('pdf-body-content')) {
-            if (el.parentElement.tagName === 'DIV' && (el.parentElement.style.background || el.parentElement.style.border)) {
-                return el.parentElement;
-            }
-            el = el.parentElement;
-        }
-        return el;
-    }).filter((card, index, self) => self.indexOf(card) === index);
-
-    if (cardElements.length === 0) {
-        const allDivs = Array.from(bodyLeaderboard.querySelectorAll('div[style*="border-radius: 14px"]'));
-        if (allDivs.length > 0) {
-            cardElements = allDivs;
-        } else {
-            cardElements = Array.from(bodyLeaderboard.children).filter(child => 
-                !child.classList.contains('box-dica-leaderboard') && child.innerText.trim().length > 0
-            );
-        }
-    }
+    // Mapeamento individual de cada card de partida a partir do contêiner da tabela
+    const cardElements = Array.from(bodyLeaderboard.querySelectorAll('table.atp-table'))
+        .map(table => table.closest('div[style*="background"]'))
+        .filter((card, index, self) => card && self.indexOf(card) === index);
 
     const matchesData = cardElements.map(cardEl => {
-        const txtFull = cardEl.innerText || '';
-        
-        let badgeCategoria = cardEl.querySelector('span[style*="purple"], span[style*="8b5cf6"], .badge-categoria')?.innerText.trim();
-        if (!badgeCategoria) {
-            if (ehHistorico) {
-                badgeCategoria = 'Súmula Histórica';
+        const headerRow = cardEl.querySelector('div[style*="justify-content: space-between"]');
+        let quadraTxt = 'Quadra';
+        let matchDate = '';
+        let statusTag = 'Homologado';
+        let statusColor = [22, 163, 74];
+
+        if (headerRow) {
+            const leftContainer = headerRow.querySelector('div[style*="display: flex"]');
+            if (leftContainer) {
+                const pills = Array.from(leftContainer.querySelectorAll('span'));
+                if (pills.length >= 1) quadraTxt = limparTextoPdf(pills[0].innerText);
+                if (pills.length >= 2) matchDate = limparTextoPdf(pills[1].innerText.replace(/event/gi, ''));
             } else {
-                const selClasse = document.getElementById('select-leaderboard-classe');
-                const selGenero = document.getElementById('select-leaderboard-genero');
-                const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
-                const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
-                badgeCategoria = [txtClasse, txtGenero].filter(Boolean).join(' - ') || 'Súmula Oficial';
+                const leftPills = Array.from(headerRow.querySelectorAll('span'));
+                if (leftPills.length >= 1) quadraTxt = limparTextoPdf(leftPills[0].innerText);
+                if (leftPills.length >= 2 && leftPills[1].innerText.includes('/')) {
+                    matchDate = limparTextoPdf(leftPills[1].innerText.replace(/event/gi, ''));
+                }
+            }
+
+            const rightStatusEl = headerRow.querySelector(':scope > span') || headerRow.children[headerRow.children.length - 1];
+            if (rightStatusEl) {
+                const stTxt = rightStatusEl.innerText.trim();
+                const stHtml = rightStatusEl.innerHTML || '';
+                const stColor = rightStatusEl.style.color || '';
+
+                if (stTxt.includes('Agendado')) {
+                    statusTag = 'Agendado';
+                    statusColor = [2, 132, 199];
+                } else if (stTxt.includes('Pendente')) {
+                    statusTag = 'Pendente';
+                    statusColor = [217, 119, 6];
+                } else if (stTxt.includes('Arbitrado')) {
+                    statusTag = 'Arbitrado';
+                    if (stColor.includes('dc2626') || stHtml.includes('🔴')) {
+                        statusColor = [220, 38, 38];
+                    } else if (stColor.includes('d97706') || stHtml.includes('🟠')) {
+                        statusColor = [217, 119, 6];
+                    } else {
+                        statusColor = [22, 163, 74];
+                    }
+                } else {
+                    statusTag = 'Homologado';
+                    statusColor = [22, 163, 74];
+                }
             }
         }
-        badgeCategoria = limparTextoPdf(badgeCategoria);
-        
+
         let labelFase = cardEl.querySelector('th[style*="text-align: left"], th')?.innerText.trim() || '';
         labelFase = limparTextoPdf(labelFase);
-
-        const dateMatch = txtFull.match(/\b\d{2}\/\d{2}\/\d{4}\b/);
-        const matchDate = dateMatch ? dateMatch[0] : '';
 
         let noteText = '';
         const noteEl = cardEl.querySelector('div[style*="italic"]');
         if (noteEl) {
             noteText = limparTextoPdf(noteEl.innerText.trim());
-        } else if (txtFull.includes('Motivo:')) {
-            const match = txtFull.match(/Motivo:[^\n]+/i);
-            if (match) noteText = limparTextoPdf(match[0].trim());
         }
 
-        let statusTag = 'Homologado';
-        let statusColor = [22, 163, 74];
-
-        const noteLower = noteText.toLowerCase();
-        if (noteLower.includes('anulada por') || txtFull.includes('Anulada por')) {
-            statusTag = 'Arbitrado';
-            statusColor = [220, 38, 38];
-        } else if (noteLower.includes('editado pela arbitragem')) {
-            statusTag = 'Arbitrado';
-            statusColor = [217, 119, 6];
-        } else if (noteLower.includes('homologado pela arbitragem')) {
-            statusTag = 'Arbitrado';
-            statusColor = [22, 163, 74];
-        } else if (txtFull.includes('Arbitrado')) {
-            statusTag = 'Arbitrado';
-            statusColor = [22, 163, 74];
-        }
-
-        const rows = Array.from(cardEl.querySelectorAll('tr')).filter(r => r.querySelector('.atp-name') || r.querySelectorAll('td').length >= 2);
+        const rows = Array.from(cardEl.querySelectorAll('tbody tr')).filter(r => r.querySelector('.atp-name') || r.querySelectorAll('td').length >= 2);
         
         const players = [];
         rows.forEach(r => {
@@ -3297,7 +3291,7 @@ async function exportarSumulasPDFSaaS() {
             players.push({ name, isWinner, hasRET, scores });
         });
 
-        return { badgeCategoria, matchDate, statusTag, statusColor, players, noteText, labelFase };
+        return { quadraTxt, matchDate, statusTag, statusColor, players, noteText, labelFase };
     });
 
     const totalPartidas = matchesData.length;
@@ -3405,22 +3399,33 @@ async function exportarSumulasPDFSaaS() {
         doc.setLineWidth(0.2);
         doc.roundedRect(cardX, cardY, contentWidth, cardHeight, 2, 2, "FD");
 
+        // Quadra Pill
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7.5);
-        const badgeTxt = match.badgeCategoria;
-        const badgeW = doc.getTextWidth(badgeTxt) + 5;
+        const quadraTxt = match.quadraTxt || 'Quadra';
+        const quadraW = doc.getTextWidth(quadraTxt) + 5;
         
-        doc.setFillColor(245, 243, 255);
-        doc.setDrawColor(221, 214, 254);
-        doc.setLineWidth(0.15);
-        doc.roundedRect(cardX + 3, cardY + 2, badgeW, 4.2, 1, 1, "FD");
-        doc.setTextColor(139, 92, 246);
-        doc.text(badgeTxt, cardX + 5.5, cardY + 5);
+        let quadraBg = [245, 243, 255];
+        let quadraBorder = [221, 214, 254];
+        let quadraColor = [139, 92, 246];
+        if (match.statusTag === 'Agendado') {
+            quadraBg = [224, 242, 254]; quadraBorder = [186, 230, 253]; quadraColor = [2, 132, 199];
+        } else if (match.statusTag === 'Pendente') {
+            quadraBg = [254, 243, 199]; quadraBorder = [253, 230, 138]; quadraColor = [217, 119, 6];
+        }
 
+        doc.setFillColor(quadraBg[0], quadraBg[1], quadraBg[2]);
+        doc.setDrawColor(quadraBorder[0], quadraBorder[1], quadraBorder[2]);
+        doc.setLineWidth(0.15);
+        doc.roundedRect(cardX + 3, cardY + 2, quadraW, 4.2, 1, 1, "FD");
+        doc.setTextColor(quadraColor[0], quadraColor[1], quadraColor[2]);
+        doc.text(quadraTxt, cardX + 5.5, cardY + 5);
+
+        // Date Pill
         if (match.matchDate) {
             const dateTxt = match.matchDate;
             const dateW = doc.getTextWidth(dateTxt) + 5;
-            const dateX = cardX + 3 + badgeW + 2;
+            const dateX = cardX + 3 + quadraW + 2;
 
             doc.setFillColor(241, 245, 249);
             doc.setDrawColor(203, 213, 225);
@@ -3430,19 +3435,64 @@ async function exportarSumulasPDFSaaS() {
             doc.text(dateTxt, dateX + 2.5, cardY + 5);
         }
 
+        // Desenho Vetorial dos Selos de Status (Superior Direito)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
-        const statusTxt = match.statusTag;
-        const statusTxtW = doc.getTextWidth(statusTxt);
         const statusX = cardX + contentWidth - 4;
 
-        doc.setFillColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
-        doc.setDrawColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
-        doc.circle(statusX - statusTxtW - 2.5, cardY + 4, 1.1, "F");
+        if (match.statusTag === 'Arbitrado') {
+            const statusTxt = "Arbitrado";
+            const statusTxtW = doc.getTextWidth(statusTxt);
+            doc.setFillColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
+            doc.setDrawColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
+            doc.circle(statusX - statusTxtW - 2.5, cardY + 4, 1.1, "F");
 
-        doc.setTextColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
-        doc.text(statusTxt, statusX, cardY + 5, { align: "right" });
+            doc.setTextColor(match.statusColor[0], match.statusColor[1], match.statusColor[2]);
+            doc.text(statusTxt, statusX, cardY + 5, { align: "right" });
+        } else if (match.statusTag === 'Homologado') {
+            const statusTxt = "Homologado";
+            const statusTxtW = doc.getTextWidth(statusTxt);
+            
+            // Checkmark vetorial ✓
+            doc.setDrawColor(22, 163, 74);
+            doc.setLineWidth(0.4);
+            const checkX = statusX - statusTxtW - 3;
+            const checkY = cardY + 4;
+            doc.line(checkX - 1.8, checkY, checkX - 0.8, checkY + 1.2);
+            doc.line(checkX - 0.8, checkY + 1.2, checkX + 1.2, checkY - 1.5);
 
+            doc.setTextColor(22, 163, 74);
+            doc.text(statusTxt, statusX, cardY + 5, { align: "right" });
+        } else if (match.statusTag === 'Pendente') {
+            const statusTxt = "Pendente";
+            const statusTxtW = doc.getTextWidth(statusTxt);
+
+            // Ponto indicador amarelo 🟡
+            doc.setFillColor(234, 179, 8);
+            doc.setDrawColor(217, 119, 6);
+            doc.setLineWidth(0.2);
+            doc.circle(statusX - statusTxtW - 2.5, cardY + 4, 1.0, "FD");
+
+            doc.setTextColor(217, 119, 6);
+            doc.text(statusTxt, statusX, cardY + 5, { align: "right" });
+        } else if (match.statusTag === 'Agendado') {
+            const statusTxt = "Agendado";
+            const statusTxtW = doc.getTextWidth(statusTxt);
+
+            // Ícone vetorial de Calendário 📅
+            const calX = statusX - statusTxtW - 4.5;
+            const calY = cardY + 2.3;
+            doc.setDrawColor(2, 132, 199);
+            doc.setFillColor(224, 242, 254);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(calX, calY, 3.2, 3.2, 0.4, 0.4, "FD");
+            doc.line(calX, calY + 1, calX + 3.2, calY + 1);
+
+            doc.setTextColor(2, 132, 199);
+            doc.text(statusTxt, statusX, cardY + 5, { align: "right" });
+        }
+
+        // Fase Tag
         doc.setFont("helvetica", "bold");
         doc.setFontSize(6.5);
         doc.setTextColor(148, 163, 184);
@@ -3452,6 +3502,7 @@ async function exportarSumulasPDFSaaS() {
         doc.setLineWidth(0.15);
         doc.line(cardX + 3, cardY + 11, cardX + contentWidth - 3, cardY + 11);
 
+        // Jogador 1
         const p1 = match.players[0] || { name: '--', isWinner: false, hasRET: false, scores: [] };
         const row1Y = cardY + 15.5;
 
@@ -3501,6 +3552,7 @@ async function exportarSumulasPDFSaaS() {
         doc.setLineWidth(0.15);
         doc.line(cardX + 3, cardY + 17.5, cardX + contentWidth - 3, cardY + 17.5);
 
+        // Jogador 2
         const p2 = match.players[1] || { name: '--', isWinner: false, hasRET: false, scores: [] };
         const row2Y = cardY + 22;
 
@@ -3554,7 +3606,7 @@ async function exportarSumulasPDFSaaS() {
         currentY += cardHeight + 3.5;
     });
 
-    drawFooterLastPage(Math.max(currentY + 2, pageHeight - 20));
+    drawFooterLastPage(Math.max(currentY + 2, pageHeight - 20)); 
 
     const nomeArquivo = ehHistorico
         ? `Sumulas_Acervo_${limparTextoPdf(edicaoHistoricaFocoSaaS?.contrato?.nomeTorneio || 'Torneio').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
