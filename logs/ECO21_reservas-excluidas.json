@@ -475,5 +475,31 @@
         "hora": 16
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-17T17:57:41.844Z",
+    "dataLocal": "17/09/2026, 14:57:41",
+    "autor": "ROGER FEDERER",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "14:00 - 15:00",
+    "duracao": "1 Hora",
+    "data": "17-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ROGER FEDERER",
+    "confirmacoes": {
+      "Federer": true
+    },
+    "jogadores": "Federer",
+    "jogadores_completo": "ROGER FEDERER",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 14
+      }
+    ]
   }
 ]
