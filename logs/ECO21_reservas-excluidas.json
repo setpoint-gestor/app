@@ -501,5 +501,36 @@
         "hora": 14
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ROGER FEDERER",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Andre Guzik": true,
+      "Federer": true
+    },
+    "data": "17-09-2026",
+    "dataLocal": "17/09/2026, 14:58:01",
+    "duracao": "2 Horas",
+    "horario": "14:00 - 16:00",
+    "jogadores": "Federer, Andre Guzik",
+    "jogadores_completo": "ROGER FEDERER, ANDRE GUZIK",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ROGER FEDERER",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 14
+      },
+      {
+        "dia": 4,
+        "hora": 15
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-09-17T17:58:01.434Z"
   }
 ]
