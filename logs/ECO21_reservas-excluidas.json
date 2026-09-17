@@ -532,5 +532,31 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-09-17T17:58:01.434Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-17T19:52:28.948Z",
+    "dataLocal": "17/09/2026, 16:52:28",
+    "autor": "NOVAK DJOKOVIC",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "17:00 - 18:00",
+    "duracao": "1 Hora",
+    "data": "17-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "NOVAK DJOKOVIC",
+    "confirmacoes": {
+      "Djokovic": true
+    },
+    "jogadores": "Djokovic",
+    "jogadores_completo": "NOVAK DJOKOVIC",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 17
+      }
+    ]
   }
 ]
