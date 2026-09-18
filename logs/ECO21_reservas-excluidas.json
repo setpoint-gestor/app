@@ -558,5 +558,36 @@
         "hora": 17
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-18T21:30:43.931Z",
+    "dataLocal": "18/09/2026, 18:30:43",
+    "autor": "NICOLAY DAVYDENKO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "19:00 - 21:00",
+    "duracao": "2 Horas",
+    "data": "18-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "NICOLAY DAVYDENKO",
+    "confirmacoes": {
+      "Davydenko": true,
+      "Federer": true
+    },
+    "jogadores": "Davydenko, Federer",
+    "jogadores_completo": "NICOLAY DAVYDENKO, ROGER FEDERER",
+    "slotsExcluidos": [
+      {
+        "dia": 5,
+        "hora": 19
+      },
+      {
+        "dia": 5,
+        "hora": 20
+      }
+    ]
   }
 ]
