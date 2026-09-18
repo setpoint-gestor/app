@@ -1429,70 +1429,32 @@ async function encerrarFase3EAvancarSaaS() {
 
                 const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
 
-                if (stPlacar === 'pendente_validacao' || stPlacar === 'contestado') {
-                    const nomeDia = diasSemana[r.dia] || "Dia";
-                    const hInicio = String(r.hora).padStart(2, '0') + ":00";
-                    const detalheLimpo = `
-                        <div style="display: flex; align-items: baseline;">
-                            <span style="white-space: nowrap; margin-right: 6px;">${nomeDia} às ${hInicio}:</span>
-                            <span style="font-weight: 700; line-height: 1.4; flex: 1;">${r.jogadores || 'Atletas'}</span>
-                        </div>
-                    `;
+                if (stPlacar === 'pendente_validacao' || stPlacar === 'contestado' || stPlacar === 'sem_placar') {
+					const nomeDia = diasSemana[r.dia] || "Dia";
+					const hInicio = String(r.hora).padStart(2, '0') + ":00";
+					const detalheLimpo = `
+						<div style="display: flex; align-items: baseline;">
+							<span style="white-space: nowrap; margin-right: 6px;">${nomeDia} às ${hInicio}:</span>
+							<span style="font-weight: 700; line-height: 1.4; flex: 1;">${r.jogadores || 'Atletas'}</span>
+						</div>
+					`;
 
-                    if (stPlacar === 'pendente_validacao') {
-                        pendentes.push(detalheLimpo);
-                    } else {
-                        contestadas.push(detalheLimpo);
-                    }
-                }
+					if (stPlacar === 'pendente_validacao' || stPlacar === 'sem_placar') {
+						pendentes.push(detalheLimpo);
+					} else {
+						contestadas.push(detalheLimpo);
+					}
+				}
             });
         });
 
         const totalPendencias = pendentes.length + contestadas.length;
 
         if (totalPendencias > 0) {
-            let textoSubtitulo = `Foram localizadas <b>${totalPendencias} partidas</b> com pendências de súmula/arbitragem.`;
-            let fieldsetsHtml = "";
+            const verbo = (totalPendencias === 1) ? "Existe" : "Existem";
+            const substantivo = (totalPendencias === 1) ? "partida pendente" : "partidas pendentes";
 
-            if (pendentes.length > 0) {
-                let listHtml = "";
-                pendentes.forEach(p => {
-                    listHtml += `<li class="prompt-saas-item" style="display: flex; align-items: baseline; margin-bottom: 6px;"><span class="prompt-saas-bullet" style="margin-right: 6px;">•</span> <div style="flex: 1;">${p}</div></li>`;
-                });
-                fieldsetsHtml += `
-                    <fieldset class="prompt-saas-fieldset" style="margin-bottom: 12px;">
-                        <legend class="prompt-saas-legend">SÚMULAS PENDENTES</legend>
-                        <ul class="prompt-saas-list" style="padding: 0; margin: 0; list-style: none;">${listHtml}</ul>
-                    </fieldset>
-                `;
-            }
-
-            if (contestadas.length > 0) {
-                let listHtml = "";
-                contestadas.forEach(p => {
-                    listHtml += `<li class="prompt-saas-item" style="display: flex; align-items: baseline; margin-bottom: 6px;"><span class="prompt-saas-bullet" style="color: #dc2626; margin-right: 6px;">•</span> <div style="flex: 1;">${p}</div></li>`;
-                });
-                fieldsetsHtml += `
-                    <fieldset class="prompt-saas-fieldset" style="border-color: #fecaca; margin-bottom: 12px;">
-                        <legend class="prompt-saas-legend" style="color: #dc2626;">SÚMULAS CONTESTADAS</legend>
-                        <ul class="prompt-saas-list" style="padding: 0; margin: 0; list-style: none;">${listHtml}</ul>
-                    </fieldset>
-                `;
-            }
-
-            const htmlBloqueio = `
-                <div class="prompt-saas-container">
-                    <p style="margin: 0 0 12px 0; font-size: 13.5px; color: #475569; line-height: 1.5;">${textoSubtitulo}</p>
-                    ${fieldsetsHtml}
-                    <p class="prompt-saas-warning" style="color: #dc2626; font-weight: 700; margin-top: 12px; text-align: center;">
-                        Valide ou arbitre estes placares antes de prosseguir.
-                    </p>
-                </div>
-            `;
-
-            showPrompt("Súmulas Pendentes", htmlBloqueio, () => {});
-            const btnConfirm = document.getElementById('btnPromptConfirm');
-            if (btnConfirm) btnConfirm.style.display = 'none';
+            showToast(`${verbo} ${totalPendencias} ${substantivo} na Fase de Grupos.`, "warning");
             return;
         }
 
@@ -1614,11 +1576,11 @@ async function encerrarFase3EAvancarSaaS() {
 
                     if (rodadaAtual.length > 1) {
                         temProximaRodada = true;
-						
-						const historico = chaveInfo.historicoRodadas || {};
-						const faseAnteriorNum = parseInt(chaveInfo.faseAtual, 10) || (rodadaAtual.length * 2);
-						historico[faseAnteriorNum] = rodadaAtual;
-						
+                        
+                        const historico = chaveInfo.historicoRodadas || {};
+                        const faseAnteriorNum = parseInt(chaveInfo.faseAtual, 10) || (rodadaAtual.length * 2);
+                        historico[faseAnteriorNum] = rodadaAtual;
+                        
                         updates[`${raizBanco}/ranking/chaves/${chaveCat}`] = {
                             totalClassificados: chaveInfo.totalClassificados || 0,
                             faseAtual: res.faseAtual,
@@ -1653,8 +1615,16 @@ async function encerrarFase3EAvancarSaaS() {
                 const partidasTorneio = snapPartidas.exists() ? snapPartidas.val() : {};
                 const pontosGeralAtual = snapPontosGeral.exists() ? snapPontosGeral.val() : {};
 
-                const TABELA_PONTOS_SaaS = { 0: 250, 1: 180, 2: 120, 3: 60 };
-                const PONTOS_PARTICIPACAO_DEFAULT = 20;
+                const pGeral = conf.parametrosGeral || {};
+				const TABELA_PONTOS_SaaS = {
+					0: parseInt(pGeral.pontos1, 10) || 250,
+					1: parseInt(pGeral.pontos2, 10) || 180,
+					2: parseInt(pGeral.pontos3, 10) || 120,
+					3: parseInt(pGeral.pontos4, 10) || 60
+				};
+				const PONTOS_PARTICIPACAO_DEFAULT = (pGeral.pontosParticipacao !== undefined && pGeral.pontosParticipacao !== null) 
+					? parseInt(pGeral.pontosParticipacao, 10) 
+					: 20;
 
                 const chavesMapGlobal = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
 

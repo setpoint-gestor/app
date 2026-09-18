@@ -910,26 +910,95 @@ function confirmarPlacarAdversarioSaaS() {
 
     const pathSlot1 = `reservas/${quadraKey}/${dia}_${hora}`;
     const updates = {};
+    const agora = Date.now();
 
+    // 1. Atualiza o status de validação na Reserva de Quadra
     updates[`${pathSlot1}/statusPlacar`] = "consolidado";
     updates[`${pathSlot1}/dadosPlacar/statusPlacar`] = "consolidado";
-    updates[`${pathSlot1}/dadosPlacar/dataHoraValidacao`] = Date.now();
+    updates[`${pathSlot1}/dadosPlacar/dataHoraValidacao`] = agora;
 
     if (duracao === 2) {
         const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
         updates[`${pathSlot2}/statusPlacar`] = "consolidado";
         updates[`${pathSlot2}/dadosPlacar/statusPlacar`] = "consolidado";
-        updates[`${pathSlot2}/dadosPlacar/dataHoraValidacao`] = Date.now();
+        updates[`${pathSlot2}/dadosPlacar/dataHoraValidacao`] = agora;
     }
 
+    // 2. Prepara a gravação atômica simultânea da partida oficial em ranking/partidas
+    const dp = partidaRankingEmFoco.dadosPlacar || {};
+    dp.statusPlacar = "consolidado";
+    dp.dataHoraValidacao = agora;
+
+    const partesApelidos = (partidaRankingEmFoco.jogadores || "").split(',').map(s => s.trim());
+    const partesCompletos = (partidaRankingEmFoco.jogadores_completo || "").split(',').map(s => s.trim());
+    const idJ1 = obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]);
+    const idJ2 = obterIdJogadorPorTextoSaaS(partesCompletos[1] || partesApelidos[1]);
+
+    if (idJ1 && idJ2) {
+        const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
+        const classe = (atletaBase.classe || 'B').toUpperCase();
+        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const divGenero = confRanking.divisaoGenero || 'separado';
+        let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+        const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+        
+		const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
+		const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
+		const qKeyLimpa = matchQuadra ? `Quadra${matchQuadra[0]}` : quadraRef;
+
+        const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${dia}_${hora}_${idJ1}_${idJ2}`;
+
+        let gamesP1 = 0, gamesP2 = 0;
+        if (dp.parciais) {
+            Object.values(dp.parciais).forEach(st => {
+                gamesP1 += parseInt(st.j1) || 0;
+                gamesP2 += parseInt(st.j2) || 0;
+            });
+        }
+
+        let idVencedor = null;
+        if (dp.vencedorCodigo === 'J1') idVencedor = idJ1;
+        else if (dp.vencedorCodigo === 'J2') idVencedor = idJ2;
+        else if (dp.vencedor && typeof obterIdJogadorPorTextoSaaS === 'function') {
+            idVencedor = obterIdJogadorPorTextoSaaS(dp.vencedor);
+        }
+
+        const nomeQuadraAmigavel = partidaRankingEmFoco.quadra || quadraSelecionadaSaaS || "Quadra 1";
+
+        const payloadPartida = {
+            categoria: chaveTabela,
+            quadra: nomeQuadraAmigavel,
+            status: 'finalizada',
+            jogador1Id: idJ1,
+            jogador2Id: idJ2,
+            vencedorId: idVencedor,
+            gamesP1: gamesP1,
+            gamesP2: gamesP2,
+            dadosPlacar: dp,
+            dataHora: agora
+        };
+
+        if (partidaRankingEmFoco.tagGrupoRanking || dp.tagGrupoRanking) {
+            payloadPartida.tagGrupoRanking = partidaRankingEmFoco.tagGrupoRanking || dp.tagGrupoRanking;
+        }
+        if (partidaRankingEmFoco.tagFaseRanking || dp.tagFaseRanking) {
+            payloadPartida.tagFaseRanking = partidaRankingEmFoco.tagFaseRanking || dp.tagFaseRanking;
+        }
+
+        updates[`ranking/partidas/${partidaId}`] = payloadPartida;
+    }
+
+    // 3. Disparo unificado no Firebase (Reservas + Ranking na mesma requisição)
     database.ref(raizBanco).update(updates)
     .then(() => {
         showToast("Placar confirmado com sucesso! O ranking será atualizado.", "success");
         if (intervaloTimerValidacao) clearInterval(intervaloTimerValidacao);
-		
+
         processarResultadoRankingSaaS(partidaRankingEmFoco);
         notificarAutorSumulaSaaS(partidaRankingEmFoco, 'confirmado');
-		
+
         fecharModalConfig('modal-validacao-placar');
     })
     .catch(err => {
@@ -1171,13 +1240,78 @@ function salvarSumulaSaaS() {
         const pathSlot1 = `reservas/${quadraKey}/${dia}_${hora}`;
         const updates = {};
 
+        // 1. Gravação no nó reservas
         updates[`${pathSlot1}/statusPlacar`] = statusNovo;
         updates[`${pathSlot1}/dadosPlacar`] = dadosPlacar;
 
         if (duracao === 2) {
             const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
             updates[`${pathSlot2}/statusPlacar`] = statusNovo;
-            updates[`${pathSlot2}/dadosPlacar`] = statusNovo;
+            updates[`${pathSlot2}/dadosPlacar`] = dadosPlacar;
+        }
+
+        // 2. Gravação atômica direta em ranking/partidas se for consolidado via arbitragem neutra
+        if (statusNovo === "consolidado") {
+            const partesApelidos = (partidaRankingEmFoco.jogadores || "").split(',').map(s => s.trim());
+            const partesCompletos = (partidaRankingEmFoco.jogadores_completo || "").split(',').map(s => s.trim());
+            const idJ1 = obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]);
+            const idJ2 = obterIdJogadorPorTextoSaaS(partesCompletos[1] || partesApelidos[1]);
+
+            if (idJ1 && idJ2) {
+                const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
+                const classe = (atletaBase.classe || 'B').toUpperCase();
+                const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+                const divGenero = confRanking.divisaoGenero || 'separado';
+                let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+                if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+                const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+                
+				const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
+				const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
+				const qKeyLimpa = matchQuadra ? `Quadra${matchQuadra[0]}` : quadraRef;
+
+                const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${dia}_${hora}_${idJ1}_${idJ2}`;
+
+                let gamesP1 = 0, gamesP2 = 0;
+                if (parciais) {
+                    Object.values(parciais).forEach(st => {
+                        gamesP1 += parseInt(st.j1) || 0;
+                        gamesP2 += parseInt(st.j2) || 0;
+                    });
+                }
+
+                let idVencedor = null;
+                if (vencedorCodigo === 'J1') idVencedor = idJ1;
+                else if (vencedorCodigo === 'J2') idVencedor = idJ2;
+                else if (nomeVencedor && typeof obterIdJogadorPorTextoSaaS === 'function') {
+                    idVencedor = obterIdJogadorPorTextoSaaS(nomeVencedor);
+                }
+
+                const nomeQuadraAmigavel = partidaRankingEmFoco.quadra || quadraSelecionadaSaaS || "Quadra 1";
+
+                const payloadPartida = {
+                    categoria: chaveTabela,
+                    quadra: nomeQuadraAmigavel,
+                    status: 'finalizada',
+                    jogador1Id: idJ1,
+                    jogador2Id: idJ2,
+                    vencedorId: idVencedor,
+                    gamesP1: gamesP1,
+                    gamesP2: gamesP2,
+                    dadosPlacar: dadosPlacar,
+                    dataHora: agora
+                };
+
+                if (partidaRankingEmFoco.tagGrupoRanking || dadosPlacar.tagGrupoRanking) {
+                    payloadPartida.tagGrupoRanking = partidaRankingEmFoco.tagGrupoRanking || dadosPlacar.tagGrupoRanking;
+                }
+                if (partidaRankingEmFoco.tagFaseRanking || dadosPlacar.tagFaseRanking) {
+                    payloadPartida.tagFaseRanking = partidaRankingEmFoco.tagFaseRanking || dadosPlacar.tagFaseRanking;
+                }
+
+                updates[`ranking/partidas/${partidaId}`] = payloadPartida;
+            }
         }
 
         database.ref(raizBanco).update(updates)
@@ -1779,6 +1913,8 @@ function renderizarGavetaArbitroSaaS(listaContestacoes) {
     container.innerHTML = '';
 
     const diasSemana = ["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+    let htmlCardPrincipal = '';
+    let htmlCardsExtra = '';
 
     listaContestacoes.forEach((reserva, index) => {
         const dados = reserva.dadosPlacar || {};
@@ -1849,11 +1985,47 @@ function renderizarGavetaArbitroSaaS(listaContestacoes) {
                 </div>
             </div>
         `;
-        container.innerHTML += cardHtml;
+
+        if (index === 0) {
+            htmlCardPrincipal = cardHtml;
+        } else {
+            htmlCardsExtra += cardHtml;
+        }
     });
 
+    let htmlFinal = htmlCardPrincipal;
+
+    if (total > 1) {
+        htmlFinal += `
+            <div id="box-restante-arbitro" style="display: none; flex-direction: column; margin-top: 10px;">
+                ${htmlCardsExtra}
+            </div>
+            <button type="button" id="btn-sanfona-arbitro" onclick="toggleSanfonaArbitroSaaS(${total})" style="width: 100%; background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 12px; color: #0284c7; font-weight: 700; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px;">
+                <span>Ver todas as súmulas contestadas (${total} partidas) 🔽</span>
+            </button>
+        `;
+    }
+
+    container.innerHTML = htmlFinal;
     window.contestacoesAbertasSaaS = listaContestacoes;
     modalArb.style.display = 'flex';
+}
+
+function toggleSanfonaArbitroSaaS(total) {
+    if (navigator.vibrate) navigator.vibrate(15);
+    const boxResto = document.getElementById('box-restante-arbitro');
+    const btn = document.getElementById('btn-sanfona-arbitro');
+    if (!boxResto || !btn) return;
+
+    const spanTxt = btn.querySelector('span');
+
+    if (boxResto.style.display === 'none' || !boxResto.style.display) {
+        boxResto.style.display = 'flex';
+        if (spanTxt) spanTxt.textContent = 'Recolher súmulas 🔼';
+    } else {
+        boxResto.style.display = 'none';
+        if (spanTxt) spanTxt.textContent = `Ver todas as súmulas contestadas (${total} partidas) 🔽`;
+    }
 }
 
 function abrirModalArbitroPlacar(reserva) {
@@ -1900,6 +2072,74 @@ function manterPlacarArbitroSaaS() {
         updates[`${pathSlot2}/dadosPlacar/dataHoraArbitragem`] = agora;
     }
 
+    // 🎯 GRAVAÇÃO ATÔMICA DA PARTIDA OFICIAL EM ranking/partidas
+    const partesApelidos = (partidaRankingEmFoco.jogadores || "").split(',').map(s => s.trim());
+    const partesCompletos = (partidaRankingEmFoco.jogadores_completo || "").split(',').map(s => s.trim());
+    const idJ1 = obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]);
+    const idJ2 = obterIdJogadorPorTextoSaaS(partesCompletos[1] || partesApelidos[1]);
+
+    if (idJ1 && idJ2) {
+        const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
+        const classe = (atletaBase.classe || 'B').toUpperCase();
+        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const divGenero = confRanking.divisaoGenero || 'separado';
+        let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+        const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+        
+		const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
+		const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
+		const qKeyLimpa = matchQuadra ? `Quadra${matchQuadra[0]}` : quadraRef;
+
+        const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${dia}_${hora}_${idJ1}_${idJ2}`;
+
+        const dp = partidaRankingEmFoco.dadosPlacar || {};
+        dp.statusPlacar = "consolidado";
+        dp.decisaoArbitro = "mantido_pelo_arbitro";
+        dp.arbitroResponsavel = nomeLogado;
+        dp.dataHoraArbitragem = agora;
+
+        let gamesP1 = 0, gamesP2 = 0;
+        if (dp.parciais) {
+            Object.values(dp.parciais).forEach(st => {
+                gamesP1 += parseInt(st.j1) || 0;
+                gamesP2 += parseInt(st.j2) || 0;
+            });
+        }
+
+        let idVencedor = null;
+        if (dp.vencedorCodigo === 'J1') idVencedor = idJ1;
+        else if (dp.vencedorCodigo === 'J2') idVencedor = idJ2;
+        else if (dp.vencedor && typeof obterIdJogadorPorTextoSaaS === 'function') {
+            idVencedor = obterIdJogadorPorTextoSaaS(dp.vencedor);
+        }
+
+        const nomeQuadraAmigavel = partidaRankingEmFoco.quadra || quadraSelecionadaSaaS || "Quadra 1";
+
+        const payloadPartida = {
+            categoria: chaveTabela,
+            quadra: nomeQuadraAmigavel,
+            status: 'finalizada',
+            jogador1Id: idJ1,
+            jogador2Id: idJ2,
+            vencedorId: idVencedor,
+            gamesP1: gamesP1,
+            gamesP2: gamesP2,
+            dadosPlacar: dp,
+            dataHora: agora
+        };
+
+        if (partidaRankingEmFoco.tagGrupoRanking || dp.tagGrupoRanking) {
+            payloadPartida.tagGrupoRanking = partidaRankingEmFoco.tagGrupoRanking || dp.tagGrupoRanking;
+        }
+        if (partidaRankingEmFoco.tagFaseRanking || dp.tagFaseRanking) {
+            payloadPartida.tagFaseRanking = partidaRankingEmFoco.tagFaseRanking || dp.tagFaseRanking;
+        }
+
+        updates[`ranking/partidas/${partidaId}`] = payloadPartida;
+    }
+
     database.ref(raizBanco).update(updates)
     .then(() => {
         showToast("Placar mantido e homologado pelo árbitro!", "success");
@@ -1917,7 +2157,9 @@ function manterPlacarArbitroSaaS() {
         const placarTxt = partidaRankingEmFoco.dadosPlacar?.placarFormatado || "";
         notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'mantido', placarTxt);
 
-        fecharModalConfig('modal-arbitro-placar');
+        if (!window.contestacoesAbertasSaaS || window.contestacoesAbertasSaaS.length <= 1) {
+            fecharModalConfig('modal-arbitro-placar');
+        }
     })
     .catch(err => {
         console.error("❌ [Arbitragem] Erro ao manter placar:", err);
@@ -1935,7 +2177,9 @@ function editarPlacarArbitroSaaS() {
 function anularPlacarArbitroSaaS() {
     if (!partidaRankingEmFoco || !raizBanco) return;
 
-    fecharModalConfig('modal-arbitro-placar');
+    if (!window.contestacoesAbertasSaaS || window.contestacoesAbertasSaaS.length <= 1) {
+        fecharModalConfig('modal-arbitro-placar');
+    }
 
     const htmlPrompt = `
         <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
@@ -2003,13 +2247,12 @@ function anularPlacarArbitroSaaS() {
             if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
 
             const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
-            let qKeyLimpa = "Quadra1";
-            if (partidaRankingEmFoco.quadra) {
-                const m = partidaRankingEmFoco.quadra.match(/\d+/);
-                qKeyLimpa = m ? `Quadra${m[0]}` : partidaRankingEmFoco.quadra;
-            }
+            
+			const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
+			const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
+			const qKeyLimpa = matchQuadra ? `Quadra${matchQuadra[0]}` : quadraRef;
 
-            const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${dia}_${hora}_${idJ1}_${idJ2}`;
+            const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${dia}_${hora}_${idJ1}_${idJ2}`; 
             
             const dadosPlacarFinal = {
                 ...(partidaRankingEmFoco.dadosPlacar || {}),
@@ -2178,6 +2421,7 @@ function notificarAutorSumulaSaaS(reserva, categoria) {
     }
 }
 
+
 /* ======================================================== */
 /* 7. ENGINE DE PROCESSAMENTO DE RESULTADOS DO RANKING       */
 /* ======================================================== */
@@ -2245,36 +2489,6 @@ async function processarResultadoPiramideSaaS(reserva, configRanking) {
         idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
     }
 
-    let gamesP1 = 0, gamesP2 = 0;
-    if (dadosPlacar.parciais) {
-        Object.values(dadosPlacar.parciais).forEach(st => {
-            gamesP1 += parseInt(st.j1) || 0;
-            gamesP2 += parseInt(st.j2) || 0;
-        });
-    }
-
-    const strQuadraOrigem = reserva.quadra || quadraSelecionadaSaaS || "";
-    const matchNum = strQuadraOrigem.match(/\d+/);
-    const quadraFormatada = matchNum ? `Quadra ${matchNum[0]}` : "Quadra 1";
-    const quadraKey = matchNum ? `Quadra${matchNum[0]}` : "Quadra1";
-
-    const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
-    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
-
-    const payloadPartida = {
-        categoria: chaveTabela,
-        quadra: quadraFormatada,
-        status: 'finalizada',
-        jogador1Id: idJ1,
-        jogador2Id: idJ2,
-        vencedorId: idVencedor,
-        gamesP1: gamesP1,
-        gamesP2: gamesP2,
-        dadosPlacar: dadosPlacarTratados,
-        dataHora: Date.now()
-    };
-    await database.ref(`${raizBanco}/ranking/partidas/${partidaId}`).set(payloadPartida);
-
     if (idVencedor === idDesafiante) {
         if (mecanicaTroca === 'escada') {
             const [desafianteID] = listaIDs.splice(idxDesafiante, 1);
@@ -2301,57 +2515,13 @@ async function processarResultadoBarragemSaaS(reserva, configRanking) {
     const listaCompletosStr = (reserva.jogadores_completo || "").split(',').map(s => s.trim());
 
     const idJ1 = obterIdJogadorPorTextoSaaS(listaCompletosStr[0] || listaApelidosStr[0]);
-    const idJ2 = obterIdJogadorPorTextoSaaS(listaCompletosStr[1] || listaApelidosStr[1]);
-
-    if (!idJ1 || !idJ2) return;
+    if (!idJ1) return;
 
     const atletaBase = jogadoresGlobal[idJ1] || {};
     const classe = (atletaBase.classe || 'B').toUpperCase();
     let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
 
     const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
-
-    const venciCodigo = dadosPlacar.vencedorCodigo;
-    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
-
-    if (!idVencedor && dadosPlacar.vencedor) {
-        idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
-    }
-
-    let gamesP1 = 0;
-    let gamesP2 = 0;
-
-    if (dadosPlacar.parciais) {
-        Object.values(dadosPlacar.parciais).forEach(st => {
-            gamesP1 += parseInt(st.j1) || 0;
-            gamesP2 += parseInt(st.j2) || 0;
-        });
-    }
-
-    const strQuadraOrigem = reserva.quadra || quadraSelecionadaSaaS || "";
-    const matchNum = strQuadraOrigem.match(/\d+/);
-    const quadraFormatada = matchNum ? `Quadra ${matchNum[0]}` : "Quadra 1";
-    const quadraKey = matchNum ? `Quadra${matchNum[0]}` : "Quadra1";
-
-    const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
-    const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
-
-    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
-
-    const payloadPartida = {
-        categoria: chaveTabela,
-        quadra: quadraFormatada,
-        status: 'finalizada',
-        jogador1Id: idJ1,
-        jogador2Id: idJ2,
-        vencedorId: idVencedor,
-        gamesP1: gamesP1,
-        gamesP2: gamesP2,
-        dadosPlacar: dadosPlacarTratados,
-        dataHora: Date.now()
-    };
-
-    await database.ref(refPartida).set(payloadPartida);
 
     const [snapPartidas, snapTabela] = await Promise.all([
         database.ref(`${raizBanco}/ranking/partidas`).once('value'),
@@ -2417,69 +2587,13 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
     const listaCompletosStr = (reserva.jogadores_completo || "").split(',').map(s => s.trim());
 
     const idJ1 = obterIdJogadorPorTextoSaaS(listaCompletosStr[0] || listaApelidosStr[0]);
-    const idJ2 = obterIdJogadorPorTextoSaaS(listaCompletosStr[1] || listaApelidosStr[1]);
-
-    if (!idJ1 || !idJ2) return;
+    if (!idJ1) return;
 
     const atletaBase = jogadoresGlobal[idJ1] || {};
     const classe = (atletaBase.classe || 'B').toUpperCase();
     let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
 
     const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
-
-    const venciCodigo = dadosPlacar.vencedorCodigo;
-    let idVencedor = (venciCodigo === 'J1') ? idJ1 : (venciCodigo === 'J2' ? idJ2 : null);
-
-    if (!idVencedor && dadosPlacar.vencedor) {
-        idVencedor = obterIdJogadorPorTextoSaaS(dadosPlacar.vencedor);
-    }
-
-    let gamesP1 = 0;
-    let gamesP2 = 0;
-
-    if (dadosPlacar.parciais) {
-        Object.values(dadosPlacar.parciais).forEach(st => {
-            gamesP1 += parseInt(st.j1) || 0;
-            gamesP2 += parseInt(st.j2) || 0;
-        });
-    }
-
-    const strQuadraOrigem = reserva.quadra || quadraSelecionadaSaaS || "";
-    const matchNum = strQuadraOrigem.match(/\d+/);
-    const quadraFormatada = matchNum ? `Quadra ${matchNum[0]}` : "Quadra 1";
-    const quadraKey = matchNum ? `Quadra${matchNum[0]}` : "Quadra1";
-
-    const partidaId = `partida_${chaveTabela}_${quadraKey}_${reserva.dia}_${reserva.hora}_${idJ1}_${idJ2}`;
-    const refPartida = `${raizBanco}/ranking/partidas/${partidaId}`;
-
-    const tagGrupo = reserva.tagGrupoRanking || (dadosPlacar ? dadosPlacar.tagGrupoRanking : null);
-    const tagFase = reserva.tagFaseRanking || (dadosPlacar ? dadosPlacar.tagFaseRanking : null);
-    const dadosPlacarTratados = JSON.parse(JSON.stringify(dadosPlacar || {}));
-
-    const payloadPartida = {
-        categoria: chaveTabela,
-        quadra: quadraFormatada,
-        status: 'finalizada',
-        jogador1Id: idJ1,
-        jogador2Id: idJ2,
-        vencedorId: idVencedor,
-        gamesP1: gamesP1,
-        gamesP2: gamesP2,
-        dadosPlacar: dadosPlacarTratados,
-        dataHora: Date.now()
-    };
-
-    if (tagGrupo) {
-        payloadPartida.tagGrupoRanking = tagGrupo;
-        payloadPartida.dadosPlacar.tagGrupoRanking = tagGrupo;
-    }
-
-    if (tagFase) {
-        payloadPartida.tagFaseRanking = tagFase;
-        payloadPartida.dadosPlacar.tagFaseRanking = tagFase;
-    }
-
-    await database.ref(refPartida).set(payloadPartida);
 
     const [snapPartidas, snapTabela] = await Promise.all([
         database.ref(`${raizBanco}/ranking/partidas`).once('value'),

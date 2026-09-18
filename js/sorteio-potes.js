@@ -31,37 +31,94 @@ function garantirModalSorteioNoDOMSaaS() {
 
     const modalHTML = `
     <style id="style-sorteio-potes-anim">
-        @keyframes floatBallPotes {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(20px, 30px) rotate(180deg); }
-        }
-        @keyframes fastOrbitPotes {
-            0% { transform: rotate(0deg) translate(40px) rotate(0deg); }
-            100% { transform: rotate(360deg) translate(40px) rotate(-360deg); }
-        }
+        /* MINIBOLAS DE TÊNIS DENTRO DO GLOBO */
         .f-ball-potes {
             position: absolute;
-            width: 20px;
-            height: 20px;
-            background: #CCFF00;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
-            opacity: 0.55;
-            box-shadow: 0 0 10px rgba(204, 255, 0, 0.6);
-            animation: floatBallPotes 2.5s infinite ease-in-out alternate !important;
+            background: radial-gradient(circle at 35% 35%, #e6ff33 0%, #b3e600 60%, #668800 100%);
+            box-shadow: inset -2px -2px 4px rgba(0,0,0,0.5), 0 0 8px rgba(204, 255, 0, 0.5);
+            overflow: hidden;
         }
-        .f-ball-potes::before {
+
+        .f-ball-potes::before, .f-ball-potes::after {
             content: '';
             position: absolute;
             width: 100%;
             height: 100%;
-            border: 1px solid #000;
+            border: 1.5px solid #FFFFFF;
             border-radius: 50%;
-            opacity: 0.3;
+            opacity: 0.65;
+            pointer-events: none;
         }
+        .f-ball-potes::before { top: -50%; left: -50%; }
+        .f-ball-potes::after { bottom: -50%; right: -50%; }
+
+        /* TURBULÊNCIA DE AR PARA AS MINIBOLAS */
+        @keyframes floatOrbit1 {
+            0%, 100% { transform: translate(15px, 130px) rotate(0deg); }
+            33% { transform: translate(150px, 25px) rotate(120deg); }
+            66% { transform: translate(90px, 160px) rotate(240deg); }
+        }
+        @keyframes floatOrbit2 {
+            0%, 100% { transform: translate(160px, 70px) rotate(0deg); }
+            50% { transform: translate(25px, 140px) rotate(180deg); }
+        }
+        @keyframes floatOrbit3 {
+            0%, 100% { transform: translate(70px, 20px) rotate(0deg); }
+            50% { transform: translate(140px, 140px) rotate(-180deg); }
+        }
+
+        .fb-1 { animation: floatOrbit1 2.2s infinite ease-in-out; }
+        .fb-2 { animation: floatOrbit2 1.8s infinite ease-in-out; }
+        .fb-3 { animation: floatOrbit3 2.5s infinite ease-in-out; }
+        .fb-4 { animation: floatOrbit1 2.0s infinite ease-in-out reverse; }
+        .fb-5 { animation: floatOrbit2 2.3s infinite ease-in-out reverse; }
+        .fb-6 { animation: floatOrbit3 2.1s infinite ease-in-out reverse; }
+
         .globe-wrapper.fast-spinning .f-ball-potes {
             animation: fastOrbitPotes 0.3s infinite linear !important;
         }
-        .tennis-ball-pop {
+
+        @keyframes fastOrbitPotes {
+            0% { transform: rotate(0deg) translate(50px) rotate(0deg); }
+            100% { transform: rotate(360deg) translate(50px) rotate(-360deg); }
+        }
+
+        /* BOLA PRINCIPAL COM O EFEITO DE TÊNIS E GIRO 360 (POP) */
+        .tennis-ball-potes {
+            width: 125px;
+            height: 125px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #f7ff66 0%, #CCFF00 60%, #99cc00 100%);
+            box-shadow: inset -8px -8px 18px rgba(0,0,0,0.35), 0 8px 22px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #000;
+            padding: 10px;
+            position: relative;
+            z-index: 2;
+            box-sizing: border-box;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .tennis-ball-potes::before, .tennis-ball-potes::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2.5px solid #FFFFFF;
+            border-radius: 50%;
+            opacity: 0.65;
+            pointer-events: none;
+        }
+        .tennis-ball-potes::before { top: -50%; left: -50%; }
+        .tennis-ball-potes::after { bottom: -50%; right: -50%; }
+
+        .tennis-ball-potes.tennis-ball-pop {
             transform: scale(1.12) rotate(360deg) !important;
         }
 
@@ -81,7 +138,7 @@ function garantirModalSorteioNoDOMSaaS() {
                 height: 190px !important;
                 margin-bottom: 16px !important;
             }
-            .tennis-ball {
+            .tennis-ball-potes {
                 width: 105px !important;
                 height: 105px !important;
             }
@@ -100,7 +157,7 @@ function garantirModalSorteioNoDOMSaaS() {
     <div id="modal-sorteio-potes" class="modal-overlay hidden" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 10000; padding: 16px;">
         <div class="modal-card-sorteio" style="background: #0F172A; border: 1px solid #334155; border-radius: 24px; width: 100%; max-width: 520px; padding: 28px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; text-align: center; color: #FFF; position: relative; box-sizing: border-box;">
             
-            <!-- Botão Fechar (X) com Touch Target Aumentado -->
+            <!-- Botão Fechar (X) -->
             <button class="btn-close-modal" onclick="SorteioPotes.fecharModalSorteioSaaS()" title="Fechar" style="position: absolute; top: 16px; right: 18px; background: transparent; border: none; color: #94A3B8; font-size: 22px; font-weight: 700; cursor: pointer; line-height: 1; padding: 8px; z-index: 10;">✕</button>
 
             <!-- Título com Nome do Torneio -->
@@ -116,20 +173,22 @@ function garantirModalSorteioNoDOMSaaS() {
             <!-- Globo de Sorteio com Bolinhas Orbitando -->
             <div class="globe-wrapper" id="globeWrapperPotes" style="width: 230px; height: 230px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(204,255,0,0.18), rgba(15,23,42,0.95)); border: 3px solid rgba(204, 255, 0, 0.4); box-shadow: inset 0 0 30px rgba(204,255,0,0.2), 0 0 25px rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; margin-bottom: 20px; position: relative; overflow: hidden; flex-shrink: 0;">
                 <div class="floating-balls" style="position: absolute; width: 100%; height: 100%; pointer-events: none;">
-                    <div class="f-ball-potes" style="top:18%; left:18%; animation-delay: 0.1s;"></div>
-                    <div class="f-ball-potes" style="top:62%; left:72%; animation-delay: 0.5s;"></div>
-                    <div class="f-ball-potes" style="top:72%; left:22%; animation-delay: 0.8s;"></div>
-                    <div class="f-ball-potes" style="top:22%; left:62%; animation-delay: 1.2s;"></div>
+                    <div class="f-ball-potes fb-1"></div>
+                    <div class="f-ball-potes fb-2"></div>
+                    <div class="f-ball-potes fb-3"></div>
+                    <div class="f-ball-potes fb-4"></div>
+                    <div class="f-ball-potes fb-5"></div>
+                    <div class="f-ball-potes fb-6"></div>
                 </div>
 
-                <div class="tennis-ball" id="ballAnimPotes" style="width: 125px; height: 125px; border-radius: 50%; background: #CCFF00; box-shadow: inset -8px -8px 18px rgba(0,0,0,0.35), 0 8px 22px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #000; padding: 10px; position: relative; z-index: 2; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-sizing: border-box;">
+                <div class="tennis-ball-potes" id="ballAnimPotes">
                     <span class="ball-seed-badge" id="ballSeedPotes" style="font-size: 11px; font-weight: 800; background: #000; color: #FFF; padding: 2px 8px; border-radius: 8px; margin-bottom: 3px; z-index: 3;">AGUARDE</span>
                     <span class="ball-player-name" id="ballPlayerPotes" style="font-size: 15px; font-weight: 800; text-transform: uppercase; line-height: 1.1; z-index: 3;">INICIANDO...</span>
                 </div>
             </div>
 
             <!-- Caixa de Status e Progresso -->
-            <div class="draw-status-box" style="background: #1E293B; border-radius: 12px; width: 100%; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; box-sizing: border-box;">
+            <div class="draw-status-box" style="background: #1E293B; border-radius: 12px; width: 100%; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; box-sizing: border-box; border: 1px solid #334155;">
                 <span id="statusTextPotes" style="font-weight:700; color: #CCFF00;">Sorteando Pote 1...</span>
                 <span id="progressTextPotes" style="color:#94A3B8; font-weight:600;">0/0 Concluídos</span>
             </div>
@@ -148,7 +207,7 @@ function garantirModalSorteioNoDOMSaaS() {
     </div>
     `;
 
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.insertAdjacentHTML('beforeend', modalHTML); 
 }
 
 // ========================================================
@@ -251,7 +310,7 @@ function runAutoDrawStepSaaS() {
     const ball = document.getElementById('ballAnimPotes');
     if (ball) {
         ball.classList.add('tennis-ball-pop');
-        setTimeout(() => ball.classList.remove('tennis-ball-pop'), 300);
+        setTimeout(() => ball.classList.remove('tennis-ball-pop'), 400);
     }
 
     const elSeed = document.getElementById('ballSeedPotes');
@@ -379,7 +438,6 @@ window.SorteioPotes = {
 
         // PROTEÇÃO: Se o sorteio estiver rodando no meio
         if (s.drawSequence.length > 0 && s.currentIndex < s.drawSequence.length) {
-            // Pausa a animação enquanto o gestor decide
             if (s.autoTimer) clearInterval(s.autoTimer);
 
             const htmlPrompt = `
@@ -394,7 +452,6 @@ window.SorteioPotes = {
                 </div>
             `;
 
-            // Auxiliar local para restaurar os textos padrão dos botões globais
             const restaurarBotoesGlobaiss = () => {
                 const bConfirm = document.getElementById('btnPromptConfirm');
                 const bCancel = document.getElementById('btnPromptCancel');
@@ -403,7 +460,6 @@ window.SorteioPotes = {
             };
 
             showPrompt("Interromper Sorteio", htmlPrompt, () => {
-                // CONFIRMAR: Cancela o sorteio e fecha
                 if (s.autoTimer) clearInterval(s.autoTimer);
                 s.currentIndex = 0;
                 s.drawSequence = [];
@@ -414,7 +470,6 @@ window.SorteioPotes = {
                 showToast("Sorteio interrompido. Inscrições permanecem na Fase 2.", "info");
             });
 
-            // Ajusta rótulos dos botões exclusivamente para esta chamada
             const btnConfirm = document.getElementById('btnPromptConfirm');
             const btnCancel = document.getElementById('btnPromptCancel');
 
@@ -425,15 +480,14 @@ window.SorteioPotes = {
                     const modalPrompt = document.getElementById('modalPrompt');
                     if (modalPrompt) modalPrompt.style.display = 'none';
                     
-                    restaurarBotoesGlobaiss(); // Limpa os textos ao voltar
-                    s.autoTimer = setInterval(runAutoDrawStepSaaS, 1000); // Retoma sorteio
+                    restaurarBotoesGlobaiss();
+                    s.autoTimer = setInterval(runAutoDrawStepSaaS, 1000);
                 };
             }
 
             return;
         }
 
-        // Se o sorteio já estava finalizado, fecha a janela normalmente
         if (s.autoTimer) clearInterval(s.autoTimer);
         const modal = document.getElementById('modal-sorteio-potes');
         if (modal) modal.style.display = 'none';

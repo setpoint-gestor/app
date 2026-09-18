@@ -1960,16 +1960,35 @@ function validarEAgendarPartidaSaas() {
         pacote.quadraAlvo = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
     }
 
+    // ----------------------------------------------------
+    // 🚨 TRAVA DE SEGURANÇA: VALIDAÇÃO DE CAMPOS ABERTOS / EMBRANCO
+    // ----------------------------------------------------
     const j1Select = document.getElementById('saas-jogador1');
-    if (j1Select && j1Select.value) pacote.listaCamposBrutos.push(j1Select.value);
-    
+    if (!j1Select || !j1Select.value || j1Select.value === "") {
+        showToast("Por favor, selecione o organizador/atleta 1.", "warning");
+        return;
+    }
+    pacote.listaCamposBrutos.push(j1Select.value);
+
+    let temCampoAbertoEmBranco = false;
     for (let i = 2; i <= 4; i++) {
         const campoDinamico = document.getElementById(`saas-jogador${i}`);
-        if (campoDinamico && campoDinamico.value) pacote.listaCamposBrutos.push(campoDinamico.value);
+        if (campoDinamico) {
+            if (!campoDinamico.value || campoDinamico.value === "") {
+                temCampoAbertoEmBranco = true;
+            } else {
+                pacote.listaCamposBrutos.push(campoDinamico.value);
+            }
+        }
     }
 
-    if (pacote.listaCamposBrutos.length === 0) {
-        pacote.listaCamposBrutos.push(localStorage.getItem('jogadorLogadoNome') || "Sócio");
+    if (temCampoAbertoEmBranco) {
+        if (ehPartidaRanking) {
+            showToast("Partidas de Ranking exigem a seleção obrigatória do desafiado.", "warning");
+        } else {
+            showToast("Por favor, selecione o atleta em todos os campos abertos ou remova os campos não utilizados antes de confirmar.", "warning");
+        }
+        return;
     }
 
     const linhaDatasTabela = document.getElementById('linha-datas-tabela');
@@ -2073,10 +2092,6 @@ function validarEAgendarPartidaSaas() {
             showToast(erroConflitoHorario, "error", 4500);
             throw new Error("VALIDACAO_FALHOU");
         }
-
-        // ESPAÇO PARA FUTURAS REGRAS:
-        // const erroRegraFutura = validarMinhaNovaRegraSaaS(pacote, todasReservas);
-        // if (erroRegraFutura) { ... throw new Error("VALIDACAO_FALHOU"); }
 
         // ----------------------------------------------------
         // 5. A GRAVAÇÃO (Transação Atômica no Firebase)
@@ -3701,16 +3716,17 @@ function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo) {
 
 
 /**
- * Motor de Faxina Automatizada (Fase 7 - Sobrevivência de Quórum + Auto-Homologação): 
+ * Motor de Faxina Automatizada (Fase 7 - Sobrevivência de Quórum + Auto-Homologação + Autocura): 
  * 1. Limpa dias antigos.
  * 2. Caça convites pendentes vencidos e APLICA A REGRA DE QUÓRUM.
  *    - Se tiver quórum, expulsa apenas os pendentes e salva a reserva.
  *    - Se não tiver quórum, exclui a reserva inteira e notifica o organizador.
  * 3. Auto-homologa súmulas com prazo de contestação expirado (expiraValidacaoAt).
- * 4. RESGATA logs que falharam por queda de internet no GitHub.
+ * 4. Autocura Segura: Recria em ranking/partidas APENAS súmulas consolidadas legítimas (slot principal com placar preenchido) ausentes do nó do ranking.
+ * 5. RESGATA logs que falharam por queda de internet no GitHub.
  */
 function executarFaxinaAutomaticaSaaS() {
-    console.log("🤖 [SaaS Faxina] Iniciando varredura de histórico, convites expirados, súmulas vencidas e resgates...");
+    console.log("🤖 [SaaS Faxina] Iniciando varredura de histórico, convites expirados, súmulas vencidas, autocura e resgates...");
     
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -3752,16 +3768,48 @@ function executarFaxinaAutomaticaSaaS() {
             const dp = partida ? partida.dadosPlacar : null;
 
             if (dp && dp.statusPlacar === 'pendente_validacao' && dp.expiraValidacaoAt && dp.expiraValidacaoAt <= agoraMs) {
+                
+                // 🛡️ Trava de Checagem Dupla: Verifica se a partida já foi consolidada na agenda (reservas)
+                let jaConsolidadaNaAgenda = false;
+
+                Object.keys(todasAsReservas).forEach(quadraChave => {
+                    const slotsQuadra = todasAsReservas[quadraChave] || {};
+                    Object.keys(slotsQuadra).forEach(slotKey => {
+                        const r = slotsQuadra[slotKey];
+                        if (!r) return;
+                        const rSt = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : '');
+
+                        if (rSt === 'consolidado') {
+                            const partesPKey = pKey.split('_');
+                            if (partesPKey.length >= 6) {
+                                const diaP = partesPKey[partesPKey.length - 4];
+                                const horaP = partesPKey[partesPKey.length - 3];
+                                if (String(r.dia) === String(diaP) && String(r.hora) === String(horaP)) {
+                                    jaConsolidadaNaAgenda = true;
+                                }
+                            }
+                        }
+                    });
+                });
+
                 updatePayload[`ranking/partidas/${pKey}/status`] = 'finalizada';
                 updatePayload[`ranking/partidas/${pKey}/dadosPlacar/statusPlacar`] = 'consolidado';
-                updatePayload[`ranking/partidas/${pKey}/dadosPlacar/autoHomologado`] = true;
-                updatePayload[`ranking/partidas/${pKey}/dadosPlacar/prazoAutoHoras`] = prazoAutoconf;
-                totalPartidasLimpas++;
-                console.log(`⏱️ [SaaS Faxina] Partida ${pKey} auto-homologada por decurso do prazo de ${prazoAutoconf}h.`);
+
+                if (jaConsolidadaNaAgenda) {
+                    // Autocura silenciosa: Apenas sincroniza o status no ranking sem carimbar falso decurso de prazo
+                    console.log(`🚑 [SaaS Faxina] Autocura: Partida ${pKey} sincronizada para consolidado (já homologada manualmente na agenda).`);
+                } else {
+                    // Auto-homologação respeitando o prazo individual da partida
+                    const horasPartida = dp.prazoAutoHoras || prazoAutoconf;
+                    updatePayload[`ranking/partidas/${pKey}/dadosPlacar/autoHomologado`] = true;
+                    updatePayload[`ranking/partidas/${pKey}/dadosPlacar/prazoAutoHoras`] = horasPartida;
+                    totalPartidasLimpas++;
+                    console.log(`⏱️ [SaaS Faxina] Partida ${pKey} auto-homologada por decurso do prazo de ${horasPartida}h.`);
+                }
             }
         });
 
-        // 3. Varre as Reservas de Quadras (Histórico, Convites e Súmulas Pendentes)
+        // 3. Varre as Reservas de Quadras (Histórico, Convites, Auto-Homologação e Autocura)
         Object.keys(todasAsReservas).forEach(quadraChave => {
             const slotsQuadra = todasAsReservas[quadraChave] || {};
             const chavesPuladas = new Set(); 
@@ -3786,28 +3834,199 @@ function executarFaxinaAutomaticaSaaS() {
 
                 const dp = r.dadosPlacar;
                 const stPlacar = r.statusPlacar || (dp ? dp.statusPlacar : '');
+                const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
 
-                // Auto-Homologação de Súmula PENDENTE Expirada na Reserva de Quadra
-                if (dp && stPlacar === 'pendente_validacao' && dp.expiraValidacaoAt && dp.expiraValidacaoAt <= agoraMs) {
+                // 3.A. AUTO-HOMOLOGAÇÃO DE SÚMULA PENDENTE EXPIRADA NA RESERVA
+				if (dp && stPlacar === 'pendente_validacao' && dp.expiraValidacaoAt && dp.expiraValidacaoAt <= agoraMs) {
+                    const horasPartida = dp.prazoAutoHoras || prazoAutoconf;
                     updatePayload[`reservas/${quadraChave}/${slotKey}/statusPlacar`] = 'consolidado';
                     updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/statusPlacar`] = 'consolidado';
                     updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/autoHomologado`] = true;
-                    updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/prazoAutoHoras`] = prazoAutoconf;
+                    updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/prazoAutoHoras`] = horasPartida;
 
-                    const dur = parseInt(r.duracao) || 1;
-                    if (dur === 2) {
-                        const partes = slotKey.split('_');
-                        if (partes.length === 2) {
-                            const proxSlot = `${partes[0]}_${parseInt(partes[1], 10) + 1}`;
-                            updatePayload[`reservas/${quadraChave}/${proxSlot}/statusPlacar`] = 'consolidado';
-                            if (slotsQuadra[proxSlot] && slotsQuadra[proxSlot].dadosPlacar) {
-                                updatePayload[`reservas/${quadraChave}/${proxSlot}/dadosPlacar/statusPlacar`] = 'consolidado';
+					const dur = parseInt(r.duracao) || 1;
+					if (dur === 2) {
+						const partes = slotKey.split('_');
+						if (partes.length === 2) {
+							const proxSlot = `${partes[0]}_${parseInt(partes[1], 10) + 1}`;
+							updatePayload[`reservas/${quadraChave}/${proxSlot}/statusPlacar`] = 'consolidado';
+							if (slotsQuadra[proxSlot] && slotsQuadra[proxSlot].dadosPlacar) {
+								updatePayload[`reservas/${quadraChave}/${proxSlot}/dadosPlacar/statusPlacar`] = 'consolidado';
+							}
+							chavesPuladas.add(proxSlot); // 🔒 TRAVA ANTI-DUPLICAÇÃO: Impede que o 2º slot gere uma nova partida no loop
+						}
+					}
+
+					// 🎯 SINCRONIZAÇÃO EM TEMPO REAL: Grava a partida em ranking/partidas no mesmo disparo
+					if (ehRanking) {
+						const partesApelidos = (r.jogadores || "").split(',').map(s => s.trim());
+						const partesCompletos = (r.jogadores_completo || "").split(',').map(s => s.trim());
+
+						const idJ1 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
+							? obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]) 
+							: null;
+						const idJ2 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
+							? obterIdJogadorPorTextoSaaS(partesCompletos[1] || partesApelidos[1]) 
+							: null;
+
+						if (idJ1 && idJ2) {
+							const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
+							const classe = (atletaBase.classe || 'B').toUpperCase();
+							const divGenero = confRanking.divisaoGenero || 'separado';
+							let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+							if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+							const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+							
+							const matchQ = quadraChave.match(/\d+/);
+							const qKeyLimpa = matchQ ? `Quadra${matchQ[0]}` : quadraChave;
+
+							const partesSlot = slotKey.split('_');
+							const diaReserva = partesSlot[0] || r.dia;
+							const horaReserva = partesSlot[1] || r.hora;
+
+							const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${diaReserva}_${horaReserva}_${idJ1}_${idJ2}`;
+
+							let gamesP1 = 0, gamesP2 = 0;
+							if (dp.parciais) {
+								Object.values(dp.parciais).forEach(st => {
+									gamesP1 += parseInt(st.j1) || 0;
+									gamesP2 += parseInt(st.j2) || 0;
+								});
+							}
+
+							let idVencedor = null;
+							if (dp.vencedorCodigo === 'J1') idVencedor = idJ1;
+							else if (dp.vencedorCodigo === 'J2') idVencedor = idJ2;
+							else if (dp.vencedor && typeof obterIdJogadorPorTextoSaaS === 'function') {
+								idVencedor = obterIdJogadorPorTextoSaaS(dp.vencedor);
+							}
+
+							const dpConsolidado = {
+                                ...dp,
+                                statusPlacar: 'consolidado',
+                                autoHomologado: true,
+                                prazoAutoHoras: horasPartida
+                            };
+
+							const payloadPartida = {
+								categoria: chaveTabela,
+								quadra: nomeQuadraAmigavel,
+								status: 'finalizada',
+								jogador1Id: idJ1,
+								jogador2Id: idJ2,
+								vencedorId: idVencedor,
+								gamesP1: gamesP1,
+								gamesP2: gamesP2,
+								dadosPlacar: dpConsolidado,
+								dataHora: dp.dataHoraValidacao || dp.dataHoraLancamento || Date.now()
+							};
+
+							if (r.tagGrupoRanking || dp.tagGrupoRanking) {
+								payloadPartida.tagGrupoRanking = r.tagGrupoRanking || dp.tagGrupoRanking;
+							}
+							if (r.tagFaseRanking || dp.tagFaseRanking) {
+								payloadPartida.tagFaseRanking = r.tagFaseRanking || dp.tagFaseRanking;
+							}
+
+							updatePayload[`ranking/partidas/${partidaId}`] = payloadPartida;
+							
+							// 📊 RECALCULO MATEMÁTICO: Atualiza pontos e posições na tabela do torneio imediatamente
+							if (typeof processarResultadoRankingSaaS === 'function') {
+								processarResultadoRankingSaaS({
+									...r,
+									statusPlacar: 'consolidado',
+									dadosPlacar: dpConsolidado
+								});
+							}
+						}
+					}
+
+					totalPartidasLimpas++;
+					console.log(`⏱️ [SaaS Faxina] Reserva ${slotKey} auto-homologada e sincronizada no ranking.`);
+					return;
+				}
+
+                // 3.B. AUTOCURA SEGURA: Súmula Consolidada na Reserva ausente em ranking/partidas
+                if (ehRanking && stPlacar === 'consolidado' && dp && typeof dp === 'object') {
+                    // TRAVA 1: Ignora o 2º slot secundário de reservas de 2h (processa apenas o slot principal que possui 'borda' ou duração 1)
+                    const ehSlotSecundario2h = (r.borda === undefined && parseInt(r.duracao, 10) === 2);
+                    
+                    // TRAVA 2: Exige placar real preenchido (parciais, W.O. ou RET) para evitar recriar partidas vazias
+                    const temPlacarValido = Boolean(dp.parciais || dp.isWO || dp.isRET);
+
+                    if (!ehSlotSecundario2h && temPlacarValido) {
+                        const partesApelidos = (r.jogadores || "").split(',').map(s => s.trim());
+                        const partesCompletos = (r.jogadores_completo || "").split(',').map(s => s.trim());
+                        
+                        const idJ1 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
+                            ? obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]) 
+                            : null;
+                        const idJ2 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
+                            ? obterIdJogadorPorTextoSaaS(partesCompletos[1] || partesApelidos[1]) 
+                            : null;
+
+                        if (idJ1 && idJ2) {
+                            const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
+                            const classe = (atletaBase.classe || 'B').toUpperCase();
+                            const divGenero = confRanking.divisaoGenero || 'separado';
+                            let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+                            if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+                            const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+                            
+							const matchQ = quadraChave.match(/\d+/);
+							const qKeyLimpa = matchQ ? `Quadra${matchQ[0]}` : quadraChave;
+
+                            const partesSlot = slotKey.split('_');
+                            const diaReserva = partesSlot[0] || r.dia;
+                            const horaReserva = partesSlot[1] || r.hora;
+
+                            const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${diaReserva}_${horaReserva}_${idJ1}_${idJ2}`;
+
+                            if (!todasPartidasRanking[partidaId]) {
+                                let gamesP1 = 0, gamesP2 = 0;
+                                if (dp.parciais) {
+                                    Object.values(dp.parciais).forEach(st => {
+                                        gamesP1 += parseInt(st.j1) || 0;
+                                        gamesP2 += parseInt(st.j2) || 0;
+                                    });
+                                }
+
+                                let idVencedor = null;
+                                if (dp.vencedorCodigo === 'J1') idVencedor = idJ1;
+                                else if (dp.vencedorCodigo === 'J2') idVencedor = idJ2;
+                                else if (dp.vencedor && typeof obterIdJogadorPorTextoSaaS === 'function') {
+                                    idVencedor = obterIdJogadorPorTextoSaaS(dp.vencedor);
+                                }
+
+                                const payloadPartida = {
+                                    categoria: chaveTabela,
+                                    quadra: nomeQuadraAmigavel,
+                                    status: 'finalizada',
+                                    jogador1Id: idJ1,
+                                    jogador2Id: idJ2,
+                                    vencedorId: idVencedor,
+                                    gamesP1: gamesP1,
+                                    gamesP2: gamesP2,
+                                    dadosPlacar: dp,
+                                    dataHora: dp.dataHoraValidacao || dp.dataHoraLancamento || Date.now()
+                                };
+
+                                if (r.tagGrupoRanking || dp.tagGrupoRanking) {
+                                    payloadPartida.tagGrupoRanking = r.tagGrupoRanking || dp.tagGrupoRanking;
+                                }
+                                if (r.tagFaseRanking || dp.tagFaseRanking) {
+                                    payloadPartida.tagFaseRanking = r.tagFaseRanking || dp.tagFaseRanking;
+                                }
+
+                                updatePayload[`ranking/partidas/${partidaId}`] = payloadPartida;
+                                todasPartidasRanking[partidaId] = payloadPartida; 
+                                totalPartidasLimpas++;
+                                console.log(`🚑 [SaaS Faxina] Autocura: Partida ${partidaId} recriada com sucesso em ranking/partidas.`);
                             }
                         }
                     }
-                    totalPartidasLimpas++;
-                    console.log(`⏱️ [SaaS Faxina] Reserva ${slotKey} auto-homologada por decurso de prazo.`);
-                    return;
                 }
 
                 if (!r.dataCompleta || r.status === 'aula_cancelada') return;
