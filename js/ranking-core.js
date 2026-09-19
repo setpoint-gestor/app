@@ -1215,6 +1215,7 @@ function salvarSumulaSaaS() {
             parciais: parciais,
             autorSumula: (ehContestado && ehArbitragemNeutra) ? (partidaRankingEmFoco.dadosPlacar?.autorSumula || nomeLogado) : nomeLogado,
             dataHoraLancamento: partidaRankingEmFoco.dadosPlacar?.dataHoraLancamento || agora,
+            prazoAutoHoras: prazoHorasAutoconf,
             expiraValidacaoAt: agora + (prazoHorasAutoconf * 60 * 60 * 1000)
         };
 

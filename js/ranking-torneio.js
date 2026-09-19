@@ -1682,6 +1682,16 @@ async function encerrarFase3EAvancarSaaS() {
             if (typeof renderizarGestaoTemporadaSaaS === "function") {
                 renderizarGestaoTemporadaSaaS();
             }
+
+            // Abertura automática da Central do Ranking para coroação visual do campeão
+            if (eHomologacaoFinal && typeof abrirHallDeCampeoesSaaS === "function") {
+                setTimeout(() => {
+                    abrirHallDeCampeoesSaaS();
+                    if (typeof dispararComemoracaoCampeaoSaaS === 'function') {
+                        dispararComemoracaoCampeaoSaaS();
+                    }
+                }, 800); // 800ms de delay para o toast brilhar e a tela respirar antes de abrir a gaveta
+            }
         } catch (err) {
             console.error("❌ Erro ao avançar de fase:", err);
             showToast("Erro ao gravar dados no Firebase.", "error");

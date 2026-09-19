@@ -617,6 +617,24 @@ function renderizarLeaderboardSaaS() {
 					}
 				}
 
+				// 🧹 Filtra agendamentos ativos pendentes de acordo com a fase selecionada
+				agendamentosAtivos = agendamentosAtivos.filter(itemAg => {
+					const tagG = itemAg.tagGrupoRanking;
+					const tagF = itemAg.tagFaseRanking || '';
+					const ehAgendamentoGrupo = !!tagG || tagF.startsWith('Grupos - G');
+
+					if (abaFaseAtivaSaaS === 'GRUPOS') return ehAgendamentoGrupo;
+					if (ehAgendamentoGrupo) return false;
+
+					if (potAlvo && Array.isArray(confsFase) && confsFase.length > 0) {
+						return confsFase.some(c => 
+							(c.jogador1Id === itemAg.jogador1Id && c.jogador2Id === itemAg.jogador2Id) ||
+							(c.jogador1Id === itemAg.jogador2Id && c.jogador2Id === itemAg.jogador1Id)
+						);
+					}
+					return true;
+				});
+
 				listaPartidas = listaPartidas.filter(p => {
 					const dp = p.dadosPlacar || {};
 					const tagG = dp.tagGrupoRanking || p.tagGrupoRanking;
@@ -2178,8 +2196,8 @@ function renderizarHTMLPodioAcervoSaaS() {
     const txtBadgeCampeao = rotulosBadges[edicao.modelo] || "1º LUGAR • CAMPEÃO";
 
     html += `
-        <div style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 2px solid #f59e0b; border-radius: 16px; padding: 14px; text-align: center; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2); margin-bottom: 12px;">
-            <div style="font-size: 28px; margin-bottom: -4px;">👑</div>
+        <div id="card-campeao" class="card-campeao" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 2px solid #f59e0b; border-radius: 16px; padding: 14px; text-align: center; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2); margin-bottom: 12px;">
+            <div class="coroa-icon" style="font-size: 28px; margin-bottom: -4px;">👑</div>
             <span style="background: #f59e0b; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 10px; display: inline-block;">${txtBadgeCampeao}</span>
             <div style="font-size: 16px; font-weight: 800; color: #78350f; margin: 4px 0;">${buscarNome(idCampeao)} ${idCampeao === idLogado ? '(Você)' : ''}</div>
             <div style="font-size: 11.5px; color: #92400e; font-weight: 600;">Campeão do Torneio</div>
@@ -2256,6 +2274,36 @@ function renderizarHTMLPodioAcervoSaaS() {
     bodyList.innerHTML = html;
 }
 
+// Variável de controle de ordem (Padrão: true = Grande Final no topo)
+let ordemSumulasDescSaaS = true;
+
+function obterPesoFaseSaaS(partida) {
+    const dp = partida.dadosPlacar || {};
+    const tagFase = (partida.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
+    const tagGrupo = (partida.tagGrupoRanking || dp.tagGrupoRanking || '').toLowerCase();
+
+    if (tagFase.includes('grande final') || tagFase.includes('final')) return 1000;
+    if (tagFase.includes('semi')) return 800;
+    if (tagFase.includes('quartas')) return 600;
+    if (tagFase.includes('oitavas')) return 400;
+
+    if (tagGrupo || tagFase.includes('grupo')) {
+        const numGrupoMatch = (tagGrupo || tagFase).match(/\d+/);
+        const numG = numGrupoMatch ? parseInt(numGrupoMatch[0], 10) : 1;
+        return 200 - numG;
+    }
+
+    return 100;
+}
+
+function inverterOrdemSumulasAcervoSaaS() {
+    if (navigator.vibrate) navigator.vibrate(15);
+    ordemSumulasDescSaaS = !ordemSumulasDescSaaS;
+    if (edicaoHistoricaFocoSaaS) {
+        abrirSumulasAcervoSaaS(edicaoHistoricaFocoSaaS.id);
+    }
+}
+
 function abrirSumulasAcervoSaaS(idEdicao) {
     const edicao = acervoHistoricoGlobalSaaS.find(e => e.id === idEdicao);
     if (!edicao) {
@@ -2266,12 +2314,22 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     edicaoHistoricaFocoSaaS = edicao;
 
     const partidasObj = edicao.partidas || {};
-    const listaPartidas = Object.values(partidasObj);
+    let listaPartidas = Object.values(partidasObj);
 
     if (listaPartidas.length === 0) {
         showToast("Nenhuma súmula cadastrada para esta edição.", "info");
         return;
     }
+
+    // Ordenação Inteligente por Fase (Grande Final -> Semis -> Grupos)
+    listaPartidas.sort((a, b) => {
+        const pesoA = obterPesoFaseSaaS(a);
+        const pesoB = obterPesoFaseSaaS(b);
+        if (pesoA !== pesoB) {
+            return ordemSumulasDescSaaS ? (pesoB - pesoA) : (pesoA - pesoB);
+        }
+        return (b.dataHora || 0) - (a.dataHora || 0);
+    });
 
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     const bodyList = document.getElementById('body-leaderboard-scroll');
@@ -2347,6 +2405,26 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         return pts;
     };
 
+    // Calculador oficial de vencedor do set individual
+    const calcSetWinner = (p1, p2, tb1, tb2) => {
+        const n1 = parseInt(p1), n2 = parseInt(p2);
+        if (isNaN(n1) || isNaN(n2)) return 0;
+        const t1 = parseInt(tb1), t2 = parseInt(tb2);
+        if (!isNaN(t1) && !isNaN(t2)) {
+            if (t1 > t2) return 1;
+            if (t2 > t1) return 2;
+        }
+        if ((n1 === 6 && n2 <= 4) || (n1 === 7 && (n2 === 5 || n2 === 6))) return 1;
+        if ((n2 === 6 && n1 <= 4) || (n2 === 7 && (n1 === 5 || n1 === 6))) return 2;
+        if ((n1 === 4 && n2 <= 2) || (n1 === 5 && (n2 === 3 || n2 === 4))) return 1;
+        if ((n2 === 4 && n1 <= 2) || (n2 === 5 && (n1 === 3 || n1 === 4))) return 2;
+        if ((n1 === 8 && n2 <= 6) || (n1 === 9 && (n2 === 7 || n2 === 8))) return 1;
+        if ((n2 === 8 && n1 <= 6) || (n2 === 9 && (n1 === 7 || n1 === 8))) return 2;
+        if (n1 >= 10 && n1 - n2 >= 2) return 1;
+        if (n2 >= 10 && n2 - n1 >= 2) return 2;
+        return 0;
+    };
+
     let htmlCardsMain = '';
     let htmlCardsExtra = '';
 
@@ -2377,6 +2455,17 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         const decisaoArb = dp.decisaoArbitro || '';
         const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
         const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
+
+        let labelFasePartida = partida.tagFaseRanking || dp.tagFaseRanking;
+        if (!labelFasePartida) {
+            const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
+            if (tagG) {
+                labelFasePartida = `Grupos - ${tagG}`;
+            } else {
+                const nomesModelos = { barragem: 'Barragem', piramide: 'Pirâmide', grupos: 'Mata-Mata' };
+                labelFasePartida = nomesModelos[edicao.modelo] || 'Ranking';
+            }
+        }
 
         let badgeHtml = '';
         let footerArbHtml = '';
@@ -2427,6 +2516,12 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         if (isWO) {
             cardSingle += `
                 <table class="atp-table" style="margin-bottom: 0px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <tr>
                             <td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td>
@@ -2451,24 +2546,45 @@ function abrirSumulasAcervoSaaS(idEdicao) {
             const temSet2 = (p.set2 && p.set2.j1 !== undefined && p.set2.j1 !== null && p.set2.j1 !== "");
             const temSet3 = (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "");
 
+            let thSetsHtml = '';
+            if (temSet1) thSetsHtml += `<th class="col-score"></th>`;
+            if (temSet2) thSetsHtml += `<th class="col-score"></th>`;
+            if (temSet3) thSetsHtml += `<th class="col-score"></th>`;
+
             let tdSetsJ1Html = '';
             let tdSetsJ2Html = '';
 
             if (temSet1) {
-                tdSetsJ1Html += `<td class="col-score atp-score ${classNomeJ1}">${fmtSet(p.set1.j1, p.set1.tbJ1)}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classNomeJ2}">${fmtSet(p.set1.j2, p.set1.tbJ2)}</td>`;
+                const w1 = calcSetWinner(p.set1.j1, p.set1.j2, p.set1.tbJ1, p.set1.tbJ2);
+                const classS1J1 = (!ehAnulado && w1 === 1) ? 'set-winner' : '';
+                const classS1J2 = (!ehAnulado && w1 === 2) ? 'set-winner' : '';
+                tdSetsJ1Html += `<td class="col-score atp-score ${classS1J1}">${fmtSet(p.set1.j1, p.set1.tbJ1)}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classS1J2}">${fmtSet(p.set1.j2, p.set1.tbJ2)}</td>`;
             }
             if (temSet2) {
-                tdSetsJ1Html += `<td class="col-score atp-score ${classNomeJ1}">${fmtSet(p.set2.j1, p.set2.tbJ1)}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classNomeJ2}">${fmtSet(p.set2.j2, p.set2.tbJ2)}</td>`;
+                const w2 = calcSetWinner(p.set2.j1, p.set2.j2, p.set2.tbJ1, p.set2.tbJ2);
+                const classS2J1 = (!ehAnulado && w2 === 1) ? 'set-winner' : '';
+                const classS2J2 = (!ehAnulado && w2 === 2) ? 'set-winner' : '';
+                tdSetsJ1Html += `<td class="col-score atp-score ${classS2J1}">${fmtSet(p.set2.j1, p.set2.tbJ1)}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classS2J2}">${fmtSet(p.set2.j2, p.set2.tbJ2)}</td>`;
             }
             if (temSet3) {
-                tdSetsJ1Html += `<td class="col-score atp-score ${classNomeJ1}">${fmtSet(p.set3.j1, p.set3.tbJ1)}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classNomeJ2}">${fmtSet(p.set3.j2, p.set3.tbJ2)}</td>`;
+                const w3 = calcSetWinner(p.set3.j1, p.set3.j2, p.set3.tbJ1, p.set3.tbJ2);
+                const classS3J1 = (!ehAnulado && w3 === 1) ? 'set-winner' : '';
+                const classS3J2 = (!ehAnulado && w3 === 2) ? 'set-winner' : '';
+                tdSetsJ1Html += `<td class="col-score atp-score ${classS3J1}">${fmtSet(p.set3.j1, p.set3.tbJ1)}</td>`;
+                tdSetsJ2Html += `<td class="col-score atp-score ${classS3J2}">${fmtSet(p.set3.j2, p.set3.tbJ2)}</td>`;
             }
 
             cardSingle += `
                 <table class="atp-table" style="margin-bottom: 0px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                            ${thSetsHtml}
+                            <th class="col-arrow"></th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <tr><td><span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>${tagRetJ1}</td>${tdSetsJ1Html}<td class="col-arrow">${setaJ1}</td></tr>
                         <tr><td><span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>${tagRetJ2}</td>${tdSetsJ2Html}<td class="col-arrow">${setaJ2}</td></tr>
@@ -2486,6 +2602,13 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         } else {
             cardSingle += `
                 <table class="atp-table" style="margin-bottom: 0px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                            <th class="col-score"></th>
+                            <th class="col-arrow"></th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <tr><td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td><td class="col-score atp-score ${j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP1 || 0}</td><td class="col-arrow">${setaJ1}</td></tr>
                         <tr><td><span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span></td><td class="col-score atp-score ${!j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP2 || 0}</td><td class="col-arrow">${setaJ2}</td></tr>
@@ -2509,8 +2632,15 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         <style>
             #sheet-leaderboard-ranking .bottom-sheet-header { padding-top: 12px !important; padding-bottom: 6px !important; }
         </style>
-        <div style="margin-top: 0px; margin-bottom: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; font-size: 11.5px; color: #64748b; text-align: center;">
-            📋 Total de <b>${listaPartidas.length} partida(s)</b> homologada(s).
+        
+        <!-- Header do Contador + Botão Quadrado de Ordenação -->
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 0px; margin-bottom: 8px;">
+            <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; font-size: 11.5px; color: #64748b; text-align: center;">
+                📋 Total de <b>${listaPartidas.length} partida(s)</b> homologada(s).
+            </div>
+            <button type="button" onclick="inverterOrdemSumulasAcervoSaaS()" title="Inverter Ordem das Súmulas" style="width: 32px; height: 31px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; color: #0284c7; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="material-icons" style="font-size: 18px;">swap_vert</i>
+            </button>
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -3616,7 +3746,8 @@ async function exportarSumulasPDFSaaS() {
             const scores = scoreTds.map(td => {
                 const sup = td.querySelector('sup')?.innerText || ''; 
                 const mainVal = td.innerText.replace(sup, '').trim();
-                return { val: mainVal, sup: sup };
+                const isSetWinner = td.classList.contains('set-winner');
+                return { val: mainVal, sup: sup, isSetWinner: isSetWinner };
             });
 
             players.push({ name, isWinner, hasRET, scores });
@@ -3856,19 +3987,21 @@ async function exportarSumulasPDFSaaS() {
         let ehWO = false;
 
         p1.scores.forEach(s => {
-            doc.setFont("helvetica", p1.isWinner ? "bold" : "normal");
+            // Aplicação de negrito individual por set vencido
+            doc.setFont("helvetica", s.isSetWinner ? "bold" : "normal");
             doc.setFontSize(9);
             doc.setTextColor(15, 23, 42);
 
             if (s.val === 'W.O.') {
                 ehWO = true;
+                doc.setFont("helvetica", p1.isWinner ? "bold" : "normal");
                 doc.text(s.val, cardX + contentWidth - 5, row1Y, { align: "right" });
             } else {
                 doc.text(s.val, scoreX1, row1Y, { align: "center" });
             }
 
             if (s.sup && !ehWO) {
-                doc.setFontSize(5.5);
+                doc.setFontSize(7); // Aumentado de 5.5 para 7 para melhorar a legibilidade
                 doc.setTextColor(148, 163, 184);
                 doc.text(s.sup, scoreX1 + 2.2, row1Y - 1.8);
             }
@@ -3904,19 +4037,21 @@ async function exportarSumulasPDFSaaS() {
 
         let scoreX2 = cardX + contentWidth - 28;
         p2.scores.forEach(s => {
-            doc.setFont("helvetica", p2.isWinner ? "bold" : "normal");
+            // Aplicação de negrito individual por set vencido
+            doc.setFont("helvetica", s.isSetWinner ? "bold" : "normal");
             doc.setFontSize(9);
             doc.setTextColor(15, 23, 42); 
 
             if (s.val === 'W.O.') {
                 ehWO = true;
+                doc.setFont("helvetica", p2.isWinner ? "bold" : "normal");
                 doc.text(s.val, cardX + contentWidth - 5, row2Y, { align: "right" });
             } else {
                 doc.text(s.val, scoreX2, row2Y, { align: "center" });
             }
 
             if (s.sup && !ehWO) {
-                doc.setFontSize(5.5);
+                doc.setFontSize(7); // Aumentado de 5.5 para 7 para melhorar a legibilidade
                 doc.setTextColor(148, 163, 184);
                 doc.text(s.sup, scoreX2 + 2.2, row2Y - 1.8);
             }
@@ -4384,3 +4519,74 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+/* ======================================================== */
+/* 6. MOTOR DE COMEMORAÇÃO COMBINADA DO CAMPEÃO            */
+/* ======================================================== */
+function dispararComemoracaoCampeaoSaaS() {
+    const card = document.getElementById('card-campeao');
+    if (card) {
+        card.classList.add('aura-pulsante');
+    }
+
+    let canvas = document.getElementById('canvas-efeitos');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'canvas-efeitos';
+        document.body.appendChild(canvas);
+    }
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    const colors = ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#fbbf24', '#ffffff'];
+
+    function createFirework(x, y) {
+        for (let i = 0; i < 45; i++) {
+            const angle = (Math.PI * 2 / 45) * i;
+            const speed = Math.random() * 6 + 2;
+            particles.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                alpha: 1,
+                color: colors[Math.floor(Math.random() * colors.length)]
+            });
+        }
+    }
+
+    createFirework(canvas.width * 0.25, canvas.height * 0.35);
+    setTimeout(() => createFirework(canvas.width * 0.75, canvas.height * 0.30), 250);
+    setTimeout(() => createFirework(canvas.width * 0.50, canvas.height * 0.20), 500);
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach((p, index) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= 0.018;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.alpha);
+            ctx.fill();
+
+            if (p.alpha <= 0) particles.splice(index, 1);
+        });
+
+        if (particles.length > 0) {
+            requestAnimationFrame(animate);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+    animate();
+
+    setTimeout(() => {
+        if (card) card.classList.remove('aura-pulsante');
+    }, 5000);
+}
