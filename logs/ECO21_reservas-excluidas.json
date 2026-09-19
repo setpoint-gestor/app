@@ -616,5 +616,32 @@
         "hora": 20
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALEXANDRE CAMARGO",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alexandre Camargo": true
+    },
+    "data": "19-09-2026",
+    "dataLocal": "19/09/2026, 20:12:40",
+    "duracao": "1 Hora",
+    "horario": "20:00 - 21:00",
+    "jogadores": "Alexandre Camargo, Adriano Feitosa",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ADRIANO GOMES FEITOSA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "origem": "manual",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 20
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-09-19T23:12:40.693Z"
   }
 ]
