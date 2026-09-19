@@ -2175,15 +2175,42 @@ body.dark-mode #tabelaQuadra td .pos-tag {
     color: #854d0e !important;
 }
 
+
 /* ======================================================== */
-/* ANCORAGEM VERTICAL PARA BLOCOS DE 2 HORAS                */
+/* 25. COMEMORAÇÃO DO CAMPEÃO: AURA DOURADA & FOGOS          */
 /* ======================================================== */
-#tabelaQuadra td.reserva-2h-topo {
-    vertical-align: bottom !important;
-    padding-bottom: 4px !important;
+.card-campeao.aura-pulsante {
+    animation: pulsarAura 1.5s infinite alternate !important;
 }
 
-#tabelaQuadra td.reserva-2h-baixo {
-    vertical-align: top !important;
-    padding-top: 4px !important;
+.card-campeao.aura-pulsante .coroa-icon {
+    animation: balancarCoroa 0.6s infinite alternate ease-in-out !important;
 }
+
+@keyframes pulsarAura {
+    0% {
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+        border-color: #f59e0b;
+    }
+    100% {
+        box-shadow: 0 0 25px rgba(245, 158, 11, 0.9), 0 0 40px rgba(251, 191, 36, 0.6);
+        border-color: #fbbf24;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes balancarCoroa {
+    0% { transform: rotate(-8deg) scale(1.1); }
+    100% { transform: rotate(8deg) scale(1.25); }
+}
+
+#canvas-efeitos {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 99999;
+}
+
