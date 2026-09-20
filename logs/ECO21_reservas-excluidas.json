@@ -676,5 +676,59 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "autor": "ALEX SOUZA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alessandro Xavier": true,
+      "Almir": false
+    },
+    "data": "21-09-2026",
+    "dataLocal": "20/09/2026, 14:15:32",
+    "duracao": "2 Horas",
+    "horario": "10:00 - 12:00",
+    "jogadores": "Alessandro Xavier, Almir",
+    "jogadores_completo": "ALESSANDRO ROMERO XAVIER, ALMIR ALVES DA CRUZ",
+    "motivo": "Convite recusado por Alex. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "organizadorDaReserva": "ALESSANDRO ROMERO XAVIER",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-09-20T17:15:32.549Z"
+  },
+  {
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alessandro Xavier": true,
+      "Almir": false
+    },
+    "data": "21-09-2026",
+    "dataLocal": "20/09/2026, 14:15:52",
+    "duracao": "2 Horas",
+    "horario": "10:00 - 12:00",
+    "jogadores": "Alessandro Xavier, Almir",
+    "jogadores_completo": "ALESSANDRO ROMERO XAVIER, ALMIR ALVES DA CRUZ",
+    "motivo": "Convite recusado por Almir. Reserva cancelada por falta de quórum mínimo.",
+    "organizadorDaReserva": "ALESSANDRO ROMERO XAVIER",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 10,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 1,
+        "hora": 11,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-09-20T17:15:52.533Z"
   }
 ]
