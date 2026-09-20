@@ -66,6 +66,8 @@ let saasUsuariosOnlineCache = {}; // Espelho local dos usuários conectados em t
 
 let reservasGeralGlobal = {};     // Espelho local de TODAS as reservas do clube na memória RAM
 
+let acervoHistoricoGlobalSaaS = null; // Espelho local do acervo de históricos de torneios na memória RAM
+
 // ==========================================
 // 2. LISTENERS GLOBAIS (Ouvintes de Eventos)
 // ========================================== 
@@ -697,7 +699,7 @@ function iniciarOuvinteMestreSaaS() {
     console.log("🌳 [Core] Sincronizando Chaves do Mata-Mata em tempo real...");
     database.ref(`${raizBanco}/ranking/chaves`).on('value', (snapshot) => {
         rankingChavesGlobal = snapshot.val() || {};
-        console.log("✓ [Core] Chaves do Mata-Mata sincronizadas na memória RAM.");
+        console.log("✓ [Core] Chaves do Mata-Mata sincronizadas na memória RAM."); 
         
         const telaQuadras = document.getElementById('tela-visao-quadras');
         if (telaQuadras && telaQuadras.classList.contains('ativa')) {

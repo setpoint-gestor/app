@@ -20,9 +20,6 @@ let abaStatusAtivoSaaS = 'TODOS'; // 'TODOS', 'PENDENTE', 'AGENDADO', 'HOMOLOGAD
 let edicaoHistoricaFocoSaaS = null;
 let categoriaHistoricaAtivaSaaS = null;
 let listenerGavetaHistoricoAdd = false;
-let acervoHistoricoGlobalSaaS = [];
-
-
 
 /* ======================================================== */
 /* 1. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO                 */
@@ -402,9 +399,9 @@ function renderizarLeaderboardSaaS() {
                     <option value="TODAS" ${abaFaseAtivaSaaS === 'TODAS' ? 'selected' : ''}>Todas</option>
                 `;
             } else {
-                selectFase.style.display = 'none';
-                abaFaseAtivaSaaS = 'GRUPOS';
-            }
+				selectFase.style.display = 'none';
+				if (modelo === 'grupos') abaFaseAtivaSaaS = 'GRUPOS';
+			}
         }
 		
 		// Injeção do Botão e Popover do Filtro de Status (Modelo 2)
@@ -1380,7 +1377,8 @@ function renderizarLeaderboardSaaS() {
             }
         });
 
-        const exibeHall = torneioConcluido && (abaFaseAtivaSaaS === 'AUTO' || abaFaseAtivaSaaS === 'MM_2' || abaFaseAtivaSaaS === 'FINAL');
+
+		const exibeHall = torneioConcluido && (modelo !== 'grupos' || abaFaseAtivaSaaS === 'AUTO' || abaFaseAtivaSaaS === 'MM_2' || abaFaseAtivaSaaS === 'FINAL');
 
         if (exibeHall) {
             let htmlHall = '';
@@ -1940,9 +1938,16 @@ function filtrarTabelaRankingGeralSaaS() {
 /* 3. CONTROLES DA ABA DE HISTÓRICO E ACERVO                 */
 /* ======================================================== */
 
-async function carregarHistoricoTorneiosSaaS() {
+async function carregarHistoricoTorneiosSaaS(forcarRecarga = false) {
     const tbody = document.getElementById('tbody-historico-torneios');
     if (!tbody || !raizBanco) return;
+
+    // 💡 LEITURA DIRETA DA RAM (LAZY CACHE): Se os dados já foram pré-carregados no Passo 2, renderiza instantaneamente
+    if (!forcarRecarga && Array.isArray(acervoHistoricoGlobalSaaS) && acervoHistoricoGlobalSaaS.length > 0) {
+        popularFiltrosHistoricoSaaS();
+        renderizarTabelaHistoricoSaaS();
+        return;
+    }
 
     try {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">Buscando acervo no banco de dados...</td></tr>';
@@ -4487,13 +4492,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const abas = modalRanking.querySelectorAll('.accordion-header');
         abas.forEach((aba, idx) => {
             aba.addEventListener('click', () => {
+                const paiItem = aba.parentElement;
+                const jaEstavaAtiva = paiItem && (paiItem.classList.contains('active') || paiItem.classList.contains('mobile-opened'));
+
+                // 🛡️ TRAVA DESKTOP: Se no computador (> 768px) a aba já estiver ativa, cancela a busca no banco para evitar a "piscada"
+                if (jaEstavaAtiva && window.innerWidth > 768) {
+                    return;
+                }
+
                 if (idx === 4 && typeof renderizarGestaoTemporadaSaaS === 'function') {
                     renderizarGestaoTemporadaSaaS();
                 }
                 if (idx === 5) {
                     carregarHistoricoTorneiosSaaS(); 
                 }
-				if (idx === 6) {
+                if (idx === 6) {
                     if (typeof renderizarTabelaRankingGeralSaaS === 'function') {
                         renderizarTabelaRankingGeralSaaS();
                     }
@@ -4504,8 +4517,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (window.innerWidth <= 768) {
                     setTimeout(() => {
-                        const paiItem = aba.parentElement;
-                        
                         if (paiItem && paiItem.classList.contains('active')) {
                             aba.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         } else {
@@ -4519,7 +4530,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
 
 /* ======================================================== */
 /* 6. MOTOR DE COMEMORAÇÃO COMBINADA DO CAMPEÃO            */

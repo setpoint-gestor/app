@@ -2024,7 +2024,7 @@ function validarEAgendarPartidaSaas() {
         const txtJogador = quorumExigido === 1 ? 'jogador' : 'jogadores';
         
         showToast(`O quórum mínimo para ${pacote.duracao} ${txtHora} é de ${quorumExigido} ${txtJogador}. Adicione mais pessoas.`, "warning");
-        return; // Aborta o agendamento na mesma hora!
+        return;
     }
 
     // ----------------------------------------------------
@@ -2033,7 +2033,7 @@ function validarEAgendarPartidaSaas() {
     const erroDuplas = validarRegraDuplasSaaS(pacote.isDupla, qtdJogadoresPreenchidos);
     if (erroDuplas) {
         showToast(erroDuplas, "error");
-        return; // Aborta
+        return;
     }
 
     // Trava a UI para processamento
@@ -2044,17 +2044,19 @@ function validarEAgendarPartidaSaas() {
     }
 
     // ----------------------------------------------------
-    // 3. A GRANDE LEITURA (Snapshot Fotográfico do Banco)
+    // 3. A GRANDE LEITURA (Snapshot Fotográfico + Captura SSOT do temporadaId)
     // ----------------------------------------------------
     const limiteAtivo = (configRegrasGlobal && configRegrasGlobal.LimiteReservas !== undefined) ? parseInt(configRegrasGlobal.LimiteReservas) : 3;
 
     Promise.all([
         database.ref(`${raizBanco}/jogadores`).once('value'),
-        (limiteAtivo > 0) ? database.ref(`${raizBanco}/reservas`).once('value') : Promise.resolve(null)
-    ]).then(([snapJogadores, snapReservas]) => {
+        (limiteAtivo > 0) ? database.ref(`${raizBanco}/reservas`).once('value') : Promise.resolve(null),
+        database.ref(`${raizBanco}/convites_ranking/temporadaId`).once('value')
+    ]).then(([snapJogadores, snapReservas, snapTemporadaId]) => {
         const bancoJogadores = snapJogadores.val() || {};
         const todasReservas = snapReservas ? snapReservas.val() : null;
-        
+        const temporadaIdMestre = snapTemporadaId.exists() ? snapTemporadaId.val() : null;
+
         let listaApelidos = [];
         let listaNomesCompletosReais = [];
 
@@ -2083,10 +2085,10 @@ function validarEAgendarPartidaSaas() {
         const erroMonopolio = validarAntiMonopolioSaaS(listaNomesCompletosReais, listaApelidos, todasReservas, limiteAtivo);
         if (erroMonopolio) {
             showToast(erroMonopolio, "error", 4500);
-            throw new Error("VALIDACAO_FALHOU"); // Ejeta do fluxo de gravação
+            throw new Error("VALIDACAO_FALHOU");
         }
-		
-		// 🛑 TRAVA DE DUPLO AGENDAMENTO (Nenhum atleta pode estar em 2 quadras ao mesmo tempo)
+
+        // 🛑 TRAVA DE DUPLO AGENDAMENTO
         const erroConflitoHorario = validarConflitoHorarioAtletaSaaS(listaNomesCompletosReais, listaApelidos, pacote, todasReservas);
         if (erroConflitoHorario) {
             showToast(erroConflitoHorario, "error", 4500);
@@ -2101,9 +2103,7 @@ function validarEAgendarPartidaSaas() {
         const stringApelidosExibicao = listaApelidos.join(', ');
         const stringCompletosExibicao = listaNomesCompletosReais.join(', ');
         const organizadorPrincipal = listaNomesCompletosReais[0] || "Sócio";
-        const organizadorApelido = listaApelidos[0] || "Sócio";
 
-        // 🧠 INTELIGÊNCIA DE CONVITE SAAS (A Leitura do Interruptor Mestre)
         const exigenciaAtiva = (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao !== false);
         const prazoHoras = (configRegrasGlobal && configRegrasGlobal.horasParaExpirar !== undefined) ? parseInt(configRegrasGlobal.horasParaExpirar) : 2;
         
@@ -2111,17 +2111,14 @@ function validarEAgendarPartidaSaas() {
         let statusFinal = "confirmada";
         let timestampExpiracao = null;
 
-        // 📅 VERIFICAÇÃO DE CALENDÁRIO: A reserva é para hoje?
         const hojeObj = new Date();
         const strHoje = `${hojeObj.getFullYear()}-${String(hojeObj.getMonth() + 1).padStart(2, '0')}-${String(hojeObj.getDate()).padStart(2, '0')}`;
         const reservaParaHoje = (pacote.dataCompletaFormato === strHoje);
 
-        // 🏆 AJUSTE REALIZADO: Partidas de Ranking NUNCA entram como pendentes (!pacote.isRanking)
         if (exigenciaAtiva && listaApelidos.length > 1 && !reservaParaHoje && !pacote.isRanking) {
             statusFinal = "pendente";
             timestampExpiracao = Date.now() + (prazoHoras * 60 * 60 * 1000);
             
-            // O organizador entra como confirmado (true), os convidados entram como pendentes (false)
             for (let i = 0; i < listaApelidos.length; i++) {
                 if (i === 0) {
                     objetoConfirmacoes[listaApelidos[i]] = true; 
@@ -2130,14 +2127,12 @@ function validarEAgendarPartidaSaas() {
                 }
             }
         } else {
-            // Se a regra for OFF, for jogo individual, for hoje OU for Ranking: tudo nasce CONFIRMADO
             statusFinal = "confirmada";
             listaApelidos.forEach(apelido => {
                 objetoConfirmacoes[apelido] = true;
             });
         }
 
-        // O chassi do pacote que vai para o banco
         const objetoReservaReferencia = {
             borda: `${pacote.duracao}h`,
             status: statusFinal,                       
@@ -2152,15 +2147,17 @@ function validarEAgendarPartidaSaas() {
             jogadores_completo: stringCompletosExibicao,
             confirmacoes: objetoConfirmacoes            
         };
-		
-        // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES, TAGS DE GRUPO / MATA-MATA E CARIMBO DE TEMPORADA
+
+        // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES, TAGS E CARIMBO MESTRE DE TEMPORADA
         if (pacote.isRanking) {
             const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
             const modeloAtivo = confRanking.modeloAtivo || 'piramide';
             const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
 
-            // Carimbo imutável da temporada ativa para isolamento do zeramento
-            if (window.dadosTemporadaRankingAtiva && window.dadosTemporadaRankingAtiva.temporadaId) {
+            // 🎯 CARIMBO MESTRE DA TEMPORADA ATIVA (SSOT - Sem dependência de convites pendentes)
+            if (temporadaIdMestre) {
+                objetoReservaReferencia.temporadaId = temporadaIdMestre;
+            } else if (window.dadosTemporadaRankingAtiva && window.dadosTemporadaRankingAtiva.temporadaId) {
                 objetoReservaReferencia.temporadaId = window.dadosTemporadaRankingAtiva.temporadaId;
             }
 
@@ -2189,7 +2186,6 @@ function validarEAgendarPartidaSaas() {
                     }
                 }
             } else if (modeloAtivo === 'grupos' && faseAtualRanking === 4) {
-                // 🌳 CARIMBO DIRETO DA FASE DO MATA-MATA NA RESERVA
                 const idAtleta1 = Object.keys(bancoJogadores).find(key => 
                     bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
                     bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()
@@ -2212,32 +2208,29 @@ function validarEAgendarPartidaSaas() {
                     }
                 }
             } else if (modeloAtivo !== 'grupos') {
-                // PIRÂMIDE OU BARRAGEM: Congela apenas o texto puro da posição ("2º", "3º")
                 objetoReservaReferencia.posicaoP1 = obterPosicaoTextoRankingSaaS(listaApelidos[0]);
                 objetoReservaReferencia.posicaoP2 = obterPosicaoTextoRankingSaaS(listaApelidos[1]);
             }
         }
 
-        // Injeta o cronômetro apenas se a reserva for pendente
         if (timestampExpiracao) {
             objetoReservaReferencia.expiraEm = timestampExpiracao;
         }
 
         const chaveReservaLimpa = `${pacote.dia}_${pacote.hora}`;
-		
         const caminhoKey1 = `${raizBanco}/reservas/${pacote.quadraAlvo}/${chaveReservaLimpa}`;
         const caminhoKey2 = `${raizBanco}/reservas/${pacote.quadraAlvo}/${pacote.dia}_${pacote.hora + 1}`;
 
-        let key1Committed = false; // 🛡️ Trava de segurança para o Rollback
+        let key1Committed = false;
 
         return database.ref(caminhoKey1).transaction(currentData => {
             if (currentData === null || currentData.status === 'aula_cancelada') return objetoReservaReferencia;
-            return; // Aborta se tiver colisão
+            return;
         })
         .then(result1 => {
             if (!result1.committed) throw new Error("COLISAO_HORARIO_MESTRE");
             
-            key1Committed = true; // 1ª hora foi salva no Firebase
+            key1Committed = true;
 
             if (pacote.duracao === 1) return true;
 
@@ -2261,8 +2254,6 @@ function validarEAgendarPartidaSaas() {
         if (typeof fecharModalConfig === 'function') fecharModalConfig('modal-agendamento'); 
     })
     .catch(async err => {
-        // 🧹 ROLLBACK AUTOMÁTICO DE SEGURANÇA:
-        // Se a 1ª hora foi gravada mas a 2ª hora falhou por qualquer motivo (queda de rede, timeout ou colisão), limpa a 1ª hora do banco
         if (key1Committed && pacote.duracao === 2) {
             try {
                 await database.ref(caminhoKey1).remove();
@@ -2272,9 +2263,8 @@ function validarEAgendarPartidaSaas() {
             }
         }
 
-        // Controle de falhas inteligente
         if (err.message === "VALIDACAO_FALHOU") {
-            // O Toast de aviso já foi emitido pelo fiscal, morre silenciosamente.
+            // Toast emitido previamente
         } else if (err.message === "COLISAO_HORARIO_MESTRE") {
             showToast("Ops! Este horário acabou de ser preenchido por outro utilizador.", "error");
         } else if (err.message === "COLISAO_HORARIO_SEQUENCIAL") {
@@ -2285,15 +2275,12 @@ function validarEAgendarPartidaSaas() {
         }
     })
     .finally(() => {
-        // Libera a UI independente do que acontecer
         if (btnSubmit) {
             btnSubmit.disabled = false;
             btnSubmit.textContent = "Confirmar Agendamento";
         }
     });
 }
-
-
 
 // Rotação Responsiva
 window.addEventListener('resize', () => {
@@ -3170,17 +3157,22 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             }
         }
 
-        // 🏷️ LEITURA DIRETA E INSTANTÂNEA DA TAG DA FASE DA RESERVA
+        // 🏷️ LEITURA DE RÓTULO COM PRIORIDADE HISTÓRICA (NÃO ALTERA AO MUDAR O MODELO ATIVO)
         if (dadosReserva.tagFaseRanking) {
             labelModelo = dadosReserva.tagFaseRanking;
         } else if (dadosReserva.dadosPlacar?.tagFaseRanking) {
             labelModelo = dadosReserva.dadosPlacar.tagFaseRanking;
         } else if (tagGrupo) {
             labelModelo = `Grupos - ${tagGrupo}`;
+        } else if (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo) {
+            const m = (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo).toLowerCase();
+            const mapM = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
+            labelModelo = mapM[m] || 'Ranking';
         } else if (dadosReserva.posicaoP1 || dadosReserva.posicaoP2) {
-            labelModelo = (modeloAtivo === 'piramide') ? 'Pirâmide' : 'Barragem';
+            labelModelo = 'Pirâmide';
         } else {
-            labelModelo = (modeloAtivo === 'grupos') ? 'Grupos' : (modeloAtivo === 'piramide' ? 'Pirâmide' : 'Barragem');
+            const mapM = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
+            labelModelo = mapM[modeloAtivo] || 'Ranking';
         }
 
         let classNomeJ1 = '', classNomeJ2 = '';
@@ -3716,17 +3708,16 @@ function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo) {
 
 
 /**
- * Motor de Faxina Automatizada (Fase 7 - Sobrevivência de Quórum + Auto-Homologação + Autocura): 
- * 1. Limpa dias antigos.
+ * Motor de Faxina Automatizada: 
+ * 1. Limpa dias antigos por decurso do prazo de exibição.
  * 2. Caça convites pendentes vencidos e APLICA A REGRA DE QUÓRUM.
  *    - Se tiver quórum, expulsa apenas os pendentes e salva a reserva.
  *    - Se não tiver quórum, exclui a reserva inteira e notifica o organizador.
  * 3. Auto-homologa súmulas com prazo de contestação expirado (expiraValidacaoAt).
- * 4. Autocura Segura: Recria em ranking/partidas APENAS súmulas consolidadas legítimas (slot principal com placar preenchido) ausentes do nó do ranking.
- * 5. RESGATA logs que falharam por queda de internet no GitHub.
+ * 4. RESGATA logs que falharam por queda de internet no GitHub.
  */
 function executarFaxinaAutomaticaSaaS() {
-    console.log("🤖 [SaaS Faxina] Iniciando varredura de histórico, convites expirados, súmulas vencidas, autocura e resgates...");
+    console.log("🤖 [SaaS Faxina] Iniciando varredura de histórico, convites expirados, súmulas vencidas e resgates...");
     
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -3768,8 +3759,6 @@ function executarFaxinaAutomaticaSaaS() {
             const dp = partida ? partida.dadosPlacar : null;
 
             if (dp && dp.statusPlacar === 'pendente_validacao' && dp.expiraValidacaoAt && dp.expiraValidacaoAt <= agoraMs) {
-                
-                // 🛡️ Trava de Checagem Dupla: Verifica se a partida já foi consolidada na agenda (reservas)
                 let jaConsolidadaNaAgenda = false;
 
                 Object.keys(todasAsReservas).forEach(quadraChave => {
@@ -3796,10 +3785,8 @@ function executarFaxinaAutomaticaSaaS() {
                 updatePayload[`ranking/partidas/${pKey}/dadosPlacar/statusPlacar`] = 'consolidado';
 
                 if (jaConsolidadaNaAgenda) {
-                    // Autocura silenciosa: Apenas sincroniza o status no ranking sem carimbar falso decurso de prazo
-                    console.log(`🚑 [SaaS Faxina] Autocura: Partida ${pKey} sincronizada para consolidado (já homologada manualmente na agenda).`);
+                    console.log(`🚑 [SaaS Faxina] Sincronização: Partida ${pKey} atualizada para consolidado.`);
                 } else {
-                    // Auto-homologação respeitando o prazo individual da partida
                     const horasPartida = dp.prazoAutoHoras || prazoAutoconf;
                     updatePayload[`ranking/partidas/${pKey}/dadosPlacar/autoHomologado`] = true;
                     updatePayload[`ranking/partidas/${pKey}/dadosPlacar/prazoAutoHoras`] = horasPartida;
@@ -3809,7 +3796,7 @@ function executarFaxinaAutomaticaSaaS() {
             }
         });
 
-        // 3. Varre as Reservas de Quadras (Histórico, Convites, Auto-Homologação e Autocura)
+        // 3. Varre as Reservas de Quadras (Histórico, Convites e Auto-Homologação)
         Object.keys(todasAsReservas).forEach(quadraChave => {
             const slotsQuadra = todasAsReservas[quadraChave] || {};
             const chavesPuladas = new Set(); 
@@ -3837,128 +3824,30 @@ function executarFaxinaAutomaticaSaaS() {
                 const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
 
                 // 3.A. AUTO-HOMOLOGAÇÃO DE SÚMULA PENDENTE EXPIRADA NA RESERVA
-				if (dp && stPlacar === 'pendente_validacao' && dp.expiraValidacaoAt && dp.expiraValidacaoAt <= agoraMs) {
+                if (dp && stPlacar === 'pendente_validacao' && dp.expiraValidacaoAt && dp.expiraValidacaoAt <= agoraMs) {
                     const horasPartida = dp.prazoAutoHoras || prazoAutoconf;
                     updatePayload[`reservas/${quadraChave}/${slotKey}/statusPlacar`] = 'consolidado';
                     updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/statusPlacar`] = 'consolidado';
                     updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/autoHomologado`] = true;
                     updatePayload[`reservas/${quadraChave}/${slotKey}/dadosPlacar/prazoAutoHoras`] = horasPartida;
 
-					const dur = parseInt(r.duracao) || 1;
-					if (dur === 2) {
-						const partes = slotKey.split('_');
-						if (partes.length === 2) {
-							const proxSlot = `${partes[0]}_${parseInt(partes[1], 10) + 1}`;
-							updatePayload[`reservas/${quadraChave}/${proxSlot}/statusPlacar`] = 'consolidado';
-							if (slotsQuadra[proxSlot] && slotsQuadra[proxSlot].dadosPlacar) {
-								updatePayload[`reservas/${quadraChave}/${proxSlot}/dadosPlacar/statusPlacar`] = 'consolidado';
-							}
-							chavesPuladas.add(proxSlot); // 🔒 TRAVA ANTI-DUPLICAÇÃO: Impede que o 2º slot gere uma nova partida no loop
-						}
-					}
+                    const dur = parseInt(r.duracao) || 1;
+                    if (dur === 2) {
+                        const partes = slotKey.split('_');
+                        if (partes.length === 2) {
+                            const proxSlot = `${partes[0]}_${parseInt(partes[1], 10) + 1}`;
+                            updatePayload[`reservas/${quadraChave}/${proxSlot}/statusPlacar`] = 'consolidado';
+                            if (slotsQuadra[proxSlot] && slotsQuadra[proxSlot].dadosPlacar) {
+                                updatePayload[`reservas/${quadraChave}/${proxSlot}/dadosPlacar/statusPlacar`] = 'consolidado';
+                            }
+                            chavesPuladas.add(proxSlot);
+                        }
+                    }
 
-					// 🎯 SINCRONIZAÇÃO EM TEMPO REAL: Grava a partida em ranking/partidas no mesmo disparo
-					if (ehRanking) {
-						const partesApelidos = (r.jogadores || "").split(',').map(s => s.trim());
-						const partesCompletos = (r.jogadores_completo || "").split(',').map(s => s.trim());
-
-						const idJ1 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
-							? obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]) 
-							: null;
-						const idJ2 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
-							? obterIdJogadorPorTextoSaaS(partesCompletos[1] || partesApelidos[1]) 
-							: null;
-
-						if (idJ1 && idJ2) {
-							const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
-							const classe = (atletaBase.classe || 'B').toUpperCase();
-							const divGenero = confRanking.divisaoGenero || 'separado';
-							let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
-							if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
-
-							const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
-							
-							const matchQ = quadraChave.match(/\d+/);
-							const qKeyLimpa = matchQ ? `Quadra${matchQ[0]}` : quadraChave;
-
-							const partesSlot = slotKey.split('_');
-							const diaReserva = partesSlot[0] || r.dia;
-							const horaReserva = partesSlot[1] || r.hora;
-
-							const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${diaReserva}_${horaReserva}_${idJ1}_${idJ2}`;
-
-							let gamesP1 = 0, gamesP2 = 0;
-							if (dp.parciais) {
-								Object.values(dp.parciais).forEach(st => {
-									gamesP1 += parseInt(st.j1) || 0;
-									gamesP2 += parseInt(st.j2) || 0;
-								});
-							}
-
-							let idVencedor = null;
-							if (dp.vencedorCodigo === 'J1') idVencedor = idJ1;
-							else if (dp.vencedorCodigo === 'J2') idVencedor = idJ2;
-							else if (dp.vencedor && typeof obterIdJogadorPorTextoSaaS === 'function') {
-								idVencedor = obterIdJogadorPorTextoSaaS(dp.vencedor);
-							}
-
-							const dpConsolidado = {
-                                ...dp,
-                                statusPlacar: 'consolidado',
-                                autoHomologado: true,
-                                prazoAutoHoras: horasPartida
-                            };
-
-							const payloadPartida = {
-								categoria: chaveTabela,
-								quadra: nomeQuadraAmigavel,
-								status: 'finalizada',
-								jogador1Id: idJ1,
-								jogador2Id: idJ2,
-								vencedorId: idVencedor,
-								gamesP1: gamesP1,
-								gamesP2: gamesP2,
-								dadosPlacar: dpConsolidado,
-								dataHora: dp.dataHoraValidacao || dp.dataHoraLancamento || Date.now()
-							};
-
-							if (r.tagGrupoRanking || dp.tagGrupoRanking) {
-								payloadPartida.tagGrupoRanking = r.tagGrupoRanking || dp.tagGrupoRanking;
-							}
-							if (r.tagFaseRanking || dp.tagFaseRanking) {
-								payloadPartida.tagFaseRanking = r.tagFaseRanking || dp.tagFaseRanking;
-							}
-
-							updatePayload[`ranking/partidas/${partidaId}`] = payloadPartida;
-							
-							// 📊 RECALCULO MATEMÁTICO: Atualiza pontos e posições na tabela do torneio imediatamente
-							if (typeof processarResultadoRankingSaaS === 'function') {
-								processarResultadoRankingSaaS({
-									...r,
-									statusPlacar: 'consolidado',
-									dadosPlacar: dpConsolidado
-								});
-							}
-						}
-					}
-
-					totalPartidasLimpas++;
-					console.log(`⏱️ [SaaS Faxina] Reserva ${slotKey} auto-homologada e sincronizada no ranking.`);
-					return;
-				}
-
-                // 3.B. AUTOCURA SEGURA: Súmula Consolidada na Reserva ausente em ranking/partidas
-                if (ehRanking && stPlacar === 'consolidado' && dp && typeof dp === 'object') {
-                    // TRAVA 1: Ignora o 2º slot secundário de reservas de 2h (processa apenas o slot principal que possui 'borda' ou duração 1)
-                    const ehSlotSecundario2h = (r.borda === undefined && parseInt(r.duracao, 10) === 2);
-                    
-                    // TRAVA 2: Exige placar real preenchido (parciais, W.O. ou RET) para evitar recriar partidas vazias
-                    const temPlacarValido = Boolean(dp.parciais || dp.isWO || dp.isRET);
-
-                    if (!ehSlotSecundario2h && temPlacarValido) {
+                    if (ehRanking) {
                         const partesApelidos = (r.jogadores || "").split(',').map(s => s.trim());
                         const partesCompletos = (r.jogadores_completo || "").split(',').map(s => s.trim());
-                        
+
                         const idJ1 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
                             ? obterIdJogadorPorTextoSaaS(partesCompletos[0] || partesApelidos[0]) 
                             : null;
@@ -3975,8 +3864,8 @@ function executarFaxinaAutomaticaSaaS() {
 
                             const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
                             
-							const matchQ = quadraChave.match(/\d+/);
-							const qKeyLimpa = matchQ ? `Quadra${matchQ[0]}` : quadraChave;
+                            const matchQ = quadraChave.match(/\d+/);
+                            const qKeyLimpa = matchQ ? `Quadra${matchQ[0]}` : quadraChave;
 
                             const partesSlot = slotKey.split('_');
                             const diaReserva = partesSlot[0] || r.dia;
@@ -3984,49 +3873,63 @@ function executarFaxinaAutomaticaSaaS() {
 
                             const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${diaReserva}_${horaReserva}_${idJ1}_${idJ2}`;
 
-                            if (!todasPartidasRanking[partidaId]) {
-                                let gamesP1 = 0, gamesP2 = 0;
-                                if (dp.parciais) {
-                                    Object.values(dp.parciais).forEach(st => {
-                                        gamesP1 += parseInt(st.j1) || 0;
-                                        gamesP2 += parseInt(st.j2) || 0;
-                                    });
-                                }
+                            let gamesP1 = 0, gamesP2 = 0;
+                            if (dp.parciais) {
+                                Object.values(dp.parciais).forEach(st => {
+                                    gamesP1 += parseInt(st.j1) || 0;
+                                    gamesP2 += parseInt(st.j2) || 0;
+                                });
+                            }
 
-                                let idVencedor = null;
-                                if (dp.vencedorCodigo === 'J1') idVencedor = idJ1;
-                                else if (dp.vencedorCodigo === 'J2') idVencedor = idJ2;
-                                else if (dp.vencedor && typeof obterIdJogadorPorTextoSaaS === 'function') {
-                                    idVencedor = obterIdJogadorPorTextoSaaS(dp.vencedor);
-                                }
+                            let idVencedor = null;
+                            if (dp.vencedorCodigo === 'J1') idVencedor = idJ1;
+                            else if (dp.vencedorCodigo === 'J2') idVencedor = idJ2;
+                            else if (dp.vencedor && typeof obterIdJogadorPorTextoSaaS === 'function') {
+                                idVencedor = obterIdJogadorPorTextoSaaS(dp.vencedor);
+                            }
 
-                                const payloadPartida = {
-                                    categoria: chaveTabela,
-                                    quadra: nomeQuadraAmigavel,
-                                    status: 'finalizada',
-                                    jogador1Id: idJ1,
-                                    jogador2Id: idJ2,
-                                    vencedorId: idVencedor,
-                                    gamesP1: gamesP1,
-                                    gamesP2: gamesP2,
-                                    dadosPlacar: dp,
-                                    dataHora: dp.dataHoraValidacao || dp.dataHoraLancamento || Date.now()
-                                };
+                            const dpConsolidado = {
+                                ...dp,
+                                statusPlacar: 'consolidado',
+                                autoHomologado: true,
+                                prazoAutoHoras: horasPartida
+                            };
 
-                                if (r.tagGrupoRanking || dp.tagGrupoRanking) {
-                                    payloadPartida.tagGrupoRanking = r.tagGrupoRanking || dp.tagGrupoRanking;
-                                }
-                                if (r.tagFaseRanking || dp.tagFaseRanking) {
-                                    payloadPartida.tagFaseRanking = r.tagFaseRanking || dp.tagFaseRanking;
-                                }
+                            const payloadPartida = {
+                                categoria: chaveTabela,
+                                quadra: nomeQuadraAmigavel,
+                                status: 'finalizada',
+                                jogador1Id: idJ1,
+                                jogador2Id: idJ2,
+                                vencedorId: idVencedor,
+                                gamesP1: gamesP1,
+                                gamesP2: gamesP2,
+                                dadosPlacar: dpConsolidado,
+                                dataHora: dp.dataHoraValidacao || dp.dataHoraLancamento || Date.now()
+                            };
 
-                                updatePayload[`ranking/partidas/${partidaId}`] = payloadPartida;
-                                todasPartidasRanking[partidaId] = payloadPartida; 
-                                totalPartidasLimpas++;
-                                console.log(`🚑 [SaaS Faxina] Autocura: Partida ${partidaId} recriada com sucesso em ranking/partidas.`);
+                            if (r.tagGrupoRanking || dp.tagGrupoRanking) {
+                                payloadPartida.tagGrupoRanking = r.tagGrupoRanking || dp.tagGrupoRanking;
+                            }
+                            if (r.tagFaseRanking || dp.tagFaseRanking) {
+                                payloadPartida.tagFaseRanking = r.tagFaseRanking || dp.tagFaseRanking;
+                            }
+
+                            updatePayload[`ranking/partidas/${partidaId}`] = payloadPartida;
+
+                            if (typeof processarResultadoRankingSaaS === 'function') {
+                                processarResultadoRankingSaaS({
+                                    ...r,
+                                    statusPlacar: 'consolidado',
+                                    dadosPlacar: dpConsolidado
+                                });
                             }
                         }
                     }
+
+                    totalPartidasLimpas++;
+                    console.log(`⏱️ [SaaS Faxina] Reserva ${slotKey} auto-homologada e sincronizada no ranking.`);
+                    return;
                 }
 
                 if (!r.dataCompleta || r.status === 'aula_cancelada') return;

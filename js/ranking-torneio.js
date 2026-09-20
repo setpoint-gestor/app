@@ -145,6 +145,7 @@ async function zerarRankingSaaS() {
         ]);
 
         const partidas = snapPartidas.val() || {};
+        console.log("📊 [Audit Zeramento] Partidas encontradas no nó /ranking/partidas:", partidas);
         const tabelas = snapTabelas.val() || {};
         const convites = snapConvites.val() || {};
         const reservas = snapReservas.val() || {};
@@ -155,17 +156,19 @@ async function zerarRankingSaaS() {
         const cal = configRanking.calendario || {};
         const temCalendario = !!configRanking.calendario;
 
-        // Datas de início e término do torneio ativo para proteção de saldo
-        const dtInicioTorneio = cal.inicioInscricoes || cal.inicioJogos || "";
-        const dtFimTorneio = cal.fimTorneio || "";
-
+        // 1. Contagem das partidas ativas na temporada atual
         const totalPartidas = Object.keys(partidas).length;
 
-        let totalInscritos = 0;
+        // 2. Unificação precisa de inscritos (Fase 2 e Fase 3+) sem duplicidades
+        const setInscritos = new Set(Object.keys(configRanking.inscritosConfirmados || {}));
         Object.values(tabelas).forEach(arr => {
-            if (Array.isArray(arr)) totalInscritos += arr.length;
+            if (Array.isArray(arr)) {
+                arr.forEach(id => { if (id) setInscritos.add(id); });
+            }
         });
+        const totalInscritos = setInscritos.size;
 
+        // 3. Filtragem EXCLUSIVA de reservas vinculadas ao temporadaId ativo
         const temporadaIdAtiva = convites.temporadaId || null;
         let totalReservasRanking = 0;
         const caminhosReservasExcluir = [];
@@ -176,17 +179,12 @@ async function zerarRankingSaaS() {
                 const r = slots[slotKey];
                 if (!r) return;
 
-                // 🛡️ TRAVA 1: Ignora 100% agendamentos comuns de sócios (1h/2h)
+                // 🛡️ TRAVA 1: Ignora 100% agendamentos comuns de sócios (lazer)
                 const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
                 if (!ehRanking) return;
 
-                // 🛡️ TRAVA 2: Filtro Estrito por ID Único de Temporada
-                if (r.temporadaId) {
-                    if (temporadaIdAtiva && r.temporadaId !== temporadaIdAtiva) return;
-                } else {
-                    if (dtInicioTorneio && r.dataCompleta && r.dataCompleta < dtInicioTorneio) return;
-                    if (dtFimTorneio && r.dataCompleta && r.dataCompleta > dtFimTorneio) return;
-                }
+                // 🛡️ TRAVA 2: Filtro Exclusivo por ID Único da Temporada Ativa (sem fallback de data)
+                if (!temporadaIdAtiva || r.temporadaId !== temporadaIdAtiva) return;
 
                 caminhosReservasExcluir.push(`reservas/${quadraKey}/${slotKey}`);
                 if (r.borda === undefined && parseInt(r.duracao) === 2) return;
@@ -194,6 +192,7 @@ async function zerarRankingSaaS() {
             });
         });
 
+        // 4. Mapeamento de notificações ativas da temporada
         let totalNotificacoes = 0;
         const caminhosNotificacoesExcluir = [];
         Object.keys(jogadores).forEach(idJog => {
@@ -227,15 +226,15 @@ async function zerarRankingSaaS() {
                         Balanço de Dados que serão apagados:
                     </strong>
                     <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #1e293b;">
-                        <li><b>${totalPartidas}</b> partida(s) finalizada(s) no histórico;</li>
-                        <li><b>${totalInscritos}</b> inscrição(ões) nas tabelas de categorias;</li>
-                        <li><b>${totalReservasRanking}</b> agendamento(s) do torneio atual nas quadras;</li>
+                        <li><b>${totalPartidas}</b> partida(s) registradas na <b>temporada ativa</b>;</li>
+                        <li><b>${totalInscritos}</b> inscrição(ões) nas tabelas ativas do torneio;</li>
+                        <li><b>${totalReservasRanking}</b> agendamento(s) da edição atual nas quadras;</li>
                         <li><b>${totalNotificacoes}</b> notificação(ões) nas caixas dos atletas;</li>
-                        <li>Contrato de calendário e inscrições ativas.</li>
+                        <li>Contrato de calendário e inscrições ativas da edição atual.</li>
                     </ul>
                 </div>
 
-                <p style="margin: 0; font-size: 12.5px; color: #64748b; font-weight: 500;">
+                <p style="margin: 8px 0 0 0; font-size: 12.5px; color: #64748b; font-weight: 500;">
                     <b>Nota de Segurança:</b> Deseja prosseguir?
                 </p>
             </div>
@@ -243,17 +242,25 @@ async function zerarRankingSaaS() {
 
         showPrompt("Balanço do Zeramento do Ranking", promptHTML, async () => {
             try {
-                if (navigator.vibrate) navigator.vibrate(50);
+                if (navigator.vibrate) navigator.vibrate(50); 
 
+                // 1. Executa a remoção física direta das estruturas ativas do torneio
+                await Promise.all([
+                    database.ref(`${raizBanco}/ranking/partidas`).set(null),
+                    database.ref(`${raizBanco}/ranking/tabelas`).remove(),
+                    database.ref(`${raizBanco}/ranking/chaves`).remove(),
+                    database.ref(`${raizBanco}/convites_ranking`).remove()
+                ]);
+
+                if (typeof rankingPartidasGlobal !== 'undefined') {
+                    rankingPartidasGlobal = {};
+                }
+
+                // 2. Atualiza os parâmetros de configuração e limpa reservas/notificações vinculadas
                 const updates = {};
                 updates['config/ranking/faseAtual'] = 1;
                 updates['config/ranking/calendario'] = null;
                 updates['config/ranking/inscritosConfirmados'] = null;
-
-                updates['ranking/partidas'] = null;
-                updates['ranking/tabelas'] = null;
-                updates['ranking/chaves'] = null;
-                updates['convites_ranking'] = null;
 
                 caminhosReservasExcluir.forEach(path => { updates[path] = null; });
                 caminhosNotificacoesExcluir.forEach(path => { updates[path] = null; }); 
@@ -281,7 +288,6 @@ async function zerarRankingSaaS() {
         showToast("Erro ao auditar dados do ranking no banco.", "error");
     }
 }
-
 
 
 /* ======================================================== */
@@ -498,124 +504,6 @@ function renderizarGestaoTemporadaSaaS() {
     }
 }
 
-function atualizarBotaoRodapeRankingSaaS() {
-    const modalConfig = document.getElementById('modal-config-ranking');
-    if (!modalConfig) return;
-
-    const btnFooter = modalConfig.querySelector('.regras-footer button');
-    if (!btnFooter) return;
-
-    const isMobile = window.innerWidth <= 768;
-    const items = modalConfig.querySelectorAll('.sanfona-container .accordion-item');
-    
-    let idxAbaAtiva = -1;
-    items.forEach((item, idx) => {
-        if (item.classList.contains('active') || item.classList.contains('mobile-opened')) {
-            idxAbaAtiva = idx; 
-        }
-    });
-
-    // TRAVA MOBILE: Se estiver no celular e nenhuma sanfona estiver aberta, oculta o botão do rodapé
-    if (isMobile && idxAbaAtiva === -1) {
-        btnFooter.style.setProperty('display', 'none', 'important');
-        return;
-    }
-
-    // Se estiver no Desktop e nenhuma aba tiver a classe active, assume a primeira aba (0)
-    if (idxAbaAtiva === -1) {
-        idxAbaAtiva = 0;
-    }
-
-    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const modelo = conf.modeloAtivo || "grupos";
-    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
-
-    if (idxAbaAtiva === 4) {
-        let textoBotao = '';
-        let corBotao = '#8b5cf6';
-        let acaoOnClick = 'encerrarFase3EAvancarSaaS()';
-
-        if (faseAtual === 1) {
-            const painel1Ativo = document.querySelectorAll('#container-fases-gestor .fase-panel')[0]?.classList.contains('ativa');
-            if (painel1Ativo) {
-                textoBotao = '<i class="material-icons">event_available</i> Salvar Calendário e Abrir Inscrições';
-                corBotao = '#16a34a';
-                acaoOnClick = 'salvarCalendarioEAbrirInscricoesSaaS()';
-            } else {
-                textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
-                corBotao = '#2563eb';
-                acaoOnClick = 'editarCalendarioAtivoSaaS()';
-            }
-        } else if (faseAtual === 2) {
-            textoBotao = '<i class="material-icons">lock</i> Encerrar Inscrições e Congelar Chaves';
-            corBotao = '#f59e0b';
-            acaoOnClick = 'encerrarInscricoesECriarChavesSaaS()';
-        } else if (faseAtual === 3) {
-            textoBotao = '<i class="material-icons">alt_route</i> Encerrar Chaves e Gerar Mata-Mata';
-            corBotao = '#f59e0b';
-            acaoOnClick = 'encerrarFase3EAvancarSaaS()';
-        } else if (modelo === 'grupos' && faseAtual === 4) {
-            const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
-            const chavesList = Object.values(chavesMap);
-            
-            let maiorTamanhoChave = 2; 
-            if (chavesList.length > 0) {
-                const tamanhos = chavesList.map(c => parseInt(c.faseAtual || (c.rodada1 ? c.rodada1.length * 2 : 2), 10));
-                maiorTamanhoChave = Math.max(...tamanhos);
-            }
-
-            if (maiorTamanhoChave > 2) {
-                const proximaFaseTamanho = maiorTamanhoChave / 2;
-                const rotuloProxima = (typeof obterRotuloFaseMataMataSaaS === 'function')
-                    ? obterRotuloFaseMataMataSaaS(proximaFaseTamanho)
-                    : "Próxima Fase";
-
-                const artigo = (proximaFaseTamanho === 2) ? "para a" : "para as";
-                textoBotao = `<i class="material-icons">east</i> Avançar ${artigo} ${rotuloProxima}`;
-                corBotao = '#8b5cf6';
-            } else {
-                textoBotao = '<i class="material-icons">workspace_premium</i> Concluir Torneio e Somar Pontos no Ranking';
-                corBotao = '#16a34a';
-            }
-        } else if (faseAtual >= 5) {
-            textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
-            corBotao = '#2563eb';
-            acaoOnClick = 'reiniciarEsteiraNovoTorneioSaaS()';
-        } else {
-            textoBotao = 'Salvar Parâmetros do Ranking';
-            corBotao = '#28a745';
-            acaoOnClick = 'salvarConfigRankingSaas()';
-        }
-
-        btnFooter.innerHTML = textoBotao; 
-        btnFooter.setAttribute('onclick', acaoOnClick);
-        btnFooter.style.cssText = `background-color: ${corBotao} !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;`;
-
-    } else if (idxAbaAtiva === 5) {
-        btnFooter.innerHTML = '<i class="material-icons">picture_as_pdf</i> Exportar Relatório Geral do Acervo (PDF)';
-        btnFooter.setAttribute('onclick', 'exportarRelatorioHistoricoSaaS()');
-        btnFooter.style.cssText = 'background-color: #8b5cf6 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
-
-    } else if (idxAbaAtiva === 6) { // 7ª ABA: RANKING GERAL
-        const vConfig = document.getElementById('visao-config-ranking-geral');
-        const estaEmConfig = vConfig && vConfig.style.display !== 'none';
-
-        if (estaEmConfig) {
-            btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">save</i> Salvar Parâmetros do Ranking Geral';
-            btnFooter.setAttribute('onclick', 'salvarParametrosRankingGeralSaaS()');
-            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
-        } else {
-            btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">picture_as_pdf</i> Exportar Ranking Geral (PDF)';
-            btnFooter.setAttribute('onclick', 'exportarRankingGeralPDFSaaS()');
-            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
-        }
-
-    } else {
-        btnFooter.innerHTML = 'Salvar Parâmetros do Ranking';
-        btnFooter.setAttribute('onclick', 'salvarConfigRankingSaas()');
-        btnFooter.style.cssText = 'background-color: #28a745 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
-    }
-}
 
 /* GRAVAÇÃO DOS PARÂMETROS DE PONTUAÇÃO DO RANKING GERAL */
 function salvarParametrosRankingGeralSaaS() {
@@ -880,6 +768,7 @@ function atualizarStatusPdfSaaS(input) {
     }
 }
 
+
 function salvarCalendarioEAbrirInscricoesSaaS() {
     if (!isGestorLogado || !raizBanco) {
         showToast("Apenas o gestor pode alterar o calendário do torneio.", "warning");
@@ -957,18 +846,25 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
         fimTorneio: dtJogFim
     };
 
-    const confAnterior = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario) || {};
-    if (confAnterior.regulamentoUrl) {
-        payloadCalendario.regulamentoUrl = confAnterior.regulamentoUrl;
-    }
+    showToast("Gravando contrato e limpando área de trabalho do ranking...", "info");
 
-    const faseAtualBanco = parseInt(confGlobalCheck.faseAtual, 10) || 1;
-    const novaFase = (faseAtualBanco === 1) ? 2 : faseAtualBanco;
+    console.log("🧹 [Torneios] Limpando área interna do ranking (mantendo /reservas intocado)...");
 
-    database.ref(`${raizBanco}/config/ranking`).update({
-        modeloAtivo: modeloDisputa,
-        calendario: payloadCalendario,
-        faseAtual: novaFase
+    // 🛡️ LIMPEZA FÍSICA APENAS DA ÁREA DE TRABALHO INTERNA DO RANKING
+    Promise.all([
+        database.ref(`${raizBanco}/ranking/partidas`).remove(),
+        database.ref(`${raizBanco}/ranking/tabelas`).remove(),
+        database.ref(`${raizBanco}/ranking/chaves`).remove(),
+        database.ref(`${raizBanco}/convites_ranking`).remove()
+    ])
+    .then(() => {
+        console.log("✅ [Torneios] Área interna de trabalho do ranking limpa no Firebase.");
+        return database.ref(`${raizBanco}/config/ranking`).update({
+            modeloAtivo: modeloDisputa,
+            calendario: payloadCalendario,
+            inscritosConfirmados: null,
+            faseAtual: 2
+        });
     })
     .then(() => {
         showToast("Contrato da edição gravado com sucesso! Inscrições abertas.", "success");
@@ -999,7 +895,12 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
     });
 }
 
+
 function editarCalendarioAtivoSaaS() {
+	// 🧹 Limpa todos os campos e pílulas antes de abrir, garantindo formulário virgem
+    if (typeof limparFormularioFase1SaaS === 'function') {
+        limparFormularioFase1SaaS();
+    }
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const cal = conf.calendario || {};
 
@@ -1227,6 +1128,7 @@ function encerrarInscricoesECriarChavesSaaS() {
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const cal = conf.calendario || {};
+    const modelo = conf.modeloAtivo || cal.modeloDisputa || "grupos";
     const inscritos = conf.inscritosConfirmados || {};
     const qtdInscritos = Object.keys(inscritos).length;
 
@@ -1239,83 +1141,147 @@ function encerrarInscricoesECriarChavesSaaS() {
     const fimInscricoesStr = cal.fimInscricoes || "";
     const dataFimFormatada = fimInscricoesStr ? fimInscricoesStr.split('-').reverse().join('/') : '--/--';
 
-    const dispararSorteioEPersistir = () => {
+    const processarMontagemEGerarFase3 = async () => {
         if (navigator.vibrate) navigator.vibrate(40);
 
-        const tamanhoGrupoConfig = parseInt(conf.grupos?.tamanhoGrupo, 10) || 4;
-        const nomeTorneio = cal.nomeTorneio || "ATP FINALS 2009";
+        // Lê a regra de ordenação definida no disparo de convites
+        const snapConvites = await database.ref(`${raizBanco}/convites_ranking`).once('value');
+        const dadosConvites = snapConvites.exists() ? snapConvites.val() : {};
+        const tipoOrdenacao = conf.tipoOrdenacao || dadosConvites.tipoOrdenacao || 'livre';
 
-        // Aciona a abertura do Globo de Sorteio por Potes (js/sorteio-potes.js)
-        SorteioPotes.abrirModalSorteioSaaS(nomeTorneio, inscritos, tamanhoGrupoConfig, async (gruposResultado) => {
-            try {
-                showToast("Gravando chaveamento sorteado no banco...", "info");
+        const nomeTorneio = cal.nomeTorneio || "Torneio";
+        const modoGenero = conf.divisaoGenero || 'separado';
+        const inscritosPorCategoria = {};
 
-                const updates = {};
-                updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
+        // Agrupa inscritos por Categoria/Gênero
+        Object.keys(inscritos).forEach(idAtleta => {
+            const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+            const classe = (atleta.classe || 'B').toUpperCase();
+            let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
+            if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
 
-                const modoGenero = conf.divisaoGenero || 'separado';
-                const inscritosPorCategoria = {};
+            const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
 
-                // Agrupa inscritos por Categoria/Gênero
-                Object.keys(inscritos).forEach(idAtleta => {
-                    const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-                    const classe = (atleta.classe || 'B').toUpperCase();
-                    let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
-                    if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+            if (!inscritosPorCategoria[chaveTabela]) {
+                inscritosPorCategoria[chaveTabela] = [];
+            }
+            inscritosPorCategoria[chaveTabela].push(idAtleta);
+        });
 
-                    const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+        // CENÁRIO A: Torneio de GRUPOS ou Pirâmide/Barragem com SORTEIO -> Abre o Globo
+        if (modelo === 'grupos' || tipoOrdenacao === 'sorteio') {
+            const tamanhoGrupoConfig = (modelo === 'grupos') ? (parseInt(conf.grupos?.tamanhoGrupo, 10) || 4) : qtdInscritos;
 
-                    if (!inscritosPorCategoria[chaveTabela]) {
-                        inscritosPorCategoria[chaveTabela] = [];
+            SorteioPotes.abrirModalSorteioSaaS(nomeTorneio, inscritos, tamanhoGrupoConfig, async (gruposResultado) => {
+                try {
+                    showToast("Gravando chaveamento no banco...", "info");
+                    const updates = {};
+                    updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
+
+                    Object.keys(inscritosPorCategoria).forEach(chaveTab => {
+                        const idsInscritosCat = inscritosPorCategoria[chaveTab];
+                        const listaIDsSemeada = [];
+
+                        if (gruposResultado && Object.keys(gruposResultado).length > 0) {
+                            Object.values(gruposResultado).forEach(grupoArray => {
+                                const grupoCompletado = [...grupoArray];
+                                if (modelo === 'grupos') {
+                                    while (grupoCompletado.length < tamanhoGrupoConfig) {
+                                        grupoCompletado.push(null);
+                                    }
+                                }
+                                listaIDsSemeada.push(...grupoCompletado);
+                            });
+                            updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaIDsSemeada.filter(id => id !== null || modelo === 'grupos');
+                        } else {
+                            updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
+                        }
+                    });
+
+                    // Notificações aos inscritos
+                    const payloadNotificacao = {
+                        categoria: "inicio_temporada",
+                        titulo: "A temporada começou!",
+                        detalhe: `Tabela do ${nomeTorneio} liberada.\nAgende sua partida no app.`,
+                        timestamp: Date.now()
+                    };
+
+                    Object.keys(inscritos).forEach(idAtleta => {
+                        const keyNotif = database.ref().push().key;
+                        updates[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
+                    });
+
+                    await database.ref().update(updates);
+                    showToast("Sorteio concluído! Temporada iniciada.", "success");
+
+                    if (typeof renderizarGestaoTemporadaSaaS === "function") {
+                        renderizarGestaoTemporadaSaaS();
                     }
-                    inscritosPorCategoria[chaveTabela].push(idAtleta);
-                });
 
-                // Aloca os grupos sorteados pelas pílulas dos potes nas tabelas do banco
-                Object.keys(inscritosPorCategoria).forEach(chaveTab => {
-                    const idsInscritosCat = inscritosPorCategoria[chaveTab];
-                    const listaIDsSemeada = [];
+                } catch (err) {
+                    console.error("❌ Erro ao persistir tabela sorteada:", err);
+                    showToast("Erro ao gravar tabela no Firebase.", "error");
+                }
+            });
+            return;
+        }
 
-                    if (gruposResultado && Object.keys(gruposResultado).length > 0) {
-                        Object.values(gruposResultado).forEach(grupoArray => {
-                            const grupoCompletado = [...grupoArray];
-                            while (grupoCompletado.length < tamanhoGrupoConfig) {
-                                grupoCompletado.push(null);
-                            }
-                            listaIDsSemeada.push(...grupoCompletado);
-                        });
-                        updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaIDsSemeada;
-                    } else {
-                        updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
-                    }
-                });
+        // CENÁRIO B: Pirâmide / Barragem SEM sorteio (Inscrição Livre ou Herança) -> Monta silenciosamente
+        try {
+            showToast("Montando tabela da temporada...", "info");
+            const updates = {};
+            updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
 
-                // Envio de notificações para os inscritos
-                const payloadNotificacao = {
-                    categoria: "inicio_temporada",
-                    titulo: "A temporada começou!",
-                    detalhe: `Tabela do ${nomeTorneio} liberada via Sorteio de Potes.\nAgende sua partida no app.`,
-                    timestamp: Date.now()
-                };
+            // Lê o Ranking Geral para os casos de herança de classificação
+            const snapRankingGeral = await database.ref(`${raizBanco}/ranking/ranking_geral`).once('value');
+            const rankingGeralMap = snapRankingGeral.exists() ? snapRankingGeral.val() : {};
 
-                Object.keys(inscritos).forEach(idAtleta => {
-                    const keyNotif = database.ref().push().key;
-                    updates[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
-                });
+            Object.keys(inscritosPorCategoria).forEach(chaveTab => {
+                const idsInscritosCat = inscritosPorCategoria[chaveTab];
 
-                await database.ref().update(updates);
-
-                showToast("Sorteio concluído! Fase de Grupos iniciada com sucesso.", "success");
-
-                if (typeof renderizarGestaoTemporadaSaaS === "function") {
-                    renderizarGestaoTemporadaSaaS();
+                if (tipoOrdenacao === 'herdada') {
+                    // Ordena pela posição acumulada no Ranking Geral
+                    const listaGeral = rankingGeralMap[chaveTab] || [];
+                    idsInscritosCat.sort((a, b) => {
+                        const posA = listaGeral.indexOf(a);
+                        const posB = listaGeral.indexOf(b);
+                        if (posA !== -1 && posB !== -1) return posA - posB;
+                        if (posA !== -1) return -1;
+                        if (posB !== -1) return 1;
+                        return (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0);
+                    });
+                } else {
+                    // Inscrição Livre: Ordena por data/hora de aceite no app
+                    idsInscritosCat.sort((a, b) => (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0));
                 }
 
-            } catch (err) {
-                console.error("❌ Erro ao persistir sorteio por potes:", err);
-                showToast("Erro ao gravar chaves sorteadas no Firebase.", "error");
+                updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
+            });
+
+            // Notificações aos inscritos
+            const payloadNotificacao = {
+                categoria: "inicio_temporada",
+                titulo: "A temporada começou!",
+                detalhe: `Tabela do ${nomeTorneio} liberada.\nAgende sua partida no app.`,
+                timestamp: Date.now()
+            };
+
+            Object.keys(inscritos).forEach(idAtleta => {
+                const keyNotif = database.ref().push().key;
+                updates[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
+            });
+
+            await database.ref().update(updates);
+            showToast("Tabela congelada e temporada iniciada com sucesso!", "success");
+
+            if (typeof renderizarGestaoTemporadaSaaS === "function") {
+                renderizarGestaoTemporadaSaaS();
             }
-        });
+
+        } catch (err) {
+            console.error("❌ Erro ao congelar tabela:", err);
+            showToast("Erro ao gravar tabela no Firebase.", "error");
+        }
     };
 
     // Alerta de encerramento antes do prazo ou confirmação direta
@@ -1326,23 +1292,23 @@ function encerrarInscricoesECriarChavesSaaS() {
                     ⚠️ <b>Atenção:</b> O prazo oficial de inscrições vai até <b>${dataFimFormatada}</b>.
                 </p>
                 <p style="margin: 0; font-size: 13px; color: #64748b;">
-                    Tem certeza que deseja encerrar antecipadamente com <b>${qtdInscritos} inscrito(s)</b> e abrir o <b>Globo de Sorteio</b> agora?
+                    Tem certeza que deseja encerrar antecipadamente com <b>${qtdInscritos} inscrito(s)</b> e congelar a tabela da temporada agora?
                 </p>
             </div>
         `;
-        showPrompt("Encerrar Inscrições e Sortear Potes", htmlPrompt, () => {
-            dispararSorteioEPersistir();
+        showPrompt("Encerrar Inscrições", htmlPrompt, () => {
+            processarMontagemEGerarFase3();
         });
     } else {
         const htmlPrompt = `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
                 <p style="margin: 0;">
-                    Deseja encerrar as inscrições com <b>${qtdInscritos} atleta(s) confirmado(s)</b> e iniciar o <b>Sorteio Oficial por Potes</b>?
+                    Deseja encerrar as inscrições com <b>${qtdInscritos} atleta(s) confirmado(s)</b> e congelar a tabela oficial?
                 </p>
             </div>
         `;
-        showPrompt("Encerrar Inscrições e Abrir Globo", htmlPrompt, () => {
-            dispararSorteioEPersistir();
+        showPrompt("Encerrar Inscrições e Congelar Chaves", htmlPrompt, () => {
+            processarMontagemEGerarFase3();
         });
     }
 }
@@ -1430,21 +1396,21 @@ async function encerrarFase3EAvancarSaaS() {
                 const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
 
                 if (stPlacar === 'pendente_validacao' || stPlacar === 'contestado' || stPlacar === 'sem_placar') {
-					const nomeDia = diasSemana[r.dia] || "Dia";
-					const hInicio = String(r.hora).padStart(2, '0') + ":00";
-					const detalheLimpo = `
-						<div style="display: flex; align-items: baseline;">
-							<span style="white-space: nowrap; margin-right: 6px;">${nomeDia} às ${hInicio}:</span>
-							<span style="font-weight: 700; line-height: 1.4; flex: 1;">${r.jogadores || 'Atletas'}</span>
-						</div>
-					`;
+                    const nomeDia = diasSemana[r.dia] || "Dia";
+                    const hInicio = String(r.hora).padStart(2, '0') + ":00";
+                    const detalheLimpo = `
+                        <div style="display: flex; align-items: baseline;">
+                            <span style="white-space: nowrap; margin-right: 6px;">${nomeDia} às ${hInicio}:</span>
+                            <span style="font-weight: 700; line-height: 1.4; flex: 1;">${r.jogadores || 'Atletas'}</span>
+                        </div>
+                    `;
 
-					if (stPlacar === 'pendente_validacao' || stPlacar === 'sem_placar') {
-						pendentes.push(detalheLimpo);
-					} else {
-						contestadas.push(detalheLimpo);
-					}
-				}
+                    if (stPlacar === 'pendente_validacao' || stPlacar === 'sem_placar') {
+                        pendentes.push(detalheLimpo);
+                    } else {
+                        contestadas.push(detalheLimpo);
+                    }
+                }
             });
         });
 
@@ -1471,6 +1437,9 @@ async function encerrarFase3EAvancarSaaS() {
         try {
             const updates = {};
             
+            // 🟢 GRAVAÇÃO UNIVERSAL DA FASE NO FIREBASE (OBRIGATÓRIO PARA PIRÂMIDE, BARRAGEM E GRUPOS)
+            updates[`${raizBanco}/config/ranking/faseAtual`] = novaFase;
+
             if (modelo === 'grupos' && faseAtual === 3) {
                 const [snapTabelas, snapPartidas] = await Promise.all([
                     database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
@@ -1549,8 +1518,6 @@ async function encerrarFase3EAvancarSaaS() {
                         rodada1: resultadoMM.rodada1
                     };
                 });
-                
-                updates[`${raizBanco}/config/ranking/faseAtual`] = 4;
             } 
             else if (modelo === 'grupos' && faseAtual === 4) {
                 const [snapChaves, snapPartidas] = await Promise.all([
@@ -1616,15 +1583,15 @@ async function encerrarFase3EAvancarSaaS() {
                 const pontosGeralAtual = snapPontosGeral.exists() ? snapPontosGeral.val() : {};
 
                 const pGeral = conf.parametrosGeral || {};
-				const TABELA_PONTOS_SaaS = {
-					0: parseInt(pGeral.pontos1, 10) || 250,
-					1: parseInt(pGeral.pontos2, 10) || 180,
-					2: parseInt(pGeral.pontos3, 10) || 120,
-					3: parseInt(pGeral.pontos4, 10) || 60
-				};
-				const PONTOS_PARTICIPACAO_DEFAULT = (pGeral.pontosParticipacao !== undefined && pGeral.pontosParticipacao !== null) 
-					? parseInt(pGeral.pontosParticipacao, 10) 
-					: 20;
+                const TABELA_PONTOS_SaaS = {
+                    0: parseInt(pGeral.pontos1, 10) || 250,
+                    1: parseInt(pGeral.pontos2, 10) || 180,
+                    2: parseInt(pGeral.pontos3, 10) || 120,
+                    3: parseInt(pGeral.pontos4, 10) || 60
+                };
+                const PONTOS_PARTICIPACAO_DEFAULT = (pGeral.pontosParticipacao !== undefined && pGeral.pontosParticipacao !== null) 
+                    ? parseInt(pGeral.pontosParticipacao, 10) 
+                    : 20;
 
                 const chavesMapGlobal = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
 
@@ -1674,6 +1641,11 @@ async function encerrarFase3EAvancarSaaS() {
 
             await database.ref().update(updates);
 
+            // 🟢 SINCRONIZA A MEMÓRIA RAM LOCAL
+            if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
+                configRegrasGlobal.ranking.faseAtual = novaFase;
+            }
+
             const msgSucesso = eHomologacaoFinal 
                 ? "Torneio homologado e arquivado com sucesso no Histórico!" 
                 : "Rodada avançada com sucesso!";
@@ -1690,7 +1662,7 @@ async function encerrarFase3EAvancarSaaS() {
                     if (typeof dispararComemoracaoCampeaoSaaS === 'function') {
                         dispararComemoracaoCampeaoSaaS();
                     }
-                }, 800); // 800ms de delay para o toast brilhar e a tela respirar antes de abrir a gaveta
+                }, 800);
             }
         } catch (err) {
             console.error("❌ Erro ao avançar de fase:", err);
@@ -1727,8 +1699,16 @@ async function encerrarFase3EAvancarSaaS() {
             msgPrompt = "A Grande Final foi concluída! Deseja encerrar o torneio, creditar a pontuação no Ranking Geral e arquivar esta edição no Histórico?";
         }
     } else if (faseAtual === 3) {
-        tituloPrompt = "Encerrar Chaves e Gerar Mata-Mata";
-        msgPrompt = "Deseja consolidar a classificação da Fase de Grupos e gerar os confrontos do Mata-Mata?";
+        if (modelo === 'piramide') {
+            tituloPrompt = "Encerrar Pirâmide e Homologar Posições";
+            msgPrompt = "Deseja encerrar o ciclo de desafios da Pirâmide, atualizar o Ranking Geral e arquivar esta edição no Histórico?";
+        } else if (modelo === 'barragem') {
+            tituloPrompt = "Encerrar Barragem e Consolidar Ranking";
+            msgPrompt = "Deseja encerrar a disputa por pontos corridos, atualizar o Ranking Geral e arquivar esta edição no Histórico?";
+        } else {
+            tituloPrompt = "Encerrar Chaves e Gerar Mata-Mata";
+            msgPrompt = "Deseja consolidar a classificação da Fase de Grupos e gerar os confrontos do Mata-Mata?";
+        }
     }
 
     showPrompt(tituloPrompt, `<div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;"><p style="margin: 0;">${msgPrompt}</p></div>`, () => {
@@ -1750,46 +1730,40 @@ function reiniciarEsteiraNovoTorneioSaaS() {
         return;
     }
 
-    const htmlPrompt = `
-        <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
-            <p style="margin: 0 0 10px 0;">🏆 <b>Criar Novo Torneio</b></p>
-            <p style="margin: 0; font-size: 13px; color: #64748b;">
-                Deseja iniciar a criação de um novo torneio? Os dados e resultados do torneio concluído já estão salvos em seu <b>Histórico</b> e no <b>Ranking Geral</b>.
-            </p>
-        </div>
-    `;
+    showPrompt("Criar Novo Torneio", "Deseja iniciar a criação de um novo torneio? Os dados anteriores já estão no Histórico.", async () => {
+        try {
+            console.log("🔄 [Novo Torneio] Apagando dados ativos da temporada anterior...");
 
-    showPrompt("Criar Novo Torneio", htmlPrompt, () => {
-        if (navigator.vibrate) navigator.vibrate(40);
+            // Limpeza física direta via .remove()
+            await Promise.all([
+                database.ref(`${raizBanco}/ranking/partidas`).remove(),
+                database.ref(`${raizBanco}/ranking/tabelas`).remove(),
+                database.ref(`${raizBanco}/ranking/chaves`).remove(),
+                database.ref(`${raizBanco}/convites_ranking`).remove()
+            ]);
 
-        const updates = {};
-        updates[`${raizBanco}/config/ranking/faseAtual`] = 1;
-        updates[`${raizBanco}/config/ranking/calendario`] = null;
-        updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
-        updates[`${raizBanco}/convites_ranking`] = null;
-        updates[`${raizBanco}/ranking/tabelas`] = null;
-        updates[`${raizBanco}/ranking/partidas`] = null;
+            const updates = {};
+            updates[`${raizBanco}/config/ranking/faseAtual`] = 1;
+            updates[`${raizBanco}/config/ranking/calendario`] = null;
+            updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
 
-        database.ref().update(updates)
-        .then(() => {
-            if (typeof limparFormularioFase1SaaS === "function") {
-                limparFormularioFase1SaaS();
-            }
+            await database.ref().update(updates);
+
+            console.log("✅ [Novo Torneio] Banco zerado e retornado à Fase 1.");
             showToast("Módulo pronto para o novo torneio!", "success");
-            if (typeof renderizarGestaoTemporadaSaaS === "function") {
-                renderizarGestaoTemporadaSaaS();
+
+            // Atualiza a esteira e abre diretamente o formulário do cadastro (Painel 1)
+            renderizarGestaoTemporadaSaaS();
+            if (typeof editarCalendarioAtivoSaaS === 'function') {
+                editarCalendarioAtivoSaaS();
             }
-            if (typeof atualizarBotaoRodapeRankingSaaS === "function") {
-                atualizarBotaoRodapeRankingSaaS();
-            }
-        })
-        .catch(err => {
-            console.error("❌ Erro ao reiniciar esteira:", err);
+
+        } catch (err) {
+            console.error("❌ [Novo Torneio] Erro ao reiniciar esteira:", err);
             showToast("Erro ao atualizar dados no Firebase.", "error");
-        });
+        }
     });
 }
-
 /* ======================================================== */
 /* 4. MOTOR V2: FUNÇÕES MATEMÁTICAS E ALGORITMOS DE MATA-MATA */
 /* ======================================================== */

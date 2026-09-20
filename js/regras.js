@@ -49,6 +49,11 @@ function toggleGavetaRegras(elemento) {
     
     const isActive = elemento.classList.contains('active');
     
+    // 🛡️ TRAVA DESKTOP: No computador (> 768px), impede que clicar na mesma aba ativa a feche
+    if (isActive && window.innerWidth > 768) {
+        return;
+    }
+
     document.querySelectorAll('.accordion-item').forEach(item => {
         item.classList.remove('active');
         item.classList.remove('mobile-opened');
@@ -72,118 +77,150 @@ function toggleGavetaRegras(elemento) {
         }
     }
 
-    // 🎯 ADICIONAR AQUI (Última linha de toggleGavetaRegras):
     atualizarBotaoRodapeRankingSaaS();
 }
-
 
 /**
  * Controla a cor, texto e ação do botão do rodapé conforme a aba, a fase ativa e o modo de edição do calendário
  */
 function atualizarBotaoRodapeRankingSaaS() {
-    const btnSalvar = document.querySelector('#modal-config-ranking .btn-regras-salvar');
-    if (!btnSalvar) return;
+    const modalConfig = document.getElementById('modal-config-ranking');
+    if (!modalConfig) return;
 
-    const abas = document.querySelectorAll('#modal-config-ranking .accordion-item');
-    const abaGestaoAtiva = abas[4] && abas[4].classList.contains('active');
-    const abaHistoricoAtiva = abas[5] && abas[5].classList.contains('active');
+    const btnFooter = modalConfig.querySelector('.regras-footer button');
+    if (!btnFooter) return;
 
-    // 🟣 ABA 6: Histórico de Torneios
-    if (abaHistoricoAtiva) {
-        btnSalvar.style.backgroundColor = '#8b5cf6';
-        btnSalvar.style.borderColor = '#8b5cf6';
-        btnSalvar.innerHTML = '<i class="material-icons" style="vertical-align: middle; margin-right: 6px; font-size: 18px;">picture_as_pdf</i> Exportar Relatório Geral do Acervo (PDF)';
-        btnSalvar.onclick = () => {
-            if (typeof exportarRelatorioHistoricoSaaS === 'function') {
-                exportarRelatorioHistoricoSaaS();
-            }
-        };
+    const isMobile = window.innerWidth <= 768;
+    const items = modalConfig.querySelectorAll('.sanfona-container .accordion-item');
+    
+    let idxAbaAtiva = -1;
+    items.forEach((item, idx) => {
+        if (item.classList.contains('active') || item.classList.contains('mobile-opened')) {
+            idxAbaAtiva = idx; 
+        }
+    });
+
+    // TRAVA MOBILE: Se estiver no celular e nenhuma sanfona estiver aberta, oculta o botão do rodapé
+    if (isMobile && idxAbaAtiva === -1) {
+        btnFooter.style.setProperty('display', 'none', 'important');
         return;
     }
 
-    // 🟢 ABAS 1 A 4: Botão Verde Padrão de Parâmetros
-    if (!abaGestaoAtiva) {
-        btnSalvar.style.backgroundColor = 'var(--cor-primaria, #2E8B57)';
-        btnSalvar.style.borderColor = 'var(--cor-primaria, #2E8B57)';
-        btnSalvar.textContent = 'Salvar Parâmetros do Ranking';
-        btnSalvar.onclick = () => salvarConfigRankingSaas();
-        return;
+    // Se estiver no Desktop e nenhuma aba tiver a classe active, assume a primeira aba (0)
+    if (idxAbaAtiva === -1) {
+        idxAbaAtiva = 0;
     }
 
-    // 🔵 ABA 5: Gestão da Temporada (Esteira Mestre)
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const modelo = conf.modeloAtivo || "grupos";
     const faseAtual = parseInt(conf.faseAtual, 10) || 1;
 
-    // Exceção: Verifica se o formulário da Fase 1 foi aberto manualmente em modo de edição
-    const panelFase1 = document.querySelectorAll('#container-fases-gestor .fase-panel')[0];
-    const editandoFase1 = panelFase1 && panelFase1.classList.contains('ativa') && faseAtual > 1;
+    // 🔵 ABA 5 (índice 4): Gestão da Temporada
+    if (idxAbaAtiva === 4) {
+        let textoBotao = '';
+        let corBotao = '#8b5cf6';
+        let acaoOnClick = 'encerrarFase3EAvancarSaaS()';
 
-    if (editandoFase1) {
-        btnSalvar.style.backgroundColor = '#3b82f6';
-        btnSalvar.style.borderColor = '#3b82f6';
-        btnSalvar.textContent = 'Salvar Alterações do Calendário';
-        btnSalvar.onclick = () => salvarCalendarioEAbrirInscricoesSaaS();
-        return;
-    }
+        const panelFase1 = document.querySelectorAll('#container-fases-gestor .fase-panel')[0];
+        const formularioFase1Ativo = panelFase1 && panelFase1.classList.contains('ativa');
 
-    // Estrutura limpa (Switch/Case) para o fluxo principal das Fases
-    switch (faseAtual) {
-        case 1:
-            btnSalvar.style.backgroundColor = '#3b82f6';
-            btnSalvar.style.borderColor = '#3b82f6';
-            btnSalvar.textContent = 'Salvar Calendário e Abrir Inscrições';
-            btnSalvar.onclick = () => salvarCalendarioEAbrirInscricoesSaaS();
-            break;
-
-        case 2:
-            btnSalvar.style.backgroundColor = '#f59e0b';
-            btnSalvar.style.borderColor = '#f59e0b';
-            const titulosFase2 = {
-                piramide: 'Encerrar Inscrições e Iniciar Pirâmide',
-                barragem: 'Encerrar Inscrições e Iniciar Barragem',
-                grupos: 'Encerrar Inscrições e Congelar Grupos'
-            };
-            btnSalvar.textContent = titulosFase2[modelo] || 'Encerrar Inscrições e Congelar Grupos';
-            btnSalvar.onclick = () => encerrarInscricoesECriarChavesSaaS();
-            break;
-
-        case 3:
-            btnSalvar.style.backgroundColor = '#f59e0b';
-            btnSalvar.style.borderColor = '#f59e0b';
-            const titulosFase3 = {
-                piramide: 'Encerrar Pirâmide e Homologar Posições',
-                barragem: 'Encerrar Barragem e Consolidar Ranking',
-                grupos: 'Encerrar Grupos e Gerar Mata-Mata'
-            };
-            btnSalvar.textContent = titulosFase3[modelo] || 'Encerrar Grupos e Gerar Mata-Mata';
-            btnSalvar.onclick = () => encerrarFase3EAvancarSaaS();
-            break;
-
-        case 4:
-            if (modelo === 'piramide' || modelo === 'barragem') {
-                btnSalvar.style.backgroundColor = '#3b82f6';
-                btnSalvar.style.borderColor = '#3b82f6';
-                btnSalvar.textContent = 'Abrir Novo Torneio (Nova Temporada)';
-                btnSalvar.onclick = () => reiniciarEsteiraNovoTorneioSaaS();
+        if (faseAtual === 1) {
+            if (formularioFase1Ativo) {
+                textoBotao = '<i class="material-icons">event_available</i> Salvar Calendário e Abrir Inscrições';
+                corBotao = '#16a34a';
+                acaoOnClick = 'salvarCalendarioEAbrirInscricoesSaaS()';
             } else {
-                btnSalvar.style.backgroundColor = '#8b5cf6';
-                btnSalvar.style.borderColor = '#8b5cf6';
-                btnSalvar.textContent = 'Concluir Torneio e Somar Pontos no Ranking';
-                btnSalvar.onclick = () => encerrarFase3EAvancarSaaS();
+                textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
+                corBotao = '#2563eb';
+                acaoOnClick = 'editarCalendarioAtivoSaaS()';
             }
-            break;
+        } else if (formularioFase1Ativo && faseAtual > 1) {
+            textoBotao = '<i class="material-icons">event_available</i> Salvar Alterações do Calendário';
+            corBotao = '#3b82f6';
+            acaoOnClick = 'salvarCalendarioEAbrirInscricoesSaaS()';
+        } else if (faseAtual === 2) {
+            const titulosFase2 = {
+                piramide: '<i class="material-icons">lock</i> Encerrar Inscrições e Iniciar Pirâmide',
+                barragem: '<i class="material-icons">lock</i> Encerrar Inscrições e Iniciar Barragem',
+                grupos: '<i class="material-icons">lock</i> Encerrar Inscrições e Congelar Grupos'
+            };
+            textoBotao = titulosFase2[modelo] || '<i class="material-icons">lock</i> Encerrar Inscrições e Congelar Grupos';
+            corBotao = '#f59e0b';
+            acaoOnClick = 'encerrarInscricoesECriarChavesSaaS()';
+        } else if (faseAtual === 3) {
+            const titulosFase3 = {
+                piramide: '<i class="material-icons">alt_route</i> Encerrar Pirâmide e Homologar Posições',
+                barragem: '<i class="material-icons">alt_route</i> Encerrar Barragem e Consolidar Ranking',
+                grupos: '<i class="material-icons">alt_route</i> Encerrar Grupos e Gerar Mata-Mata'
+            };
+            textoBotao = titulosFase3[modelo] || '<i class="material-icons">alt_route</i> Encerrar Grupos e Gerar Mata-Mata';
+            corBotao = '#f59e0b';
+            acaoOnClick = 'encerrarFase3EAvancarSaaS()';
+        } else if (modelo === 'grupos' && faseAtual === 4) {
+            const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+            const chavesList = Object.values(chavesMap);
+            
+            let maiorTamanhoChave = 2; 
+            if (chavesList.length > 0) {
+                const tamanhos = chavesList.map(c => parseInt(c.faseAtual || (c.rodada1 ? c.rodada1.length * 2 : 2), 10));
+                maiorTamanhoChave = Math.max(...tamanhos);
+            }
 
-        case 5:
-        default:
-            btnSalvar.style.backgroundColor = '#3b82f6';
-            btnSalvar.style.borderColor = '#3b82f6';
-            btnSalvar.textContent = 'Abrir Novo Torneio (Nova Temporada)';
-            btnSalvar.onclick = () => reiniciarEsteiraNovoTorneioSaaS();
-            break;
+            if (maiorTamanhoChave > 2) {
+                const proximaFaseTamanho = maiorTamanhoChave / 2;
+                const rotuloProxima = (typeof obterRotuloFaseMataMataSaaS === 'function')
+                    ? obterRotuloFaseMataMataSaaS(proximaFaseTamanho)
+                    : "Próxima Fase";
+
+                const artigo = (proximaFaseTamanho === 2) ? "para a" : "para as";
+                textoBotao = `<i class="material-icons">east</i> Avançar ${artigo} ${rotuloProxima}`;
+                corBotao = '#8b5cf6';
+            } else {
+                textoBotao = '<i class="material-icons">workspace_premium</i> Concluir Torneio e Somar Pontos no Ranking';
+                corBotao = '#16a34a';
+            }
+        } else if (faseAtual >= 4) {
+            textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
+            corBotao = '#2563eb';
+            acaoOnClick = 'reiniciarEsteiraNovoTorneioSaaS()';
+        } else {
+            textoBotao = 'Salvar Parâmetros do Ranking';
+            corBotao = '#28a745';
+            acaoOnClick = 'salvarConfigRankingSaas()';
+        }
+
+        btnFooter.innerHTML = textoBotao; 
+        btnFooter.setAttribute('onclick', acaoOnClick);
+        btnFooter.style.cssText = `background-color: ${corBotao} !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;`;
+
+    } else if (idxAbaAtiva === 5) {
+        // 🟣 ABA 6 (índice 5): Histórico de Torneios
+        btnFooter.innerHTML = '<i class="material-icons">picture_as_pdf</i> Exportar Relatório Geral do Acervo (PDF)';
+        btnFooter.setAttribute('onclick', 'exportarRelatorioHistoricoSaaS()');
+        btnFooter.style.cssText = 'background-color: #8b5cf6 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+
+    } else if (idxAbaAtiva === 6) { 
+        // 🟠 ABA 7 (índice 6): Ranking Geral
+        const vConfig = document.getElementById('visao-config-ranking-geral');
+        const estaEmConfig = vConfig && vConfig.style.display !== 'none';
+
+        if (estaEmConfig) {
+            btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">save</i> Salvar Parâmetros do Ranking Geral';
+            btnFooter.setAttribute('onclick', 'salvarParametrosRankingGeralSaaS()');
+            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+        } else {
+            btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">picture_as_pdf</i> Exportar Ranking Geral (PDF)';
+            btnFooter.setAttribute('onclick', 'exportarRankingGeralPDFSaaS()');
+            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+        }
+
+    } else {
+        // 🟢 ABAS 1 A 4 (índices 0 a 3): Parâmetros Padrão do Ranking
+        btnFooter.innerHTML = 'Salvar Parâmetros do Ranking';
+        btnFooter.setAttribute('onclick', 'salvarConfigRankingSaas()');
+        btnFooter.style.cssText = 'background-color: #28a745 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
     }
 }
-
 
 /**
  * Alterna a pílula entre ativa/inativa e troca o ícone entre '+' e 'check'
@@ -1165,7 +1202,6 @@ function abrirModalConfigRanking() {
     // ABA 1: Parâmetros Gerais
     document.getElementById('regra-ranking-ativo').checked = conf.ativo !== false;
     document.getElementById('select-ranking-genero').value = conf.divisaoGenero || "separado";
-	// 🏆 Nova Duração da Partida de Ranking (Padrão: 2 horas)
     document.getElementById('saas-ranking-duracao').value = String(conf.duracaoPartida !== undefined ? conf.duracaoPartida : 2);
 
     // ⚖️ Carrega as permissões de quem pode arbitrar
@@ -1203,17 +1239,14 @@ function abrirModalConfigRanking() {
 
     // ABA 3: Regras de Jogo & Súmula
     document.getElementById('select-ranking-formato-partida').value = sum.formatoPartida || "set_unico_6";
-	// --> ADICIONE ESTAS DUAS LINHAS AQUI <--
     document.getElementById('select-ranking-decisao-3set').value = sum.decisaoTerceiroSet || "super_tiebreak";
-    toggleDecisaoTerceiroSetSaaS(); // Força a exibição correta ao abrir a tela
-    // ----------------------------------------
+    toggleDecisaoTerceiroSetSaaS();
     document.getElementById('select-ranking-vantagem-games').value = sum.vantagemGames || "com_vantagem";
     
     document.getElementById('select-ranking-max-jogos').value = String(conf.maxJogosSemana !== undefined ? conf.maxJogosSemana : 2);
     document.getElementById('select-ranking-prazo-autoconf').value = String(sum.prazoAutoconf !== undefined ? sum.prazoAutoconf : 24);
-	document.getElementById('select-ranking-tolerancia-wo').value = String(sum.toleranciaWO !== undefined ? sum.toleranciaWO : 15);
+    document.getElementById('select-ranking-tolerancia-wo').value = String(sum.toleranciaWO !== undefined ? sum.toleranciaWO : 15);
     document.getElementById('select-ranking-prazo-inatividade').value = String(conf.prazoInatividadeDias !== undefined ? conf.prazoInatividadeDias : 15);
-	
 
     // ABA 4: Taxa de Inscrição & PIX
     const cobrarTaxa = fin.cobrarTaxa === true;
@@ -1233,6 +1266,11 @@ function abrirModalConfigRanking() {
     // 🏆 Renderiza a esteira de fases da temporada
     if (typeof renderizarGestaoTemporadaSaaS === 'function') {
         renderizarGestaoTemporadaSaaS();
+    }
+
+    // 🚀 PRÉ-CARREGAMENTO SILENCIOSO: Baixa o histórico em segundo plano ao abrir a tela
+    if (typeof carregarHistoricoTorneiosSaaS === 'function') {
+        carregarHistoricoTorneiosSaaS();
     }
 
     abrirModalConfig('modal-config-ranking');
@@ -1368,7 +1406,7 @@ function abrirVisualizacaoRankingSaaS() {
 }
 
 function dispararConvitesTemporadaSaaS() {
-    if (navigator.vibrate) navigator.vibrate(30);
+    if (navigator.vibrate) navigator.vibrate(30); 
 
     showToast("Verificando status da temporada...", "info");
 
@@ -1430,58 +1468,64 @@ function exibirModalInicialDisparoTemporadaSaaS() {
     });
 }
 
-// MODAL 2: Decisão Inteligente (Quando JÁ EXISTE temporada aberta)
-function exibirModalDecisaoRepescagemSaaS(dadosConviteAtual) {
-    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const inscritos = conf.inscritosConfirmados || {};
-    const temInscritos = Object.keys(inscritos).length > 0;
+// MODAL 1: Escolha Inicial (Primeiro disparo de convites da temporada)
+function exibirModalInicialDisparoTemporadaSaaS() {
+    // Checa na memória RAM do core.js se o clube já possui atletas cadastrados no Ranking Geral
+    const temRankingGeral = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) 
+        ? Object.values(rankingGeralGlobal).some(arr => Array.isArray(arr) && arr.length > 0)
+        : false;
+
+    // Constrói a opção de herança somente se houver histórico no Ranking Geral
+    const opcaoHerdadaHTML = temRankingGeral ? `
+        <label class="prompt-ranking-card">
+            <input type="radio" name="rd_ordem_ranking" value="herdada" class="prompt-ranking-radio">
+            <div>
+                <strong class="prompt-ranking-title">Herdar Classificação Anterior</strong>
+                <span class="prompt-ranking-sub">Usa a posição final da última temporada como ordem de largada (Cabeças de Chave).</span>
+            </div>
+        </label>
+    ` : '';
 
     const msgHTML = `
         <div class="prompt-ranking-container">
-            <p class="prompt-ranking-desc">Já existem convites ativos para a temporada em andamento. O que você deseja fazer?</p>
+            <p class="prompt-ranking-desc">Você está prestes a abrir as inscrições para uma nova temporada do Ranking. Como deseja organizar a fila inicial?</p>
 
             <div class="prompt-ranking-options">
-                <!-- OPÇÃO A: Repescagem (Foco Padrão) -->
                 <label class="prompt-ranking-card">
-                    <input type="radio" name="rd_acao_temporada" value="repescagem" class="prompt-ranking-radio" checked>
+                    <input type="radio" name="rd_ordem_ranking" value="livre" class="prompt-ranking-radio" checked>
                     <div>
-                        <strong class="prompt-ranking-title">Repescagem (Apenas Novos Atletas)</strong>
-                        <span class="prompt-ranking-sub">Dispara convites SOMENTE para sócios recém-cadastrados que ainda não estão no ranking.</span>
+                        <strong class="prompt-ranking-title">Inscrição Livre (Estaca Zero)</strong>
+                        <span class="prompt-ranking-sub">Quem aceitar o convite primeiro no aplicativo, entra nas primeiras posições da tabela.</span>
                     </div>
                 </label>
 
-                <!-- OPÇÃO B: Reiniciar Geral (Trava Rígida se houver inscritos confirmados) -->
-                <label class="prompt-ranking-card" style="${temInscritos ? 'opacity: 0.55; cursor: not-allowed;' : ''}">
-                    <input type="radio" name="rd_acao_temporada" value="reiniciar" class="prompt-ranking-radio" ${temInscritos ? 'disabled' : ''}>
+                ${opcaoHerdadaHTML}
+
+                <label class="prompt-ranking-card">
+                    <input type="radio" name="rd_ordem_ranking" value="sorteio" class="prompt-ranking-radio">
                     <div>
-                        <strong class="prompt-ranking-title">Reiniciar Geral (Nova Temporada)</strong>
-                        <span class="prompt-ranking-sub">Cancela o lote atual e dispara convites do zero para TODOS os atletas habilitados.</span>
-                        ${temInscritos ? '<div style="font-size: 11px; color: #dc2626; margin-top: 6px; font-weight: 700;">⚠️ Já existem sócios confirmados nesta edição. Para cancelar tudo e recomeçar, utilize o botão de Zerar Ranking.</div>' : ''}
+                        <strong class="prompt-ranking-title">Sorteio Aleatório</strong>
+                        <span class="prompt-ranking-sub">A ordem de largada na tabela/escada será definida via sorteio ao encerrar as inscrições.</span>
                     </div>
                 </label>
             </div>
         </div>
     `;
 
-    showPrompt("Temporada em Andamento", msgHTML, () => {
-        const radios = document.getElementsByName('rd_acao_temporada');
-        let acaoEscolhida = 'repescagem';
+    showPrompt("Disparar Convites da Temporada", msgHTML, () => {
+        const radios = document.getElementsByName('rd_ordem_ranking');
+        let tipoOrdemEscolhida = 'livre';
         
         for (let r of radios) {
             if (r.checked) {
-                acaoEscolhida = r.value;
+                tipoOrdemEscolhida = r.value;
                 break;
             }
         }
-
-        if (acaoEscolhida === 'repescagem') {
-            processarRepescagemNovosAtletasSaaS(dadosConviteAtual);
-        } else {
-            exibirModalInicialDisparoTemporadaSaaS();
-        }
+        
+        processarDisparoTemporadaFirebase(tipoOrdemEscolhida);
     });
 }
-
 
 /**
  * Valida se a Classe e o Gênero do sócio correspondem às pílulas habilitadas na Fase 1
