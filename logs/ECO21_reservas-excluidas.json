@@ -643,5 +643,38 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-09-19T23:12:40.693Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-09-20T17:15:28.415Z",
+    "dataLocal": "20/09/2026, 14:15:28",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "motivo": "Convite recusado por Alex. Reserva cancelada por falta de quórum mínimo.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "21-09-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALESSANDRO ROMERO XAVIER",
+    "confirmacoes": {
+      "Alessandro Xavier": true,
+      "Alex": false
+    },
+    "jogadores": "Alessandro Xavier, Alex",
+    "jogadores_completo": "ALESSANDRO ROMERO XAVIER, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 1,
+        "hora": 7
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 1,
+        "hora": 8
+      }
+    ]
   }
 ]
