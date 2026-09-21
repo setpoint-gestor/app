@@ -2149,19 +2149,30 @@ function validarEAgendarPartidaSaas() {
         };
 
         // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES, TAGS E CARIMBO MESTRE DE TEMPORADA
+        // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES, TAGS E CARIMBO MESTRE DE TEMPORADA
         if (pacote.isRanking) {
             const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-            const modeloAtivo = confRanking.modeloAtivo || 'piramide';
             const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
 
-            // 🎯 CARIMBO MESTRE DA TEMPORADA ATIVA (SSOT - Sem dependência de convites pendentes)
+            // 🎯 SSOT: Lê estritamente o modelo oficial cadastrado no contrato do torneio (calendario.modeloDisputa)
+            const modeloDisputaOficial = confRanking.calendario?.modeloDisputa;
+            
+            if (!modeloDisputaOficial) {
+                showToast("Erro: O torneio ativo não possui um modelo de disputa configurado no contrato.", "error");
+                throw new Error("VALIDACAO_FALHOU");
+            }
+
+            // 🎯 GRAVAÇÃO IMUTÁVEL DO MODELO NA RESERVA
+            objetoReservaReferencia.modelo = modeloDisputaOficial;
+
+            // 🎯 CARIMBO MESTRE DA TEMPORADA ATIVA
             if (temporadaIdMestre) {
                 objetoReservaReferencia.temporadaId = temporadaIdMestre;
             } else if (window.dadosTemporadaRankingAtiva && window.dadosTemporadaRankingAtiva.temporadaId) {
                 objetoReservaReferencia.temporadaId = window.dadosTemporadaRankingAtiva.temporadaId;
             }
 
-            if (modeloAtivo === 'grupos' && faseAtualRanking === 3) {
+            if (modeloDisputaOficial === 'grupos' && faseAtualRanking === 3) {
                 const idAtleta1 = Object.keys(bancoJogadores).find(key => 
                     bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
                     bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()
@@ -2185,7 +2196,7 @@ function validarEAgendarPartidaSaas() {
                         }
                     }
                 }
-            } else if (modeloAtivo === 'grupos' && faseAtualRanking === 4) {
+            } else if (modeloDisputaOficial === 'grupos' && faseAtualRanking === 4) {
                 const idAtleta1 = Object.keys(bancoJogadores).find(key => 
                     bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
                     bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()
@@ -2207,7 +2218,8 @@ function validarEAgendarPartidaSaas() {
                         objetoReservaReferencia.tagFaseRanking = "Grupos - Mata-Mata";
                     }
                 }
-            } else if (modeloAtivo !== 'grupos') {
+            } else if (modeloDisputaOficial === 'piramide') {
+                // 🎯 RESTRITO À PIRÂMIDE: Congela posições numéricas exclusivamente na escada
                 objetoReservaReferencia.posicaoP1 = obterPosicaoTextoRankingSaaS(listaApelidos[0]);
                 objetoReservaReferencia.posicaoP2 = obterPosicaoTextoRankingSaaS(listaApelidos[1]);
             }
@@ -3157,22 +3169,21 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             }
         }
 
-        // 🏷️ LEITURA DE RÓTULO COM PRIORIDADE HISTÓRICA (NÃO ALTERA AO MUDAR O MODELO ATIVO)
+        // 🏷️ LEITURA ESTRITA DO MODELO (SSOT DIRETA - SEM FALLBACKS)
+        const modeloReserva = (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo || "").toLowerCase();
+        const mapaModelos = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
+
         if (dadosReserva.tagFaseRanking) {
             labelModelo = dadosReserva.tagFaseRanking;
         } else if (dadosReserva.dadosPlacar?.tagFaseRanking) {
             labelModelo = dadosReserva.dadosPlacar.tagFaseRanking;
         } else if (tagGrupo) {
             labelModelo = `Grupos - ${tagGrupo}`;
-        } else if (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo) {
-            const m = (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo).toLowerCase();
-            const mapM = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
-            labelModelo = mapM[m] || 'Ranking';
-        } else if (dadosReserva.posicaoP1 || dadosReserva.posicaoP2) {
-            labelModelo = 'Pirâmide';
+        } else if (mapaModelos[modeloReserva]) {
+            labelModelo = mapaModelos[modeloReserva];
         } else {
-            const mapM = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
-            labelModelo = mapM[modeloAtivo] || 'Ranking';
+            console.error("❌ [Erro de Integridade SSOT] Registro sem campo 'modelo' válido:", dadosReserva);
+            labelModelo = "Modelo Inválido";
         }
 
         let classNomeJ1 = '', classNomeJ2 = '';

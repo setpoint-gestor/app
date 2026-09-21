@@ -16,7 +16,7 @@ let sorteioPotesGlobal = {
     inscritos: {},
     potesData: [],
     drawSequence: [],
-    gruposResultado: {},
+    gruposResultado: {}, 
     currentIndex: 0,
     autoTimer: null,
     isFastMode: false,
@@ -130,9 +130,6 @@ function garantirModalSorteioNoDOMSaaS() {
                 overflow-y: auto !important;
                 border-radius: 20px !important;
             }
-            .modal-title-header {
-                font-size: 28px !important;
-            }
             .globe-wrapper {
                 width: 190px !important;
                 height: 190px !important;
@@ -160,9 +157,14 @@ function garantirModalSorteioNoDOMSaaS() {
             <!-- Botão Fechar (X) -->
             <button class="btn-close-modal" onclick="SorteioPotes.fecharModalSorteioSaaS()" title="Fechar" style="position: absolute; top: 16px; right: 18px; background: transparent; border: none; color: #94A3B8; font-size: 22px; font-weight: 700; cursor: pointer; line-height: 1; padding: 8px; z-index: 10;">✕</button>
 
-            <!-- Título com Nome do Torneio -->
-            <div class="modal-title-header" id="modalTournamentTitlePotes" style="font-family: 'Teko', sans-serif, 'Inter'; font-size: 36px; color: #CCFF00; letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; word-break: break-word; max-width: 90%;">
-                ATP FINALS 2009
+            <!-- Cabeçalho do Torneio (Pílula Superior + Nome Completo) -->
+            <div id="modalHeaderContainerPotes" style="text-align: center; margin-bottom: 10px; padding-right: 20px;">
+                <div id="modalTournamentPilulaPotes" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(132, 204, 22, 0.12); border: 1px solid rgba(132, 204, 22, 0.35); color: #a3e635; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                    <i class="material-icons" style="font-size: 13px;">emoji_events</i> Torneio Pirâmide
+                </div>
+                <h2 class="modal-title-header" id="modalTournamentTitlePotes" style="font-size: 18px; font-weight: 800; color: #ffffff; margin: 0; line-height: 1.35; padding: 0 10px; word-break: break-word;">
+                    TORNEIO
+                </h2>
             </div>
             
             <!-- Micro-Card de Resumo -->
@@ -351,17 +353,32 @@ window.SorteioPotes = {
             currentIndex: 0,
             autoTimer: null,
             isFastMode: false,
-            torneioNome: nomeTorneio || "ATP FINALS 2009",
+            torneioNome: nomeTorneio || "TORNEIO",
             callbackConclusao: callbackConclusao
         };
 
         const modal = document.getElementById('modal-sorteio-potes');
         const elTitle = document.getElementById('modalTournamentTitlePotes');
+        const elPilula = document.getElementById('modalTournamentPilulaPotes');
         const elMicro = document.getElementById('modalMicroCardInfo');
         const btnFast = document.getElementById('btnFastForwardPotes');
         const btnFinish = document.getElementById('btnFinishGoPotes');
         const globe = document.getElementById('globeWrapperPotes');
 
+        // 🎯 Rótulos formais para a pílula do modelo ativo
+        const rotulosModeloPilula = {
+            piramide: "Torneio Pirâmide",
+            barragem: "Torneio Barragem",
+            grupos: "Torneio de Grupos"
+        };
+
+        const confRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const modeloAtivo = confRanking.modeloAtivo || confRanking.calendario?.modeloDisputa || "grupos";
+        const textoPilula = rotulosModeloPilula[modeloAtivo] || "Torneio Oficial";
+
+        if (elPilula) {
+            elPilula.innerHTML = `<i class="material-icons" style="font-size: 13px;">emoji_events</i> ${textoPilula}`;
+        }
         if (elTitle) elTitle.innerText = sorteioPotesGlobal.torneioNome;
         if (elMicro) elMicro.innerText = `${preparo.sequencia.length} Atletas Confirmados • ${preparo.potes.length} Potes`;
         if (btnFast) btnFast.style.display = 'block';

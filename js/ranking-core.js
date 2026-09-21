@@ -212,8 +212,8 @@ function buscarInfoJogador(apelidoOuNome) {
     if (!apelidoOuNome) return { nomeCompleto: "", apelido: "" };
     const termo = apelidoOuNome.trim().toLowerCase();
 
-    if (typeof jogadoresData !== 'undefined' && jogadoresData) {
-        const lista = Object.values(jogadoresData);
+    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) {
+        const lista = Object.values(jogadoresGlobal);
         const encontrado = lista.find(j => {
             if (!j) return false;
             const ap = (j.apelido || '').trim().toLowerCase();
@@ -228,19 +228,20 @@ function buscarInfoJogador(apelidoOuNome) {
             };
         }
 
-        const chaveEncontrada = Object.keys(jogadoresData).find(
+        const chaveEncontrada = Object.keys(jogadoresGlobal).find(
             k => k.trim().toLowerCase() === termo
         );
-        if (chaveEncontrada && jogadoresData[chaveEncontrada]) {
+        if (chaveEncontrada && jogadoresGlobal[chaveEncontrada]) {
             return {
-                nomeCompleto: jogadoresData[chaveEncontrada].nomeCompleto || chaveEncontrada,
-                apelido: jogadoresData[chaveEncontrada].apelido || chaveEncontrada
+                nomeCompleto: jogadoresGlobal[chaveEncontrada].nomeCompleto || chaveEncontrada,
+                apelido: jogadoresGlobal[chaveEncontrada].apelido || chaveEncontrada
             };
         }
     }
 
     return { nomeCompleto: apelidoOuNome, apelido: apelidoOuNome };
 }
+
 
 function formatarNomeInteligente(nomeCompletoRaw, apelidoRaw, isHorizontal = true) {
     if (!nomeCompletoRaw && !apelidoRaw) return "";
@@ -2039,6 +2040,13 @@ function abrirModalArbitroPlacar(reserva) {
     renderizarGavetaArbitroSaaS([reserva]);
 }
 
+function editarPlacarArbitroSaaS() {
+    if (!partidaRankingEmFoco) return;
+    const reservaTemp = partidaRankingEmFoco;
+    fecharModalConfig('modal-arbitro-placar');
+    abrirModalSumulaPrincipal(reservaTemp, false, true);
+}
+
 function manterPlacarArbitroSaaS() {
     if (!partidaRankingEmFoco || !raizBanco) return;
 
@@ -2089,9 +2097,9 @@ function manterPlacarArbitroSaaS() {
 
         const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
         
-		const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
-		const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
-		const qKeyLimpa = matchQuadra ? `Quadra${matchQuadra[0]}` : quadraRef;
+        const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
+        const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
+        const qKeyLimpa = matchQuadra ? `Quadra${matchQuadra[0]}` : quadraRef;
 
         const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${dia}_${hora}_${idJ1}_${idJ2}`;
 
@@ -2158,7 +2166,17 @@ function manterPlacarArbitroSaaS() {
         const placarTxt = partidaRankingEmFoco.dadosPlacar?.placarFormatado || "";
         notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'mantido', placarTxt);
 
-        if (!window.contestacoesAbertasSaaS || window.contestacoesAbertasSaaS.length <= 1) {
+        // 🎯 FILTRA A PARTIDA TRATADA E RE-RENDERIZA OU FECHA SE FICAR VAZIO (0)
+        if (window.contestacoesAbertasSaaS) {
+            window.contestacoesAbertasSaaS = window.contestacoesAbertasSaaS.filter(item => 
+                item !== partidaRankingEmFoco && 
+                !(item.dia === partidaRankingEmFoco.dia && item.hora === partidaRankingEmFoco.hora && (item.quadra === partidaRankingEmFoco.quadra || item.quadra === quadraKey))
+            );
+        }
+
+        if (window.contestacoesAbertasSaaS && window.contestacoesAbertasSaaS.length > 0) {
+            renderizarGavetaArbitroSaaS(window.contestacoesAbertasSaaS);
+        } else {
             fecharModalConfig('modal-arbitro-placar');
         }
     })
@@ -2168,19 +2186,8 @@ function manterPlacarArbitroSaaS() {
     });
 }
 
-function editarPlacarArbitroSaaS() {
-    if (!partidaRankingEmFoco) return;
-    const reservaTemp = partidaRankingEmFoco;
-    fecharModalConfig('modal-arbitro-placar');
-    abrirModalSumulaPrincipal(reservaTemp, false, true);
-}
-
 function anularPlacarArbitroSaaS() {
     if (!partidaRankingEmFoco || !raizBanco) return;
-
-    if (!window.contestacoesAbertasSaaS || window.contestacoesAbertasSaaS.length <= 1) {
-        fecharModalConfig('modal-arbitro-placar');
-    }
 
     const htmlPrompt = `
         <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
@@ -2249,9 +2256,9 @@ function anularPlacarArbitroSaaS() {
 
             const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
             
-			const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
-			const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
-			const qKeyLimpa = matchQuadra ? `Quadra${matchQuadra[0]}` : quadraRef;
+            const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
+            const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
+            const qKeyLimpa = matchQuadra ? `Quadra${matchQuadra[0]}` : quadraRef;
 
             const partidaId = `partida_${chaveTabela}_${qKeyLimpa}_${dia}_${hora}_${idJ1}_${idJ2}`; 
             
@@ -2281,6 +2288,20 @@ function anularPlacarArbitroSaaS() {
         .then(() => {
             showToast("Partida anulada com sucesso e arquivada no histórico.", "success");
             notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'anulado', motivo);
+
+            // 🎯 FILTRA A PARTIDA TRATADA E RE-RENDERIZA OU FECHA SE FICAR VAZIO (0)
+            if (window.contestacoesAbertasSaaS) {
+                window.contestacoesAbertasSaaS = window.contestacoesAbertasSaaS.filter(item => 
+                    item !== partidaRankingEmFoco && 
+                    !(item.dia === partidaRankingEmFoco.dia && item.hora === partidaRankingEmFoco.hora && (item.quadra === partidaRankingEmFoco.quadra || item.quadra === quadraKey))
+                );
+            }
+
+            if (window.contestacoesAbertasSaaS && window.contestacoesAbertasSaaS.length > 0) {
+                renderizarGavetaArbitroSaaS(window.contestacoesAbertasSaaS);
+            } else {
+                fecharModalConfig('modal-arbitro-placar');
+            }
         })
         .catch(err => {
             console.error("❌ [Arbitragem] Erro ao anular súmula:", err);

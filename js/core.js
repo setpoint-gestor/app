@@ -68,6 +68,8 @@ let reservasGeralGlobal = {};     // Espelho local de TODAS as reservas do clube
 
 let acervoHistoricoGlobalSaaS = null; // Espelho local do acervo de históricos de torneios na memória RAM
 
+let convitesRankingGlobal = null; // Espelho local dos convites do ranking na memória RAM
+
 // ==========================================
 // 2. LISTENERS GLOBAIS (Ouvintes de Eventos)
 // ========================================== 
@@ -204,9 +206,16 @@ function fecharAplicativoSaaS() {
 /**
  * Cria a caixa de confirmação (Prompt) vermelha/cinza padrão.
  */
-function showPrompt(titulo, msg, callback) {
+/**
+ * Cria a caixa de confirmação (Prompt) vermelha/cinza padrão.
+ */
+function showPrompt(titulo, msg, callback, cancelCallback = null) {
     const modal = document.getElementById('modalPrompt');
     if (!modal) return;
+
+    // 🎯 SOBREPOSIÇÃO ABSOLUTA MESTRE: Força o prompt a ficar acima de absolutamente tudo no App
+    modal.style.setProperty('z-index', '999999', 'important');
+    modal.style.setProperty('position', 'fixed', 'important');
 
     document.getElementById('promptTitle').textContent = titulo; 
     document.getElementById('promptMessage').innerHTML = msg;
@@ -223,15 +232,15 @@ function showPrompt(titulo, msg, callback) {
     
     novoBtnSim.onclick = () => { 
         modal.style.display = 'none'; 
-        callback(); // Executa a ação confirmada
+        if (typeof callback === 'function') callback(); // Executa a ação confirmada
     }; 
     novoBtnNao.onclick = () => { 
         modal.style.display = 'none'; 
+        if (typeof cancelCallback === 'function') cancelCallback(); // Executa a ação de cancelamento
     };
     
     modal.style.display = 'flex';
 }
-
 
 function avaliarEstadoManutencaoSaaS() {
     const licencaOk = isLicencaAtivaGlobal !== false;
@@ -714,6 +723,16 @@ function iniciarOuvinteMestreSaaS() {
     database.ref(`${raizBanco}/reservas`).on('value', (snapshot) => {
         reservasGeralGlobal = snapshot.val() || {};
         console.log("✓ [Core] Reservas globais da arena atualizadas na memória RAM.");
+    });
+	
+	// --- 4.11. OUVINTE MESTRE DOS CONVITES DO RANKING ---
+    console.log("✉️ [Core] Sincronizando convites do ranking em tempo real...");
+    database.ref(`${raizBanco}/convites_ranking`).on('value', (snapshot) => {
+        convitesRankingGlobal = snapshot.exists() ? snapshot.val() : null;
+        console.log("✓ [Core] Convites do ranking atualizados na memória RAM.");
+        if (typeof renderizarGestaoTemporadaSaaS === "function") {
+            renderizarGestaoTemporadaSaaS();
+        }
     });
 	
 	// --- 5. OUVINTE MESTRE DE INFRAESTRUTURA E STATUS DE QUADRAS ---

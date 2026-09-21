@@ -4504,7 +4504,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderizarGestaoTemporadaSaaS();
                 }
                 if (idx === 5) {
-                    carregarHistoricoTorneiosSaaS(); 
+                    carregarHistoricoTorneiosSaaS(true); 
                 }
                 if (idx === 6) {
                     if (typeof renderizarTabelaRankingGeralSaaS === 'function') {

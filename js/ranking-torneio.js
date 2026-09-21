@@ -274,7 +274,7 @@ async function zerarRankingSaaS() {
                     renderizarGestaoTemporadaSaaS();
                 }
                 if (typeof atualizarBotaoRodapeRankingSaaS === 'function') {
-                    atualizarBotaoRodapeRankingSaaS();
+                    atualizarBotaoRodapeRankingSaaS(); 
                 }
 
             } catch (err) {
@@ -375,7 +375,7 @@ function renderizarGestaoTemporadaSaaS() {
             btnAcaoFase3.style.display = 'none';
         }
     }
-	
+    
     const panelFase4 = document.querySelectorAll('#container-fases-gestor .fase-panel')[3];
     if (panelFase4 && modelo === 'grupos' && faseAtual === 4) {
         const elBoxAviso4 = panelFase4.children[0];
@@ -485,7 +485,11 @@ function renderizarGestaoTemporadaSaaS() {
     if (btnEncerrar) btnEncerrar.disabled = (qtdInscritos === 0); 
 
     if (btnConvites) {
-        if (qtdInscritos > 0) {
+        // 🎯 LEITURA DIRETA DA MEMÓRIA RAM DO CORE.JS:
+        // Se o nó convitesRankingGlobal existir e estiver com status 'aberto' (ou já houver inscritos), considera os convites disparados.
+        const temConvitesDisparados = (convitesRankingGlobal && convitesRankingGlobal.status === 'aberto') || qtdInscritos > 0;
+        
+        if (temConvitesDisparados) {
             btnConvites.innerHTML = '<i class="material-icons">mark_email_read</i> Repescagem / Enviar a Novos Sócios';
         } else {
             btnConvites.innerHTML = '<i class="material-icons">send</i> Disparar Convites aos Sócios';
@@ -498,12 +502,11 @@ function renderizarGestaoTemporadaSaaS() {
         const exibirZerar = (faseAtual > 1 && !torneioConcluido);
         btnZerar.parentElement.style.display = exibirZerar ? 'block' : 'none';
     }
-	
+    
     if (typeof atualizarBotaoRodapeRankingSaaS === 'function') {
         atualizarBotaoRodapeRankingSaaS();
     }
 }
-
 
 /* GRAVAÇÃO DOS PARÂMETROS DE PONTUAÇÃO DO RANKING GERAL */
 function salvarParametrosRankingGeralSaaS() {
@@ -1132,8 +1135,9 @@ function encerrarInscricoesECriarChavesSaaS() {
     const inscritos = conf.inscritosConfirmados || {};
     const qtdInscritos = Object.keys(inscritos).length;
 
-    if (qtdInscritos === 0) {
-        showToast("Não há inscritos confirmados para encerrar a fase.", "warning");
+    // 🛡️ TRAVA MÍNIMA DE SEGURANÇA: Exige no mínimo 2 atletas confirmados
+    if (qtdInscritos < 2) {
+        showToast("É necessário ter no mínimo 2 atletas confirmados para iniciar a competição.", "warning");
         return;
     }
 
@@ -1284,7 +1288,22 @@ function encerrarInscricoesECriarChavesSaaS() {
         }
     };
 
-    // Alerta de encerramento antes do prazo ou confirmação direta
+    // 🎯 TEXTOS DINÂMICOS CONFORME O MODELO DO TORNEIO (AJUSTADOS NO PLURAL)
+    const titulosModal = {
+        piramide: "Encerrar Inscrições e Iniciar Pirâmide",
+        barragem: "Encerrar Inscrições e Iniciar Barragem",
+        grupos: "Encerrar Inscrições e Congelar Chaves"
+    };
+
+    const acoesModal = {
+        piramide: "iniciar a Pirâmide",
+        barragem: "iniciar a Barragem",
+        grupos: "congelar a tabela oficial de chaves"
+    };
+
+    const tituloPrompt = titulosModal[modelo] || "Encerrar Inscrições";
+    const acaoPrompt = acoesModal[modelo] || "iniciar a disputa";
+
     if (fimInscricoesStr && hojeStr < fimInscricoesStr) {
         const htmlPrompt = `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
@@ -1292,22 +1311,22 @@ function encerrarInscricoesECriarChavesSaaS() {
                     ⚠️ <b>Atenção:</b> O prazo oficial de inscrições vai até <b>${dataFimFormatada}</b>.
                 </p>
                 <p style="margin: 0; font-size: 13px; color: #64748b;">
-                    Tem certeza que deseja encerrar antecipadamente com <b>${qtdInscritos} inscrito(s)</b> e congelar a tabela da temporada agora?
+                    Tem certeza que deseja encerrar antecipadamente com <b>${qtdInscritos} inscritos</b> e ${acaoPrompt} agora?
                 </p>
             </div>
         `;
-        showPrompt("Encerrar Inscrições", htmlPrompt, () => {
+        showPrompt(tituloPrompt, htmlPrompt, () => {
             processarMontagemEGerarFase3();
         });
     } else {
         const htmlPrompt = `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
                 <p style="margin: 0;">
-                    Deseja encerrar as inscrições com <b>${qtdInscritos} atleta(s) confirmado(s)</b> e congelar a tabela oficial?
+                    Deseja encerrar as inscrições com <b>${qtdInscritos} atletas confirmados</b> e ${acaoPrompt}?
                 </p>
             </div>
         `;
-        showPrompt("Encerrar Inscrições e Congelar Chaves", htmlPrompt, () => {
+        showPrompt(tituloPrompt, htmlPrompt, () => {
             processarMontagemEGerarFase3();
         });
     }
@@ -1717,6 +1736,7 @@ async function encerrarFase3EAvancarSaaS() {
 }
 
 function abrirHallDeCampeoesSaaS() {
+    abaVisaoLeaderboardSaaS = 'TORNEIO';
     if (typeof abrirLeaderboardSaaS === 'function') {
         abrirLeaderboardSaaS();
     } else {
