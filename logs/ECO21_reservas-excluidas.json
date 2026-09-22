@@ -865,5 +865,32 @@
         "hora": 19
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALICE DUCK",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alessandro Xavier": true,
+      "Alice Duck": true
+    },
+    "data": "21-09-2026",
+    "dataLocal": "22/09/2026, 12:15:33",
+    "duracao": "1 Hora",
+    "horario": "19:00 - 20:00",
+    "jogadores": "Alice Duck, Alessandro Xavier",
+    "jogadores_completo": "ALICE DUCK, ALESSANDRO ROMERO XAVIER",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALICE DUCK",
+    "origem": "manual",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 19
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-09-22T15:15:33.509Z"
   }
 ]
