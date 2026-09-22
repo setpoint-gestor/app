@@ -919,5 +919,32 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-09-22T15:16:04.332Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-22T17:06:39.476Z",
+    "dataLocal": "22/09/2026, 14:06:39",
+    "autor": "ALEX SOUZA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "14:00 - 15:00",
+    "duracao": "1 Hora",
+    "data": "22-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Alex, Ana Maria Marinho",
+    "jogadores_completo": "ALEX SOUZA, ANA MARIA MARINHO GOMES",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 14
+      }
+    ]
   }
 ]
