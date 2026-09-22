@@ -892,5 +892,32 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-09-22T15:15:33.509Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALICE ALMEIDA PEREIRA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Almir": true
+    },
+    "data": "21-09-2026",
+    "dataLocal": "22/09/2026, 12:16:04",
+    "duracao": "1 Hora",
+    "horario": "19:00 - 20:00",
+    "jogadores": "Alice Pereira, Almir",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ALMIR ALVES DA CRUZ",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "origem": "manual",
+    "quadra": "Quadra 3 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 19
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-09-22T15:16:04.332Z"
   }
 ]
