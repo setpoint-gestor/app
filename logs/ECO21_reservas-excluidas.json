@@ -811,5 +811,32 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-22T14:48:38.995Z",
+    "dataLocal": "22/09/2026, 11:48:38",
+    "autor": "ANA JULIA MARTINS",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "19:00 - 20:00",
+    "duracao": "1 Hora",
+    "data": "21-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Alex": true,
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Alex",
+    "jogadores_completo": "ANA JULIA MARTINS, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 19
+      }
+    ]
   }
 ]
