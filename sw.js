@@ -24,6 +24,7 @@ const urlsToCache = [
   './js/ranking-core.js?v=4',
   './js/ranking-torneio.js?v=4',
   './js/ranking-ui-pdf.js?v=4',
+  './js/piramide.js?v=4',
   './js/sorteio-potes.js?v=4'
 ];
 
