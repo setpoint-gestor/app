@@ -120,6 +120,33 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
 
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
+    // 🎯 CÁLCULO DO ALCANCE DIRETO DE DESAFIO PARA O JOGADOR LOGADO
+    const idxLogado = listaIDs.indexOf(idLogado);
+    let idxInicioAlcance = -1;
+    let idxFimAlcance = -1;
+
+    if (!isHistorico && idxLogado !== -1) {
+        const alcanceTipo = confRanking.piramide?.alcanceTipo || 'posicoes';
+        const limitePosicoes = parseInt(confRanking.piramide?.limitePosicoes, 10) || 3;
+
+        if (alcanceTipo === 'linha') {
+            const posLogado = idxLogado + 1;
+            let linhaAtual = 1, acum = 1;
+            while (acum < posLogado) { linhaAtual++; acum += linhaAtual; }
+            if (linhaAtual > 1) {
+                const linhaAcima = linhaAtual - 1;
+                idxInicioAlcance = (((linhaAcima - 1) * linhaAcima / 2) + 1) - 1;
+                idxFimAlcance = ((linhaAcima * (linhaAcima + 1)) / 2) - 1;
+            }
+        } else if (alcanceTipo === 'livre') {
+            idxInicioAlcance = 0;
+            idxFimAlcance = idxLogado - 1;
+        } else {
+            idxInicioAlcance = Math.max(0, idxLogado - limitePosicoes);
+            idxFimAlcance = idxLogado - 1;
+        }
+    }
+
     // Agrupa os atletas em camadas crescentes (1, 2, 3, 4...)
     const tiers = [];
     let index = 0;
@@ -193,7 +220,8 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
 
         tier.forEach((idAtleta) => {
             const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-            const pos = listaIDs.indexOf(idAtleta) + 1;
+            const indexAtleta = listaIDs.indexOf(idAtleta);
+            const pos = indexAtleta + 1;
             
             const nomeCompletoRaw = atleta.nomeCompleto || atleta.apelido || 'Atleta';
             const nomeCompletoCap = (typeof capitalizarNome === 'function') ? capitalizarNome(nomeCompletoRaw) : nomeCompletoRaw;
@@ -201,10 +229,17 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
 
             const ehVoce = (!isHistorico && idAtleta === idLogado);
             const ehTop = (pos === 1);
+            const noAlcance = (!isHistorico && idxLogado !== -1 && !ehVoce && indexAtleta >= idxInicioAlcance && indexAtleta <= idxFimAlcance);
 
             let tileClass = 'pyr-tile';
             if (ehTop) tileClass += ' is-top';
             else if (ehVoce) tileClass += ' is-me';
+            else if (noAlcance) tileClass += ' alcance-desafio';
+
+            let extraStyle = '';
+            if (noAlcance) {
+                extraStyle = 'border: 1.5px solid #f59e0b !important; background-color: #fffbeb !important;';
+            }
 
             let ordTxt = ehTop ? `👑 1º` : (ehVoce ? `${pos}º (Você)` : `${pos}º`);
             let fontSize = tier.length >= 7 ? '9px' : (tier.length >= 5 ? '9.8px' : '10.5px');
@@ -212,8 +247,8 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
             const nomeEscapadoToast = String(nomeCompletoCap).replace(/'/g, "\\'");
 
             pyrHtml += `
-                <div class="${tileClass}" onclick="exibirTooltipNomePiramideSaaS(this, '${nomeEscapadoToast}')" style="cursor: pointer; position: relative;">
-                    <span class="p-ord">${ordTxt}</span>
+                <div class="${tileClass}" onclick="exibirTooltipNomePiramideSaaS(this, '${nomeEscapadoToast}')" style="cursor: pointer; position: relative; ${extraStyle}">
+                    <span class="p-ord" ${noAlcance ? 'style="color: #d97706 !important;"' : ''}>${ordTxt}</span>
                     <span class="p-name" style="font-size: ${fontSize}; text-transform: none !important;" title="${nomeCompletoCap}">${nomeExibicao}</span>
                 </div>
             `;
