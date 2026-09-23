@@ -219,17 +219,82 @@ function prepararDadosEPotesSaaS(inscritosCatMap, tamanhoGrupoConfig = 4) {
     const ids = Object.keys(inscritosCatMap || {});
     if (ids.length === 0) return { potes: [], sequencia: [] };
 
-    // Ordenação do Seed pelo Ranking/Mestre anterior ou ordem de inscrição
-    ids.sort((a, b) => {
-        const dataA = inscritosCatMap[a]?.dataAceite || 0;
-        const dataB = inscritosCatMap[b]?.dataAceite || 0;
-        return dataA - dataB;
-    });
+    // 🎯 Identifica o tipo de ordenação escolhida no disparo (Herdada vs Livre/Sorteio)
+    const tipoOrdenacao = (convitesRankingGlobal && convitesRankingGlobal.tipoOrdenacao)
+        ? convitesRankingGlobal.tipoOrdenacao
+        : ((configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.tipoOrdenacao)
+            ? configRegrasGlobal.ranking.tipoOrdenacao
+            : 'livre');
+
+    // 🏆 Se for "Herdar Posição", ordena a lista inicial pelo Ranking Geral acumulado
+    if (tipoOrdenacao === 'herdada' && typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) {
+        const primeiroId = ids[0];
+        const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[primeiroId]) ? jogadoresGlobal[primeiroId] : {};
+        const classe = (atletaBase.classe || 'B').toUpperCase();
+        let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+        
+        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const divGenero = confRanking.divisaoGenero || 'separado';
+        const chaveCat = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+
+        const listaGeral = rankingGeralGlobal[chaveCat] || [];
+
+        ids.sort((a, b) => {
+            const posA = listaGeral.indexOf(a);
+            const posB = listaGeral.indexOf(b);
+            if (posA !== -1 && posB !== -1) return posA - posB;
+            if (posA !== -1) return -1;
+            if (posB !== -1) return 1;
+            return (inscritosCatMap[a]?.dataAceite || 0) - (inscritosCatMap[b]?.dataAceite || 0);
+        });
+    } else {
+        // Padrão: Ordenação inicial do Seed por data de aceite
+        ids.sort((a, b) => {
+            const dataA = inscritosCatMap[a]?.dataAceite || 0;
+            const dataB = inscritosCatMap[b]?.dataAceite || 0;
+            return dataA - dataB;
+        });
+    }
 
     const totalAtletas = ids.length;
     const numGrupos = Math.ceil(totalAtletas / tamanhoGrupoConfig);
 
-    // Divisão em Potes (Pote 1 a Pote N)
+    // 🎯 CASO DE GRUPO ÚNICO (PIRÂMIDE / BARRAGEM / CHAVE ÚNICA):
+    // Executa o baralhamento aleatório puro (Fisher-Yates) sobre todos os atletas
+    if (numGrupos <= 1) {
+        const idsShuffled = [...ids];
+        for (let i = idsShuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [idsShuffled[i], idsShuffled[j]] = [idsShuffled[j], idsShuffled[i]];
+        }
+
+        const potes = [{ poteNum: 1, atletas: [...ids] }];
+        const sequenciaSorteio = [];
+        const gruposMapeados = { GRUPO_1: [] };
+
+        idsShuffled.forEach((atletaId, index) => {
+            const atletaObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[atletaId]) ? jogadoresGlobal[atletaId] : {};
+            const nomeAtleta = atletaObj.apelido || atletaObj.nomeCompleto || "Atleta";
+
+            sequenciaSorteio.push({
+                idAtleta: atletaId,
+                nomeAtleta: nomeAtleta,
+                seedNum: (ids.indexOf(atletaId) + 1),
+                poteNum: 1,
+                grupoDestino: "GRUPO_1"
+            });
+            gruposMapeados["GRUPO_1"].push(atletaId);
+        });
+
+        return {
+            potes: potes,
+            sequencia: sequenciaSorteio,
+            gruposMapeados: gruposMapeados
+        };
+    }
+
+    // Divisão em Potes para múltiplos grupos (Pote 1 a Pote N)
     const potes = [];
     for (let i = 0; i < totalAtletas; i += numGrupos) {
         const fatia = ids.slice(i, i + numGrupos);

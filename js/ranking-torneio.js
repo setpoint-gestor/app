@@ -300,17 +300,22 @@ function renderizarGestaoTemporadaSaaS() {
     if (!containerStepper) return;
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const modelo = conf.modeloAtivo || "grupos";
+    
+    // 💡 Lógica Neutra: Se houver formato salvo usa ele, senão assume o 'generico'
+    const temContratoSalvo = !!conf.calendario?.formatoTorneio;
+    const modelo = temContratoSalvo ? conf.calendario.formatoTorneio : "generico";
+    
     const faseAtual = parseInt(conf.faseAtual, 10) || 1;
     const cal = conf.calendario || {};
 
     const rotulosPorModelo = {
         grupos: ["1. Calendário", "2. Inscrições", "3. Chaves", "4. Mata-Mata", "5. Concluído"],
         barragem: ["1. Calendário", "2. Inscrições", "3. Pontos Corridos", "4. Concluído"],
-        piramide: ["1. Calendário", "2. Inscrições", "3. Escada", "4. Concluído"]
+        piramide: ["1. Calendário", "2. Inscrições", "3. Escada", "4. Concluído"],
+        generico: ["1. Calendário", "2. Inscrições", "3. Competição", "4. Concluído"] // 🌟 Esteira Base
     };
 
-    const listaRotulos = rotulosPorModelo[modelo] || rotulosPorModelo.grupos;
+    const listaRotulos = rotulosPorModelo[modelo] || rotulosPorModelo.generico;
 
     let htmlStepper = '';
     listaRotulos.forEach((rotulo, index) => {
@@ -779,7 +784,7 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
     }
 
     const nome = document.getElementById('inp-torneio-nome').value.trim();
-    const modeloDisputa = document.getElementById('inp-torneio-modelo').value;
+    const formatoTorneioEscolhido = document.getElementById('inp-torneio-modelo').value;
     const vagasRaw = document.getElementById('inp-torneio-vagas').value.trim();
 
     const pillsAtivas = document.querySelectorAll('#container-pills-categorias .pilula-check.ativa');
@@ -799,7 +804,7 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
         return;
     }
 
-    if (!modeloDisputa) {
+    if (!formatoTorneioEscolhido) {
         showToast("Selecione o Modelo de Disputa da Edição.", "warning");
         return;
     }
@@ -840,7 +845,7 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
     const payloadCalendario = {
         nomeTorneio: nome,
-        modeloDisputa: modeloDisputa,
+        formatoTorneio: formatoTorneioEscolhido,
         limiteVagas: limiteVagas,
         categoriasHabilitadas: categoriasHabilitadas,
         inicioInscricoes: dtIncIni,
@@ -863,7 +868,6 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
     .then(() => {
         console.log("✅ [Torneios] Área interna de trabalho do ranking limpa no Firebase.");
         return database.ref(`${raizBanco}/config/ranking`).update({
-            modeloAtivo: modeloDisputa,
             calendario: payloadCalendario,
             inscritosConfirmados: null,
             faseAtual: 2
@@ -908,7 +912,7 @@ function editarCalendarioAtivoSaaS() {
     const cal = conf.calendario || {};
 
     if (cal.nomeTorneio) document.getElementById('inp-torneio-nome').value = cal.nomeTorneio;
-    if (cal.modeloDisputa) document.getElementById('inp-torneio-modelo').value = cal.modeloDisputa;
+    if (cal.formatoTorneio) document.getElementById('inp-torneio-modelo').value = cal.formatoTorneio;
     if (cal.limiteVagas) document.getElementById('inp-torneio-vagas').value = cal.limiteVagas;
 
     if (Array.isArray(cal.categoriasHabilitadas)) {
@@ -1130,8 +1134,9 @@ function encerrarInscricoesECriarChavesSaaS() {
     }
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    const modelo = conf.modeloAtivo || cal.modeloDisputa || "grupos";
+	const cal = conf.calendario || {};
+	const modelo = conf.calendario?.formatoTorneio || "grupos";
+	
     const inscritos = conf.inscritosConfirmados || {};
     const qtdInscritos = Object.keys(inscritos).length;
 
@@ -1343,8 +1348,9 @@ async function encerrarFase3EAvancarSaaS() {
     }
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    const modelo = conf.modeloAtivo || "grupos";
+	const cal = conf.calendario || {};
+	const modelo = conf.calendario?.formatoTorneio || "grupos";
+	
     const faseAtual = parseInt(conf.faseAtual, 10) || 3;
 
     if (modelo === 'grupos' && faseAtual === 4) {
@@ -2013,4 +2019,72 @@ function obterClassificacaoFinalGruposMataMataSaaS(chaveCat, ordemGruposOriginal
     });
 
     return ordemFinal;
+}
+
+/* ======================================================== */
+/* 5. EXCLUSÃO SEGURA DE TORNEIO DO ACERVO HISTÓRICO        */
+/* ======================================================== */
+function excluirTorneioHistoricoSaaS(edicaoId, nomeTorneio) {
+    if (!raizBanco || !edicaoId) return;
+
+    // Trava de Segurança: Apenas Gestor ou Admin podem excluir
+    let perfis = {};
+    try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+    const ehAdmin = perfis['Admin'] === true;
+
+    if (!isGestorLogado && !ehAdmin) {
+        showToast("Apenas o gestor ou administrador pode excluir torneios do histórico.", "error");
+        return;
+    }
+
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const nomeExibicao = nomeTorneio || edicaoId.replace(/^\d{4}_/, '').replace(/_/g, ' ');
+
+    const promptHTML = `
+        <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                <strong style="color: #dc2626; display: block; font-size: 13px; text-transform: uppercase; margin-bottom: 4px;">
+                    ⚠️ Exclusão Permanente de Histórico
+                </strong>
+                <span style="font-size: 13px; color: #7f1d1d;">
+                    Tem certeza que deseja excluir permanentemente a edição <b>"${nomeExibicao}"</b> do Acervo Histórico?
+                </span>
+            </div>
+            <p style="margin: 0; font-size: 12.5px; color: #64748b;">
+                Esta ação removerá o registro do Acervo e do Hall de Campeões. Os pontos acumulados no Ranking Geral permanecerão intactos.
+            </p>
+        </div>
+    `;
+
+    showPrompt("Excluir Torneio do Histórico", promptHTML, async () => {
+        try {
+            if (navigator.vibrate) navigator.vibrate(50);
+            showToast("Excluindo torneio do histórico...", "info");
+
+            const updates = {};
+            updates[`${raizBanco}/historico_torneios/${edicaoId}`] = null;
+            updates[`${raizBanco}/hall_de_campeoes/${edicaoId}`] = null;
+
+            await database.ref().update(updates);
+
+            // 🧠 1. REMOÇÃO DA MEMÓRIA RAM (EVITA ATUALIZAÇÃO MANUAL COM F5)
+            if (typeof acervoHistoricoGlobalSaaS !== 'undefined' && Array.isArray(acervoHistoricoGlobalSaaS)) {
+                acervoHistoricoGlobalSaaS = acervoHistoricoGlobalSaaS.filter(item => item.id !== edicaoId);
+            }
+
+            showToast(`Edição "${nomeExibicao}" removida do histórico!`, "success");
+
+            // 🔄 2. ATUALIZAÇÃO IMEDIATA DA TABELA NA TELA
+            if (typeof renderizarTabelaHistoricoSaaS === 'function') {
+                renderizarTabelaHistoricoSaaS();
+            } else if (typeof renderizarAcervoHistoricoSaaS === 'function') {
+                renderizarAcervoHistoricoSaaS();
+            }
+
+        } catch (err) {
+            console.error("❌ Erro ao excluir torneio do histórico:", err);
+            showToast("Erro ao remover torneio do Firebase.", "error");
+        }
+    });
 }

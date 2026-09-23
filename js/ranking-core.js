@@ -363,7 +363,7 @@ function abrirModalSumulaPrincipal(reserva, modoLeitura, eEdicaoArbitro = false)
         if (btnKebab) btnKebab.style.display = 'none';
     } else {
         if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
-        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario?.formatoTorneio) || "piramide";
         const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
         if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
         if (btnSalvar) { btnSalvar.textContent = 'Salvar Súmula'; btnSalvar.style.display = 'block'; }
@@ -822,7 +822,7 @@ function abrirModalValidacaoAdversario(reserva) {
     const hInicio = String(reserva.hora).padStart(2, '0') + ":00";
     const hFim = String(reserva.hora + duracao).padStart(2, '0') + ":00";
 
-    const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+    const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario?.formatoTorneio) || "piramide";
     const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
     const nomeQuadra = quadraSelecionadaSaaS || "Quadra";
 
@@ -1214,6 +1214,8 @@ function salvarSumulaSaaS() {
             vencedorCodigo: vencedorCodigo,
             placarFormatado: placarFormatado,
             parciais: parciais,
+            posicaoP1: partidaRankingEmFoco.posicaoP1 || '',
+            posicaoP2: partidaRankingEmFoco.posicaoP2 || '',
             autorSumula: (ehContestado && ehArbitragemNeutra) ? (partidaRankingEmFoco.dadosPlacar?.autorSumula || nomeLogado) : nomeLogado,
             dataHoraLancamento: partidaRankingEmFoco.dadosPlacar?.dataHoraLancamento || agora,
             prazoAutoHoras: prazoHorasAutoconf,
@@ -1326,6 +1328,14 @@ function salvarSumulaSaaS() {
 
             if (ehContestado && ehArbitragemNeutra) {
                 notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'editado', placarFormatado);
+
+                // 🎯 FILTRA A PARTIDA EDITADA DA FILA
+                if (window.contestacoesAbertasSaaS) {
+                    window.contestacoesAbertasSaaS = window.contestacoesAbertasSaaS.filter(item => 
+                        item !== partidaRankingEmFoco && 
+                        !(item.dia === partidaRankingEmFoco.dia && item.hora === partidaRankingEmFoco.hora && (item.quadra === partidaRankingEmFoco.quadra || item.quadra === quadraKey))
+                    );
+                }
             }
 
             partidaRankingEmFoco.statusPlacar = statusNovo;
@@ -1336,6 +1346,13 @@ function salvarSumulaSaaS() {
             }
 
             fecharModalConfig('modal-sumula-ranking');
+
+            // 🎯 SE AINDA RESTAREM CONTESTAÇÕES, REABRE O PAINEL DO ÁRBITRO
+            if (ehContestado && ehArbitragemNeutra && window.contestacoesAbertasSaaS && window.contestacoesAbertasSaaS.length > 0) {
+                setTimeout(() => {
+                    renderizarGavetaArbitroSaaS(window.contestacoesAbertasSaaS);
+                }, 300);
+            }
         })
         .catch(err => {
             console.error("❌ [Súmula] Erro ao gravar no Firebase:", err);
@@ -1577,7 +1594,7 @@ function desativarModoWOSaaS() {
     if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
     
     if (partidaRankingEmFoco) {
-        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario?.formatoTorneio) || "piramide";
         const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
         if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
     }
@@ -1857,7 +1874,7 @@ function desativarModoRETSaaS() {
     if (elTituloHeader) elTituloHeader.innerHTML = '🏆 Súmula';
     
     if (partidaRankingEmFoco) {
-        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario?.formatoTorneio) || "piramide";
         const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
         if (elSubtituloHeader) elSubtituloHeader.textContent = `Ranking do tipo ${nomesModelos[modeloAtivo] || "Oficial"}`;
     }
@@ -1935,7 +1952,7 @@ function renderizarGavetaArbitroSaaS(listaContestacoes) {
         const hInicio = String(reserva.hora).padStart(2, '0') + ":00";
         const hFim = String(reserva.hora + duracao).padStart(2, '0') + ":00";
 
-        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.modeloAtivo) || "piramide";
+        const modeloAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario?.formatoTorneio) || "piramide";
         const nomesModelos = { piramide: "Pirâmide", barragem: "Barragem", grupos: "Grupos" };
 
         let nomeQuadra = reserva.quadra || quadraSelecionadaSaaS || "Quadra";
@@ -2453,7 +2470,7 @@ async function processarResultadoRankingSaaS(reservaConsolidada) {
     try {
         const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
         const configRanking = snapConfig.val() || {};
-        const modeloAtivo = configRanking.modeloAtivo || 'piramide';
+        const modeloAtivo = configRanking.calendario?.formatoTorneio || 'grupos';
 
         if (modeloAtivo === 'piramide') {
             await processarResultadoPiramideSaaS(reservaConsolidada, configRanking);

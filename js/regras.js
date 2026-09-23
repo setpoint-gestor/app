@@ -29,7 +29,7 @@ const dicNomesRegras = {
 };
 // Adicione logo abaixo de dicNomesRegras:
 const dicSubNomesAgendar = {
-	Titular: "Agendamento: Sócios Titulares",
+	Titular: "Agendamento: Sócios Titulares", 
 	Dependente: "Agendamento: Dependentes",
 	Professor: "Agendamento: Professores",
 	Staff: "Agendamento: Staff / Manutenção",
@@ -112,7 +112,7 @@ function atualizarBotaoRodapeRankingSaaS() {
     }
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const modelo = conf.modeloAtivo || "grupos";
+    const modelo = conf.calendario?.formatoTorneio || "grupos";
     const faseAtual = parseInt(conf.faseAtual, 10) || 1;
 
     // 🔵 ABA 5 (índice 4): Gestão da Temporada
@@ -1213,7 +1213,7 @@ function abrirModalConfigRanking() {
     atualizarBadgeQuemPodeArbitrar();
 
     // ABA 2: Tipo de Torneio (Modelo Mestre)
-    document.getElementById('select-ranking-modelo').value = conf.modeloAtivo || "piramide";
+    document.getElementById('select-ranking-modelo').value = conf.calendario?.formatoTorneio || "piramide";
 
     // Subcampos Pirâmide
     document.getElementById('select-ranking-alcance-tipo').value = pir.alcanceTipo || "linha";
@@ -1348,7 +1348,7 @@ function salvarConfigRankingSaas() {
             Professor: document.getElementById('regra-arbitrar-professor').checked,
             Dev: document.getElementById('regra-arbitrar-dev').checked
         },
-        modeloAtivo: document.getElementById('select-ranking-modelo').value,
+        //modeloAtivo: document.getElementById('select-ranking-modelo').value,
         maxJogosSemana: parseInt(document.getElementById('select-ranking-max-jogos').value) || 2,
         prazoInatividadeDias: parseInt(document.getElementById('select-ranking-prazo-inatividade').value) || 15,
         
@@ -1401,30 +1401,20 @@ function salvarConfigRankingSaas() {
         });
 }
 
-function abrirVisualizacaoRankingSaaS() {
-    showToast("Abrindo gaveta do Leaderboard (Será conectada na Etapa 4).", "info");
-}
 
 function dispararConvitesTemporadaSaaS() {
     if (navigator.vibrate) navigator.vibrate(30); 
 
-    showToast("Verificando status da temporada...", "info");
+    // 1. Lê os convites diretamente da memória RAM mantida pelo core.js (SSOT)
+    const dadosConvite = convitesRankingGlobal;
 
-    // 1. Checa se já existe um lote de convites ativo no banco
-    database.ref(`${raizBanco}/convites_ranking`).once('value').then((snapConvites) => {
-        const dadosConvite = snapConvites.exists() ? snapConvites.val() : null;
-
-        if (dadosConvite && dadosConvite.status === "aberto") {
-            // JÁ EXISTE TEMPORADA ABERTA: Exibe o Modal de Decisão Inteligente (Repescagem vs Reiniciar)
-            exibirModalDecisaoRepescagemSaaS(dadosConvite);
-        } else {
-            // NENHUMA TEMPORADA ABERTA: Abre o modal de escolha inicial (Livre vs Herdada)
-            exibirModalInicialDisparoTemporadaSaaS();
-        }
-    }).catch((err) => {
-        console.error("Erro ao checar temporada:", err);
+    if (dadosConvite && dadosConvite.status === "aberto") {
+        // JÁ EXISTE TEMPORADA ABERTA: Direciona direto para a repescagem sem abrir o modal de escolha de regras
+        processarRepescagemNovosAtletasSaaS(dadosConvite);
+    } else {
+        // NENHUMA TEMPORADA ABERTA: Abre o modal de escolha inicial (Livre / Herdada / Sorteio)
         exibirModalInicialDisparoTemporadaSaaS();
-    });
+    }
 }
 
 // MODAL 1: Escolha Inicial (Quando NÃO há temporada aberta)
@@ -1560,67 +1550,67 @@ function atletaPertenceCategoriasHabilitadas(jogador, categoriasHabilitadas) {
     return true;
 }
 
-// REPESCAGEM: Anexa apenas novos inscritos filtrados pela categoria sem apagar a fila existente
+// REPESCAGEM: Anexa apenas novos inscritos filtrados pela categoria sem re-convidar quem já aceitou ou já está pendente
 function processarRepescagemNovosAtletasSaaS(dadosConviteAtual) {
     showToast("Verificando novos atletas no cadastro...", "info");
 
     const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const cal = confRanking.calendario || {};
     const categoriasHabilitadas = cal.categoriasHabilitadas || [];
+    const inscritosConfirmados = confRanking.inscritosConfirmados || {};
 
-    Promise.all([
-        database.ref(`${raizBanco}/jogadores`).once('value'),
-        database.ref(`${raizBanco}/ranking/tabelas`).once('value')
-    ]).then(([snapJogadores, snapTabelas]) => {
-        if (!snapJogadores.exists()) {
-            return showToast("Nenhum atleta localizado no cadastro.", "warning");
+    // 1. Leitura direta da memória RAM (SSOT)
+    const todosJogadores = jogadoresGlobal || {};
+    const todasTabelas = rankingTabelasGlobal || {};
+    const pendentesAtuais = (dadosConviteAtual && dadosConviteAtual.pendentes) ? dadosConviteAtual.pendentes : {};
+
+    // 2. Conjunto de IDs bloqueados para impedir re-convites
+    const idsJaBloqueados = new Set();
+
+    // A) 🛡️ TRAVA CHAVE 1: Bloqueia quem já aceitou e está na lista de confirmados (Fase 2)
+    Object.keys(inscritosConfirmados).forEach(id => idsJaBloqueados.add(id));
+
+    // B) 🛡️ TRAVA CHAVE 2: Bloqueia quem já está nas tabelas oficiais do torneio (Fase 3+)
+    Object.keys(todasTabelas).forEach(categoriaKey => {
+        const listaIds = todasTabelas[categoriaKey];
+        if (Array.isArray(listaIds)) {
+            listaIds.forEach(id => { if (id) idsJaBloqueados.add(id); });
         }
+    });
 
-        const todosJogadores = snapJogadores.val();
-        const todasTabelas = snapTabelas.exists() ? snapTabelas.val() : {};
-        const pendentesAtuais = dadosConviteAtual.pendentes || {};
+    const novosPendentesUpdate = {};
+    let totalNovos = 0;
 
-        const idsJaInseridos = new Set();
-        Object.keys(todasTabelas).forEach(categoriaKey => {
-            const listaIds = todasTabelas[categoriaKey];
-            if (Array.isArray(listaIds)) {
-                listaIds.forEach(id => idsJaInseridos.add(id));
-            }
-        });
+    // 3. Varre os atletas cadastrados no clube
+    Object.keys(todosJogadores).forEach(id => {
+        const j = todosJogadores[id];
+        if (j && j.participaRanking === true && j.ativo !== false) {
+            const jaEstaPendente = pendentesAtuais[id] === true;
+            const jaEstaBloqueado = idsJaBloqueados.has(id);
 
-        const novosPendentesUpdate = {};
-        let totalNovos = 0;
-
-        Object.keys(todosJogadores).forEach(id => {
-            const j = todosJogadores[id];
-            if (j && j.participaRanking === true && j.ativo !== false) {
-                const jaEstaPendente = pendentesAtuais[id] === true;
-                const jaEstaNaTabela = idsJaInseridos.has(id);
-
-                if (!jaEstaPendente && !jaEstaNaTabela) {
-                    if (atletaPertenceCategoriasHabilitadas(j, categoriasHabilitadas)) {
-                        novosPendentesUpdate[id] = true;
-                        totalNovos++;
-                    }
+            // Só convida se NÃO estiver pendente E NÃO estiver na lista de bloqueados
+            if (!jaEstaPendente && !jaEstaBloqueado) {
+                if (atletaPertenceCategoriasHabilitadas(j, categoriasHabilitadas)) {
+                    novosPendentesUpdate[id] = true;
+                    totalNovos++;
                 }
             }
-        });
-
-        if (totalNovos === 0) {
-            return showToast("Nenhum novo atleta da categoria habilitada pendente de convite.", "warning");
         }
+    });
 
-        database.ref(`${raizBanco}/convites_ranking/pendentes`).update(novosPendentesUpdate).then(() => {
+    if (totalNovos === 0) {
+        return showToast("Nenhum novo atleta pendente de convite na categoria.", "warning");
+    }
+
+    // 4. Atualização atômica exclusiva do nó de pendentes no Firebase
+    database.ref(`${raizBanco}/convites_ranking/pendentes`).update(novosPendentesUpdate)
+        .then(() => {
             showToast(`Repescagem concluída! ${totalNovos} novo(s) atleta(s) convidado(s).`, "success");
-        }).catch((err) => {
-            console.error("Erro na repescagem:", err);
+        })
+        .catch((err) => {
+            console.error("❌ Erro na repescagem:", err);
             showToast("Erro ao atualizar convites no banco de dados.", "error");
         });
-
-    }).catch((err) => {
-        console.error("Erro ao ler dados para repescagem:", err);
-        showToast("Erro de leitura no banco de dados.", "error");
-    });
 }
 
 function processarDisparoTemporadaFirebase(tipoOrdem) {

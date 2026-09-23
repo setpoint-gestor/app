@@ -866,7 +866,7 @@ function abrirAgendamentoSaaS(dia, hora) {
         const regraDuracao = (configRegrasGlobal && configRegrasGlobal.DuracaoPermitida) ? configRegrasGlobal.DuracaoPermitida : "1_2";
         const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
         const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
-        const modeloRanking = confRanking.modeloAtivo || 'barragem';
+        const modeloRanking = confRanking.calendario?.formatoTorneio || 'grupos';
 
         // 🔒 Trava de Inscrição/Classificação: Exige estar inscrito e, no Mata-Mata (Fase 4), estar classificado
         const idLogado = localStorage.getItem('jogadorLogadoId');
@@ -1549,8 +1549,9 @@ async function aplicarFiltroRankingModalSaaS() {
         // Leitura síncrona respeitando o modo de gênero (Unificado vs Separado)
         const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
         const modoGenero = confRanking.divisaoGenero || 'separado';
-        const modeloAtivo = confRanking.modeloAtivo || 'grupos';
-        const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
+        const modeloAtivo = confRanking.calendario?.formatoTorneio || 'grupos';
+        
+		const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
         let generoKey = (dadosLogado.genero || 'MASCULINO').toUpperCase();
         if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
 
@@ -1759,7 +1760,7 @@ async function aplicarFiltroRankingModalSaaS() {
 // ====================================================================
 
 function obterPosicaoTextoRankingSaaS(nomeOuApelido) {
-    if (!nomeOuApelido || !jogadoresGlobal || !rankingTabelasGlobal) return "";
+    if (!nomeOuApelido || !jogadoresGlobal) return "";
 
     const nomeUpper = nomeOuApelido.trim().toUpperCase();
 
@@ -1777,24 +1778,58 @@ function obterPosicaoTextoRankingSaaS(nomeOuApelido) {
     const atleta = jogadoresGlobal[idAtleta];
     if (!atleta || !atleta.classe) return "";
 
-    const modoGenero = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.divisaoGenero) || 'separado';
+    const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const modeloAtivo = confRanking.calendario?.formatoTorneio || 'piramide';
+    const faseAtual = parseInt(confRanking.faseAtual, 10) || 1;
+
+    const modoGenero = confRanking.divisaoGenero || 'separado';
     let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
     if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+    const chaveCat = (modoGenero === 'unificado') ? `${atleta.classe.toUpperCase()}_UNIFICADO` : `${atleta.classe.toUpperCase()}_${generoKey}`;
 
-    const chaveTabela = (modoGenero === 'unificado') ? `${atleta.classe.toUpperCase()}_UNIFICADO` : `${atleta.classe.toUpperCase()}_${generoKey}`;
-    const tabela = rankingTabelasGlobal[chaveTabela];
+    // 🏆 MODELOS GRUPOS E BARRAGEM (FASE >= 3): Retorna Semente Pura (sem 'º')
+    if ((modeloAtivo === 'grupos' || modeloAtivo === 'barragem') && faseAtual >= 3) {
+        const inscritosMap = confRanking.inscritosConfirmados || {};
+        const idsInscritos = Object.keys(inscritosMap);
 
+        if (idsInscritos.includes(idAtleta)) {
+            const tipoOrdenacao = (typeof convitesRankingGlobal !== 'undefined' && convitesRankingGlobal && convitesRankingGlobal.tipoOrdenacao)
+                ? convitesRankingGlobal.tipoOrdenacao
+                : (confRanking.tipoOrdenacao || 'livre');
+
+            if (tipoOrdenacao === 'herdada' && typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) {
+                const listaGeral = rankingGeralGlobal[chaveCat] || [];
+                idsInscritos.sort((a, b) => {
+                    const posA = listaGeral.indexOf(a);
+                    const posB = listaGeral.indexOf(b);
+                    if (posA !== -1 && posB !== -1) return posA - posB;
+                    if (posA !== -1) return -1;
+                    if (posB !== -1) return 1;
+                    return (inscritosMap[a]?.dataAceite || 0) - (inscritosMap[b]?.dataAceite || 0);
+                });
+            } else {
+                idsInscritos.sort((a, b) => (inscritosMap[a]?.dataAceite || 0) - (inscritosMap[b]?.dataAceite || 0));
+            }
+
+            const seedNum = idsInscritos.indexOf(idAtleta) + 1;
+            if (seedNum > 0) return `${seedNum}`; // Número puro para Grupos / Barragem
+        }
+    }
+
+    // 🏆 MODELO PIRÂMIDE: Retorna com o ordinal 'º'
+    const tabela = (rankingTabelasGlobal && rankingTabelasGlobal[chaveCat]) ? rankingTabelasGlobal[chaveCat] : null;
     if (!tabela) return "";
 
     const idsArray = Array.isArray(tabela) ? tabela : Object.values(tabela);
     const idx = idsArray.indexOf(idAtleta);
 
     if (idx !== -1) {
-        return `${idx + 1}º`;
+        return (modeloAtivo === 'piramide') ? `${idx + 1}º` : `${idx + 1}`;
     }
 
     return "";
 }
+
 
 // ====================================================================
 // 🏆 AUXILIAR DE POSIÇÃO DO RANKING (GERAÇÃO DE TAG HTML PARA TELA)
@@ -2154,8 +2189,8 @@ function validarEAgendarPartidaSaas() {
             const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
             const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
 
-            // 🎯 SSOT: Lê estritamente o modelo oficial cadastrado no contrato do torneio (calendario.modeloDisputa)
-            const modeloDisputaOficial = confRanking.calendario?.modeloDisputa;
+            // 🎯 SSOT: Lê estritamente o modelo oficial cadastrado no contrato do torneio (calendario.formatoTorneio)
+            const modeloDisputaOficial = confRanking.calendario?.formatoTorneio;
             
             if (!modeloDisputaOficial) {
                 showToast("Erro: O torneio ativo não possui um modelo de disputa configurado no contrato.", "error");
@@ -2171,6 +2206,10 @@ function validarEAgendarPartidaSaas() {
             } else if (window.dadosTemporadaRankingAtiva && window.dadosTemporadaRankingAtiva.temporadaId) {
                 objetoReservaReferencia.temporadaId = window.dadosTemporadaRankingAtiva.temporadaId;
             }
+
+            // 🎯 SSOT UNIFICADO: Congela as posições de ranking dos atletas em TODOS os modelos (Pirâmide, Barragem e Grupos)
+            objetoReservaReferencia.posicaoP1 = obterPosicaoTextoRankingSaaS(listaApelidos[0]);
+            objetoReservaReferencia.posicaoP2 = obterPosicaoTextoRankingSaaS(listaApelidos[1]);
 
             if (modeloDisputaOficial === 'grupos' && faseAtualRanking === 3) {
                 const idAtleta1 = Object.keys(bancoJogadores).find(key => 
@@ -2218,10 +2257,6 @@ function validarEAgendarPartidaSaas() {
                         objetoReservaReferencia.tagFaseRanking = "Grupos - Mata-Mata";
                     }
                 }
-            } else if (modeloDisputaOficial === 'piramide') {
-                // 🎯 RESTRITO À PIRÂMIDE: Congela posições numéricas exclusivamente na escada
-                objetoReservaReferencia.posicaoP1 = obterPosicaoTextoRankingSaaS(listaApelidos[0]);
-                objetoReservaReferencia.posicaoP2 = obterPosicaoTextoRankingSaaS(listaApelidos[1]);
             }
         }
 
@@ -3121,68 +3156,34 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const j2Exibicao = formatarNomeExibicaoDetalhes(j2Completo);
 
         // 🏷️ CONFIGURAÇÕES DE RANKING
-        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-        const modeloAtivo = confRanking.modeloAtivo || 'piramide';
-        const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
-
-        // Identifica se a partida pertence ao modelo Grupos (Fase de Chaves ou Mata-Mata)
-        const ehJogoGrupos = !!(dadosReserva.tagGrupoRanking) || (modeloAtivo === 'grupos' && !dadosReserva.posicaoP1 && !dadosReserva.posicaoP2);
-
         const getPos = (nome, posCongelada) => {
-            if (ehJogoGrupos) return ""; // Não exibe posição em partidas do modelo Grupos
             if (posCongelada) return posCongelada.replace('º', '').trim();
-            const tag = (typeof obterTagPosicaoRankingSaaS === 'function') ? obterTagPosicaoRankingSaaS(nome) : "";
-            if (!tag) return "";
-            const match = tag.match(/>(\d+º?)</);
-            return match ? match[1].replace('º', '') : "";
+            return "";
         };
 
         const posJ1 = getPos(nomesApelidos[0], dadosReserva.posicaoP1);
         const posJ2 = getPos(nomesApelidos[1], dadosReserva.posicaoP2);
 
-        // Injeta o HTML da posição apenas se houver número. Se não houver, deixa vazio sem criar a tag 'atp-pos' no DOM
         const htmlPosJ1 = posJ1 ? `<span class="atp-pos">${posJ1}</span>` : '';
         const htmlPosJ2 = posJ2 ? `<span class="atp-pos">${posJ2}</span>` : '';
 
-        let labelModelo = 'Ranking';
-
-        let tagGrupo = dadosReserva.tagGrupoRanking;
-        if (!tagGrupo && modeloAtivo === 'grupos' && faseAtualRanking === 3) {
-            const idJ1 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(nomesCompletos[0] || nomesApelidos[0]) : null;
-            if (idJ1 && typeof rankingTabelasGlobal !== 'undefined') {
-                const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idJ1]) ? jogadoresGlobal[idJ1] : {};
-                const modoGenero = confRanking.divisaoGenero || 'separado';
-                let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
-                if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
-                const classeKey = (atletaBase.classe || 'B').toUpperCase();
-                const chaveTab = (modoGenero === 'unificado') ? `${classeKey}_UNIFICADO` : `${classeKey}_${generoKey}`;
-
-                if (rankingTabelasGlobal[chaveTab]) {
-                    const idsArr = Array.isArray(rankingTabelasGlobal[chaveTab]) ? rankingTabelasGlobal[chaveTab] : Object.values(rankingTabelasGlobal[chaveTab]);
-                    const idx = idsArr.indexOf(idJ1);
-                    if (idx !== -1) {
-                        const tamanhoGrupo = parseInt(confRanking.grupos?.tamanhoGrupo, 10) || 3;
-                        const numGrupo = Math.floor(idx / tamanhoGrupo) + 1;
-                        tagGrupo = `G${numGrupo}`;
-                    }
-                }
-            }
-        }
-
-        // 🏷️ LEITURA ESTRITA DO MODELO (SSOT DIRETA - SEM FALLBACKS)
+        // 🏷️ LEITURA ESTRITA DO MODELO E FASE (SSOT PURA)
         const modeloReserva = (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo || "").toLowerCase();
         const mapaModelos = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
+
+        let labelModelo = 'Ranking';
 
         if (dadosReserva.tagFaseRanking) {
             labelModelo = dadosReserva.tagFaseRanking;
         } else if (dadosReserva.dadosPlacar?.tagFaseRanking) {
             labelModelo = dadosReserva.dadosPlacar.tagFaseRanking;
-        } else if (tagGrupo) {
-            labelModelo = `Grupos - ${tagGrupo}`;
+        } else if (dadosReserva.tagGrupoRanking) {
+            labelModelo = `Grupos - ${dadosReserva.tagGrupoRanking}`;
+        } else if (dadosReserva.dadosPlacar?.tagGrupoRanking) {
+            labelModelo = `Grupos - ${dadosReserva.dadosPlacar.tagGrupoRanking}`;
         } else if (mapaModelos[modeloReserva]) {
             labelModelo = mapaModelos[modeloReserva];
         } else {
-            console.error("❌ [Erro de Integridade SSOT] Registro sem campo 'modelo' válido:", dadosReserva);
             labelModelo = "Modelo Inválido";
         }
 
@@ -3915,6 +3916,8 @@ function executarFaxinaAutomaticaSaaS() {
                                 vencedorId: idVencedor,
                                 gamesP1: gamesP1,
                                 gamesP2: gamesP2,
+                                posicaoP1: r.posicaoP1 || dp.posicaoP1 || '',
+                                posicaoP2: r.posicaoP2 || dp.posicaoP2 || '',
                                 dadosPlacar: dpConsolidado,
                                 dataHora: dp.dataHoraValidacao || dp.dataHoraLancamento || Date.now()
                             };

@@ -21,6 +21,8 @@ let edicaoHistoricaFocoSaaS = null;
 let categoriaHistoricaAtivaSaaS = null;
 let listenerGavetaHistoricoAdd = false;
 
+let modoVisaoPiramideSaaS = 'lista'; // 'lista' ou 'piramide'
+
 /* ======================================================== */
 /* 1. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO                 */
 /* ======================================================== */
@@ -30,8 +32,11 @@ function abrirLeaderboardSaaS() {
 
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     if (!sheet) return;
-	
-	// 🧹 RESET DE UX: Força o filtro de súmulas a iniciar sempre em 'TODOS'
+
+    // 🔄 Força a abertura sempre na Visão Lista por padrão
+    modoVisaoPiramideSaaS = 'lista';
+
+    // 🧹 RESET DE UX: Força o filtro de súmulas a iniciar sempre em 'TODOS'
     abaStatusAtivoSaaS = 'TODOS';
 
     edicaoHistoricaFocoSaaS = null;
@@ -72,11 +77,9 @@ function abrirLeaderboardSaaS() {
         const atletaTemClasseNoTorneio = classeAtleta && classesTorneio.includes(classeAtleta);
         const atletaTemGeneroNoTorneio = generoAtleta && (generosTorneio.length === 0 || generosTorneio.includes(generoAtleta));
 
-        // Prioridade 1: Classe/Gênero do Atleta se estiver no torneio
         if (atletaTemClasseNoTorneio) {
             abaClasseAtivaSaaS = classeAtleta;
         } else if (classesTorneio.length > 0) {
-            // Prioridade 2: 1ª Classe participante do Torneio
             abaClasseAtivaSaaS = classesTorneio[0];
         } else {
             abaClasseAtivaSaaS = classeAtleta || 'A';
@@ -90,18 +93,20 @@ function abrirLeaderboardSaaS() {
             abaGeneroAtivaSaaS = generoAtleta || 'MASCULINO';
         }
     } else {
-        // Se não houver torneio ativo, usa perfil do atleta ou padrão A/Masculino
         abaClasseAtivaSaaS = classeAtleta || 'A';
         abaGeneroAtivaSaaS = generoAtleta || 'MASCULINO';
     }
 
-    sheet.style.display = 'flex';
-    setTimeout(() => sheet.classList.add('ativa'), 10);
-
+    // 🎨 1. Renderiza o conteúdo PRIMEIRO na memória (modal ainda invisível)
     if (typeof renderizarLeaderboardSaaS === 'function') {
         renderizarLeaderboardSaaS();
     }
+
+    // 🚀 2. DEPOIS abre e anima a janela com a lista 100% construída
+    sheet.style.display = 'flex';
+    setTimeout(() => sheet.classList.add('ativa'), 10);
 }
+
 
 function fecharLeaderboardSaaS(e) {
     const sheet = document.getElementById('sheet-leaderboard-ranking');
@@ -159,6 +164,11 @@ function trocarVisaoLeaderboardSaaS(modo) {
     renderizarLeaderboardSaaS();
 }
 
+function alternarVisaoPiramideSaaS() {
+    modoVisaoPiramideSaaS = (modoVisaoPiramideSaaS === 'lista') ? 'piramide' : 'lista';
+    renderizarLeaderboardSaaS();
+}
+
 function togglePopoverStatusM2SaaS(event) {
     if (event) event.stopPropagation();
     const pop = document.getElementById('popover-status-m2');
@@ -177,8 +187,10 @@ function atualizarOpcoesPopoverStatusM2SaaS() {
     if (!pop) return;
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const divisaoGenero = conf.divisaoGenero || 'separado';
-    const chaveTabela = (divisaoGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
+	const modelo = conf.calendario?.formatoTorneio || 'grupos';
+	const divisaoGenero = conf.divisaoGenero || 'separado';
+    
+	const chaveTabela = (divisaoGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
 
     // Contadores de status da categoria em foco
     let contadores = {
@@ -290,7 +302,7 @@ function renderizarLeaderboardSaaS() {
     try {
         const configRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
 
-        const modelo = configRanking.modeloAtivo || 'piramide';
+		const modelo = configRanking.calendario?.formatoTorneio || 'grupos';
         const divisaoGenero = configRanking.divisaoGenero || 'separado';
         const ptsVit = parseInt(configRanking.barragem?.pontosVitoria) || 3;
         const ptsDer = parseInt(configRanking.barragem?.pontosDerrota) || 1;
@@ -585,6 +597,8 @@ function renderizarLeaderboardSaaS() {
 							jogador2Id: idJ2,
 							jogadoresTexto: r.jogadores,
 							jogadoresCompletoTexto: r.jogadores_completo,
+							posicaoP1: r.posicaoP1 || '',
+							posicaoP2: r.posicaoP2 || '',
 							quadraTexto: quadraAgendadaPadrao,
 							dataPartidaStr: dataPartidaStr,
 							horaInicio: r.hora,
@@ -618,7 +632,7 @@ function renderizarLeaderboardSaaS() {
 				agendamentosAtivos = agendamentosAtivos.filter(itemAg => {
 					const tagG = itemAg.tagGrupoRanking;
 					const tagF = itemAg.tagFaseRanking || '';
-					const ehAgendamentoGrupo = !!tagG || tagF.startsWith('Grupos - G');
+					const ehAgendamentoGrupo = !!tagG || /^Grupos\s*-\s*G\d+/i.test(tagF);
 
 					if (abaFaseAtivaSaaS === 'GRUPOS') return ehAgendamentoGrupo;
 					if (ehAgendamentoGrupo) return false;
@@ -750,8 +764,12 @@ function renderizarLeaderboardSaaS() {
 
 				const j1NomeLongo = buscarNome(itemAg.jogador1Id, partesComp[0] || partesAp[0]);
 				const j2NomeLongo = buscarNome(itemAg.jogador2Id, partesComp[1] || partesAp[1]);
-				const j1Exibicao = formatarNomeCurto(j1NomeLongo);
-				const j2Exibicao = formatarNomeCurto(j2NomeLongo);
+				
+				const tagPos1 = itemAg.posicaoP1 ? `<span class="atp-pos">${itemAg.posicaoP1.replace('º', '')}</span>` : '';
+				const tagPos2 = itemAg.posicaoP2 ? `<span class="atp-pos">${itemAg.posicaoP2.replace('º', '')}</span>` : '';
+
+				const j1Exibicao = `${tagPos1}${formatarNomeCurto(j1NomeLongo)}`;
+				const j2Exibicao = `${tagPos2}${formatarNomeCurto(j2NomeLongo)}`;
 
 				const quadraPill = itemAg.quadraTexto;
 				const horaStr = itemAg.horaInicio !== undefined ? `${String(itemAg.horaInicio).padStart(2, '0')}:00` : '';
@@ -1072,12 +1090,21 @@ function renderizarLeaderboardSaaS() {
 			listaPartidas.forEach(partida => {
 				const j1NomeLongo = buscarNome(partida.jogador1Id);
 				const j2NomeLongo = buscarNome(partida.jogador2Id);
-				const j1Exibicao = formatarNomeCurto(j1NomeLongo);
-				const j2Exibicao = formatarNomeCurto(j2NomeLongo);
-
-				const quadraPill = partida.quadra || (partida.dadosPlacar && partida.dadosPlacar.quadra) || 'Quadra';
 
 				const dp = partida.dadosPlacar || {};
+
+				// Recupera a posição congelada (do nó principal, do dadosPlacar ou via RAM)
+				const pos1 = partida.posicaoP1 || dp.posicaoP1 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(j1NomeLongo) : '');
+				const pos2 = partida.posicaoP2 || dp.posicaoP2 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(j2NomeLongo) : '');
+
+				const tagPos1 = pos1 ? `<span class="atp-pos">${pos1.replace('º', '')}</span>` : '';
+				const tagPos2 = pos2 ? `<span class="atp-pos">${pos2.replace('º', '')}</span>` : '';
+
+				const j1Exibicao = `${tagPos1}${formatarNomeCurto(j1NomeLongo)}`;
+				const j2Exibicao = `${tagPos2}${formatarNomeCurto(j2NomeLongo)}`;
+
+				const quadraPill = partida.quadra || dp.quadra || 'Quadra';
+
 				const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
 				let dataPartidaStr = '--/--/----';
 				if (dataMs) {
@@ -1378,9 +1405,16 @@ function renderizarLeaderboardSaaS() {
         });
 
 
-		const exibeHall = torneioConcluido && (modelo !== 'grupos' || abaFaseAtivaSaaS === 'AUTO' || abaFaseAtivaSaaS === 'MM_2' || abaFaseAtivaSaaS === 'FINAL');
+		// 🎯 Permite alternar para a visão gráfica se a opção pirâmide for acionada
+        const exibeHall = torneioConcluido && (modelo !== 'grupos' || abaFaseAtivaSaaS === 'AUTO' || abaFaseAtivaSaaS === 'MM_2' || abaFaseAtivaSaaS === 'FINAL') && modoVisaoPiramideSaaS !== 'piramide';
 
         if (exibeHall) {
+			// Restaura a visibilidade das abas e dos filtros ao voltar para a lista
+            const containerAbasOpt = document.querySelector('#sheet-leaderboard-ranking .opt1-segmented');
+            const containerDropdownsOpt = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
+            if (containerAbasOpt) containerAbasOpt.style.display = '';
+            if (containerDropdownsOpt) containerDropdownsOpt.style.display = '';
+			
             let htmlHall = '';
 
             const idCampeao = listaIDs[0];
@@ -1402,8 +1436,23 @@ function renderizarLeaderboardSaaS() {
             };
             const txtBadgeCampeao = rotulosBadgesCampeao[modelo] || "1º LUGAR • CAMPEÃO";
 
+            // 🔺 Botão vetorial com o ícone da Pirâmide para alternar
+            let btnPiramideOpt = '';
+            if (modelo === 'piramide') {
+                btnPiramideOpt = `
+                    <button type="button" onclick="alternarVisaoPiramideSaaS()" title="Alternar para Visão Pirâmide Visual" style="position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 3L16.5 9H7.5L12 3Z" fill="#f59e0b"/>
+                            <path d="M6.5 10.5L17.5 10.5L19.5 15H4.5L6.5 10.5Z" fill="#d97706"/>
+                            <path d="M3.5 16.5L20.5 16.5L22 21H2L3.5 16.5Z" fill="#b45309"/>
+                        </svg>
+                    </button>
+                `;
+            }
+
             htmlHall += `
-                <div style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 2px solid #f59e0b; border-radius: 16px; padding: 14px; text-align: center; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2); margin-bottom: 12px;">
+                <div style="position: relative; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 2px solid #f59e0b; border-radius: 16px; padding: 14px; text-align: center; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2); margin-bottom: 12px;">
+                    ${btnPiramideOpt}
                     <div style="font-size: 28px; margin-bottom: -4px;">👑</div>
                     <span style="background: #f59e0b; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 10px; display: inline-block;">${txtBadgeCampeao}</span>
                     <div style="font-size: 16px; font-weight: 800; color: #78350f; margin: 4px 0;">${nomeCampeao} ${idCampeao === idLogado ? '(Você)' : ''}</div>
@@ -1479,6 +1528,25 @@ function renderizarLeaderboardSaaS() {
         }
 
         if (modelo === 'piramide') {
+            const containerAlvo = document.getElementById('body-leaderboard-scroll');
+            const containerAbas = document.querySelector('#sheet-leaderboard-ranking .opt1-segmented');
+            const containerDropdowns = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
+
+            // 🔺 VISÃO B: PIRÂMIDE LÚDICA (Esconde abas/filtros e ocupa 100% da área útil)
+            if (modoVisaoPiramideSaaS === 'piramide') {
+                if (containerAbas) containerAbas.style.display = 'none';
+                if (containerDropdowns) containerDropdowns.style.display = 'none';
+
+                if (typeof renderizarVisaoPiramideSaaS === 'function') {
+                    renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, alternarVisaoPiramideSaaS);
+                    return;
+                }
+            }
+
+            // 📋 VISÃO A: LISTA ORIGINAL (Restaura as abas e os filtros do topo)
+            if (containerAbas) containerAbas.style.display = '';
+            if (containerDropdowns) containerDropdowns.style.display = '';
+
             const idxLogado = listaIDs.indexOf(idLogado);
             const alcanceTipo = configRanking.piramide?.alcanceTipo || 'posicoes';
             const alcancePosicoes = parseInt(configRanking.piramide?.limitePosicoes, 10) || 3;
@@ -1491,21 +1559,12 @@ function renderizarLeaderboardSaaS() {
                 if (alcanceTipo === 'linha') {
                     textoAlcanceDica = "na linha acima";
                     const posLogado = idxLogado + 1;
-                    
-                    let linhaAtual = 1;
-                    let acum = 1;
-                    while (acum < posLogado) {
-                        linhaAtual++;
-                        acum += linhaAtual;
-                    }
-
+                    let linhaAtual = 1, acum = 1;
+                    while (acum < posLogado) { linhaAtual++; acum += linhaAtual; }
                     if (linhaAtual > 1) {
                         const linhaAcima = linhaAtual - 1;
-                        const posInicioLinhaAcima = ((linhaAcima - 1) * linhaAcima / 2) + 1;
-                        const posFimLinhaAcima = (linhaAcima * (linhaAcima + 1)) / 2;
-
-                        idxInicioAlcance = posInicioLinhaAcima - 1;
-                        idxFimAlcance = posFimLinhaAcima - 1;
+                        idxInicioAlcance = (((linhaAcima - 1) * linhaAcima / 2) + 1) - 1;
+                        idxFimAlcance = ((linhaAcima * (linhaAcima + 1)) / 2) - 1;
                     }
                 } else if (alcanceTipo === 'livre') {
                     textoAlcanceDica = "todas as posições acima";
@@ -1523,6 +1582,15 @@ function renderizarLeaderboardSaaS() {
                 </div>
             `;
 
+            // SVG da Opção 3 (Pirâmide 3 Camadas)
+            const iconPiramideOpt3 = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 3L16.5 9H7.5L12 3Z" fill="#f59e0b"/>
+                    <path d="M6.5 10.5L17.5 10.5L19.5 15H4.5L6.5 10.5Z" fill="#d97706"/>
+                    <path d="M3.5 16.5L20.5 16.5L22 21H2L3.5 16.5Z" fill="#b45309"/>
+                </svg>
+            `;
+
             listaIDs.forEach((idAtleta, index) => {
                 const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
                 const pos = index + 1;
@@ -1535,21 +1603,39 @@ function renderizarLeaderboardSaaS() {
                 if (ehVoce) classeCard += ' voce';
                 else if (noAlcance) classeCard += ' alcance-desafio';
 
-                htmlList += `
-                    <div class="${classeCard}">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span style="font-weight: 800; font-size: 13px; color: #64748b; width: 24px;">${pos}º</span>
-                            <div>
-                                <strong style="font-size: 14px; color: #1e293b; display: block;">${nomeAtleta} ${ehVoce ? '(Você)' : ''}</strong>
-                                <span style="font-size: 11px; color: #64748b;">${pos === 1 ? 'Líder da Categoria' : (noAlcance ? 'Alcance direto de desafio' : 'Atleta Inscrito')}</span>
+                if (pos === 1) {
+                    htmlList += `
+                        <div class="top-leader-row" style="margin-bottom: 8px;">
+                            <div class="${classeCard} is-top" style="flex: 1; margin-bottom: 0;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span style="font-weight: 800; font-size: 13px; color: #b45309; width: 24px;">👑 1º</span>
+                                    <div>
+                                        <strong style="font-size: 14px; color: #1e293b; display: block;">${nomeAtleta} ${ehVoce ? '(Você)' : ''}</strong>
+                                        <span style="font-size: 11px; color: #b45309;">Líder da Pirâmide</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="square-toggle-btn" onclick="alternarVisaoPiramideSaaS()" title="Alternar para Visão Pirâmide">
+                                ${iconPiramideOpt3}
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    htmlList += `
+                        <div class="${classeCard}">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-weight: 800; font-size: 13px; color: #64748b; width: 24px;">${pos}º</span>
+                                <div>
+                                    <strong style="font-size: 14px; color: #1e293b; display: block;">${nomeAtleta} ${ehVoce ? '(Você)' : ''}</strong>
+                                    <span style="font-size: 11px; color: #64748b;">${noAlcance ? 'Alcance direto de desafio' : 'Atleta Inscrito'}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             });
 
-            bodyList.innerHTML = htmlList;
-
+            containerAlvo.innerHTML = htmlList;
         } else if (modelo === 'barragem') {
             listaIDs.sort((a, b) => {
                 const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
@@ -1647,41 +1733,46 @@ function renderizarLeaderboardSaaS() {
                 `;
 
                 membrosChave.forEach((idAtleta, idx) => {
-                    const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-                    const st = estatisticas[idAtleta] || { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
-                    const posInterna = idx + 1;
-                    const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
-                    const ehVoce = (idAtleta === idLogado);
-                    const isClassificado = posInterna <= classificadosQtd;
+					const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+					const st = estatisticas[idAtleta] || { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+					const posInterna = idx + 1;
+					const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
 
-                    const tagTexto = (faseAtual === 3 && membrosChave.length > 1) ? "Zona de Classificação" : "Classificado";
+					// 🎯 Remove o símbolo 'º' para deixar apenas o número puro (estilo ATP)
+					const posRaw = (typeof obterPosicaoTextoRankingSaaS === 'function' && obterPosicaoTextoRankingSaaS(atleta.nomeCompleto || atleta.apelido || nomeAtleta)) || `${idx + 1}`;
+					const posSeed = posRaw.replace('º', '').trim();
 
-                    const temEmpatePontos = membrosChave.some(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts && st.pts > 0);
-                    let exibeConfronto = false;
-                    if (temEmpatePontos) {
-                        const outrosEmpatados = membrosChave.filter(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts);
-                        exibeConfronto = outrosEmpatados.some(outroId => confrontosDiretos[`${idAtleta}_vs_${outroId}`] === idAtleta);
-                    }
+					const ehVoce = (idAtleta === idLogado);
+					const isClassificado = posInterna <= classificadosQtd;
 
-                    const sinalSG = st.sg > 0 ? `+${st.sg}` : st.sg;
+					const tagTexto = (faseAtual === 3 && membrosChave.length > 1) ? "Zona de Classificação" : "Classificado";
 
-                    htmlGrupos += `
-                        <div class="item-membro-grupo ${isClassificado ? 'classificado' : ''}" style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; ${ehVoce ? 'background: #f0fdf4;' : ''}">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
-                                    <b>${posInterna}º</b> ${nomeAtleta} ${ehVoce ? '(Você)' : ''}
-                                    ${isClassificado ? `<span class="badge-classificado">${tagTexto}</span>` : ''}
-                                </div>
-                                <span style="font-size: 14px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
-                            </div>
-                            <div style="display: flex; gap: 6px;">
-                                <span class="micro-pill destaque">SG ${sinalSG}</span>
-                                <span class="micro-pill">${st.v}V - ${st.d}D</span>
-                                ${exibeConfronto ? '<span class="micro-pill">Confronto ⚔️</span>' : ''}
-                            </div>
-                        </div>
-                    `;
-                });
+					const temEmpatePontos = membrosChave.some(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts && st.pts > 0);
+					let exibeConfronto = false;
+					if (temEmpatePontos) {
+						const outrosEmpatados = membrosChave.filter(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts);
+						exibeConfronto = outrosEmpatados.some(outroId => confrontosDiretos[`${idAtleta}_vs_${outroId}`] === idAtleta);
+					}
+
+					const sinalSG = st.sg > 0 ? `+${st.sg}` : st.sg;
+
+					htmlGrupos += `
+						<div class="item-membro-grupo ${isClassificado ? 'classificado' : ''}" style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; ${ehVoce ? 'background: #f0fdf4;' : ''}">
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+								<div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
+									<span style="font-weight: 400; color: #94a3b8; font-size: 12px; margin-right: 6px;">${posSeed}</span>${nomeAtleta} ${ehVoce ? '(Você)' : ''}
+									${isClassificado ? `<span class="badge-classificado">${tagTexto}</span>` : ''}
+								</div>
+								<span style="font-size: 14px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
+							</div>
+							<div style="display: flex; gap: 6px;">
+								<span class="micro-pill destaque">SG ${sinalSG}</span>
+								<span class="micro-pill">${st.v}V - ${st.d}D</span>
+								${exibeConfronto ? '<span class="micro-pill">Confronto ⚔️</span>' : ''}
+							</div>
+						</div>
+					`;
+				});
 
                 htmlGrupos += `</div>`;
                 numGrupo++;
@@ -1742,7 +1833,15 @@ function renderizarLeaderboardSaaS() {
                     if (!id) return 'A definir';
                     const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
                     const nomeStr = j.apelido || j.nomeCompleto || 'A definir';
-                    return (id === idLogado) ? `${nomeStr} <span style="font-size: 11px; color: #15803d; font-weight: 800;">(Você)</span>` : nomeStr;
+
+                    // 🎯 Captura a semente discreta sem o 'º'
+                    const posRaw = (typeof obterPosicaoTextoRankingSaaS === 'function' && obterPosicaoTextoRankingSaaS(j.nomeCompleto || j.apelido || nomeStr)) || '';
+                    const posClean = posRaw.replace('º', '').trim();
+                    const prefixoSeed = posClean ? `<span style="font-weight: 400; color: #94a3b8; font-size: 11px; margin-right: 6px;">${posClean}</span>` : '';
+
+                    const rotuloNome = (id === idLogado) ? `${nomeStr} <span style="font-size: 11px; color: #15803d; font-weight: 800;">(Você)</span>` : nomeStr;
+
+                    return `${prefixoSeed}${rotuloNome}`;
                 };
 
                 let cardsConfrontosHtml = '';
@@ -2057,23 +2156,48 @@ function renderizarTabelaHistoricoSaaS() {
         grupos: { icone: 'grid_view', label: 'Grupos' }
     };
 
+    // 1. Verificação de permissão para exclusão (Gestor ou Admin)
+    let perfisAtleta = {};
+    try { perfisAtleta = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+    const podeExcluirAcervo = isGestorLogado || perfisAtleta['Admin'] === true;
+
     listaFiltrada.forEach(edicao => {
         const cal = edicao.contrato || {};
         const modeloInfo = iconesModelos[edicao.modelo] || { icone: 'emoji_events', label: 'Oficial' };
         const dtInicio = fmtDataCurta(cal.inicioJogos);
         const dtFim = fmtDataCurta(cal.fimTorneio); 
         
+        const nomeTorneioRaw = cal.nomeTorneio || 'Edição Sem Nome';
+        const nomeTorneioEscapado = String(nomeTorneioRaw).replace(/'/g, "\\'");
+        const btnLixeiraHtml = podeExcluirAcervo ? `
+            <button type="button" 
+                    onclick="excluirTorneioHistoricoSaaS('${edicao.id}', '${nomeTorneioEscapado}')" 
+                    title="Excluir Torneio do Histórico" 
+                    style="float: right; background: none; border: none; cursor: pointer; padding: 2px 4px; vertical-align: middle; margin-left: 8px; display: inline-flex; align-items: center; transition: transform 0.2s;"
+                    onmouseover="this.style.transform='scale(1.15)'"
+                    onmouseout="this.style.transform='scale(1)'">
+                <i class="material-icons" style="font-size: 18px; color: #ef4444;">delete_outline</i>
+            </button>
+        ` : '';
+
         const btnPdf = cal.regulamentoUrl 
             ? `<a href="${cal.regulamentoUrl}" target="_blank" class="pdf-link-inline" title="Ver Regulamento PDF"><i class="material-icons" style="font-size: 14px;">picture_as_pdf</i></a>`
             : `<a href="#" class="pdf-link-inline" title="Sem PDF anexado" onclick="event.preventDefault(); showToast('Nenhum regulamento em PDF anexado para esta edição.', 'info');"><i class="material-icons" style="font-size: 14px;">picture_as_pdf</i></a>`;
+
+        // 🎯 AQUI ESTÁ A MUDANÇA: Verifica se é pirâmide para ativar o clique
+        let onclickBadge = "showToast('Abertura da árvore/chave em desenvolvimento.', 'info')";
+        if (edicao.modelo === 'piramide') {
+            onclickBadge = `abrirPiramideAcervoSaaS('${edicao.id}')`;
+        }
+
         html += `
             <tr>
                 <td class="col-edicao">
-                    <strong style="color: #1e293b; font-size: 14px;">${cal.nomeTorneio || 'Edição Sem Nome'}</strong>
-                    ${btnPdf}
+                    <strong style="color: #1e293b; font-size: 14px;">${nomeTorneioRaw}</strong>
+                    ${btnLixeiraHtml}${btnPdf}
                 </td>
                 <td class="col-modelo">
-                    <span class="format-badge" onclick="showToast('Abertura da árvore/chave em desenvolvimento.', 'info')">
+                    <span class="format-badge" onclick="${onclickBadge}" style="cursor: pointer;">
                         <i class="material-icons" style="font-size: 14px;">${modeloInfo.icone}</i> ${modeloInfo.label}
                     </span>
                 </td>
@@ -2155,8 +2279,8 @@ function renderizarHTMLPodioAcervoSaaS() {
 
     const edicao = edicaoHistoricaFocoSaaS;
     const cal = edicao.contrato || {};
-    const categorias = Object.keys(edicao.classificacaoFinal);
-    const listaIDs = edicao.classificacaoFinal[categoriaHistoricaAtivaSaaS] || [];
+    const categorias = Object.keys(edicao.classificacaoFinal || {});
+    const listaIDs = (edicao.classificacaoFinal && edicao.classificacaoFinal[categoriaHistoricaAtivaSaaS]) || [];
     
     if (txtSub) {
         txtSub.innerHTML = `<b>🏆 Hall de Campeões</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
@@ -2434,16 +2558,29 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     let htmlCardsExtra = '';
 
     listaPartidas.forEach((partida, idx) => {
+        // 💡 1. 'dp' inicializado no topo para evitar ReferenceError
+        const dp = partida.dadosPlacar || {};
+
         const j1NomeLongo = buscarNome(partida.jogador1Id);
         const j2NomeLongo = buscarNome(partida.jogador2Id);
-        const j1Exibicao = formatarNomeCurto(j1NomeLongo);
-        const j2Exibicao = formatarNomeCurto(j2NomeLongo);
+
+        // 🎯 2. Captura segura da semente/ranking
+        const pos1 = partida.posicaoP1 || dp.posicaoP1 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(j1NomeLongo) : '');
+        const pos2 = partida.posicaoP2 || dp.posicaoP2 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(j2NomeLongo) : '');
+
+        const pos1Clean = pos1 ? String(pos1).replace('º', '').trim() : '';
+        const pos2Clean = pos2 ? String(pos2).replace('º', '').trim() : '';
+
+        const tagPos1 = pos1Clean ? `<span class="atp-pos">${pos1Clean}</span>` : '';
+        const tagPos2 = pos2Clean ? `<span class="atp-pos">${pos2Clean}</span>` : '';
+
+        const j1Exibicao = `${tagPos1}${formatarNomeCurto(j1NomeLongo)}`;
+        const j2Exibicao = `${tagPos2}${formatarNomeCurto(j2NomeLongo)}`;
 
         const catKey = partida.categoria || '';
         let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
         catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
-        const dp = partida.dadosPlacar || {};
         const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
         let dataPartidaStr = '--/--/----';
         if (dataMs) {
@@ -2697,6 +2834,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     }
 }
 
+
 function toggleSanfonaSumulasAcervoSaaS(total) {
     if (navigator.vibrate) navigator.vibrate(15);
     
@@ -2853,17 +2991,26 @@ async function exportarLeaderboardPDFSaaS() {
 
                 if (tagEl && playerRows.length > 0) {
                     const extrairAtleta = (rowEl) => {
-                        if (!rowEl) return { nome: '', ehVencedor: false, ehCampeao: false };
-                        const clone = rowEl.cloneNode(true);
-                        const txtFull = clone.innerText || '';
-                        const ehVencedor = txtFull.includes('Vencedor');
-                        const ehCampeao = txtFull.includes('Campeão') || txtFull.includes('Campeao');
+						if (!rowEl) return { pos: '', nome: '', ehVencedor: false, ehCampeao: false };
+						const clone = rowEl.cloneNode(true);
+						
+						// 🎯 Captura a semente discreta do atleta (#94a3b8)
+						let posSeed = '';
+						const spanPos = clone.querySelector('span[style*="#94a3b8"], span[style*="font-weight: 400"]');
+						if (spanPos) {
+							posSeed = limparTextoPdf(spanPos.innerText.replace('º', '').trim());
+							spanPos.remove();
+						}
 
-                        clone.querySelectorAll('span').forEach(sp => sp.remove());
-                        let nomeLimpo = limparTextoPdf(clone.innerText.replace(/\(Você\)/gi, '').trim());
+						const txtFull = clone.innerText || '';
+						const ehVencedor = txtFull.includes('Vencedor');
+						const ehCampeao = txtFull.includes('Campeão') || txtFull.includes('Campeao');
 
-                        return { nome: nomeLimpo, ehVencedor, ehCampeao };
-                    };
+						clone.querySelectorAll('span').forEach(sp => sp.remove());
+						let nomeLimpo = limparTextoPdf(clone.innerText.replace(/\(Você\)/gi, '').trim());
+
+						return { pos: posSeed, nome: nomeLimpo, ehVencedor, ehCampeao };
+					};
 
                     const p1 = extrairAtleta(playerRows[0]);
                     const p2 = extrairAtleta(playerRows[1]);
@@ -2873,9 +3020,11 @@ async function exportarLeaderboardPDFSaaS() {
                     mataMataItems.push({
                         fase: faseTxt,
                         placar: placarTxt,
+                        p1Pos: p1.pos,
                         p1Name: p1.nome,
                         p1Vencedor: p1.ehVencedor,
                         p1Campeao: p1.ehCampeao,
+                        p2Pos: p2.pos,
                         p2Name: p2.nome,
                         p2Vencedor: p2.ehVencedor,
                         p2Campeao: p2.ehCampeao
@@ -2899,8 +3048,14 @@ async function exportarLeaderboardPDFSaaS() {
 							tagTexto = limparTextoPdf(badge.innerText.trim());
 							badge.remove();
 						}
-						const bTag = clone.querySelector('b');
-						if (bTag) { pos = limparTextoPdf(bTag.innerText); bTag.remove(); }
+						const spanPos = clone.querySelector('span[style*="#94a3b8"], span[style*="font-weight: 400"]');
+						if (spanPos) {
+							pos = limparTextoPdf(spanPos.innerText.trim());
+							spanPos.remove();
+						} else {
+							const bTag = clone.querySelector('b');
+							if (bTag) { pos = limparTextoPdf(bTag.innerText); bTag.remove(); }
+						}
 						nome = limparTextoPdf(clone.innerText.replace('(Você)', '').trim());
 					}
 					const ptsEl = mEl.querySelector('span[style*="font-size: 14px"]');
@@ -3080,11 +3235,22 @@ async function exportarLeaderboardPDFSaaS() {
                 doc.text(txtPlacar, pX + 2, currentY + 4.4);
             }
 
+            // 🎯 Jogador 1 (Semente + Nome + Badge)
             let row1Y = currentY + 9.5;
+            let p1X = marginX + 4;
+
+            if (item.p1Pos) {
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7.5);
+                doc.setTextColor(148, 163, 184); // Cinza suave (#94a3b8)
+                doc.text(item.p1Pos, p1X, row1Y);
+                p1X += doc.getTextWidth(item.p1Pos) + 2.5;
+            }
+
             doc.setFont("helvetica", item.p1Vencedor || item.p1Campeao ? "bold" : "normal");
             doc.setFontSize(8.5);
             doc.setTextColor(15, 23, 42);
-            doc.text(item.p1Name, marginX + 4, row1Y);
+            doc.text(item.p1Name, p1X, row1Y);
 
             if (item.p1Vencedor || item.p1Campeao) {
                 const nameW = doc.getTextWidth(item.p1Name);
@@ -3092,7 +3258,7 @@ async function exportarLeaderboardPDFSaaS() {
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(6.5);
                 const tagW = doc.getTextWidth(tagTxt) + 4;
-                const tagX = marginX + 6 + nameW;
+                const tagX = p1X + nameW + 2;
 
                 if (item.p1Campeao) {
                     doc.setFillColor(254, 243, 199);
@@ -3112,11 +3278,22 @@ async function exportarLeaderboardPDFSaaS() {
             doc.setLineWidth(0.15);
             doc.line(marginX + 4, currentY + 11.2, pageWidth - marginX - 4, currentY + 11.2);
 
+            // 🎯 Jogador 2 (Semente + Nome + Badge)
             let row2Y = currentY + 15;
+            let p2X = marginX + 4;
+
+            if (item.p2Pos) {
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7.5);
+                doc.setTextColor(148, 163, 184); // Cinza suave (#94a3b8)
+                doc.text(item.p2Pos, p2X, row2Y);
+                p2X += doc.getTextWidth(item.p2Pos) + 2.5;
+            }
+
             doc.setFont("helvetica", item.p2Vencedor || item.p2Campeao ? "bold" : "normal");
             doc.setFontSize(8.5);
             doc.setTextColor(15, 23, 42);
-            doc.text(item.p2Name, marginX + 4, row2Y);
+            doc.text(item.p2Name, p2X, row2Y);
 
             if (item.p2Vencedor || item.p2Campeao) {
                 const nameW2 = doc.getTextWidth(item.p2Name);
@@ -3124,7 +3301,7 @@ async function exportarLeaderboardPDFSaaS() {
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(6.5);
                 const tagW2 = doc.getTextWidth(tagTxt2) + 4;
-                const tagX2 = marginX + 6 + nameW2;
+                const tagX2 = p2X + nameW2 + 2;
 
                 if (item.p2Campeao) {
                     doc.setFillColor(254, 243, 199);
@@ -3170,11 +3347,23 @@ async function exportarLeaderboardPDFSaaS() {
             currentY += 8;
 
             grupo.membros.forEach((membro) => {
+			let currentX = marginX + 4;
+
+			// 🎯 1. Número da Semente (Sem negrito, menor e em tom cinza suave)
+			if (membro.pos) {
+				doc.setFont("helvetica", "normal");
+				doc.setFontSize(7.5);
+				doc.setTextColor(148, 163, 184); // Cinza suave (#94a3b8)
+				doc.text(membro.pos, currentX, currentY + 4);
+				currentX += doc.getTextWidth(membro.pos) + 2.5; // Espaçamento discreto antes do nome
+			}
+
+			// 🎯 2. Nome do Atleta (Em negrito e destaque escuro)
 			doc.setFont("helvetica", "bold");
 			doc.setFontSize(8.5);
 			doc.setTextColor(15, 23, 42);
-			const labelAtleta = `${membro.pos} ${membro.nome}${membro.tagTexto ? `  [${membro.tagTexto}]` : ''}`;
-			doc.text(labelAtleta, marginX + 4, currentY + 4);
+			const labelAtleta = `${membro.nome}${membro.tagTexto ? `  [${membro.tagTexto}]` : ''}`;
+			doc.text(labelAtleta, currentX, currentY + 4);
 
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(8.5);
@@ -3743,7 +3932,15 @@ async function exportarSumulasPDFSaaS() {
         rows.forEach(r => {
             const nameEl = r.querySelector('.atp-name');
             if (!nameEl) return;
-            const name = limparTextoPdf(nameEl.innerText.trim());
+
+            // Clona o nó do nome e insere 2 espaços após a pílula da posição no PDF (para qualquer status)
+            const cloneName = nameEl.cloneNode(true);
+            const posSpan = cloneName.querySelector('.atp-pos');
+            if (posSpan) {
+                posSpan.after('  ');
+            }
+
+            const name = limparTextoPdf(cloneName.innerText.trim());
             const isWinner = nameEl.classList.contains('match-winner') || r.querySelector('.winner-arrow') !== null;
             const hasRET = r.querySelector('.badge-ret') !== null;
 

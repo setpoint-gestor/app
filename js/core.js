@@ -19,7 +19,7 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);   
 }
 
-const database = firebase.database();   
+const database = firebase.database();    
 const auth = firebase.auth(); 
 
 
@@ -566,6 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * Deve ser acionado uma única vez após o sistema reconhecer a raizBanco.
  */
 function iniciarOuvinteMestreSaaS() {
+	
     // Trava de segurança: impede que a conexão seja duplicada acidentalmente
     if (window.ouvinteMestreSaaSAtivo) return;
     window.ouvinteMestreSaaSAtivo = true; 
