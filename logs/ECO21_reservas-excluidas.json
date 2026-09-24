@@ -1008,5 +1008,36 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-09-24T01:09:02.255Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-24T01:10:53.584Z",
+    "dataLocal": "23/09/2026, 22:10:53",
+    "autor": "ANA LICE DOURADO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "19:00 - 21:00",
+    "duracao": "2 Horas",
+    "data": "23-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA LICE DOURADO",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "An Alice": true
+    },
+    "jogadores": "An Alice, Alexandre Voj",
+    "jogadores_completo": "ANA LICE DOURADO, ALEXANDRE VOJCIECHOVSKI",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 19
+      },
+      {
+        "dia": 3,
+        "hora": 20
+      }
+    ]
   }
 ]
