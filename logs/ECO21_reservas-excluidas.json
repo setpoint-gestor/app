@@ -977,5 +977,36 @@
         "hora": 19
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALICE DUCK",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alice Duck": true,
+      "Alice Pereira": true
+    },
+    "data": "23-09-2026",
+    "dataLocal": "23/09/2026, 22:09:02",
+    "duracao": "2 Horas",
+    "horario": "19:00 - 21:00",
+    "jogadores": "Alice Duck, Alice Pereira",
+    "jogadores_completo": "ALICE DUCK, ALICE ALMEIDA PEREIRA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALICE DUCK",
+    "origem": "manual",
+    "quadra": "Quadra 5 - Rafael Nadal",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 19
+      },
+      {
+        "dia": 3,
+        "hora": 20
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-09-24T01:09:02.255Z"
   }
 ]
