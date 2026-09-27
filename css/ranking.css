@@ -15,7 +15,7 @@
     padding: 0 !important; 
     display: flex;
     flex-direction: column;
-    background-color: var(--bg-site, #f4f6f8);  
+    background-color: var(--bg-site, #f4f6f8);   
 }
 
 #modal-config-ranking .header-painel {
@@ -1992,6 +1992,13 @@ body.dark-mode .prompt-ranking-sub { color: #94a3b8; }
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
+.body-leaderboard-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 12px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
 
 .body-leaderboard-list::-webkit-scrollbar {
     display: none;
@@ -2071,6 +2078,7 @@ body.dark-mode .prompt-ranking-sub { color: #94a3b8; }
     border-radius: 12px;
     margin-bottom: 12px;
     overflow: hidden;
+    flex-shrink: 0; /* 👈 Adicione esta linha */
 }
 
 .header-leaderboard-grupo {
@@ -2448,4 +2456,315 @@ body.dark-mode .badge-pix.pendente { background: #78350f; color: #fde047; border
 }
 .pyr-tile.is-me .p-ord {
     color: #16a34a;
+}
+
+
+/* ======================================================== */
+/* 19. ÁRVORE MATA-MATA VETORIAL (BRACKETS SAAS)            */
+/* ======================================================== */
+
+/* 🎯 TRAVA O CONTEÚDO DENTRO DO CARTÃO BRANCO E ZERA O PADDING INFERIOR */
+#sheet-leaderboard-ranking .sheet-leaderboard-content,
+#sheet-leaderboard-ranking .sheet-SaaS-content,
+#sheet-leaderboard-ranking .bottom-sheet-content {
+    position: relative !important;
+    padding-bottom: 5px !important;
+    overflow: hidden !important; /* Impede que os elementos saiam do cartão branco */
+}
+
+#sheet-leaderboard-ranking .sheet-body,
+#sheet-leaderboard-ranking #body-list-leaderboard,
+#sheet-leaderboard-ranking .body-leaderboard-list {
+    padding-bottom: 0px !important;
+    margin-bottom: 0px !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* 2. Reduz o espaço abaixo do tracinho cinzento de arrastar */
+#sheet-leaderboard-ranking .sheet-drag-handle,
+#sheet-leaderboard-ranking .drag-handle-SaaS {
+    margin-bottom: 6px !important; /* 👈 Padrão é 15px/20px. Reduzir para 6px puxa o título para cima */
+}
+
+/* Reduz o espaço entre o Subtítulo e as caixas de fases (Oitavas/Quartas) */
+#sheet-leaderboard-ranking .sheet-SaaS-subtitle,
+#sheet-leaderboard-ranking p {
+    margin-bottom: 10px !important; /* 👈 Diminua aqui (ex: 0px ou 2px) para puxar as fases para cima */
+}
+
+.full-bracket-container {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-top: 0px !important;
+    padding-bottom: 0px !important;
+    box-sizing: border-box !important;
+}
+
+/* 🎛️ DROPDOWN DE QUADRANTES */
+.bracket-quadrante-row {
+    width: 100%;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: flex-start;
+    flex-shrink: 0;
+}
+
+.select-saas-quadrante {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1.5px solid #8b5cf6;
+    font-size: 12px;
+    font-weight: 700;
+    color: #8b5cf6;
+    background: #f5f3ff;
+    outline: none;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(139, 92, 246, 0.12);
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%238b5cf6%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px top 50%;
+    background-size: 10px auto;
+}
+
+/* 🎯 JANELA DE ROLAGEM ISOLADA DOS CARTÕES */
+.bracket-scroll-viewport {
+    width: 100% !important;
+    flex: 1 !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    scroll-behavior: smooth !important;
+    box-sizing: border-box !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 52px !important; /* Espaço para o scroll passar por trás dos botões sem cobrir os cartões */
+}
+
+.bracket-scroll-viewport::-webkit-scrollbar { 
+    display: none !important; 
+}
+
+/* 🎯 BOTÃO FLUTUANTE DE LISTA (DENTRO DA CURVA INFERIOR BRANCA) */
+.btn-voltar-arvore-saas {
+    position: absolute !important;
+    bottom: 8px !important;
+    left: 12px !important;
+    z-index: 200 !important;
+    width: 38px !important;
+    height: 38px !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(4px) !important;
+    border: 1.5px solid #8b5cf6 !important;
+    border-radius: 50% !important;
+    color: #8b5cf6 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2) !important;
+    transition: transform 0.2s, background-color 0.2s !important;
+}
+
+.btn-voltar-arvore-saas:hover {
+    background-color: #f5f3ff !important;
+    transform: scale(1.08) !important;
+}
+
+/* 🎯 BOTÃO FLUTUANTE DE PNG (DENTRO DA CURVA INFERIOR BRANCA) */
+.btn-png-saas {
+    position: absolute !important;
+    bottom: 8px !important;
+    right: 12px !important;
+    z-index: 200 !important;
+    width: 38px !important;
+    height: 38px !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(4px) !important;
+    border: 1.5px solid #10b981 !important;
+    border-radius: 50% !important;
+    color: #10b981 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2) !important;
+    transition: transform 0.2s, background-color 0.2s !important;
+}
+
+.btn-png-saas:hover {
+    background-color: #f0fdf4 !important;
+    transform: scale(1.08) !important;
+}
+
+.bracket-wrapper {
+    display: flex;
+    gap: 16px;
+    width: max-content !important;
+    min-width: 100%;
+    padding: 0px 2px 0px 2px;
+    box-sizing: border-box;
+}
+
+.bracket-column {
+    display: flex;
+    flex-direction: column;
+    width: 240px;
+    min-width: 240px;
+    flex-shrink: 0 !important;
+}
+
+/* 📌 CABEÇALHO CONGELADO DA FASE (STICKY) */
+.column-header {
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-size: 11px;
+    font-weight: 800;
+    color: #8b5cf6;
+    background: #f5f3ff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid #ddd6fe;
+    margin-bottom: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* 🎯 DISTRIBUIÇÃO PROPORCIONAL DOS CONFRONTOS */
+.bracket-column-matches {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    flex: 1;
+    padding: 2px 0;
+    min-height: 440px;
+}
+
+.match-card {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 6px 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    position: relative;
+    flex-shrink: 0;
+    margin: 2px 0;
+}
+
+.match-card.bye {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+}
+
+.match-card.active-match {
+    border-color: #8b5cf6;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.12);
+}
+
+.match-card.voce {
+    background: #f0fdf4 !important;
+    border-color: #16a34a !important;
+}
+
+.match-player {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+    font-size: 12px;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    border-bottom: 1px dashed #f1f5f9;
+}
+
+.match-player:last-child { 
+    border-bottom: none; 
+}
+
+.match-player.winner {
+    font-weight: 800 !important;
+    color: #0f172a !important;
+}
+
+/* 🎯 SETAS DE NAVEGAÇÃO IMÓVEIS NAS BORDAS (DESKTOP) */
+.bracket-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 150 !important;
+    width: 32px;
+    height: 32px;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 50%;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    pointer-events: auto !important;
+}
+
+.bracket-nav-btn:hover {
+    background: #f8fafc;
+    border-color: #8b5cf6;
+    color: #8b5cf6;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.bracket-nav-btn.left {
+    left: -4px;
+}
+
+.bracket-nav-btn.right {
+    right: -4px;
+}
+
+@media (max-width: 768px) {
+    .bracket-nav-btn {
+        display: none !important;
+    }
+}
+
+/* Modo Escuro */
+body.dark-mode .column-header {
+    background: #262626;
+    color: #a78bfa;
+    border-color: #4c1d95;
+}
+
+body.dark-mode .match-card {
+    background: #1e1e1e;
+    border-color: #333333;
+}
+
+body.dark-mode .match-card.bye {
+    background: #262626;
+    border-color: #404040;
+}
+
+body.dark-mode .match-player {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .match-player.winner {
+    color: #f8fafc !important;
 }
