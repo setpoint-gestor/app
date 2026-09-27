@@ -16,7 +16,7 @@ const firebaseConfig = {
 
 // Evita inicialização duplicada do Firebase
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);   
+    firebase.initializeApp(firebaseConfig);    
 }
 
 const database = firebase.database();    
@@ -51,6 +51,8 @@ let jogadoresGlobal = {};       // 🔥 DECLARAÇÃO GARANTIDA: Banco de dados d
 let jogadoresGlobalAlterado = false; // 🔥 INTERRUPTOR INTELIGENTE: Controla se houve mudanças online no Firebase
 
 let rankingTabelasGlobal = {}; // Espelho local das tabelas do ranking na memória RAM
+let rankingSemeaduraGlobal = {}; // 🌱 Espelho local das sementes oficiais do sorteio na memória RAM
+
 let rankingGeralGlobal = {}; // Espelho local do Ranking Geral (Fila Mestre) na memória RAM
 let rankingPontosGeralGlobal = {}; // Espelho local dos Pontos do Ranking Geral na memória RAM
 
@@ -671,6 +673,13 @@ function iniciarOuvinteMestreSaaS() {
                 forcarRepinturaPlanilha();
             }
         }
+    });
+	
+	// --- 4.5.1. OUVINTE MESTRE DE SEMEADURA DO RANKING ---
+    console.log("🌱 [Core] Sincronizando sementes do ranking em tempo real...");
+    database.ref(`${raizBanco}/ranking/semeadura`).on('value', (snapshot) => {
+        rankingSemeaduraGlobal = snapshot.val() || {};
+        console.log("✓ [Core] Sementes do ranking atualizadas na memória RAM.");
     });
 	
 	// --- 4.6. OUVINTE MESTRE DE PARTIDAS DO RANKING ---

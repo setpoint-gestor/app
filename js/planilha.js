@@ -12,7 +12,7 @@ let timeoutPillQuadra = null;
 let ultimoCliqueTituloQuadra = 0;  
 
 // Variável para controlar a transição perfeita da planilha
-let primeiraCargaQuadra = true;  
+let primeiraCargaQuadra = true;   
 
 // Ponteiro da escuta (listener) em tempo real do Firebase para a quadra ativa
 let ouvinteQuadraAtual = null;  
@@ -1780,50 +1780,26 @@ function obterPosicaoTextoRankingSaaS(nomeOuApelido) {
 
     const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const modeloAtivo = confRanking.calendario?.formatoTorneio || 'piramide';
-    const faseAtual = parseInt(confRanking.faseAtual, 10) || 1;
 
     const modoGenero = confRanking.divisaoGenero || 'separado';
     let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
     if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
     const chaveCat = (modoGenero === 'unificado') ? `${atleta.classe.toUpperCase()}_UNIFICADO` : `${atleta.classe.toUpperCase()}_${generoKey}`;
 
-    // 🏆 MODELOS GRUPOS E BARRAGEM (FASE >= 3): Retorna Semente Pura (sem 'º')
-    if ((modeloAtivo === 'grupos' || modeloAtivo === 'barragem') && faseAtual >= 3) {
-        const inscritosMap = confRanking.inscritosConfirmados || {};
-        const idsInscritos = Object.keys(inscritosMap);
+    // 🏆 BUSCA A POSIÇÃO / SEMENTE DIRETO DO COFRE BLINDADO DE SEMEADURA NA RAM (SSOT)
+    const tabela = (typeof rankingSemeaduraGlobal !== 'undefined' && rankingSemeaduraGlobal && rankingSemeaduraGlobal[chaveCat])
+        ? rankingSemeaduraGlobal[chaveCat]
+        : ((typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveCat])
+            ? rankingTabelasGlobal[chaveCat]
+            : null);
 
-        if (idsInscritos.includes(idAtleta)) {
-            const tipoOrdenacao = (typeof convitesRankingGlobal !== 'undefined' && convitesRankingGlobal && convitesRankingGlobal.tipoOrdenacao)
-                ? convitesRankingGlobal.tipoOrdenacao
-                : (confRanking.tipoOrdenacao || 'livre');
-
-            if (tipoOrdenacao === 'herdada' && typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) {
-                const listaGeral = rankingGeralGlobal[chaveCat] || [];
-                idsInscritos.sort((a, b) => {
-                    const posA = listaGeral.indexOf(a);
-                    const posB = listaGeral.indexOf(b);
-                    if (posA !== -1 && posB !== -1) return posA - posB;
-                    if (posA !== -1) return -1;
-                    if (posB !== -1) return 1;
-                    return (inscritosMap[a]?.dataAceite || 0) - (inscritosMap[b]?.dataAceite || 0);
-                });
-            } else {
-                idsInscritos.sort((a, b) => (inscritosMap[a]?.dataAceite || 0) - (inscritosMap[b]?.dataAceite || 0));
-            }
-
-            const seedNum = idsInscritos.indexOf(idAtleta) + 1;
-            if (seedNum > 0) return `${seedNum}`; // Número puro para Grupos / Barragem
-        }
-    }
-
-    // 🏆 MODELO PIRÂMIDE: Retorna com o ordinal 'º'
-    const tabela = (rankingTabelasGlobal && rankingTabelasGlobal[chaveCat]) ? rankingTabelasGlobal[chaveCat] : null;
     if (!tabela) return "";
 
     const idsArray = Array.isArray(tabela) ? tabela : Object.values(tabela);
     const idx = idsArray.indexOf(idAtleta);
 
     if (idx !== -1) {
+        // Se for Pirâmide retorna com o ordinal 'º' (ex: 1º, 2º), se for Barragem/Grupos retorna a semente pura (ex: 6, 7)
         return (modeloAtivo === 'piramide') ? `${idx + 1}º` : `${idx + 1}`;
     }
 

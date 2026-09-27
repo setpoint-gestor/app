@@ -23,6 +23,8 @@ let listenerGavetaHistoricoAdd = false;
 
 let modoVisaoPiramideSaaS = 'lista'; // 'lista' ou 'piramide'
 
+let modoVisaoMataMataSaaS = 'lista'; // 'lista' ou 'arvore'
+
 /* ======================================================== */
 /* 1. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO                 */
 /* ======================================================== */
@@ -33,8 +35,10 @@ function abrirLeaderboardSaaS() {
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     if (!sheet) return;
 
-    // 🔄 Força a abertura sempre na Visão Lista por padrão
+    // 🔄 RESET DE VISÃO: Força abrir sempre na aba 'TORNEIO' e na visão 'lista'
+    abaVisaoLeaderboardSaaS = 'TORNEIO';
     modoVisaoPiramideSaaS = 'lista';
+    modoVisaoMataMataSaaS = 'lista';
 
     // 🧹 RESET DE UX: Força o filtro de súmulas a iniciar sempre em 'TODOS'
     abaStatusAtivoSaaS = 'TODOS';
@@ -112,7 +116,8 @@ function fecharLeaderboardSaaS(e) {
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     if (!sheet) return;
 
-    if (e && e.target && !e.target.classList.contains('bottom-sheet-overlay')) {
+    // 🛡️ BLOQUEIO DE SEGURANÇA: Se o clique veio do fundo escuro (overlay), ignora e NÃO fecha a janela
+    if (e && e.target && e.target.classList.contains('bottom-sheet-overlay')) {
         return;
     }
 
@@ -121,6 +126,8 @@ function fecharLeaderboardSaaS(e) {
         sheet.style.display = 'none';
 
         edicaoHistoricaFocoSaaS = null;
+        modoVisaoMataMataSaaS = 'lista'; // Reset ao fechar
+        abaVisaoLeaderboardSaaS = 'TORNEIO'; // Reset ao fechar
 
         const containerAbas = document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null;
         const selectClasse = document.getElementById('select-leaderboard-classe');
@@ -169,6 +176,22 @@ function alternarVisaoPiramideSaaS() {
     renderizarLeaderboardSaaS();
 }
 
+function alternarVisaoBarragemSaaS() {
+    modoVisaoPiramideSaaS = (modoVisaoPiramideSaaS === 'barragem_tabela') ? 'lista' : 'barragem_tabela';
+    renderizarLeaderboardSaaS();
+}
+
+function alternarVisaoMataMataSaaS() {
+    modoVisaoMataMataSaaS = (modoVisaoMataMataSaaS === 'lista') ? 'arvore' : 'lista';
+    
+    // Se for Acervo Histórico, redireciona para a renderização do Acervo
+    if (edicaoHistoricaFocoSaaS) {
+        renderizarHTMLGruposAcervoSaaS();
+    } else {
+        renderizarLeaderboardSaaS();
+    }
+}
+
 function togglePopoverStatusM2SaaS(event) {
     if (event) event.stopPropagation();
     const pop = document.getElementById('popover-status-m2');
@@ -187,12 +210,12 @@ function atualizarOpcoesPopoverStatusM2SaaS() {
     if (!pop) return;
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-	const modelo = conf.calendario?.formatoTorneio || 'grupos';
-	const divisaoGenero = conf.divisaoGenero || 'separado';
+    const modelo = conf.calendario?.formatoTorneio || 'grupos';
+    const divisaoGenero = conf.divisaoGenero || 'separado';
     
-	const chaveTabela = (divisaoGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
+    const chaveTabela = (divisaoGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
 
-    // Contadores de status da categoria em foco
+    // Contadores de status da categoria e fase em foco
     let contadores = {
         TODOS: 0,
         PENDENTE: 0,
@@ -201,6 +224,24 @@ function atualizarOpcoesPopoverStatusM2SaaS() {
         CONTESTADO: 0,
         ARBITRADO: 0
     };
+
+    // Mapeamento da fase ativa para filtragem
+    let potAlvo = null;
+    if (typeof abaFaseAtivaSaaS === 'string' && abaFaseAtivaSaaS.startsWith('MM_')) {
+        potAlvo = parseInt(abaFaseAtivaSaaS.replace('MM_', ''), 10);
+    }
+
+    const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal[chaveTabela] : null;
+    let confsFase = [];
+
+    if (dadosChaveCat) {
+        const tamAtual = parseInt(dadosChaveCat.faseAtual, 10) || 0;
+        if (potAlvo === tamAtual && Array.isArray(dadosChaveCat.rodada1)) {
+            confsFase = dadosChaveCat.rodada1;
+        } else if (dadosChaveCat.historicoRodadas) {
+            confsFase = dadosChaveCat.historicoRodadas[potAlvo] || dadosChaveCat.historicoRodadas[String(potAlvo)] || [];
+        }
+    }
 
     // 1. Varre Agendamentos e Pendências
     const reservasGeral = (typeof reservasGeralGlobal !== 'undefined' && reservasGeralGlobal) ? reservasGeralGlobal : {};
@@ -215,6 +256,29 @@ function atualizarOpcoesPopoverStatusM2SaaS() {
 
             const catReserva = r.categoria || r.dadosPlacar?.categoria;
             if (catReserva && catReserva !== chaveTabela) return;
+
+            // 🧹 Filtro por Fase Ativa
+            if (modelo === 'grupos' && abaFaseAtivaSaaS && abaFaseAtivaSaaS !== 'TODAS' && abaFaseAtivaSaaS !== 'AUTO') {
+                const tagG = r.tagGrupoRanking || r.dadosPlacar?.tagGrupoRanking;
+                const tagF = r.tagFaseRanking || r.dadosPlacar?.tagFaseRanking || '';
+                const ehAgendamentoGrupo = !!tagG || /^Grupos\s*-\s*G\d+/i.test(tagF);
+
+                if (abaFaseAtivaSaaS === 'GRUPOS' && !ehAgendamentoGrupo) return;
+                if (abaFaseAtivaSaaS !== 'GRUPOS' && ehAgendamentoGrupo) return;
+
+                if (potAlvo && Array.isArray(confsFase) && confsFase.length > 0) {
+                    const partesAp = (r.jogadores || '').split(', ');
+                    const partesComp = (r.jogadores_completo || '').split(', ');
+                    const idJ1 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[0] || partesAp[0]) : null;
+                    const idJ2 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[1] || partesAp[1]) : null;
+
+                    const pertenceConfronto = confsFase.some(c => 
+                        (c.jogador1Id === idJ1 && c.jogador2Id === idJ2) ||
+                        (c.jogador1Id === idJ2 && c.jogador2Id === idJ1)
+                    );
+                    if (!pertenceConfronto) return;
+                }
+            }
 
             const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
             const dp = r.dadosPlacar || {};
@@ -236,6 +300,25 @@ function atualizarOpcoesPopoverStatusM2SaaS() {
     const partidasGlobal = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
     Object.values(partidasGlobal).forEach(p => {
         if (p.categoria !== chaveTabela) return;
+
+        // 🧹 Filtro por Fase Ativa
+        if (modelo === 'grupos' && abaFaseAtivaSaaS && abaFaseAtivaSaaS !== 'TODAS' && abaFaseAtivaSaaS !== 'AUTO') {
+            const dp = p.dadosPlacar || {};
+            const tagG = dp.tagGrupoRanking || p.tagGrupoRanking;
+            const ehPartidaGrupo = !!tagG;
+
+            if (abaFaseAtivaSaaS === 'GRUPOS' && !ehPartidaGrupo) return;
+            if (abaFaseAtivaSaaS !== 'GRUPOS' && ehPartidaGrupo) return;
+
+            if (potAlvo && Array.isArray(confsFase) && confsFase.length > 0) {
+                const pertenceConfronto = confsFase.some(c => 
+                    (c.jogador1Id === p.jogador1Id && c.jogador2Id === p.jogador2Id) ||
+                    (c.jogador1Id === p.jogador2Id && c.jogador2Id === p.jogador1Id)
+                );
+                if (!pertenceConfronto) return;
+            }
+        }
+
         const dp = p.dadosPlacar || {};
         const st = dp.statusPlacar || p.status || 'consolidado';
 
@@ -345,9 +428,19 @@ function renderizarLeaderboardSaaS() {
 
         const chaveTabela = (divisaoGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
         
-        const listaIDs = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
-            ? rankingTabelasGlobal[chaveTabela]
-            : [];
+        // 🎯 Proteção de Modelos: Busca Semeadura exclusivamente no modelo de Grupos
+        let listaIDs = [];
+        if (modelo === 'grupos') {
+            listaIDs = (typeof rankingSemeaduraGlobal !== 'undefined' && rankingSemeaduraGlobal && rankingSemeaduraGlobal[chaveTabela] && rankingSemeaduraGlobal[chaveTabela].length > 0)
+                ? rankingSemeaduraGlobal[chaveTabela]
+                : ((typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
+                    ? rankingTabelasGlobal[chaveTabela]
+                    : []);
+        } else {
+            listaIDs = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
+                ? rankingTabelasGlobal[chaveTabela]
+                : [];
+        }
 
         let listaGeralIDs = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal && rankingGeralGlobal[chaveTabela])
             ? rankingGeralGlobal[chaveTabela]
@@ -455,6 +548,40 @@ function renderizarLeaderboardSaaS() {
                 btnM2.style.background = tema.bg;
                 btnM2.style.borderColor = tema.border;
                 btnM2.style.color = tema.color;
+            }
+        }
+		
+		// Injeção do Botão da Árvore do Mata-Mata (Ao lado do PDF)
+        let btnArvore = document.getElementById('btn-toggle-arvore-saas');
+        if (!btnArvore && selectGenero && selectGenero.parentElement) {
+            btnArvore = document.createElement('button');
+            btnArvore.id = 'btn-toggle-arvore-saas';
+            btnArvore.type = 'button';
+            btnArvore.title = 'Alternar Visão Árvore / Lista';
+            btnArvore.style.cssText = 'width: 38px; height: 36px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; color: #8b5cf6; display: none; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-left: 4px;';
+            btnArvore.innerHTML = '<i class="material-icons" style="font-size: 18px;">account_tree</i>';
+            btnArvore.onclick = () => alternarVisaoMataMataSaaS();
+
+            const btnPdf = selectGenero.parentElement.querySelector('button[onclick*="exportarPDFContextualSaaS"], button[onclick*="exportarSumulasPDFSaaS"], .btn-pdf');
+            if (btnPdf) {
+                selectGenero.parentElement.insertBefore(btnArvore, btnPdf);
+            } else {
+                selectGenero.parentElement.appendChild(btnArvore);
+            }
+        }
+
+        if (btnArvore) {
+            const emFaseMataMata = (faseAtual >= 4 && modelo === 'grupos');
+            btnArvore.style.display = (emFaseMataMata && abaVisaoLeaderboardSaaS === 'TORNEIO') ? 'flex' : 'none';
+            
+            if (modoVisaoMataMataSaaS === 'arvore') {
+                btnArvore.style.background = '#8b5cf6';
+                btnArvore.style.color = '#ffffff';
+                btnArvore.style.borderColor = '#7c3aed';
+            } else {
+                btnArvore.style.background = '#f5f3ff';
+                btnArvore.style.color = '#8b5cf6';
+                btnArvore.style.borderColor = '#ddd6fe';
             }
         }
 
@@ -1356,14 +1483,13 @@ function renderizarLeaderboardSaaS() {
                 if (modelo === 'grupos') {
                     const dp = partida.dadosPlacar || {};
                     const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
-                    const tamanhoGrupo = parseInt(configRanking.grupos?.tamanhoGrupo, 10) || 3;
+                    const tagF = (partida.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
 
-                    const idx1 = partida.jogador1Id ? listaIDs.indexOf(partida.jogador1Id) : -1;
-                    const idx2 = partida.jogador2Id ? listaIDs.indexOf(partida.jogador2Id) : -1;
-                    const grp1 = idx1 !== -1 ? Math.floor(idx1 / tamanhoGrupo) : -1;
-                    const grp2 = idx2 !== -1 ? Math.floor(idx2 / tamanhoGrupo) : -2;
+                    // 🛡️ TRAVA RIGOROSA: Ignora partidas das fases eliminatórias (Mata-Mata)
+                    const ehEliminatoria = tagF.includes('oitavas') || tagF.includes('quartas') || tagF.includes('semi') || tagF.includes('final');
+                    if (ehEliminatoria) return;
 
-                    const ehPartidaGrupo = !!tagG || (grp1 !== -1 && grp1 === grp2);
+                    const ehPartidaGrupo = !!tagG || (tagF.includes('grupo') || /^g\d+$/i.test(tagG));
 
                     if (!ehPartidaGrupo) return;
                 }
@@ -1405,15 +1531,14 @@ function renderizarLeaderboardSaaS() {
         });
 
 
-		// 🎯 Permite alternar para a visão gráfica se a opção pirâmide for acionada
-        const exibeHall = torneioConcluido && (modelo !== 'grupos' || abaFaseAtivaSaaS === 'AUTO' || abaFaseAtivaSaaS === 'MM_2' || abaFaseAtivaSaaS === 'FINAL') && modoVisaoPiramideSaaS !== 'piramide';
-
+		// 🎯 Adicionado && modoVisaoMataMataSaaS !== 'arvore' para permitir ver a árvore após homologado
+		const exibeHall = torneioConcluido && (modelo !== 'grupos' || abaFaseAtivaSaaS === 'AUTO' || abaFaseAtivaSaaS === 'MM_2' || abaFaseAtivaSaaS === 'FINAL') && modoVisaoPiramideSaaS !== 'piramide' && modoVisaoPiramideSaaS !== 'barragem_tabela' && modoVisaoMataMataSaaS !== 'arvore';
         if (exibeHall) {
 			// Restaura a visibilidade das abas e dos filtros ao voltar para a lista
             const containerAbasOpt = document.querySelector('#sheet-leaderboard-ranking .opt1-segmented');
             const containerDropdownsOpt = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
             if (containerAbasOpt) containerAbasOpt.style.display = '';
-            if (containerDropdownsOpt) containerDropdownsOpt.style.display = '';
+            if (containerDropdownsOpt) containerDropdownsOpt.style.display = ''; 
 			
             let htmlHall = '';
 
@@ -1436,7 +1561,7 @@ function renderizarLeaderboardSaaS() {
             };
             const txtBadgeCampeao = rotulosBadgesCampeao[modelo] || "1º LUGAR • CAMPEÃO";
 
-            // 🔺 Botão vetorial com o ícone da Pirâmide para alternar
+            // 🔺 Botão vetorial com o ícone da Pirâmide ou Ícone da Barragem para alternar
             let btnPiramideOpt = '';
             if (modelo === 'piramide') {
                 btnPiramideOpt = `
@@ -1446,6 +1571,12 @@ function renderizarLeaderboardSaaS() {
                             <path d="M6.5 10.5L17.5 10.5L19.5 15H4.5L6.5 10.5Z" fill="#d97706"/>
                             <path d="M3.5 16.5L20.5 16.5L22 21H2L3.5 16.5Z" fill="#b45309"/>
                         </svg>
+                    </button>
+                `;
+            } else if (modelo === 'barragem') {
+                btnPiramideOpt = `
+                    <button type="button" onclick="alternarVisaoBarragemSaaS()" title="Ver Tabela Completa da Barragem" style="position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                        <i class="material-icons" style="font-size: 26px; color: #d97706;">leaderboard</i>
                     </button>
                 `;
             }
@@ -1645,9 +1776,19 @@ function renderizarLeaderboardSaaS() {
                 return stB.v - stA.v;
             });
 
+            let btnVoltarPodio = '';
+            if (torneioConcluido && modoVisaoPiramideSaaS === 'barragem_tabela') {
+                btnVoltarPodio = `
+                    <button type="button" onclick="alternarVisaoBarragemSaaS()" title="Voltar ao Pódio do Campeão" style="float: right; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; color: #0284c7; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-bottom: 6px;">
+                        <i class="material-icons" style="font-size: 16px;">emoji_events</i> Ver Pódio
+                    </button>
+                `;
+            }
+
             let htmlTable = `
                 <div class="box-dica-leaderboard">
-                    💡 <b>Modelo Barragem:</b> Pontos corridos. Vitória = ${ptsVit} pts, Derrota = ${ptsDer} pt. Saldo de Games desempata a classificação.
+                    ${btnVoltarPodio}
+                    💡 <b>Modelo Barragem:</b> Pontos corridos. Vitória = ${ptsVit} pts, Derrota =${ptsDer} pt. Saldo de Games desempata a classificação.
                 </div>
 
                 <table class="tabela-leaderboard-barragem">
@@ -1702,8 +1843,19 @@ function renderizarLeaderboardSaaS() {
             `;
             let numGrupo = 1;
 
-            for (let i = 0; i < listaIDs.length; i += tamanhoGrupo) {
-                const membrosChave = listaIDs.slice(i, i + tamanhoGrupo);
+            // 🎯 CÁLCULO DE AGRUPAMENTO EQUILIBRADO (SSOT)
+            const listaIDsLimpos = listaIDs.filter(Boolean);
+            const totalAtletas = listaIDsLimpos.length;
+            const numGrupos = totalAtletas > 0 ? Math.ceil(totalAtletas / tamanhoGrupo) : 0;
+            const baseGrupo = totalAtletas > 0 ? Math.floor(totalAtletas / numGrupos) : 0;
+            const restoGrupo = totalAtletas > 0 ? totalAtletas % numGrupos : 0;
+
+            let ponteiroAtletas = 0;
+
+            for (let g = 0; g < numGrupos; g++) {
+                const qtdNoGrupo = g < restoGrupo ? baseGrupo + 1 : baseGrupo;
+                const membrosChave = listaIDsLimpos.slice(ponteiroAtletas, ponteiroAtletas + qtdNoGrupo);
+                ponteiroAtletas += qtdNoGrupo;
 
                 membrosChave.sort((a, b) => {
                     const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
@@ -1733,46 +1885,45 @@ function renderizarLeaderboardSaaS() {
                 `;
 
                 membrosChave.forEach((idAtleta, idx) => {
-					const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-					const st = estatisticas[idAtleta] || { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
-					const posInterna = idx + 1;
-					const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
+                    const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+                    const st = estatisticas[idAtleta] || { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+                    const posInterna = idx + 1;
+                    const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
 
-					// 🎯 Remove o símbolo 'º' para deixar apenas o número puro (estilo ATP)
-					const posRaw = (typeof obterPosicaoTextoRankingSaaS === 'function' && obterPosicaoTextoRankingSaaS(atleta.nomeCompleto || atleta.apelido || nomeAtleta)) || `${idx + 1}`;
-					const posSeed = posRaw.replace('º', '').trim();
+                    const posRaw = (typeof obterPosicaoTextoRankingSaaS === 'function' && obterPosicaoTextoRankingSaaS(atleta.nomeCompleto || atleta.apelido || nomeAtleta)) || `${idx + 1}`;
+                    const posSeed = posRaw.replace('º', '').trim();
 
-					const ehVoce = (idAtleta === idLogado);
-					const isClassificado = posInterna <= classificadosQtd;
+                    const ehVoce = (idAtleta === idLogado);
+                    const isClassificado = posInterna <= classificadosQtd;
 
-					const tagTexto = (faseAtual === 3 && membrosChave.length > 1) ? "Zona de Classificação" : "Classificado";
+                    const tagTexto = (faseAtual === 3 && membrosChave.length > 1) ? "Zona de Classificação" : "Classificado";
 
-					const temEmpatePontos = membrosChave.some(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts && st.pts > 0);
-					let exibeConfronto = false;
-					if (temEmpatePontos) {
-						const outrosEmpatados = membrosChave.filter(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts);
-						exibeConfronto = outrosEmpatados.some(outroId => confrontosDiretos[`${idAtleta}_vs_${outroId}`] === idAtleta);
-					}
+                    const temEmpatePontos = membrosChave.some(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts && st.pts > 0);
+                    let exibeConfronto = false;
+                    if (temEmpatePontos) {
+                        const outrosEmpatados = membrosChave.filter(outroId => outroId !== idAtleta && (estatisticas[outroId]?.pts || 0) === st.pts);
+                        exibeConfronto = outrosEmpatados.some(outroId => confrontosDiretos[`${idAtleta}_vs_${outroId}`] === idAtleta);
+                    }
 
-					const sinalSG = st.sg > 0 ? `+${st.sg}` : st.sg;
+                    const sinalSG = st.sg > 0 ? `+${st.sg}` : st.sg;
 
-					htmlGrupos += `
-						<div class="item-membro-grupo ${isClassificado ? 'classificado' : ''}" style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; ${ehVoce ? 'background: #f0fdf4;' : ''}">
-							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-								<div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
-									<span style="font-weight: 400; color: #94a3b8; font-size: 12px; margin-right: 6px;">${posSeed}</span>${nomeAtleta} ${ehVoce ? '(Você)' : ''}
-									${isClassificado ? `<span class="badge-classificado">${tagTexto}</span>` : ''}
-								</div>
-								<span style="font-size: 14px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
-							</div>
-							<div style="display: flex; gap: 6px;">
-								<span class="micro-pill destaque">SG ${sinalSG}</span>
-								<span class="micro-pill">${st.v}V - ${st.d}D</span>
-								${exibeConfronto ? '<span class="micro-pill">Confronto ⚔️</span>' : ''}
-							</div>
-						</div>
-					`;
-				});
+                    htmlGrupos += `
+                        <div class="item-membro-grupo ${isClassificado ? 'classificado' : ''}" style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; ${ehVoce ? 'background: #f0fdf4;' : ''}">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
+                                    <span style="font-weight: 400; color: #94a3b8; font-size: 12px; margin-right: 6px;">${posSeed}</span>${nomeAtleta} ${ehVoce ? '(Você)' : ''}
+                                    ${isClassificado ? `<span class="badge-classificado">${tagTexto}</span>` : ''}
+                                </div>
+                                <span style="font-size: 14px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <span class="micro-pill destaque">SG ${sinalSG}</span>
+                                <span class="micro-pill">${st.v}V - ${st.d}D</span>
+                                ${exibeConfronto ? '<span class="micro-pill">Confronto ⚔️</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                });
 
                 htmlGrupos += `</div>`;
                 numGrupo++;
@@ -1784,6 +1935,24 @@ function renderizarLeaderboardSaaS() {
                 const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) 
                     ? rankingChavesGlobal[chaveTabela] 
                     : null;
+
+                // 🌳 MODO ÁRVORE MATA-MATA (Invocação do módulo grupos.js)
+                const containerAbasOpt = document.querySelector('#sheet-leaderboard-ranking .opt1-segmented');
+                const containerDropdownsOpt = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
+
+                if (modoVisaoMataMataSaaS === 'arvore') {
+                    if (containerAbasOpt) containerAbasOpt.style.display = 'none';
+                    if (containerDropdownsOpt) containerDropdownsOpt.style.display = 'none';
+
+                    if (typeof renderizarVisaoMataMataSaaS === 'function') {
+                        renderizarVisaoMataMataSaaS(bodyList, dadosChaveCat, idLogado);
+                        return;
+                    }
+                }
+
+                // Restaura visibilidade das abas e dropdowns se estiver no modo lista
+                if (containerAbasOpt) containerAbasOpt.style.display = '';
+                if (containerDropdownsOpt) containerDropdownsOpt.style.display = '';
 
                 const rodadaAtualBanco = (dadosChaveCat && dadosChaveCat.rodada1) ? dadosChaveCat.rodada1 : [];
                 const tamanhoChaveAtual = (dadosChaveCat && dadosChaveCat.faseAtual) ? parseInt(dadosChaveCat.faseAtual, 10) : (rodadaAtualBanco.length * 2);
@@ -2037,6 +2206,634 @@ function filtrarTabelaRankingGeralSaaS() {
 /* 3. CONTROLES DA ABA DE HISTÓRICO E ACERVO                 */
 /* ======================================================== */
 
+function abrirGruposAcervoSaaS(idEdicao) {
+    const edicao = acervoHistoricoGlobalSaaS.find(e => e.id === idEdicao);
+    if (!edicao || !edicao.partidas) {
+        showToast("Dados do Mata-Mata indisponíveis para esta edição.", "warning");
+        return;
+    }
+
+    edicaoHistoricaFocoSaaS = edicao;
+    
+    // Identifica e sincroniza a categoria da edição arquivada
+    const categorias = Object.keys(edicao.classificacaoFinal || {});
+    if (categorias.length === 0) {
+        showToast("Nenhuma categoria encontrada para esta edição.", "warning");
+        return;
+    }
+
+    categoriaHistoricaAtivaSaaS = categorias.sort()[0];
+
+    // Sincroniza classe e gênero para a montagem dos confrontos
+    const partesCat = categoriaHistoricaAtivaSaaS.split('_');
+    abaClasseAtivaSaaS = partesCat[0] || 'B';
+    abaGeneroAtivaSaaS = partesCat[1] || 'MASCULINO';
+
+    const sheet = document.getElementById('sheet-leaderboard-ranking');
+    const containerAbas = document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null;
+    const selectClasse = document.getElementById('select-leaderboard-classe');
+    const selectGenero = document.getElementById('select-leaderboard-genero');
+    const containerDropdowns = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
+
+    // Oculta as abas do torneio ativo para isolar o acervo histórico
+    if (containerAbas) containerAbas.style.display = 'none';
+    if (selectClasse) selectClasse.style.display = 'none';
+    if (selectGenero) selectGenero.style.display = 'none';
+    if (containerDropdowns) containerDropdowns.style.display = 'none';
+
+    renderizarHTMLGruposAcervoSaaS();
+
+    if (sheet) {
+        sheet.style.display = 'flex';
+        setTimeout(() => sheet.classList.add('ativa'), 10);
+    }
+}
+
+function renderizarHTMLGruposAcervoSaaS() {
+    const bodyList = document.getElementById('body-leaderboard-scroll');
+    const txtSub = document.getElementById('txt-subtitulo-leaderboard');
+    if (!bodyList || !edicaoHistoricaFocoSaaS) return;
+
+    const edicao = edicaoHistoricaFocoSaaS;
+    const cal = edicao.contrato || {};
+    const categorias = Object.keys(edicao.classificacaoFinal || {});
+    const catAtiva = categoriaHistoricaAtivaSaaS || categorias[0] || '';
+    const partidasMap = edicao.partidas || {};
+
+    // 🎯 CORREÇÃO DO TÍTULO: Exibe a identificação oficial do modelo
+    if (txtSub) {
+        txtSub.innerHTML = `Ranking Oficial do Clube • Modelo Grupos (Chaves) <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
+    }
+
+    let htmlHeaderCat = '';
+    if (categorias.length > 1) {
+        htmlHeaderCat += `<div style="margin-bottom: 12px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9;">`;
+        categorias.sort().forEach(cat => {
+            const ativa = (cat === catAtiva);
+            let label = cat.replace('CLASSE_', 'Classe ').replace('_', ' ');
+            label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            
+            htmlHeaderCat += `
+                <button onclick="mudarCategoriaGruposHistoricaSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                    ${label}
+                </button>
+            `;
+        });
+        htmlHeaderCat += `</div>`;
+    }
+
+    const partidasCat = Object.values(partidasMap).filter(p => {
+        if (p.categoria && p.categoria !== catAtiva) return false; 
+        const dp = p.dadosPlacar || {};
+        const tagFase = (p.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
+        return tagFase.includes('oitavas') || tagFase.includes('quartas') || tagFase.includes('semi') || tagFase.includes('final');
+    });
+
+    const mapaSeedsBracket = {};
+    const semeaduraGlobal = edicao.semeaduraGrupos || {};
+    const listaSemeaduraGlobal = (semeaduraGlobal[catAtiva] && semeaduraGlobal[catAtiva].length > 0)
+        ? semeaduraGlobal[catAtiva]
+        : ((edicao.classificacaoFinal && edicao.classificacaoFinal[catAtiva]) || []);
+
+    listaSemeaduraGlobal.forEach((idAtleta, idx) => {
+        mapaSeedsBracket[idAtleta] = String(idx + 1);
+    });
+
+    const formatarPartidaComSeeds = (fase, pOriginal, idOverride1 = null, idOverride2 = null, isBye = false) => {
+        const id1 = idOverride1 || (pOriginal ? pOriginal.jogador1Id : null);
+        const id2 = idOverride2 || (pOriginal ? pOriginal.jogador2Id : null);
+
+        const s1 = id1 ? (mapaSeedsBracket[id1] || '') : '';
+        const s2 = id2 ? (mapaSeedsBracket[id2] || '') : '';
+
+        const dpOriginal = pOriginal ? (pOriginal.dadosPlacar || {}) : {};
+
+        return {
+            ...(pOriginal || {}),
+            fase: fase,
+            jogador1Id: id1,
+            jogador2Id: id2,
+            isBye: isBye,
+            posicaoP1: s1,
+            posicaoP2: s2,
+            dadosPlacar: {
+                ...dpOriginal,
+                posicaoP1: s1,
+                posicaoP2: s2
+            }
+        };
+    };
+
+    const ordenarJogadoresConfrontoGen = (partida) => {
+        if (!partida) return { idTop: null, idBottom: null };
+        const s1 = parseInt(mapaSeedsBracket[partida.jogador1Id] || '999', 10);
+        const s2 = parseInt(mapaSeedsBracket[partida.jogador2Id] || '999', 10);
+
+        let idTop = partida.jogador1Id;
+        let idBottom = partida.jogador2Id;
+
+        if (s1 === 2) {
+            idTop = partida.jogador2Id;
+            idBottom = partida.jogador1Id;
+        } else if (s2 === 2) {
+            idTop = partida.jogador1Id;
+            idBottom = partida.jogador2Id;
+        } else if (s1 > s2 && s2 !== 999) {
+            idTop = partida.jogador2Id;
+            idBottom = partida.jogador1Id;
+        }
+
+        return { idTop, idBottom };
+    };
+
+    const partidasPorFaseBrutas = {};
+    let maiorFase = 2;
+
+    partidasCat.forEach(p => {
+        const dp = p.dadosPlacar || {};
+        const tagFase = (p.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
+        let numPot = 2;
+
+        if (tagFase.includes('16avos')) numPot = 32;
+        else if (tagFase.includes('oitavas')) numPot = 16;
+        else if (tagFase.includes('quartas')) numPot = 8;
+        else if (tagFase.includes('semi')) numPot = 4;
+        else if (tagFase.includes('final')) numPot = 2;
+
+        if (numPot > maiorFase) maiorFase = numPot;
+
+        if (!partidasPorFaseBrutas[numPot]) partidasPorFaseBrutas[numPot] = [];
+        partidasPorFaseBrutas[numPot].push(p);
+    });
+
+    const historicoRodadas = {};
+
+    if (maiorFase >= 8) {
+        const quartasBrutas = partidasPorFaseBrutas[8] || [];
+        const rodadaQuartasOrdenada = new Array(4).fill(null);
+
+        // 🎯 1. Alinhamento Estrutural das Quartas de Final (Slots 0, 1, 2, 3)
+        quartasBrutas.forEach(qPartida => {
+            const p1 = qPartida.jogador1Id;
+            const p2 = qPartida.jogador2Id;
+            const s1 = parseInt(mapaSeedsBracket[p1] || '999', 10);
+            const s2 = parseInt(mapaSeedsBracket[p2] || '999', 10);
+
+            let idTop = (s1 < s2) ? p1 : p2;
+            let idBottom = (s1 < s2) ? p2 : p1;
+
+            // No QF2 (Sementes 5 e 6), a chave coloca a semente 6 no topo e a semente 5 na base
+            if ((s1 === 5 && s2 === 6) || (s1 === 6 && s2 === 5)) {
+                idTop = (s1 === 6) ? p1 : p2;
+                idBottom = (s1 === 5) ? p1 : p2;
+            }
+
+            const objP = formatarPartidaComSeeds(8, qPartida, idTop, idBottom, false);
+
+            if (s1 === 5 || s2 === 5 || s1 === 6 || s2 === 6) {
+                rodadaQuartasOrdenada[1] = objP; // Slot 1 (QF2)
+            } else {
+                rodadaQuartasOrdenada[2] = objP; // Slot 2 (QF3)
+            }
+        });
+
+        // Preenchimento automático dos BYEs (Seed 1 no Slot 0, Seed 3 no Slot 3)
+        if (!rodadaQuartasOrdenada[0]) {
+            const idBye1 = Object.keys(mapaSeedsBracket).find(id => mapaSeedsBracket[id] === '1');
+            if (idBye1) rodadaQuartasOrdenada[0] = formatarPartidaComSeeds(8, null, idBye1, null, true);
+        }
+        if (!rodadaQuartasOrdenada[3]) {
+            const idBye3 = Object.keys(mapaSeedsBracket).find(id => mapaSeedsBracket[id] === '3');
+            if (idBye3) rodadaQuartasOrdenada[3] = formatarPartidaComSeeds(8, null, idBye3, null, true);
+        }
+
+        for (let k = 0; k < 4; k++) {
+            if (!rodadaQuartasOrdenada[k]) {
+                rodadaQuartasOrdenada[k] = { fase: 8, jogador1Id: null, jogador2Id: null, isBye: false };
+            }
+        }
+
+        historicoRodadas[8] = rodadaQuartasOrdenada;
+    }
+
+    if (maiorFase >= 16) {
+        const oitavasBrutas = partidasPorFaseBrutas[16] || [];
+        const rodadaQuartas = historicoRodadas[8] || [];
+        const rodadaOitavasOrdenada = [];
+
+        rodadaQuartas.forEach(qJogo => {
+            const atletasNoJogo = [qJogo.jogador1Id, qJogo.jogador2Id].filter(Boolean);
+
+            atletasNoJogo.forEach(idAtletaQuartas => {
+                const partidaEncontrada = oitavasBrutas.find(p => p.jogador1Id === idAtletaQuartas || p.jogador2Id === idAtletaQuartas);
+
+                if (partidaEncontrada) {
+                    const { idTop, idBottom } = ordenarJogadoresConfrontoGen(partidaEncontrada);
+                    rodadaOitavasOrdenada.push(formatarPartidaComSeeds(16, partidaEncontrada, idTop, idBottom, false));
+                } else {
+                    rodadaOitavasOrdenada.push(formatarPartidaComSeeds(16, null, idAtletaQuartas, null, true));
+                }
+            });
+
+            if (atletasNoJogo.length < 2) {
+                for (let k = atletasNoJogo.length; k < 2; k++) {
+                    rodadaOitavasOrdenada.push({ fase: 16, jogador1Id: null, jogador2Id: null, isBye: false });
+                }
+            }
+        });
+
+        while (rodadaOitavasOrdenada.length < 8) {
+            rodadaOitavasOrdenada.push({ fase: 16, jogador1Id: null, jogador2Id: null, isBye: false });
+        }
+
+        historicoRodadas[16] = rodadaOitavasOrdenada;
+    }
+
+    if (maiorFase >= 4) {
+        const semisBrutas = partidasPorFaseBrutas[4] || [];
+        const rodadaQuartasOrdenada = historicoRodadas[8] || [];
+
+        // 🎯 2. Alinhamento Estrutural das Semi-Finais (Conectado ao fluxo das Quartas)
+        const idQF0_Top = rodadaQuartasOrdenada[0]?.jogador1Id || rodadaQuartasOrdenada[0]?.jogador2Id;
+        const idQF2_Adv = rodadaQuartasOrdenada[2]?.vencedorId || (rodadaQuartasOrdenada[2]?.dadosPlacar?.vencedorCodigo === 'J2' ? rodadaQuartasOrdenada[2]?.jogador2Id : rodadaQuartasOrdenada[2]?.jogador1Id);
+
+        const rodadaSemisOrdenada = new Array(2).fill(null);
+
+        semisBrutas.forEach(sPartida => {
+            const p1 = sPartida.jogador1Id;
+            const p2 = sPartida.jogador2Id;
+
+            const ehSemi1 = (p1 === idQF0_Top || p2 === idQF0_Top);
+
+            if (ehSemi1) {
+                // Semi 1: Topo = Adriano Feitosa (Seed 1), Base = Alice Pereira (Seed 5)
+                const idTop = (p1 === idQF0_Top) ? p1 : p2;
+                const idBottom = (p1 === idQF0_Top) ? p2 : p1;
+                rodadaSemisOrdenada[0] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
+            } else {
+                // Semi 2: Topo = Alexandre Voj (Seed 7), Base = Alice Duck (Seed 3)
+                const idTop = (p1 === idQF2_Adv) ? p1 : p2;
+                const idBottom = (p1 === idQF2_Adv) ? p2 : p1;
+                rodadaSemisOrdenada[1] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
+            }
+        });
+
+        historicoRodadas[4] = rodadaSemisOrdenada;
+    }
+
+    const jogoFinal = (partidasPorFaseBrutas[2] && partidasPorFaseBrutas[2][0]) || null;
+    if (jogoFinal) {
+        const rodadaSemis = historicoRodadas[4] || [];
+        const semi1 = rodadaSemis[0];
+        const semi2 = rodadaSemis[1];
+
+        // 🎯 Conecta os vencedores das Semis: Semi 1 no topo, Semi 2 na base
+        const idTop = semi1?.vencedorId || (semi1?.dadosPlacar?.vencedorCodigo === 'J2' ? semi1?.jogador2Id : semi1?.jogador1Id) || jogoFinal.jogador1Id;
+        const idBottom = semi2?.vencedorId || (semi2?.dadosPlacar?.vencedorCodigo === 'J2' ? semi2?.jogador2Id : semi2?.jogador1Id) || jogoFinal.jogador2Id;
+
+        historicoRodadas[2] = [formatarPartidaComSeeds(2, jogoFinal, idTop, idBottom, false)];
+    }
+
+    const rodadaInicial = historicoRodadas[maiorFase] || []; 
+    const chaveCatData = {
+        faseAtual: maiorFase,
+        totalClassificados: maiorFase,
+        rodada1: rodadaInicial,
+        historicoRodadas: historicoRodadas
+    };
+
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    
+    if (modoVisaoMataMataSaaS === 'arvore') {
+        if (typeof renderizarVisaoMataMataSaaS === 'function') {
+            renderizarVisaoMataMataSaaS(bodyList, chaveCatData, idLogado, partidasMap);
+
+            if (htmlHeaderCat) {
+                bodyList.insertAdjacentHTML('afterbegin', htmlHeaderCat);
+            }
+            return;
+        }
+    }
+
+    const configRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+
+    const tamanhoGrupo = parseInt(cal.tamanhoGrupo, 10) || parseInt(configRanking.grupos?.tamanhoGrupo, 10) || 3;
+    const classificadosQtd = parseInt(cal.classificadosGrupo, 10) || parseInt(configRanking.grupos?.classificadosGrupo, 10) || 2;
+    const criterioDesempate = cal.criterioDesempate || configRanking.grupos?.criterioDesempate || 'games_confronto_sorteio';
+    const ptsVit = 3;
+    const ptsDer = 1;
+
+    let htmlListAcervo = '';
+
+    if (htmlHeaderCat) {
+        htmlListAcervo += htmlHeaderCat;
+    }
+
+    htmlListAcervo += `
+        <div class="box-dica-leaderboard" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>💡 <b>Modelo Grupos:</b> Atletas divididos em chaves. Os ${classificadosQtd} primeiros colocados avançam com a tag de Classificado.</div>
+            <button type="button" onclick="alternarVisaoMataMataSaaS()" title="Alternar para Visão Árvore" style="width: 38px; height: 36px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; color: #8b5cf6; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-left: 8px;">
+                <i class="material-icons" style="font-size: 18px;">account_tree</i>
+            </button>
+        </div>
+    `;
+
+    const semeadura = edicao.semeaduraGrupos || {};
+    const listaIDs = (semeadura[catAtiva] && semeadura[catAtiva].length > 0)
+        ? semeadura[catAtiva]
+        : ((edicao.classificacaoFinal && edicao.classificacaoFinal[catAtiva]) || []);
+
+    if (listaIDs.length > 0) {
+        const estatisticas = {};
+        const confrontosDiretos = {};
+        listaIDs.forEach(id => { estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 }; });
+
+        Object.values(partidasMap).forEach(partida => {
+            const dp = partida.dadosPlacar || {};
+            const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
+            const tagF = (partida.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
+            const ehEliminatorias = tagF.includes('oitavas') || tagF.includes('quartas') || tagF.includes('semi') || tagF.includes('final');
+
+            if ((!!tagG || tagF.includes('grupo')) && !ehEliminatorias) {
+                const p1 = partida.jogador1Id;
+                const p2 = partida.jogador2Id;
+                const vitorioso = partida.vencedorId || (dp.vencedorCodigo === 'J1' ? p1 : (dp.vencedorCodigo === 'J2' ? p2 : null));
+
+                const gamesP1 = parseInt(partida.gamesP1) || 0;
+                const gamesP2 = parseInt(partida.gamesP2) || 0;
+
+                confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
+                confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
+
+                if (estatisticas[p1]) {
+                    estatisticas[p1].j++;
+                    estatisticas[p1].sg += (gamesP1 - gamesP2);
+                    if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
+                    else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+                }
+                if (estatisticas[p2]) {
+                    estatisticas[p2].j++;
+                    estatisticas[p2].sg += (gamesP2 - gamesP1);
+                    if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
+                    else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
+                }
+            }
+        });
+
+        // 🎯 CÁLCULO DE AGRUPAMENTO EQUILIBRADO (SSOT)
+        const listaIDsLimpos = listaIDs.filter(Boolean);
+        const totalAtletas = listaIDsLimpos.length;
+        const numGrupos = totalAtletas > 0 ? Math.ceil(totalAtletas / tamanhoGrupo) : 0;
+        const baseGrupo = totalAtletas > 0 ? Math.floor(totalAtletas / numGrupos) : 0;
+        const restoGrupo = totalAtletas > 0 ? totalAtletas % numGrupos : 0;
+
+        let ponteiroAtletas = 0;
+        let numGrupo = 1;
+
+        for (let g = 0; g < numGrupos; g++) {
+            const qtdNoGrupo = g < restoGrupo ? baseGrupo + 1 : baseGrupo;
+            const membrosChave = listaIDsLimpos.slice(ponteiroAtletas, ponteiroAtletas + qtdNoGrupo);
+            ponteiroAtletas += qtdNoGrupo;
+
+            membrosChave.sort((a, b) => {
+                const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+                const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+
+                if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+
+                if (criterioDesempate === 'confronto_games') {
+                    const vDir = confrontosDiretos[`${a}_vs_${b}`];
+                    if (vDir) return vDir === a ? -1 : 1;
+                    if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                } else {
+                    if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                    const vDir = confrontosDiretos[`${a}_vs_${b}`];
+                    if (vDir) return vDir === a ? -1 : 1;
+                }
+
+                return stB.v - stA.v;
+            });
+
+            htmlListAcervo += `
+                <div class="card-leaderboard-grupo">
+                    <div class="header-leaderboard-grupo">
+                        <span>GRUPO ${numGrupo}</span>
+                        <span>Fase de Chaves</span>
+                    </div>
+            `;
+
+            membrosChave.forEach((idAtleta, idx) => {
+                const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+                const st = estatisticas[idAtleta] || { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+                const posInterna = idx + 1;
+                const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
+                const cap = (s) => (typeof capitalizarNome === 'function') ? capitalizarNome(s) : s;
+
+                const idxOriginal = listaIDs.indexOf(idAtleta);
+                const posSeed = idxOriginal !== -1 ? String(idxOriginal + 1) : `${ponteiroAtletas - qtdNoGrupo + idx + 1}`;
+
+                const ehVoce = (idAtleta === idLogado);
+                const isClassificado = posInterna <= classificadosQtd; 
+                const sinalSG = st.sg > 0 ? `+${st.sg}` : st.sg;
+
+                htmlListAcervo += `
+                    <div class="item-membro-grupo ${isClassificado ? 'classificado' : ''}" style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; ${ehVoce ? 'background: #f0fdf4;' : ''}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <div style="font-size: 13px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">
+                                <span style="font-weight: 400; color: #94a3b8; font-size: 12px; margin-right: 6px;">${posSeed}</span>${cap(nomeAtleta)} ${ehVoce ? '(Você)' : ''}
+                                ${isClassificado ? `<span class="badge-classificado">Classificado</span>` : ''}
+                            </div>
+                            <span style="font-size: 14px; font-weight: 800; color: #15803d;">${st.pts} pts</span>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <span class="micro-pill destaque">SG ${sinalSG}</span>
+                            <span class="micro-pill">${st.v}V - ${st.d}D</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            htmlListAcervo += `</div>`;
+            numGrupo++;
+        }
+    } else {
+        htmlListAcervo += '<p style="text-align: center; color: #94a3b8; margin-top: 40px;">Nenhum inscrito localizado para esta categoria.</p>';
+    }
+
+    bodyList.innerHTML = htmlListAcervo; 
+}
+
+
+function mudarCategoriaGruposHistoricaSaaS(novaCat) {
+    categoriaHistoricaAtivaSaaS = novaCat;
+    const partesCat = novaCat.split('_');
+    abaClasseAtivaSaaS = partesCat[0] || 'B';
+    abaGeneroAtivaSaaS = partesCat[1] || 'MASCULINO';
+    renderizarHTMLGruposAcervoSaaS();
+}
+
+function abrirBarragemAcervoSaaS(idEdicao) {
+    const edicao = acervoHistoricoGlobalSaaS.find(e => e.id === idEdicao);
+    if (!edicao || !edicao.classificacaoFinal) {
+        showToast("Dados da barragem indisponíveis para esta edição.", "warning");
+        return;
+    }
+
+    edicaoHistoricaFocoSaaS = edicao;
+    const categorias = Object.keys(edicao.classificacaoFinal);
+    if (categorias.length === 0) return;
+
+    categoriaHistoricaAtivaSaaS = categorias.sort()[0];
+
+    const sheet = document.getElementById('sheet-leaderboard-ranking');
+    const containerAbas = document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null;
+    const selectClasse = document.getElementById('select-leaderboard-classe');
+    const selectGenero = document.getElementById('select-leaderboard-genero');
+    const containerDropdowns = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
+
+    if (containerAbas) containerAbas.style.display = 'none';
+    if (selectClasse) selectClasse.style.display = 'none';
+    if (selectGenero) selectGenero.style.display = 'none';
+    if (containerDropdowns) containerDropdowns.style.display = 'none';
+
+    renderizarHTMLBarragemAcervoSaaS();
+
+    if (sheet) {
+        sheet.style.display = 'flex';
+        setTimeout(() => sheet.classList.add('ativa'), 10);
+    }
+}
+
+function renderizarHTMLBarragemAcervoSaaS() {
+    const bodyList = document.getElementById('body-leaderboard-scroll');
+    const txtSub = document.getElementById('txt-subtitulo-leaderboard');
+    if (!bodyList || !edicaoHistoricaFocoSaaS) return;
+
+    const edicao = edicaoHistoricaFocoSaaS;
+    const cal = edicao.contrato || {};
+    const categorias = Object.keys(edicao.classificacaoFinal || {});
+    const listaIDs = (edicao.classificacaoFinal && edicao.classificacaoFinal[categoriaHistoricaAtivaSaaS]) || [];
+    const partidasMap = edicao.partidas || {};
+
+    if (txtSub) {
+        txtSub.innerHTML = `<b>🏆 Barragem Final</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
+    }
+
+    let html = '';
+
+    if (categorias.length > 1) {
+        html += `<div style="margin-bottom: 16px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">`;
+        categorias.sort().forEach(cat => {
+            const ativa = (cat === categoriaHistoricaAtivaSaaS);
+            let label = cat.replace('CLASSE_', 'Classe ').replace('_', ' ');
+            label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            
+            html += `
+                <button onclick="mudarCategoriaBarragemHistoricaSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                    ${label}
+                </button>
+            `;
+        });
+        html += `</div>`;
+    }
+
+    if (listaIDs.length === 0) {
+        html += '<p style="text-align: center; color: #94a3b8; margin-top: 40px;">Nenhum atleta homologado nesta categoria.</p>';
+        bodyList.innerHTML = html;
+        return;
+    }
+
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+
+    const estatisticas = {};
+    listaIDs.forEach(id => {
+        estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+    });
+
+    Object.values(partidasMap).forEach(partida => {
+        if (partida.status === 'finalizada' && (partida.categoria === categoriaHistoricaAtivaSaaS || !partida.categoria)) {
+            const p1 = partida.jogador1Id;
+            const p2 = partida.jogador2Id;
+            const vitorioso = partida.vencedorId;
+            const g1 = parseInt(partida.gamesP1) || 0;
+            const g2 = parseInt(partida.gamesP2) || 0;
+
+            if (estatisticas[p1]) {
+                estatisticas[p1].j++;
+                estatisticas[p1].sg += (g1 - g2);
+                if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += 3; }
+                else { estatisticas[p1].d++; estatisticas[p1].pts += 1; }
+            }
+
+            if (estatisticas[p2]) {
+                estatisticas[p2].j++;
+                estatisticas[p2].sg += (g2 - g1);
+                if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += 3; }
+                else { estatisticas[p2].d++; estatisticas[p2].pts += 1; }
+            }
+        }
+    });
+
+    const listaOrdenada = [...listaIDs];
+    listaOrdenada.sort((a, b) => {
+        const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+        const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+        if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+        if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+        return stB.v - stA.v;
+    });
+
+    html += `
+        <div class="box-dica-leaderboard" style="margin-bottom: 12px;">
+            💡 <b>Modelo Barragem:</b> Classificação final por pontos corridos. Vitória = 3 pts, Derrota = 1 pt.
+        </div>
+
+        <table class="tabela-leaderboard-barragem">
+            <thead>
+                <tr>
+                    <th style="width: 35px;">POS</th>
+                    <th style="text-align: left; padding-left: 8px;">ATLETA</th>
+                    <th style="width: 25px;">J</th>
+                    <th style="width: 25px;">V</th>
+                    <th style="width: 25px;">D</th>
+                    <th style="width: 35px;">SG</th>
+                    <th style="width: 40px;">PTS</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    listaOrdenada.forEach((idAtleta, index) => {
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+        const st = estatisticas[idAtleta] || { j: 0, v: 0, d: 0, sg: 0, pts: 0 };
+        const pos = index + 1;
+        const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
+        const ehVoce = (idAtleta === idLogado);
+        const sinalSG = st.sg > 0 ? `+${st.sg}` : st.sg;
+
+        html += `
+            <tr class="${ehVoce ? 'voce' : ''}" style="${ehVoce ? 'background: #f0fdf4;' : ''}">
+                <td><b>${pos}º</b></td>
+                <td style="text-align: left; padding-left: 8px; color: ${ehVoce ? '#15803d' : '#1e293b'}; font-weight: 700;">${nomeAtleta} ${ehVoce ? '(Você)' : ''}</td>
+                <td>${st.j}</td>
+                <td>${st.v}</td>
+                <td>${st.d}</td>
+                <td style="color: ${st.sg > 0 ? '#16a34a' : (st.sg < 0 ? '#dc2626' : '#64748b')}; font-weight: 700;">${sinalSG}</td>
+                <td><span class="badge-pts-leaderboard">${st.pts}</span></td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+
+    bodyList.innerHTML = html;
+}
+
+function mudarCategoriaBarragemHistoricaSaaS(novaCat) {
+    categoriaHistoricaAtivaSaaS = novaCat;
+    renderizarHTMLBarragemAcervoSaaS();
+}
+
 async function carregarHistoricoTorneiosSaaS(forcarRecarga = false) {
     const tbody = document.getElementById('tbody-historico-torneios');
     if (!tbody || !raizBanco) return;
@@ -2184,10 +2981,14 @@ function renderizarTabelaHistoricoSaaS() {
             ? `<a href="${cal.regulamentoUrl}" target="_blank" class="pdf-link-inline" title="Ver Regulamento PDF"><i class="material-icons" style="font-size: 14px;">picture_as_pdf</i></a>`
             : `<a href="#" class="pdf-link-inline" title="Sem PDF anexado" onclick="event.preventDefault(); showToast('Nenhum regulamento em PDF anexado para esta edição.', 'info');"><i class="material-icons" style="font-size: 14px;">picture_as_pdf</i></a>`;
 
-        // 🎯 AQUI ESTÁ A MUDANÇA: Verifica se é pirâmide para ativar o clique
+        // 🎯 AQUI ESTÁ A MUDANÇA: Verifica o modelo para ativar o clique (Pirâmide, Barragem ou Grupos)
         let onclickBadge = "showToast('Abertura da árvore/chave em desenvolvimento.', 'info')";
         if (edicao.modelo === 'piramide') {
             onclickBadge = `abrirPiramideAcervoSaaS('${edicao.id}')`;
+        } else if (edicao.modelo === 'barragem') {
+            onclickBadge = `abrirBarragemAcervoSaaS('${edicao.id}')`;
+        } else if (edicao.modelo === 'grupos') {
+            onclickBadge = `abrirGruposAcervoSaaS('${edicao.id}')`;
         }
 
         html += `

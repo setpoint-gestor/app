@@ -13,7 +13,7 @@
 /* ======================================================== */
 
 async function aceitarConviteRankingSocioSaaS() {
-    const idLogado = localStorage.getItem('jogadorLogadoId');
+    const idLogado = localStorage.getItem('jogadorLogadoId'); 
     if (!idLogado || !raizBanco) return;
 
     if (navigator.vibrate) navigator.vibrate(30);
@@ -248,6 +248,7 @@ async function zerarRankingSaaS() {
                 await Promise.all([
                     database.ref(`${raizBanco}/ranking/partidas`).set(null),
                     database.ref(`${raizBanco}/ranking/tabelas`).remove(),
+                    database.ref(`${raizBanco}/ranking/semeadura`).remove(), // 🌱 Limpa o cofre da semeadura do Torneio de Grupos
                     database.ref(`${raizBanco}/ranking/chaves`).remove(),
                     database.ref(`${raizBanco}/convites_ranking`).remove()
                 ]);
@@ -822,8 +823,10 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
     const confGlobalCheck = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const divGenero = confGlobalCheck.divisaoGenero || 'separado';
+    const gruposConfig = confGlobalCheck.grupos || {}; // 👈 LINHA ADICIONADA
 
     const temClasse = categoriasHabilitadas.some(cat => cat.startsWith('CLASSE_'));
+	
     const temGenero = categoriasHabilitadas.includes('MASCULINO') || categoriasHabilitadas.includes('FEMININO');
 
     if (!temClasse) {
@@ -851,7 +854,10 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
         inicioInscricoes: dtIncIni,
         fimInscricoes: dtIncFim,
         inicioJogos: dtJogIni,
-        fimTorneio: dtJogFim
+        fimTorneio: dtJogFim,
+        tamanhoGrupo: parseInt(gruposConfig.tamanhoGrupo, 10) || 3,
+        classificadosGrupo: parseInt(gruposConfig.classificadosGrupo, 10) || 2,
+        criterioDesempate: gruposConfig.criterioDesempate || 'games_confronto_sorteio'
     };
 
     showToast("Gravando contrato e limpando área de trabalho do ranking...", "info");
@@ -1201,9 +1207,20 @@ function encerrarInscricoesECriarChavesSaaS() {
                                 }
                                 listaIDsSemeada.push(...grupoCompletado);
                             });
-                            updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaIDsSemeada.filter(id => id !== null || modelo === 'grupos');
+                            const listaFinal = listaIDsSemeada.filter(id => id !== null || modelo === 'grupos');
+                            updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaFinal;
+                            
+                            // 🌱 Salva no cofre blindado APENAS os atletas reais (sem vagas nulas/fantasmas)
+                            if (modelo === 'grupos') {
+                                const semeaduraLimpa = listaIDsSemeada.filter(id => id !== null && id !== undefined);
+                                updates[`${raizBanco}/ranking/semeadura/${chaveTab}`] = semeaduraLimpa;
+                            }
                         } else {
                             updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
+                            if (modelo === 'grupos') {
+                                const idsLimpos = idsInscritosCat.filter(id => id !== null && id !== undefined);
+                                updates[`${raizBanco}/ranking/semeadura/${chaveTab}`] = idsLimpos;
+                            }
                         }
                     });
 
@@ -1596,16 +1613,23 @@ async function encerrarFase3EAvancarSaaS() {
             if (eHomologacaoFinal) {
                 const edicaoId = `${new Date().getFullYear()}_${(cal.nomeTorneio || 'Torneio').replace(/\s+/g, '_')}`;
 
-                const [snapTabelasTorneio, snapRankingGeral, snapPartidas, snapPontosGeral] = await Promise.all([
+                const [snapTabelasTorneio, snapSemeadura, snapRankingGeral, snapPartidas, snapPontosGeral] = await Promise.all([
                     database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
+                    database.ref(`${raizBanco}/ranking/semeadura`).once('value'), // 🌱 Lê do Cofre de Semeadura
                     database.ref(`${raizBanco}/ranking/ranking_geral`).once('value'),
                     database.ref(`${raizBanco}/ranking/partidas`).once('value'),
                     database.ref(`${raizBanco}/ranking/pontos_geral`).once('value')
                 ]);
 
                 const tabelasTorneio = snapTabelasTorneio.exists() ? snapTabelasTorneio.val() : {};
+                const semeaduraTorneio = snapSemeadura.exists() ? snapSemeadura.val() : {};
                 const partidasTorneio = snapPartidas.exists() ? snapPartidas.val() : {};
                 const pontosGeralAtual = snapPontosGeral.exists() ? snapPontosGeral.val() : {};
+                
+				// 🌱 Para o modelo de grupos, usa a semente original gravada no cofre
+				const semeaduraGruposMap = (modelo === 'grupos') 
+					? JSON.parse(JSON.stringify((semeaduraTorneio && Object.keys(semeaduraTorneio).length > 0) ? semeaduraTorneio : tabelasTorneio))
+					: JSON.parse(JSON.stringify(tabelasTorneio));
 
                 const pGeral = conf.parametrosGeral || {};
                 const TABELA_PONTOS_SaaS = {
@@ -1641,7 +1665,7 @@ async function encerrarFase3EAvancarSaaS() {
                         pontosCat[idAtleta] = pontosAtuais + pontosGanhos;
                     });
 
-                    updates[`${raizBanco}/ranking/pontos_geral/${chaveCat}`] = pontosCat;
+                    updates[`${raizBanco}/ranking/pontos_geral/${chaveCat}`] = pontosCat; 
 
                     const todosAtletasCat = Object.keys(pontosCat);
                     todosAtletasCat.sort((a, b) => (parseInt(pontosCat[b], 10) || 0) - (parseInt(pontosCat[a], 10) || 0));
@@ -1655,13 +1679,29 @@ async function encerrarFase3EAvancarSaaS() {
                     };
                 });
 
-                updates[`${raizBanco}/historico_torneios/${edicaoId}`] = {
-                    dataHomologacao: Date.now(),
-                    modelo: modelo,
-                    contrato: cal,
-                    classificacaoFinal: tabelasTorneio,
-                    partidas: partidasTorneio
-                };
+                const gruposConfig = conf.grupos || {};
+
+				const contratoCongelado = {
+					...cal,
+					tamanhoGrupo: parseInt(cal.tamanhoGrupo || gruposConfig.tamanhoGrupo, 10) || 3,
+					classificadosGrupo: parseInt(cal.classificadosGrupo || gruposConfig.classificadosGrupo, 10) || 2,
+					criterioDesempate: cal.criterioDesempate || gruposConfig.criterioDesempate || 'games_confronto_sorteio'
+				};
+
+				const objetoHistorico = {
+					dataHomologacao: Date.now(),
+					modelo: modelo,
+					contrato: contratoCongelado,
+					classificacaoFinal: tabelasTorneio,
+					partidas: partidasTorneio
+				};
+
+				// 🎯 Anexa a semeadura original se o torneio for do modelo de Grupos
+				if (modelo === 'grupos') {
+					objetoHistorico.semeaduraGrupos = semeaduraGruposMap;
+				}
+
+				updates[`${raizBanco}/historico_torneios/${edicaoId}`] = objetoHistorico;
             }
 
             await database.ref().update(updates);
@@ -1822,35 +1862,51 @@ function calcularPotenciaDeDoisSuperiorSaaS(valor) {
     return pot;
 }
 
+// 🎯 MATRIZ OFICIAL ATP/ITF DE POSICIONAMENTO DE SEMENTES E BYES
+function obterMapeamentoPosicoesSementesSaaS(tamanhoChave) {
+    if (tamanhoChave === 4) return [0, 3, 2, 1];
+    if (tamanhoChave === 8) return [0, 7, 4, 3, 2, 5, 1, 6];
+    if (tamanhoChave === 16) return [0, 15, 8, 7, 4, 11, 12, 3, 2, 13, 10, 5, 6, 9, 14, 1];
+    if (tamanhoChave === 32) {
+        return [
+            0, 31, 16, 15, 8, 23, 24, 7,
+            4, 27, 20, 11, 12, 19, 28, 3,
+            2, 29, 18, 13, 10, 21, 22, 5,
+            6, 25, 14, 17, 9, 26, 30, 1
+        ];
+    }
+    const ordem = [];
+    for (let i = 0; i < tamanhoChave; i++) ordem.push(i);
+    return ordem;
+}
+
 function gerarCruzamentosMataMataSaaS(listaClassificados, classificadosPorGrupo = 2) {
-    const totalClassific = listaClassificados.filter(id => id !== null).length;
+    const totalClassific = listaClassificados.filter(id => id !== null && id !== undefined).length;
     const tamanhoChave = calcularPotenciaDeDoisSuperiorSaaS(totalClassific);
 
-    const primeiros = [];
-    const segundos = [];
-
-    listaClassificados.forEach((idAtleta, idx) => {
-        if (!idAtleta) return;
-        const posNoGrupo = (idx % classificadosPorGrupo) + 1;
-        if (posNoGrupo === 1) primeiros.push(idAtleta);
-        else segundos.push(idAtleta);
+    // Lê o cofre de semeadura para obter a classificação original (#1, #2, #3...)
+    const semeaduraGlobal = (typeof rankingSemeaduraGlobal !== 'undefined' && rankingSemeaduraGlobal) ? rankingSemeaduraGlobal : {};
+    let listaOriginalSemeadura = [];
+    Object.values(semeaduraGlobal).forEach(sArr => {
+        if (Array.isArray(sArr)) listaOriginalSemeadura.push(...sArr);
     });
 
+    // Ordena TODOS os classificados estritamente pela semente original
+    const sementesMataMata = [...listaClassificados].filter(Boolean).sort((a, b) => {
+        const posA = listaOriginalSemeadura.indexOf(a);
+        const posB = listaOriginalSemeadura.indexOf(b);
+        if (posA !== -1 && posB !== -1) return posA - posB;
+        if (posA !== -1) return -1;
+        if (posB !== -1) return 1;
+        return 0;
+    });
+
+    const mapaSlots = obterMapeamentoPosicoesSementesSaaS(tamanhoChave);
     const slots = new Array(tamanhoChave).fill(null);
 
-    primeiros.forEach((idAtleta, idx) => {
-        const posSlot = idx * 2;
-        if (posSlot < tamanhoChave) {
-            slots[posSlot] = idAtleta;
-        }
-    });
-
-    segundos.forEach((idAtleta, idx) => {
-        let posSlot = (tamanhoChave - 1) - (idx * 2);
-        if (posSlot < 0 || slots[posSlot] !== null) {
-            posSlot = slots.findIndex(s => s === null);
-        }
-        if (posSlot !== -1) {
+    sementesMataMata.forEach((idAtleta, idx) => {
+        if (idx < mapaSlots.length) {
+            const posSlot = mapaSlots[idx];
             slots[posSlot] = idAtleta;
         }
     });
