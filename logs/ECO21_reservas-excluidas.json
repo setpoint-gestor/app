@@ -1936,5 +1936,71 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-09-28T18:53:23.950Z"
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Allana Barbosa": true,
+      "Bianca": false
+    },
+    "data": "01-10-2026",
+    "dataLocal": "28/09/2026, 15:53:23",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Allana Barbosa, Bianca",
+    "jogadores_completo": "ALLANA BARBOSA, BIANCA KROKER",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "organizadorDaReserva": "ALLANA BARBOSA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 6,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 4,
+        "hora": 7,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-09-28T18:53:23.937Z"
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Allana Barbosa": true,
+      "Bianca": false
+    },
+    "data": "01-10-2026",
+    "dataLocal": "28/09/2026, 15:53:23",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Allana Barbosa, Bianca",
+    "jogadores_completo": "ALLANA BARBOSA, BIANCA KROKER",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "organizadorDaReserva": "ALLANA BARBOSA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 6,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 4,
+        "hora": 7,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-09-28T18:53:23.950Z"
   }
 ]
