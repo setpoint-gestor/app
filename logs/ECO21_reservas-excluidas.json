@@ -1810,5 +1810,32 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-09-28T11:19:15.398Z",
+    "dataLocal": "28/09/2026, 08:19:15",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "08:00 - 09:00",
+    "duracao": "1 Hora",
+    "data": "28-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "NOVAK DJOKOVIC",
+    "confirmacoes": {
+      "Djokovic": true,
+      "Nadal": true
+    },
+    "jogadores": "Djokovic, Nadal",
+    "jogadores_completo": "NOVAK DJOKOVIC, RAFAEL NADAL",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 8
+      }
+    ]
   }
 ]
