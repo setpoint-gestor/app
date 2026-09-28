@@ -1837,5 +1837,38 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-09-28T18:53:23.680Z",
+    "dataLocal": "28/09/2026, 15:53:23",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "01-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALLANA BARBOSA",
+    "confirmacoes": {
+      "Allana Barbosa": true,
+      "Bianca": false
+    },
+    "jogadores": "Allana Barbosa, Bianca",
+    "jogadores_completo": "ALLANA BARBOSA, BIANCA KROKER",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 7
+      }
+    ]
   }
 ]
