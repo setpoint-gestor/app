@@ -2366,5 +2366,145 @@
         "hora": 22
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-01T10:34:45.931Z",
+    "dataLocal": "01/10/2026, 07:34:45",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "27-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Alice Pereira, Alexandre Camargo",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ALEXANDRE CAMARGO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 10
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-01T10:34:45.931Z",
+    "dataLocal": "01/10/2026, 07:34:45",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "27-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALMIR ALVES DA CRUZ",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Almir": true
+    },
+    "jogadores": "Almir, Alice Pereira",
+    "jogadores_completo": "ALMIR ALVES DA CRUZ, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 6
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-01T10:34:45.931Z",
+    "dataLocal": "01/10/2026, 07:34:45",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "27-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Almir": true
+    },
+    "jogadores": "Alexandre Camargo, Almir",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ALMIR ALVES DA CRUZ",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 7
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-01T10:34:45.931Z",
+    "dataLocal": "01/10/2026, 07:34:45",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "09:00 - 10:00",
+    "duracao": "1 Hora",
+    "data": "27-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Ana Julia": true
+    },
+    "jogadores": "Alexandre Camargo, Ana Julia",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 9
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-01T10:34:45.931Z",
+    "dataLocal": "01/10/2026, 07:34:45",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "09:00 - 10:00",
+    "duracao": "1 Hora",
+    "data": "27-09-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Alice Pereira, Adriano Feitosa",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 7,
+        "hora": 9
+      }
+    ]
   }
 ]
