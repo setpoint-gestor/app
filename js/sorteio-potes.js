@@ -16,7 +16,7 @@ let sorteioPotesGlobal = {
     inscritos: {},
     potesData: [],
     drawSequence: [],
-    gruposResultado: {}, 
+    gruposResultado: {},  
     currentIndex: 0,
     autoTimer: null,
     isFastMode: false,
@@ -27,7 +27,7 @@ let sorteioPotesGlobal = {
 // BLOCO 2: INJEÇÃO DINÂMICA DO MODAL E CSS NO DOM (RESPONSIVO MOBILE)
 // ========================================================
 function garantirModalSorteioNoDOMSaaS() {
-    if (document.getElementById('modal-sorteio-potes')) return;
+    if (document.getElementById('modal-sorteio-potes')) return; 
 
     const modalHTML = `
     <style id="style-sorteio-potes-anim">
@@ -216,52 +216,59 @@ function garantirModalSorteioNoDOMSaaS() {
 // BLOCO 3: ALGORITMO DO SORTEIO POR POTES (PADRÃO ATP/ITF)
 // ========================================================
 function prepararDadosEPotesSaaS(inscritosCatMap, tamanhoGrupoConfig = 4) {
-    const ids = Object.keys(inscritosCatMap || {});
+    const ids = Array.isArray(inscritosCatMap) 
+        ? [...inscritosCatMap] 
+        : Object.keys(inscritosCatMap || {});
+
     if (ids.length === 0) return { potes: [], sequencia: [] };
 
-    // 🎯 Identifica o tipo de ordenação escolhida no disparo (Herdada vs Livre/Sorteio)
-    const tipoOrdenacao = (convitesRankingGlobal && convitesRankingGlobal.tipoOrdenacao)
-        ? convitesRankingGlobal.tipoOrdenacao
-        : ((configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.tipoOrdenacao)
-            ? configRegrasGlobal.ranking.tipoOrdenacao
-            : 'livre');
+    // 🎯 Se a lista for um Objeto bruto, aplica a ordenação conforme a regra do convite.
+    if (!Array.isArray(inscritosCatMap)) {
+        // 🎯 Identifica o tipo de ordenação escolhida no disparo (Herdada, Sorteio ou Livre)
+        const tipoOrdenacao = (convitesRankingGlobal && convitesRankingGlobal.tipoOrdenacao)
+            ? convitesRankingGlobal.tipoOrdenacao
+            : ((configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.tipoOrdenacao)
+                ? configRegrasGlobal.ranking.tipoOrdenacao
+                : 'livre');
 
-    // 🏆 Se for "Herdar Posição", ordena a lista inicial pelo Ranking Geral acumulado
-    if (tipoOrdenacao === 'herdada' && typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) {
-        const primeiroId = ids[0];
-        const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[primeiroId]) ? jogadoresGlobal[primeiroId] : {};
-        const classe = (atletaBase.classe || 'B').toUpperCase();
-        let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
-        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
-        
-        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-        const divGenero = confRanking.divisaoGenero || 'separado';
-        const chaveCat = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+        // 🏆 1. Se for "Herdar Posição", ordena a lista inicial pelo Ranking Geral acumulado
+        if (tipoOrdenacao === 'herdada' && typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) {
+            const primeiroId = ids[0];
+            const atletaBase = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[primeiroId]) ? jogadoresGlobal[primeiroId] : {};
+            const classe = (atletaBase.classe || 'B').toUpperCase();
+            let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
+            if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+            
+            const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+            const divGenero = confRanking.divisaoGenero || 'separado';
+            const chaveCat = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
 
-        const listaGeral = rankingGeralGlobal[chaveCat] || [];
+            const listaGeral = rankingGeralGlobal[chaveCat] || [];
 
-        ids.sort((a, b) => {
-            const posA = listaGeral.indexOf(a);
-            const posB = listaGeral.indexOf(b);
-            if (posA !== -1 && posB !== -1) return posA - posB;
-            if (posA !== -1) return -1;
-            if (posB !== -1) return 1;
-            return (inscritosCatMap[a]?.dataAceite || 0) - (inscritosCatMap[b]?.dataAceite || 0);
-        });
-    } else {
-        // Padrão: Ordenação inicial do Seed por data de aceite
-        ids.sort((a, b) => {
-            const dataA = inscritosCatMap[a]?.dataAceite || 0;
-            const dataB = inscritosCatMap[b]?.dataAceite || 0;
-            return dataA - dataB;
-        });
+            ids.sort((a, b) => {
+                const posA = listaGeral.indexOf(a);
+                const posB = listaGeral.indexOf(b);
+                if (posA !== -1 && posB !== -1) return posA - posB;
+                if (posA !== -1) return -1;
+                if (posB !== -1) return 1;
+                return (inscritosCatMap[a]?.dataAceite || 0) - (inscritosCatMap[b]?.dataAceite || 0);
+            });
+        } else if (tipoOrdenacao === 'sorteio') {
+            // 🎲 2. Se for "Sorteio", PRESERVA a ordem sorteada das chaves (Fisher-Yates) sem reordenar por dataAceite!
+        } else {
+            // 📅 3. Padrão (Inscrição Livre): Ordenação inicial do Seed por data/hora de aceite no app
+            ids.sort((a, b) => {
+                const dataA = inscritosCatMap[a]?.dataAceite || 0;
+                const dataB = inscritosCatMap[b]?.dataAceite || 0;
+                return dataA - dataB;
+            });
+        }
     }
 
     const totalAtletas = ids.length;
     const numGrupos = Math.ceil(totalAtletas / tamanhoGrupoConfig);
 
     // 🎯 CASO DE GRUPO ÚNICO (PIRÂMIDE / BARRAGEM / CHAVE ÚNICA):
-    // Executa o baralhamento aleatório puro (Fisher-Yates) sobre todos os atletas
     if (numGrupos <= 1) {
         const idsShuffled = [...ids];
         for (let i = idsShuffled.length - 1; i > 0; i--) {
@@ -304,7 +311,6 @@ function prepararDadosEPotesSaaS(inscritosCatMap, tamanhoGrupoConfig = 4) {
         });
     }
 
-    // Sequência de Sorteio Randomizada respeitando 1 jogador por pote por grupo
     const sequenciaSorteio = [];
     const gruposMapeados = {};
     for (let g = 1; g <= numGrupos; g++) {
@@ -315,25 +321,68 @@ function prepararDadosEPotesSaaS(inscritosCatMap, tamanhoGrupoConfig = 4) {
         let poolPote = [...poteObj.atletas];
         const numPote = pIdx + 1;
 
-        // Distribuição Sorteada
-        for (let g = 1; g <= numGrupos; g++) {
-            if (poolPote.length === 0) break;
+        if (numPote === 1) {
+            // 🎯 REGRA FIXA POTE 1 (CABEÇAS DE CHAVE):
+            const gruposDestinoPote1 = new Array(numGrupos).fill(null);
 
-            const rIdx = Math.floor(Math.random() * poolPote.length);
-            const atletaId = poolPote.splice(rIdx, 1)[0];
-            const atletaObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[atletaId]) ? jogadoresGlobal[atletaId] : {};
-            const nomeAtleta = atletaObj.apelido || atletaObj.nomeCompleto || "Atleta";
+            // Semente #1 -> GRUPO 1
+            if (poolPote.length > 0) {
+                gruposDestinoPote1[0] = poolPote[0];
+            }
+            // Semente #2 -> ÚLTIMO GRUPO (Grupo N)
+            if (poolPote.length > 1 && numGrupos >= 2) {
+                gruposDestinoPote1[numGrupos - 1] = poolPote[1];
+            }
 
-            const itemSorteio = {
-                idAtleta: atletaId,
-                nomeAtleta: nomeAtleta,
-                seedNum: (ids.indexOf(atletaId) + 1),
-                poteNum: numPote,
-                grupoDestino: `GRUPO_${g}`
-            };
+            // Sementes intermediárias do Pote 1 (3..N, se existirem)
+            const atletasRestantes = poolPote.slice(2);
+            const gruposRestantesVagos = [];
+            for (let gIdx = 1; gIdx < numGrupos - 1; gIdx++) {
+                gruposRestantesVagos.push(gIdx);
+            }
 
-            sequenciaSorteio.push(itemSorteio);
-            gruposMapeados[`GRUPO_${g}`].push(atletaId);
+            atletasRestantes.forEach(atletaId => {
+                const rIdx = Math.floor(Math.random() * gruposRestantesVagos.length);
+                const gVagoIdx = gruposRestantesVagos.splice(rIdx, 1)[0];
+                gruposDestinoPote1[gVagoIdx] = atletaId;
+            });
+
+            // Mapeia para a sequência do sorteio
+            gruposDestinoPote1.forEach((atletaId, gIdx) => {
+                if (!atletaId) return;
+                const gNum = gIdx + 1;
+                const atletaObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[atletaId]) ? jogadoresGlobal[atletaId] : {};
+                const nomeAtleta = atletaObj.apelido || atletaObj.nomeCompleto || "Atleta";
+
+                sequenciaSorteio.push({
+                    idAtleta: atletaId,
+                    nomeAtleta: nomeAtleta,
+                    seedNum: (ids.indexOf(atletaId) + 1),
+                    poteNum: 1,
+                    grupoDestino: `GRUPO_${gNum}`
+                });
+                gruposMapeados[`GRUPO_${gNum}`].push(atletaId);
+            });
+
+        } else {
+            // Pote 2 em diante: Distribuição Sorteada Aleatória
+            for (let g = 1; g <= numGrupos; g++) {
+                if (poolPote.length === 0) break;
+
+                const rIdx = Math.floor(Math.random() * poolPote.length);
+                const atletaId = poolPote.splice(rIdx, 1)[0];
+                const atletaObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[atletaId]) ? jogadoresGlobal[atletaId] : {};
+                const nomeAtleta = atletaObj.apelido || atletaObj.nomeCompleto || "Atleta";
+
+                sequenciaSorteio.push({
+                    idAtleta: atletaId,
+                    nomeAtleta: nomeAtleta,
+                    seedNum: (ids.indexOf(atletaId) + 1),
+                    poteNum: numPote,
+                    grupoDestino: `GRUPO_${g}`
+                });
+                gruposMapeados[`GRUPO_${g}`].push(atletaId);
+            }
         }
     });
 

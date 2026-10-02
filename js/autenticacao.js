@@ -27,7 +27,7 @@ auth.onAuthStateChanged((user) => {
             document.getElementById('txt-nome-clube').textContent = nomeClubeReal;
 
             // Injeção da Versão e Sincronização Global
-            const elVersaoGestor = document.getElementById('txt-versao-gestor'); 
+            const elVersaoGestor = document.getElementById('txt-versao-gestor');  
             if (elVersaoGestor) {
                 if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
                     const versaoAndroidNativa = window.AndroidBridge.getAppVersion();
@@ -770,7 +770,7 @@ function renderizarListaNotificacoesSocioSaaS() {
             piramide: "Escada (Pirâmide)",
             barragem: "Pontos Corridos",
             grupos: "Fase de Grupos"
-        }[configRanking.modeloAtivo || "grupos"] || "Fase de Grupos";
+        }[configRanking.modeloAtivo || "grupos"] || "Fase de Grupos"; 
 
         // Datas
         const dataFimInscricao = fmtData(cal.fimInscricoes || cal.fimInscricao);
@@ -866,6 +866,23 @@ function renderizarListaNotificacoesSocioSaaS() {
                         tagClasse: 'tag-gold',
                         titulo: 'Placar anulado pela Arbitragem',
                         detalhe: `A sua partida contra ${n.adversario || 'seu adversário'} foi anulada pela arbitragem.<div class="box-destaque-resultado"><b>Motivo:</b> ${n.detalhe || 'Decisão da arbitragem.'}</div>`
+                    });
+                    break;
+					
+				case 'lancado_direto':
+                    let termoResultado = 'a sua partida';
+                    if (n.ehVitoria === true) {
+                        termoResultado = 'sua vitória';
+                    } else if (n.ehVitoria === false) {
+                        termoResultado = 'sua derrota'; 
+                    }
+
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'homologado-arb',
+                        tagTexto: '🏆 RANKING OFICIAL',
+                        tagClasse: 'tag-gold',
+                        titulo: 'Resultado Registrado',
+                        detalhe: `<b>${n.adversario || 'O Gestor'}</b> lançou e homologou ${termoResultado} contra <b>${n.nomeAdversarioPartida || 'seu adversário'}</b>: <b>${n.detalhe || ''}</b>.`
                     });
                     break;
 

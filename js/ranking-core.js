@@ -12,12 +12,12 @@
 // MEMÓRIA LOCAL E ESTADOS DA SÚMULA E ARBITRAGEM
 // --------------------------------------------------------
 let partidaRankingEmFoco = null;
-let regrasSessaoRanking = null;
+let regrasSessaoRanking = null; 
 
 let modoWOAtivoSaaS = false;
 let vencedorWOSaaS = null;
 let nomeVencedorWOSaaS = "";
-let motivoCustomizadoWOSaaS = "";
+let motivoCustomizadoWOSaaS = ""; 
 
 let modoRETAtivoSaaS = false;
 let desistenteRETSaaS = null; 
@@ -1182,7 +1182,22 @@ function salvarSumulaSaaS() {
         .trim()
         .toUpperCase();
 
-    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || 'Atleta').trim();
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+    let autorSumulaGravar = 'Atleta';
+
+    if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+        autorSumulaGravar = 'Gestor';
+    } else {
+        let perfis = {};
+        try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+        const nomeAtleta = (typeof capitalizarNome === 'function' && nomeLogado) ? capitalizarNome(nomeLogado) : nomeLogado;
+        if ((perfis['Árbitro'] === true || perfis['Arbitro'] === true) && nomeAtleta) {
+            autorSumulaGravar = `${nomeAtleta} (Árbitro)`;
+        } else {
+            autorSumulaGravar = nomeAtleta || 'Atleta';
+        }
+    }
+	
     const normNomeLogado = norm(nomeLogado);
     const jogadoresComp = norm(partidaRankingEmFoco.jogadores_completo || '');
     const jogadoresAp = norm(partidaRankingEmFoco.jogadores || '');
@@ -1216,7 +1231,7 @@ function salvarSumulaSaaS() {
             parciais: parciais,
             posicaoP1: partidaRankingEmFoco.posicaoP1 || '',
             posicaoP2: partidaRankingEmFoco.posicaoP2 || '',
-            autorSumula: (ehContestado && ehArbitragemNeutra) ? (partidaRankingEmFoco.dadosPlacar?.autorSumula || nomeLogado) : nomeLogado,
+            autorSumula: (ehContestado && ehArbitragemNeutra) ? (partidaRankingEmFoco.dadosPlacar?.autorSumula || autorSumulaGravar) : autorSumulaGravar,
             dataHoraLancamento: partidaRankingEmFoco.dadosPlacar?.dataHoraLancamento || agora,
             prazoAutoHoras: prazoHorasAutoconf,
             expiraValidacaoAt: agora + (prazoHorasAutoconf * 60 * 60 * 1000)
@@ -1326,8 +1341,17 @@ function salvarSumulaSaaS() {
             
             showToast(msgSucesso, "success");
 
-            if (ehContestado && ehArbitragemNeutra) {
-                notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'editado', placarFormatado);
+            // 1. Preenche a memória primeiro para a notificação saber quem venceu
+            partidaRankingEmFoco.statusPlacar = statusNovo;
+            partidaRankingEmFoco.dadosPlacar = dadosPlacar;
+
+            if (ehArbitragemNeutra) {
+                if (ehContestado) {
+                    notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'editado', placarFormatado);
+                } else {
+                    // 🔔 Dispara a notificação direta para ambos os atletas no lançamento neutro
+                    notificarAtletasArbitragemSaaS(partidaRankingEmFoco, 'lancado_direto', placarFormatado);
+                }
 
                 // 🎯 FILTRA A PARTIDA EDITADA DA FILA
                 if (window.contestacoesAbertasSaaS) {
@@ -1337,9 +1361,6 @@ function salvarSumulaSaaS() {
                     );
                 }
             }
-
-            partidaRankingEmFoco.statusPlacar = statusNovo;
-            partidaRankingEmFoco.dadosPlacar = dadosPlacar;
 
             if (statusNovo === "consolidado") {
                 processarResultadoRankingSaaS(partidaRankingEmFoco);
@@ -2387,49 +2408,77 @@ function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
 
     const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
 
-    const partesApelidos = (reserva.jogadores || '').split(',').map(s => norm(s));
-    const partesCompleto = (reserva.jogadores_completo || '').split(',').map(s => norm(s));
+    const partesApelidosOrig = (reserva.jogadores || '').split(',').map(s => s.trim());
+    const partesCompletoOrig = (reserva.jogadores_completo || '').split(',').map(s => s.trim());
 
-    const termosBusca = [...partesCompleto, ...partesApelidos].filter(t => t.length > 0);
-    const idsParaNotificar = [];
+    // Mapeia com precisão os 2 atletas do confronto
+    const idJ1 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
+        ? obterIdJogadorPorTextoSaaS(partesCompletoOrig[0] || partesApelidosOrig[0]) 
+        : null;
+    const idJ2 = (typeof obterIdJogadorPorTextoSaaS === 'function') 
+        ? obterIdJogadorPorTextoSaaS(partesCompletoOrig[1] || partesApelidosOrig[1]) 
+        : null;
 
-    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) {
-        termosBusca.forEach(normTermo => {
-            const idEncontrado = Object.keys(jogadoresGlobal).find(id => {
-                const j = jogadoresGlobal[id];
-                if (!j) return false;
-                const nc = norm(j.nomeCompleto);
-                const ap = norm(j.apelido);
-                return nc === normTermo || ap === normTermo;
-            });
-            if (idEncontrado && !idsParaNotificar.includes(idEncontrado)) {
-                idsParaNotificar.push(idEncontrado);
-            }
-        });
-    }
+    if (!idJ1 || !idJ2) return;
 
-    if (idsParaNotificar.length === 0) return;
+    const idsAtletas = [idJ1, idJ2];
 
+    // Preserva rigorosamente as categorias de contestação originais
     let categoria = "geral";
     if (tipoDecisao === 'mantido') categoria = "homologado_arb";
     else if (tipoDecisao === 'editado') categoria = "ajustado_arb";
     else if (tipoDecisao === 'anulado') categoria = "anulado_arb";
+    else if (tipoDecisao === 'lancado_direto') categoria = "lancado_direto";
 
-    const partesApelidosOrig = (reserva.jogadores || '').split(',');
-    const partesCompletoOrig = (reserva.jogadores_completo || '').split(',');
-    const adversarioNome = partesApelidosOrig.length > 1 ? partesApelidosOrig[1].trim() : (partesCompletoOrig.length > 1 ? partesCompletoOrig[1].trim() : 'seu adversário');
+    // Identifica o responsável pelo lançamento/decisão
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+    let nomeAutorFormatado = 'O Gestor';
 
-    const payloadNotif = {
-        categoria: categoria,
-        detalhe: detalhe,
-        adversario: adversarioNome,
-        timestamp: Date.now()
-    };
+    if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+        nomeAutorFormatado = 'O Gestor';
+    } else {
+        let perfis = {};
+        try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+        const nomeAtleta = (typeof capitalizarNome === 'function' && nomeLogado) ? capitalizarNome(nomeLogado) : nomeLogado;
+        if ((perfis['Árbitro'] === true || perfis['Arbitro'] === true) && nomeAtleta) {
+            nomeAutorFormatado = `O Árbitro (${nomeAtleta})`;
+        } else {
+            nomeAutorFormatado = 'O Gestor';
+        }
+    }
 
-    idsParaNotificar.forEach(idJogador => {
-        database.ref(`${raizBanco}/jogadores/${idJogador}/notificacoes`).push(payloadNotif);
+    // Identifica o vencedor e padroniza o placar a partir da perspectiva do vencedor
+    const dp = reserva.dadosPlacar || {};
+    const venciCod = dp.vencedorCodigo || '';
+
+    let placarVencedor = detalhe;
+    if (venciCod === 'J2') {
+        placarVencedor = detalhe.split(' ').map(setStr => {
+            return setStr.replace(/^(\d+)\/(\d+)(\(\d+\))?$/, '$2/$1$3');
+        }).join(' ');
+    }
+
+    // Dispara a notificação personalizada para cada atleta
+    idsAtletas.forEach(idAtual => {
+        const idAdversario = (idAtual === idJ1) ? idJ2 : idJ1;
+        const atletaAdvObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAdversario]) ? jogadoresGlobal[idAdversario] : {};
+        const nomeAdv = atletaAdvObj.apelido || atletaAdvObj.nomeCompleto || 'seu adversário';
+
+        const ehVitoria = (venciCod === 'J1' && idAtual === idJ1) || (venciCod === 'J2' && idAtual === idJ2);
+
+        const payloadNotif = {
+            categoria: categoria,
+            detalhe: placarVencedor,
+            ehVitoria: ehVitoria,
+            adversario: nomeAutorFormatado,
+            nomeAdversarioPartida: nomeAdv,
+            timestamp: Date.now()
+        };
+
+        database.ref(`${raizBanco}/jogadores/${idAtual}/notificacoes`).push(payloadNotif);
     });
 }
+
 
 function notificarAutorSumulaSaaS(reserva, categoria) {
     if (!reserva || !raizBanco || !reserva.dadosPlacar) return;
@@ -2447,8 +2496,34 @@ function notificarAutorSumulaSaaS(reserva, categoria) {
     });
 
     if (idAutor) {
-        const confirmadorAtleta = Object.values(jogadoresGlobal || {}).find(j => norm(j.nomeCompleto) === nomeConfirmadorNorm || norm(j.apelido) === nomeConfirmadorNorm);
-        const nomeConfirmadorFormatado = confirmadorAtleta ? (confirmadorAtleta.apelido || confirmadorAtleta.nomeCompleto) : (localStorage.getItem('jogadorLogadoNome') || 'Adversário');
+        let nomeConfirmadorFormatado = 'Adversário';
+
+        if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+            nomeConfirmadorFormatado = 'O Gestor';
+        } else {
+            let perfis = {};
+            try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+
+            // Busca o atleta confirmador no banco de memória
+            const confirmadorAtleta = Object.values(jogadoresGlobal || {}).find(j => 
+                j && (norm(j.nomeCompleto) === nomeConfirmadorNorm || norm(j.apelido) === nomeConfirmadorNorm)
+            );
+            
+            const nomeBruto = confirmadorAtleta 
+                ? (confirmadorAtleta.nomeCompleto || confirmadorAtleta.apelido) 
+                : (localStorage.getItem('jogadorLogadoNome') || '');
+                
+            const nomeAtleta = (typeof capitalizarNome === 'function' && nomeBruto) 
+                ? capitalizarNome(nomeBruto) 
+                : nomeBruto;
+
+            if (perfis['Árbitro'] === true && nomeAtleta) {
+                nomeConfirmadorFormatado = `O Árbitro (${nomeAtleta})`;
+            } else {
+                // 🎯 Insere o nome real do atleta em vez do termo genérico "Adversário"
+                nomeConfirmadorFormatado = nomeAtleta || 'Adversário';
+            }
+        }
 
         const payload = {
             categoria: categoria,
@@ -2459,7 +2534,6 @@ function notificarAutorSumulaSaaS(reserva, categoria) {
         database.ref(`${raizBanco}/jogadores/${idAutor}/notificacoes`).push(payload);
     }
 }
-
 
 /* ======================================================== */
 /* 7. ENGINE DE PROCESSAMENTO DE RESULTADOS DO RANKING       */
@@ -2718,4 +2792,71 @@ async function processarResultadoGruposSaaS(reserva, configRanking) {
 
     await database.ref(`${raizBanco}/ranking/tabelas/${chaveTabela}`).set(novaListaOrdenada);
 }
- 
+
+
+/* ======================================================== */
+/* 8. MOTOR DE FATIAMENTO UNIVERSAL DE GRUPOS (CHUNKS SSOT)  */
+/* ======================================================== */
+function montarGruposUniversaisSaaS(listaIDs, mapaGruposReais = {}, tamanhoGrupo = 4) {
+    if (!Array.isArray(listaIDs) || listaIDs.length === 0) return [];
+
+    const tamGrupo = parseInt(tamanhoGrupo, 10) || 4;
+    const listaIDsLimpos = listaIDs.filter(Boolean);
+    const temNullsIntercalados = listaIDs.length > listaIDsLimpos.length;
+
+    // Se a lista do banco possui nulls de separadores de sorteio, usa a extensão total.
+    // Se for uma lista contínua sem nulls, usa o total de inscritos reais.
+    const totalSlots = temNullsIntercalados ? listaIDs.length : listaIDsLimpos.length;
+    const numGruposCalculado = Math.ceil(totalSlots / tamGrupo);
+
+    const tagsExistentes = Object.keys(mapaGruposReais).sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.replace(/\D/g, '')) || 0;
+        return numA - numB;
+    });
+
+    const totalGruposExibir = Math.max(numGruposCalculado, tagsExistentes.length);
+    const baseGrupo = totalGruposExibir > 0 ? Math.floor(listaIDsLimpos.length / totalGruposExibir) : 0;
+    const restoGrupo = totalGruposExibir > 0 ? listaIDsLimpos.length % totalGruposExibir : 0;
+
+    const resultadoGrupos = [];
+    let ponteiroInscritos = 0;
+
+    for (let g = 0; g < totalGruposExibir; g++) {
+        const tagAtual = tagsExistentes[g] || `G${g + 1}`;
+        let fatiaRaw = [];
+
+        if (temNullsIntercalados) {
+            // Fatiamento por bloco fixo quando o banco já possui nulls gravados pelo sorteio
+            fatiaRaw = listaIDs.slice(g * tamGrupo, (g + 1) * tamGrupo);
+        } else {
+            // Fatiamento equilibrado dinâmico (ex: 3, 2, 2) para listas contínuas
+            const qtdNoGrupo = g < restoGrupo ? baseGrupo + 1 : baseGrupo;
+            fatiaRaw = listaIDsLimpos.slice(ponteiroInscritos, ponteiroInscritos + qtdNoGrupo);
+            ponteiroInscritos += qtdNoGrupo;
+        }
+
+        const limiteAtletasReais = fatiaRaw.filter(Boolean).length;
+        let membrosChave = [];
+
+        // 1. Prioridade: Atletas com partidas registradas neste grupo
+        if (mapaGruposReais[tagAtual] && mapaGruposReais[tagAtual].size > 0) {
+            membrosChave = Array.from(mapaGruposReais[tagAtual]);
+        }
+
+        // 2. Preenchimento de complemento com a semeadura
+        fatiaRaw.filter(Boolean).forEach(idAtleta => {
+            if (!membrosChave.includes(idAtleta) && membrosChave.length < limiteAtletasReais) {
+                membrosChave.push(idAtleta);
+            }
+        });
+
+        resultadoGrupos.push({
+            numGrupo: g + 1,
+            tagGrupo: tagAtual,
+            membros: membrosChave
+        });
+    }
+
+    return resultadoGrupos;
+}

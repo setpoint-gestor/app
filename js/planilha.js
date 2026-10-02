@@ -14,7 +14,7 @@ let ultimoCliqueTituloQuadra = 0;
 // Variável para controlar a transição perfeita da planilha
 let primeiraCargaQuadra = true;   
 
-// Ponteiro da escuta (listener) em tempo real do Firebase para a quadra ativa
+// Ponteiro da escuta (listener) em tempo real do Firebase para a quadra ativa 
 let ouvinteQuadraAtual = null;  
 
 // Trava de segurança para bloquear interações concorrentes no mesmo horário 
@@ -871,10 +871,15 @@ function abrirAgendamentoSaaS(dia, hora) {
         // 🔒 Trava de Inscrição/Classificação: Exige estar inscrito e, no Mata-Mata (Fase 4), estar classificado
         const idLogado = localStorage.getItem('jogadorLogadoId');
         const dadosLogado = (typeof jogadoresGlobal !== 'undefined' && idLogado) ? jogadoresGlobal[idLogado] : null;
-        let estaInscrito = isGestorLogado || !!(confRanking.inscritosConfirmados && confRanking.inscritosConfirmados[idLogado]);
+
+        let perfisLogado = {};
+        try { perfisLogado = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+        const isArbitroLogado = perfisLogado['Árbitro'] === true || perfisLogado['Arbitro'] === true;
+
+        let estaInscrito = isGestorLogado || isArbitroLogado || !!(confRanking.inscritosConfirmados && confRanking.inscritosConfirmados[idLogado]);
 
         // Na Fase 4 do modelo de Grupos (Mata-Mata), valida se o atleta está ativo na rodada atual
-        if (estaInscrito && !isGestorLogado && modeloRanking === 'grupos' && faseAtualRanking === 4 && dadosLogado) {
+        if (estaInscrito && !isGestorLogado && !isArbitroLogado && modeloRanking === 'grupos' && faseAtualRanking === 4 && dadosLogado) {
             const modoGenero = confRanking.divisaoGenero || 'separado';
             let generoKey = (dadosLogado.genero || 'MASCULINO').toUpperCase(); 
             if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
@@ -993,38 +998,68 @@ function abrirAgendamentoSaaS(dia, hora) {
 	
 
     // --- Injeção Automática do Jogador Logado ---
-    // --- Injeção Automática do Jogador Logado (Corrigido para o Padrão Minimalista) ---
     campoJogador1.innerHTML = '';
-    const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "Ronaldo Taborda Costa";
-    const optUser = document.createElement('option');
-    optUser.value = nomeLogado;
-    
-    // 1. LIMPEZA INICIAL: Remove os parênteses brutos de apelido se já existirem no localStorage
-    let nomeLimpo = nomeLogado.replace(/\s*\(.*?\)\s*/g, "").trim();
-    
-    // 2. CONVERSÃO PARA INICIAIS MAIÚSCULAS (Title Case)
-    nomeLimpo = nomeLimpo.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
-    
-    // 3. ENGENHARIA DE CORTE: Transforma "Ronaldo Taborda Costa" em "Ronaldo T Costa" (Sem Ponto)
-    const palavras = nomeLimpo.split(/\s+/);
-    if (palavras.length > 2) {
-        let nomeFinalJ1 = palavras[0];
-        for (let i = 1; i < palavras.length - 1; i++) {
-            // Ignora preposições comuns no meio do nome para não virarem iniciais
-            if (['Da', 'De', 'Do', 'Dos', 'Das'].includes(palavras[i])) {
-                nomeFinalJ1 += " " + palavras[i].toLowerCase();
-            } else {
-                nomeFinalJ1 += " " + palavras[i].charAt(0).toUpperCase(); // Inserido Puro (Sem Ponto)
-            }
+
+    if (isGestorLogado) {
+        // 🟢 MODO GESTOR: Campo destravado, ativo e clicável
+        campoJogador1.disabled = false;
+        campoJogador1.classList.add('saas-field-atleta');
+        campoJogador1.style.backgroundColor = '#ffffff';
+        campoJogador1.style.cursor = 'pointer';
+        campoJogador1.style.opacity = '1';
+        campoJogador1.dataset.modo = 'normal';
+
+        const optDefault = document.createElement('option');
+        optDefault.value = '';
+        optDefault.textContent = 'Selecionar Atleta 1...'; 
+        campoJogador1.appendChild(optDefault);
+
+        if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
+            Object.keys(jogadoresGlobal).forEach(id => {
+                const j = jogadoresGlobal[id];
+                if (j && j.ativo !== false) {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    //opt.textContent = expurgarEAbreviarNomeSaaS(j.nomeCompleto); // Usa a função existente sem o apelido
+                    opt.textContent = expurgarEAbreviarNomeSaaS(j.nomeCompleto, j.apelido); // Inclui o apelido desde a abertura
+					campoJogador1.appendChild(opt);
+                }
+            });
         }
-        nomeFinalJ1 += " " + palavras[palavras.length - 1];
-        optUser.textContent = nomeFinalJ1;
+        campoJogador1.value = '';
     } else {
-        optUser.textContent = nomeLimpo;
+        // 🔒 MODO SÓCIO
+        campoJogador1.disabled = true;
+        campoJogador1.classList.remove('saas-field-atleta');
+        campoJogador1.style.backgroundColor = '';
+        campoJogador1.style.cursor = 'not-allowed';
+
+        const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "Ronaldo Taborda Costa";
+        const optUser = document.createElement('option');
+        optUser.value = nomeLogado;
+
+        let nomeLimpo = nomeLogado.replace(/\s*\(.*?\)\s*/g, "").trim();
+        nomeLimpo = nomeLimpo.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+
+        const palavras = nomeLimpo.split(/\s+/);
+        if (palavras.length > 2) {
+            let nomeFinalJ1 = palavras[0];
+            for (let i = 1; i < palavras.length - 1; i++) {
+                if (['Da', 'De', 'Do', 'Dos', 'Das'].includes(palavras[i])) {
+                    nomeFinalJ1 += " " + palavras[i].toLowerCase();
+                } else {
+                    nomeFinalJ1 += " " + palavras[i].charAt(0).toUpperCase();
+                }
+            }
+            nomeFinalJ1 += " " + palavras[palavras.length - 1];
+            optUser.textContent = nomeFinalJ1;
+        } else {
+            optUser.textContent = nomeLimpo;
+        }
+
+        campoJogador1.appendChild(optUser);
+        campoJogador1.value = nomeLogado;
     }
-    
-    campoJogador1.appendChild(optUser);
-    campoJogador1.value = nomeLogado;
 
     
 		// --- FUNÇÃO INTERNA REATIVA: Sincronização Dinâmica de Horários e Duração ---
@@ -1261,7 +1296,32 @@ function abrirAgendamentoSaaS(dia, hora) {
 }
 
 
+/**
+ * Formata o nome do Jogador 1 (Gestor) no padrão Title Case com iniciais no meio.
+ * Ex: "RONALDO TABORDA COSTA" -> "Ronaldo T Costa"
+ * Ex: "NICOLAY DAVYDENKO" -> "Nicolay Davydenko"
+ */
+function formatarNomeJogador1GestorSaaS(nomeBruto) {
+    if (!nomeBruto) return "";
+    
+    let nomeLimpo = String(nomeBruto).replace(/\s*\(.*?\)\s*/g, "").trim();
+    nomeLimpo = nomeLimpo.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
 
+    const palavras = nomeLimpo.split(/\s+/);
+    if (palavras.length > 2) {
+        let nomeFinal = palavras[0];
+        for (let i = 1; i < palavras.length - 1; i++) {
+            if (['Da', 'De', 'Do', 'Dos', 'Das'].includes(palavras[i])) {
+                nomeFinal += " " + palavras[i].toLowerCase();
+            } else {
+                nomeFinal += " " + palavras[i].charAt(0).toUpperCase();
+            }
+        }
+        nomeFinal += " " + palavras[palavras.length - 1];
+        return nomeFinal;
+    }
+    return nomeLimpo;
+}
 
 
 /**
@@ -1520,54 +1580,135 @@ async function aplicarFiltroRankingModalSaaS() {
     
     if (!campoDuracao || !container) return;
 
-    const isRanking = (campoDuracao.value === 'ranking');
+    const isRanking = (campoDuracao.value && campoDuracao.value.toLowerCase().includes('ranking'));
 
     if (isRanking) {
-        while (container.querySelectorAll('.saas-row-atleta').length < 1) {
-            adicionarJogadorSaaS();
-        }
+        // 1. Limpa linhas de atletas extras (3º e 4º jogadores, se existirem)
         const rows = container.querySelectorAll('.saas-row-atleta');
         for (let i = 1; i < rows.length; i++) {
             rows[i].remove();
         }
         resetContadorAtletasSaaS();
-        contAtletas = 2;
 
-        if (btnAdd) btnAdd.style.display = 'none';
+        const selJ1 = document.getElementById('saas-jogador1');
+        if (!selJ1) return;
 
-        const idLogado = localStorage.getItem('jogadorLogadoId');
+        let idLogado = '';
+
+        let perfisLogado = {};
+        try { perfisLogado = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+        const isArbitroLogado = perfisLogado['Árbitro'] === true || perfisLogado['Arbitro'] === true;
+        const podeSelecionarJ1Ranking = isGestorLogado || isArbitroLogado;
+
+        if (podeSelecionarJ1Ranking) {
+            // 🟢 MODO GESTOR / ÁRBITRO NO RANKING: Ativa o estilo clicável e adiciona o evento de troca
+            selJ1.disabled = false;
+            selJ1.classList.add('saas-field-atleta');
+            selJ1.style.backgroundColor = '#ffffff';
+            selJ1.style.cursor = 'pointer';
+            selJ1.style.opacity = '1';
+
+            // Atualiza dinamicamente a Linha 2 ao selecionar um atleta na Linha 1
+            selJ1.onchange = () => {
+                aplicarFiltroRankingModalSaaS();
+            };
+
+            const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+            const inscritos = confRanking.inscritosConfirmados || null;
+
+            const precisaPovoar = (selJ1.options.length <= 1) || 
+                     (selJ1.options[0].textContent !== 'Selecionar Jogador 1...');
+
+		if (precisaPovoar) {
+			const valSalvoJ1 = selJ1.value;
+			selJ1.innerHTML = '<option value="">Selecionar Jogador 1...</option>';
+
+                if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
+                    Object.keys(jogadoresGlobal).forEach(id => {
+                        const j = jogadoresGlobal[id];
+                        // 🎯 FILTRO EXCLUSIVO DE RANKING: Apenas atletas ativos e inscritos no Ranking
+                        const participaEInscrito = j && j.ativo !== false && j.participaRanking && (!inscritos || inscritos[id]);
+                        if (participaEInscrito) {
+                            const opt = document.createElement('option');
+                            opt.value = id;
+                            //opt.textContent = expurgarEAbreviarNomeSaaS(j.nomeCompleto, j.apelido);
+							opt.textContent = formatarNomeJogador1GestorSaaS(j.nomeCompleto);
+                            selJ1.appendChild(opt); 
+                        }
+                    });
+                }
+
+                if (valSalvoJ1 && selJ1.querySelector(`option[value="${valSalvoJ1}"]`)) {
+                    selJ1.value = valSalvoJ1;
+                }
+            }
+
+            idLogado = selJ1.value;
+
+            // 🎯 REGRA DO GESTOR: Se o Jogador 1 não foi selecionado, a Linha 2 NÃO aparece
+            if (!idLogado) {
+                const selJ2Existente = document.getElementById('saas-jogador2');
+                if (selJ2Existente && selJ2Existente.closest('.saas-row-atleta')) {
+                    selJ2Existente.closest('.saas-row-atleta').remove();
+                }
+                resetContadorAtletasSaaS();
+                return;
+            }
+        } else {
+            idLogado = localStorage.getItem('jogadorLogadoId');
+        }
+
+        // 2. SE O JOGADOR 1 FOI DEFINIDO, CRIA A LINHA 2 (DESAFIADO)
+        let selJ2 = document.getElementById('saas-jogador2');
+        if (!selJ2) {
+            contAtletas = 2;
+            const divJ2 = document.createElement('div');
+            divJ2.className = 'saas-row saas-row-atleta';
+
+            selJ2 = document.createElement('select');
+            selJ2.className = 'saas-field saas-field-atleta';
+            selJ2.id = 'saas-jogador2';
+
+            const lixo = document.createElement('span');
+            lixo.className = 'btn-remover-atleta';
+            lixo.innerHTML = '&times;';
+            lixo.onclick = () => {
+                divJ2.remove();
+                resetContadorAtletasSaaS();
+            };
+
+            divJ2.appendChild(selJ2);
+            divJ2.appendChild(lixo);
+            container.appendChild(divJ2);
+        }
+
         const dadosLogado = (typeof jogadoresGlobal !== 'undefined' && idLogado) ? jogadoresGlobal[idLogado] : null;
-        const selJ2 = document.getElementById('saas-jogador2');
-        if (!selJ2) return;
 
         if (!dadosLogado || !dadosLogado.participaRanking) {
-            selJ2.innerHTML = '<option value="">Você não participa do Ranking</option>';
+            selJ2.innerHTML = '<option value="">Atleta não participa do Ranking</option>';
             selJ2.disabled = true;
             return;
         }
 
-        // Leitura síncrona respeitando o modo de gênero (Unificado vs Separado)
+        // 3. LEITURA DE REGRAS E CATEGORIAS DO RANKING
         const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
         const modoGenero = confRanking.divisaoGenero || 'separado';
         const modeloAtivo = confRanking.calendario?.formatoTorneio || 'grupos';
         
-		const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
+        const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
         let generoKey = (dadosLogado.genero || 'MASCULINO').toUpperCase();
         if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
 
         const chaveTabela = (modoGenero === 'unificado') ? `${dadosLogado.classe.toUpperCase()}_UNIFICADO` : `${dadosLogado.classe.toUpperCase()}_${generoKey}`;
         const listaIdsRanking = rankingTabelasGlobal[chaveTabela] || [];
 
-        selJ2.innerHTML = '<option value="">Selecionar Desafiado...</option>';
+        selJ2.innerHTML = '<option value="">Selecionar Jogador 2...</option>';
         selJ2.disabled = false;
 
         const idsArray = Array.isArray(listaIdsRanking) ? listaIdsRanking : Object.values(listaIdsRanking);
-
-        // 🛡️ LEITURA SÍNCRONA EM RAM: Histórico e Reservas Globais mantidas pelo core.js
         const partidasRanking = rankingPartidasGlobal || {};
         const nomeLogadoNorm = (dadosLogado.nomeCompleto || dadosLogado.apelido || '').trim().toUpperCase();
 
-        // Extrai todas as reservas de todas as quadras da memória RAM global
         const listaTodasReservasGeral = [];
         Object.keys(reservasGeralGlobal || {}).forEach(qKey => {
             const slots = reservasGeralGlobal[qKey] || {};
@@ -1576,12 +1717,11 @@ async function aplicarFiltroRankingModalSaaS() {
             });
         });
 
-        // 🎯 FILTRAGEM RESTRITA DE ADVERSÁRIOS POR MODELO DE DISPUTA
+        // 4. CÁLCULO DE ADVERSÁRIOS ELEGÍVEIS (PIRÂMIDE / GRUPOS / BARRAGEM)
         let idsPermitidos = idsArray;
 
         if (modeloAtivo === 'grupos') {
             if (faseAtualRanking === 4) {
-                // 🏆 FASE 4: MATA-MATA GENÉRICO (FILTRAGEM POR ÁRVORE DE CHAVES)
                 const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal)
                     ? rankingChavesGlobal[chaveTabela]
                     : null;
@@ -1589,7 +1729,6 @@ async function aplicarFiltroRankingModalSaaS() {
                 const rodada1 = (dadosChaveCat && dadosChaveCat.rodada1) ? dadosChaveCat.rodada1 : [];
 
                 if (rodada1.length > 0) {
-                    // Localiza o jogo do atleta logado dentro da rodada ativa
                     const confrontoAtleta = rodada1.find(c => c.jogador1Id === idLogado || c.jogador2Id === idLogado);
 
                     if (confrontoAtleta) {
@@ -1599,13 +1738,12 @@ async function aplicarFiltroRankingModalSaaS() {
 
                         idsPermitidos = [idAdversario];
                     } else {
-                        idsPermitidos = []; // Atleta não classificado para a fase eliminatória
+                        idsPermitidos = [];
                     }
                 } else {
                     idsPermitidos = [];
                 }
             } else {
-                // FASE 3: FASE DE GRUPOS (FILTRAGEM POR GRUPO)
                 const idxLogado = idsArray.indexOf(idLogado);
                 if (idxLogado !== -1) {
                     const tamanhoGrupo = parseInt(confRanking.grupos?.tamanhoGrupo, 10) || 3;
@@ -1650,7 +1788,6 @@ async function aplicarFiltroRankingModalSaaS() {
         idsPermitidos = idsPermitidos.filter(idAtleta => {
             if (idAtleta === idLogado) return false;
 
-            // 1. Barragem e Grupos (Fase 3 e Fase 4): impedem repetir duelo já finalizado na fase
             if (modeloAtivo === 'barragem' || modeloAtivo === 'grupos') {
                 const jaEnfrentou = Object.values(partidasRanking).some(p => {
                     if (p.categoria !== chaveTabela || p.status !== 'finalizada') return false;
@@ -1658,12 +1795,10 @@ async function aplicarFiltroRankingModalSaaS() {
                                     (p.jogador1Id === idAtleta && p.jogador2Id === idLogado);
                     if (!ehDuelo) return false;
 
-                    // Na Fase 3 de Grupos, verifica se o duelo finalizado foi na Fase de Grupos
                     if (modeloAtivo === 'grupos' && faseAtualRanking === 3) {
                         const dp = p.dadosPlacar || {};
                         return !!(dp.tagGrupoRanking || p.tagGrupoRanking);
                     }
-                    // Na Fase 4 (Mata-Mata) de Grupos, verifica se o duelo finalizado foi no Mata-Mata
                     if (modeloAtivo === 'grupos' && faseAtualRanking === 4) {
                         const dp = p.dadosPlacar || {};
                         return !(dp.tagGrupoRanking || p.tagGrupoRanking);
@@ -1673,7 +1808,6 @@ async function aplicarFiltroRankingModalSaaS() {
                 if (jaEnfrentou) return false;
             }
 
-            // 2. Impede agendar com quem já tem partida PENDENTE/AGENDADA no futuro (em qualquer quadra do clube)
             const atletaObj = jogadoresGlobal[idAtleta] || {};
             const nomeAtletaNorm = (atletaObj.nomeCompleto || atletaObj.apelido || '').trim().toUpperCase();
 
@@ -1716,13 +1850,86 @@ async function aplicarFiltroRankingModalSaaS() {
         });
 
     } else {
+        // === MODO NORMAL (1h ou 2h) ===
+        const rows = container.querySelectorAll('.saas-row-atleta');
+        if (rows.length > 0) {
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].remove();
+            }
+        }
+        resetContadorAtletasSaaS();
+
+        const selJ1 = document.getElementById('saas-jogador1');
         const selJ2 = document.getElementById('saas-jogador2');
+
+        if (isGestorLogado && selJ1) {
+            selJ1.disabled = false;
+            selJ1.classList.add('saas-field-atleta');
+            selJ1.onchange = null;
+
+            const prevVal = selJ1.value;
+            selJ1.innerHTML = '<option value="">Selecionar Atleta 1...</option>';
+
+            if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
+                Object.keys(jogadoresGlobal).forEach(id => {
+                    const j = jogadoresGlobal[id];
+                    if (j && j.ativo !== false) {
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.textContent = expurgarEAbreviarNomeSaaS(j.nomeCompleto, j.apelido);
+                        selJ1.appendChild(opt);
+                    }
+                });
+            }
+
+            if (prevVal && selJ1.querySelector(`option[value="${prevVal}"]`)) {
+                selJ1.value = prevVal;
+            } else {
+                selJ1.value = '';
+            }
+        } else if (selJ1) {
+            // 🔒 RESTAURA MODO NORMAL PARA ÁRBITRO / SÓCIO (Campo travado com o próprio nome)
+            selJ1.disabled = true;
+            selJ1.classList.remove('saas-field-atleta');
+            selJ1.style.backgroundColor = '';
+            selJ1.style.cursor = 'not-allowed';
+            selJ1.onchange = null;
+
+            const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "";
+            selJ1.innerHTML = '';
+            const optUser = document.createElement('option');
+            optUser.value = nomeLogado;
+
+            let nomeLimpo = nomeLogado.replace(/\s*\(.*?\)\s*/g, "").trim();
+            nomeLimpo = nomeLimpo.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+
+            const palavras = nomeLimpo.split(/\s+/);
+            if (palavras.length > 2) {
+                let nomeFinalJ1 = palavras[0];
+                for (let i = 1; i < palavras.length - 1; i++) {
+                    if (['Da', 'De', 'Do', 'Dos', 'Das'].includes(palavras[i])) {
+                        nomeFinalJ1 += " " + palavras[i].toLowerCase();
+                    } else {
+                        nomeFinalJ1 += " " + palavras[i].charAt(0).toUpperCase();
+                    }
+                }
+                nomeFinalJ1 += " " + palavras[palavras.length - 1];
+                optUser.textContent = nomeFinalJ1;
+            } else {
+                optUser.textContent = nomeLimpo;
+            }
+
+            selJ1.appendChild(optUser);
+            selJ1.value = nomeLogado;
+            selJ1.dataset.modo = 'normal';
+        }
+
         if (selJ2) {
             selJ2.disabled = false;
             const idSelecionadoAntes = selJ2.value;
             selJ2.innerHTML = '<option value="">Selecionar Atleta 2...</option>';
             
-            if (Object.keys(jogadoresGlobal).length > 0) {
+            if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
                 const atletasOrdenadosSaaS = Object.keys(jogadoresGlobal)
                     .map(id => ({ id: id, ...jogadoresGlobal[id] }))
                     .sort((a, b) => {
@@ -1748,6 +1955,7 @@ async function aplicarFiltroRankingModalSaaS() {
         }
         
         if (btnAdd) {
+            btnAdd.style.removeProperty('display');
             btnAdd.style.display = 'inline-flex';
             btnAdd.style.opacity = '1';
             btnAdd.style.pointerEvents = 'auto'; 
@@ -1793,7 +2001,7 @@ function obterPosicaoTextoRankingSaaS(nomeOuApelido) {
             ? rankingTabelasGlobal[chaveCat]
             : null);
 
-    if (!tabela) return "";
+    if (!tabela) return ""; 
 
     const idsArray = Array.isArray(tabela) ? tabela : Object.values(tabela);
     const idx = idsArray.indexOf(idAtleta);
@@ -3388,7 +3596,39 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         }
 
         if (temPlacar || stPlacar === 'anulado') {
-            const autorFormatado = formatarNomeExibicaoDetalhes(dp?.autorSumula || 'Sistema');
+            let autorRaw = (dp?.autorSumula || 'Sistema').trim();
+            let autorFormatado = autorRaw;
+
+            if (autorRaw.toLowerCase() === 'gestor') {
+                autorFormatado = 'Gestor';
+            } else if (autorRaw.toLowerCase() === 'atleta') {
+                autorFormatado = 'Atleta';
+            } else if (autorRaw.toLowerCase().includes('(árbitro)') || autorRaw.toLowerCase().includes('(arbitro)')) {
+                const nomeSemTag = autorRaw.replace(/[\(\[{]á?rbitro[\)\ harsh\]}]/gi, '').trim();
+                autorFormatado = `${formatarNomeExibicaoDetalhes(nomeSemTag)} (Árbitro)`;
+            } else {
+                const norm = s => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                const autorNorm = norm(autorRaw);
+                let ehArbitro = !!dp?.arbitroResponsavel;
+
+                if (!ehArbitro && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) {
+                    const idEncontrado = Object.keys(jogadoresGlobal).find(id => {
+                        const j = jogadoresGlobal[id];
+                        if (!j) return false;
+                        return norm(j.nomeCompleto) === autorNorm || norm(j.apelido) === autorNorm;
+                    });
+                    if (idEncontrado && jogadoresGlobal[idEncontrado].perfis) {
+                        const perf = jogadoresGlobal[idEncontrado].perfis;
+                        ehArbitro = (perf['Árbitro'] === true || perf['Arbitro'] === true);
+                    }
+                }
+
+                autorFormatado = formatarNomeExibicaoDetalhes(autorRaw);
+                if (ehArbitro) {
+                    autorFormatado += ' (Árbitro)';
+                }
+            }
+
             let dataLancamentoStr = dp?.dataHoraLancamento || '';
             
             if (dataLancamentoStr && !isNaN(dataLancamentoStr)) {

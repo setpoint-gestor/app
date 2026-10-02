@@ -1140,9 +1140,9 @@ function encerrarInscricoesECriarChavesSaaS() {
     }
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-	const cal = conf.calendario || {};
-	const modelo = conf.calendario?.formatoTorneio || "grupos";
-	
+    const cal = conf.calendario || {};
+    const modelo = conf.calendario?.formatoTorneio || "grupos";
+    
     const inscritos = conf.inscritosConfirmados || {};
     const qtdInscritos = Object.keys(inscritos).length;
 
@@ -1183,21 +1183,59 @@ function encerrarInscricoesECriarChavesSaaS() {
             inscritosPorCategoria[chaveTabela].push(idAtleta);
         });
 
+        // 🎯 ORDENAÇÃO OFICIAL DA LISTA DE SEMENTES (#1 a #N) CONFORME A REGRA DO DISPARO
+        const snapRankingGeral = await database.ref(`${raizBanco}/ranking/ranking_geral`).once('value');
+        const rankingGeralMap = snapRankingGeral.exists() ? snapRankingGeral.val() : {};
+
+        Object.keys(inscritosPorCategoria).forEach(chaveTab => {
+            const idsList = inscritosPorCategoria[chaveTab];
+            if (tipoOrdenacao === 'herdada') {
+                const listaGeral = rankingGeralMap[chaveTab] || [];
+                idsList.sort((a, b) => {
+                    const posA = listaGeral.indexOf(a);
+                    const posB = listaGeral.indexOf(b);
+                    if (posA !== -1 && posB !== -1) return posA - posB;
+                    if (posA !== -1) return -1;
+                    if (posB !== -1) return 1;
+                    return (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0);
+                });
+            } else if (tipoOrdenacao === 'sorteio') {
+                for (let i = idsList.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [idsList[i], idsList[j]] = [idsList[j], idsList[i]];
+                }
+            } else {
+                // Inscrição Livre: Ordena por data/hora de aceite no app
+                idsList.sort((a, b) => (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0));
+            }
+        });
+
         // CENÁRIO A: Torneio de GRUPOS ou Pirâmide/Barragem com SORTEIO -> Abre o Globo
         if (modelo === 'grupos' || tipoOrdenacao === 'sorteio') {
-            const tamanhoGrupoConfig = (modelo === 'grupos') ? (parseInt(conf.grupos?.tamanhoGrupo, 10) || 4) : qtdInscritos;
+            const tamanhoGrupoConfig = (modelo === 'grupos')
+                ? (parseInt(conf.grupos?.tamanhoGrupo, 10) || 4)
+                : qtdInscritos;
 
-            SorteioPotes.abrirModalSorteioSaaS(nomeTorneio, inscritos, tamanhoGrupoConfig, async (gruposResultado) => {
+            // 🎯 Achata os IDs ordenados/sorteados de todas as categorias e monta o mapa de inscritos
+            const listaInscritosParaPotes = {};
+            Object.values(inscritosPorCategoria).flat().forEach(idAtleta => {
+                if (inscritos[idAtleta]) {
+                    listaInscritosParaPotes[idAtleta] = inscritos[idAtleta];
+                }
+            });
+
+            SorteioPotes.abrirModalSorteioSaaS(nomeTorneio, listaInscritosParaPotes, tamanhoGrupoConfig, async (gruposResultado) => {
                 try {
-                    showToast("Gravando chaveamento no banco...", "info");
+                    showToast("Gravando chaveamento no banco...", "info"); 
                     const updates = {};
                     updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
 
                     Object.keys(inscritosPorCategoria).forEach(chaveTab => {
                         const idsInscritosCat = inscritosPorCategoria[chaveTab];
-                        const listaIDsSemeada = [];
 
                         if (gruposResultado && Object.keys(gruposResultado).length > 0) {
+                            const listaIDsSemeada = [];
+
                             Object.values(gruposResultado).forEach(grupoArray => {
                                 const grupoCompletado = [...grupoArray];
                                 if (modelo === 'grupos') {
@@ -1207,19 +1245,19 @@ function encerrarInscricoesECriarChavesSaaS() {
                                 }
                                 listaIDsSemeada.push(...grupoCompletado);
                             });
-                            const listaFinal = listaIDsSemeada.filter(id => id !== null || modelo === 'grupos');
+
+                            const listaFinal = (modelo === 'grupos') ? listaIDsSemeada : listaIDsSemeada.filter(Boolean);
                             updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaFinal;
                             
-                            // 🌱 Salva no cofre blindado APENAS os atletas reais (sem vagas nulas/fantasmas)
+                            // 🌱 Cofre da Semeadura: Preserva a hierarquia oficial de Sementes (#1, #2, #3...)
                             if (modelo === 'grupos') {
-                                const semeaduraLimpa = listaIDsSemeada.filter(id => id !== null && id !== undefined);
-                                updates[`${raizBanco}/ranking/semeadura/${chaveTab}`] = semeaduraLimpa;
+                                updates[`${raizBanco}/ranking/semeadura/${chaveTab}`] = idsInscritosCat.filter(Boolean);
                             }
                         } else {
+                            // Fallback direto caso a modal não devolva mapa
                             updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
                             if (modelo === 'grupos') {
-                                const idsLimpos = idsInscritosCat.filter(id => id !== null && id !== undefined);
-                                updates[`${raizBanco}/ranking/semeadura/${chaveTab}`] = idsLimpos;
+                                updates[`${raizBanco}/ranking/semeadura/${chaveTab}`] = idsInscritosCat.filter(Boolean);
                             }
                         }
                     });
@@ -1310,7 +1348,7 @@ function encerrarInscricoesECriarChavesSaaS() {
         }
     };
 
-    // 🎯 TEXTOS DINÂMICOS CONFORME O MODELO DO TORNEIO (AJUSTADOS NO PLURAL)
+    // TEXTOS DINÂMICOS CONFORME O MODELO DO TORNEIO (AJUSTADOS NO PLURAL)
     const titulosModal = {
         piramide: "Encerrar Inscrições e Iniciar Pirâmide",
         barragem: "Encerrar Inscrições e Iniciar Barragem",
@@ -1365,9 +1403,9 @@ async function encerrarFase3EAvancarSaaS() {
     }
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-	const cal = conf.calendario || {};
-	const modelo = conf.calendario?.formatoTorneio || "grupos";
-	
+    const cal = conf.calendario || {};
+    const modelo = conf.calendario?.formatoTorneio || "grupos";
+    
     const faseAtual = parseInt(conf.faseAtual, 10) || 3;
 
     if (modelo === 'grupos' && faseAtual === 4) {
@@ -1479,7 +1517,6 @@ async function encerrarFase3EAvancarSaaS() {
         try {
             const updates = {};
             
-            // 🟢 GRAVAÇÃO UNIVERSAL DA FASE NO FIREBASE (OBRIGATÓRIO PARA PIRÂMIDE, BARRAGEM E GRUPOS)
             updates[`${raizBanco}/config/ranking/faseAtual`] = novaFase;
 
             if (modelo === 'grupos' && faseAtual === 3) {
@@ -1552,7 +1589,7 @@ async function encerrarFase3EAvancarSaaS() {
                         classificadosMataMata.push(...membrosChave.slice(0, classificadosQtd));
                     }
 
-                    const resultadoMM = gerarCruzamentosMataMataSaaS(classificadosMataMata, classificadosQtd);
+                    const resultadoMM = gerarCruzamentosMataMataSaaS(classificadosMataMata, classificadosQtd, chaveCat);
 
                     updates[`${raizBanco}/ranking/chaves/${chaveCat}`] = {
                         totalClassificados: resultadoMM.totalClassificados,
@@ -1615,7 +1652,7 @@ async function encerrarFase3EAvancarSaaS() {
 
                 const [snapTabelasTorneio, snapSemeadura, snapRankingGeral, snapPartidas, snapPontosGeral] = await Promise.all([
                     database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
-                    database.ref(`${raizBanco}/ranking/semeadura`).once('value'), // 🌱 Lê do Cofre de Semeadura
+                    database.ref(`${raizBanco}/ranking/semeadura`).once('value'),
                     database.ref(`${raizBanco}/ranking/ranking_geral`).once('value'),
                     database.ref(`${raizBanco}/ranking/partidas`).once('value'),
                     database.ref(`${raizBanco}/ranking/pontos_geral`).once('value')
@@ -1626,10 +1663,9 @@ async function encerrarFase3EAvancarSaaS() {
                 const partidasTorneio = snapPartidas.exists() ? snapPartidas.val() : {};
                 const pontosGeralAtual = snapPontosGeral.exists() ? snapPontosGeral.val() : {};
                 
-				// 🌱 Para o modelo de grupos, usa a semente original gravada no cofre
-				const semeaduraGruposMap = (modelo === 'grupos') 
-					? JSON.parse(JSON.stringify((semeaduraTorneio && Object.keys(semeaduraTorneio).length > 0) ? semeaduraTorneio : tabelasTorneio))
-					: JSON.parse(JSON.stringify(tabelasTorneio));
+                // 📸 FOTO DOS GRUPOS: Guarda a estrutura exata das tabelas dos grupos antes de calcular a classificação final
+                const tabelasGruposFoto = JSON.parse(JSON.stringify(tabelasTorneio));
+                const semeaduraGruposMap = JSON.parse(JSON.stringify(semeaduraTorneio));
 
                 const pGeral = conf.parametrosGeral || {};
                 const TABELA_PONTOS_SaaS = {
@@ -1650,7 +1686,7 @@ async function encerrarFase3EAvancarSaaS() {
 
                     if (modelo === 'grupos') {
                         classificacaoTorneio = obterClassificacaoFinalGruposMataMataSaaS(chaveCat, classificacaoTorneio, chavesMapGlobal, partidasTorneio);
-                        updates[`${raizBanco}/ranking/tabelas/${chaveCat}`] = classificacaoTorneio;
+                        //updates[`${raizBanco}/ranking/tabelas/${chaveCat}`] = classificacaoTorneio;
                         tabelasTorneio[chaveCat] = classificacaoTorneio;
                     }
 
@@ -1681,32 +1717,31 @@ async function encerrarFase3EAvancarSaaS() {
 
                 const gruposConfig = conf.grupos || {};
 
-				const contratoCongelado = {
-					...cal,
-					tamanhoGrupo: parseInt(cal.tamanhoGrupo || gruposConfig.tamanhoGrupo, 10) || 3,
-					classificadosGrupo: parseInt(cal.classificadosGrupo || gruposConfig.classificadosGrupo, 10) || 2,
-					criterioDesempate: cal.criterioDesempate || gruposConfig.criterioDesempate || 'games_confronto_sorteio'
-				};
+                const contratoCongelado = {
+                    ...cal,
+                    tamanhoGrupo: parseInt(cal.tamanhoGrupo || gruposConfig.tamanhoGrupo, 10) || 3,
+                    classificadosGrupo: parseInt(cal.classificadosGrupo || gruposConfig.classificadosGrupo, 10) || 2,
+                    criterioDesempate: cal.criterioDesempate || gruposConfig.criterioDesempate || 'games_confronto_sorteio'
+                };
 
-				const objetoHistorico = {
-					dataHomologacao: Date.now(),
-					modelo: modelo,
-					contrato: contratoCongelado,
-					classificacaoFinal: tabelasTorneio,
-					partidas: partidasTorneio
-				};
+                const objetoHistorico = {
+                    dataHomologacao: Date.now(),
+                    modelo: modelo,
+                    contrato: contratoCongelado,
+                    classificacaoFinal: tabelasTorneio,
+                    partidas: partidasTorneio
+                };
 
-				// 🎯 Anexa a semeadura original se o torneio for do modelo de Grupos
-				if (modelo === 'grupos') {
-					objetoHistorico.semeaduraGrupos = semeaduraGruposMap;
-				}
+                if (modelo === 'grupos') {
+                    objetoHistorico.semeaduraGrupos = semeaduraGruposMap;
+                    objetoHistorico.tabelasGrupos = tabelasGruposFoto; // 📸 Salva a composição dos grupos no histórico
+                }
 
-				updates[`${raizBanco}/historico_torneios/${edicaoId}`] = objetoHistorico;
+                updates[`${raizBanco}/historico_torneios/${edicaoId}`] = objetoHistorico;
             }
 
             await database.ref().update(updates);
 
-            // 🟢 SINCRONIZA A MEMÓRIA RAM LOCAL
             if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
                 configRegrasGlobal.ranking.faseAtual = novaFase;
             }
@@ -1720,7 +1755,6 @@ async function encerrarFase3EAvancarSaaS() {
                 renderizarGestaoTemporadaSaaS();
             }
 
-            // Abertura automática da Central do Ranking para coroação visual do campeão
             if (eHomologacaoFinal && typeof abrirHallDeCampeoesSaaS === "function") {
                 setTimeout(() => {
                     abrirHallDeCampeoesSaaS();
@@ -1780,6 +1814,8 @@ async function encerrarFase3EAvancarSaaS() {
         executarEncerramentoFase3();
     });
 }
+
+
 
 function abrirHallDeCampeoesSaaS() {
     abaVisaoLeaderboardSaaS = 'TORNEIO';
@@ -1880,56 +1916,134 @@ function obterMapeamentoPosicoesSementesSaaS(tamanhoChave) {
     return ordem;
 }
 
-function gerarCruzamentosMataMataSaaS(listaClassificados, classificadosPorGrupo = 2) {
+/* ======================================================== */
+/* GERADOR AUXILIAR DE PRIORIDADE DE SEMENTES (ATP/ITF)     */
+/* ======================================================== */
+function obterOrdemPrioridadePartidasSaaS(numPartidas) {
+    let ordem = [0];
+    while (ordem.length < numPartidas) {
+        const len = ordem.length;
+        const proximo = [];
+        for (let i = 0; i < len; i++) {
+            proximo.push(ordem[i]);
+            proximo.push(2 * len - 1 - ordem[i]);
+        }
+        ordem = proximo;
+    }
+    return ordem;
+}
+
+
+/* ======================================================== */
+/* CHAVEAMENTO ELIMINATÓRIO OFICIAL COM PRIORIDADE DE BYES  */
+/* ======================================================== */
+function gerarCruzamentosMataMataSaaS(listaClassificados, classificadosPorGrupo = 2, chaveCat = '') {
     const totalClassific = listaClassificados.filter(id => id !== null && id !== undefined).length;
     const tamanhoChave = calcularPotenciaDeDoisSuperiorSaaS(totalClassific);
+    const numPartidas = tamanhoChave / 2;
 
-    // Lê o cofre de semeadura para obter a classificação original (#1, #2, #3...)
-    const semeaduraGlobal = (typeof rankingSemeaduraGlobal !== 'undefined' && rankingSemeaduraGlobal) ? rankingSemeaduraGlobal : {};
-    let listaOriginalSemeadura = [];
-    Object.values(semeaduraGlobal).forEach(sArr => {
-        if (Array.isArray(sArr)) listaOriginalSemeadura.push(...sArr);
-    });
+    const primeiros = [];
+    const segundosMap = {};
+    const totalGrupos = Math.ceil(listaClassificados.length / classificadosPorGrupo);
 
-    // Ordena TODOS os classificados estritamente pela semente original
-    const sementesMataMata = [...listaClassificados].filter(Boolean).sort((a, b) => {
-        const posA = listaOriginalSemeadura.indexOf(a);
-        const posB = listaOriginalSemeadura.indexOf(b);
-        if (posA !== -1 && posB !== -1) return posA - posB;
-        if (posA !== -1) return -1;
-        if (posB !== -1) return 1;
-        return 0;
-    });
+    // 1. Separa 1ºs e 2ºs colocados guardando a referência exata do grupo de origem
+    listaClassificados.forEach((idAtleta, idx) => {
+        if (!idAtleta) return;
+        const grupoIdx = Math.floor(idx / classificadosPorGrupo) + 1;
+        const posNoGrupo = (idx % classificadosPorGrupo) + 1;
 
-    const mapaSlots = obterMapeamentoPosicoesSementesSaaS(tamanhoChave);
-    const slots = new Array(tamanhoChave).fill(null);
-
-    sementesMataMata.forEach((idAtleta, idx) => {
-        if (idx < mapaSlots.length) {
-            const posSlot = mapaSlots[idx];
-            slots[posSlot] = idAtleta;
+        if (posNoGrupo === 1) {
+            primeiros.push({ id: idAtleta, grupoIdx });
+        } else if (posNoGrupo === 2) {
+            segundosMap[grupoIdx] = idAtleta;
         }
     });
 
-    const rodada1 = [];
-    for (let i = 0; i < tamanhoChave; i += 2) {
-        const j1 = slots[i];
-        const j2 = slots[i + 1];
+    // 2. REGRA ATP/ITF: Reordena os campeões de grupo estritamente pela Semente/Ranking
+    const semeaduraOriginal = (typeof rankingSemeaduraGlobal !== 'undefined' && chaveCat && rankingSemeaduraGlobal[chaveCat]) 
+        ? rankingSemeaduraGlobal[chaveCat] 
+        : null;
 
-        rodada1.push({
-            fase: tamanhoChave,
-            jogador1Id: j1,
-            jogador2Id: j2,
-            isBye: (j1 && !j2) || (!j1 && j2)
+    if (semeaduraOriginal && semeaduraOriginal.length > 0) {
+        primeiros.sort((a, b) => {
+            const idxA = semeaduraOriginal.indexOf(a.id);
+            const idxB = semeaduraOriginal.indexOf(b.id);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return 0;
         });
+    }
+
+    const numByes = tamanhoChave - totalClassific;
+    const ordem = obterOrdemPrioridadePartidasSaaS(numPartidas);
+
+    const partidas = new Array(numPartidas).fill(null).map(() => ({
+        fase: tamanhoChave,
+        jogador1Id: null,
+        jogador2Id: null,
+        isBye: false
+    }));
+
+    // 3. Aloca os Campeões (1ºs colocados) na prioridade oficial de cabeças de chave
+    const numPrimeiros = primeiros.length;
+    for (let i = 0; i < numPrimeiros; i++) {
+        const matchIdx = ordem[i];
+        partidas[matchIdx].jogador1Id = primeiros[i].id;
+    }
+
+    // 4. Concede BYE prioritariamente para os melhores 1ºs colocados (Semente #1, #2...)
+    const byesParaPrimeiros = Math.min(numByes, numPrimeiros);
+    for (let i = 0; i < byesParaPrimeiros; i++) {
+        const matchIdx = ordem[i];
+        partidas[matchIdx].isBye = true;
+    }
+
+    // 5. Preenche os confrontos reais cruzando obrigatoriamente com o 2.º colocado do grupo oposto
+    for (let i = byesParaPrimeiros; i < numPrimeiros; i++) {
+        const matchIdx = ordem[i];
+        const gOrigem = primeiros[i].grupoIdx;
+        const gOposto = totalGrupos - gOrigem + 1;
+        
+        // Aloca o 2.º colocado do grupo espelhado
+        if (segundosMap[gOposto]) {
+            partidas[matchIdx].jogador2Id = segundosMap[gOposto];
+            delete segundosMap[gOposto];
+        } else {
+            // Fallback de segurança para qualquer outro 2.º disponível
+            const sobrouKey = Object.keys(segundosMap)[0];
+            if (sobrouKey) {
+                partidas[matchIdx].jogador2Id = segundosMap[sobrouKey];
+                delete segundosMap[sobrouKey];
+            }
+        }
+    }
+
+    // 6. Se restarem BYEs extras para 2ºs colocados ou jogos abertos entre 2ºs
+    const segundosRestantes = Object.values(segundosMap);
+    const byesExtras = numByes - byesParaPrimeiros;
+    for (let i = 0; i < byesExtras; i++) {
+        const matchIdx = ordem[numPrimeiros + i];
+        if (segundosRestantes.length > 0) {
+            partidas[matchIdx].jogador1Id = segundosRestantes.shift();
+            partidas[matchIdx].isBye = true;
+        }
+    }
+
+    const inicioAbertos = numPrimeiros + byesExtras;
+    for (let i = inicioAbertos; i < numPartidas; i++) {
+        const matchIdx = ordem[i];
+        if (segundosRestantes.length > 0) partidas[matchIdx].jogador1Id = segundosRestantes.shift();
+        if (segundosRestantes.length > 0) partidas[matchIdx].jogador2Id = segundosRestantes.shift();
     }
 
     return {
         totalClassificados: totalClassific,
         faseAtual: tamanhoChave,
-        rodada1: rodada1
+        rodada1: partidas
     };
 }
+
 
 function gerarProximaRodadaMataMataSaaS(rodadaAnterior, partidasGlobal, chaveCat) {
     const proximaRodada = [];

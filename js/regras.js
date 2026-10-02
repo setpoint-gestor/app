@@ -1229,11 +1229,20 @@ function abrirModalConfigRanking() {
     document.getElementById('select-ranking-barragem-wo').value = String(bar.pontosWO !== undefined ? bar.pontosWO : 0);
 
     // Subcampos Grupos
+	document.getElementById('select-ranking-grupos-fase-inicial').value = gru.faseInicial || "grupos";
+    toggleGavetaFaseInicialRankingSaaS();
     document.getElementById('select-ranking-grupos-tamanho').value = String(gru.tamanhoGrupo !== undefined ? gru.tamanhoGrupo : 4);
     document.getElementById('select-ranking-grupos-classificados').value = gru.classificadosGrupo || "2";
-    document.getElementById('select-ranking-grupos-desempate').value = gru.criterioDesempate || "games_confronto_sorteio";
-    document.getElementById('select-ranking-grupos-cabecas').value = gru.cabecasChave || "ranking";
-    document.getElementById('select-ranking-grupos-desistência').value = gru.tratarDesistência || "anular";
+	
+    // Carrega a ordem dos critérios de desempate
+    const desempateObj = gru.criterioDesempateObjeto || {};
+    document.getElementById('sel-desempate-games').value = String(desempateObj.Games !== undefined ? desempateObj.Games : 1);
+    document.getElementById('sel-desempate-confronto').value = String(desempateObj.Confronto !== undefined ? desempateObj.Confronto : 2);
+    document.getElementById('sel-desempate-sorteio').value = String(desempateObj.Sorteio !== undefined ? desempateObj.Sorteio : 3);
+    document.getElementById('sel-desempate-sets').value = String(desempateObj.Sets !== undefined ? desempateObj.Sets : 0);
+    atualizarPilulaResumoDesempateSaaS();
+    
+	document.getElementById('select-ranking-grupos-desistência').value = gru.tratarDesistência || "anular";
     document.getElementById('select-ranking-grupos-prazo-rodada').value = String(gru.prazoRodada !== undefined ? gru.prazoRodada : 7);
     document.getElementById('select-ranking-grupos-estouro').value = gru.estouroPrazo || "sorteio";
 
@@ -1274,6 +1283,95 @@ function abrirModalConfigRanking() {
     }
 
     abrirModalConfig('modal-config-ranking');
+}
+
+/**
+ * Controla a exibição deslizante da gaveta de subcampos quando a Fase Inicial for 'Grupos' ou 'Mata-Mata'
+ */
+function toggleGavetaFaseInicialRankingSaaS() {
+    const elFase = document.getElementById('select-ranking-grupos-fase-inicial');
+    const drawer = document.getElementById('drawer-grupos-fase-inicial');
+    if (!elFase || !drawer) return;
+
+    if (elFase.value === 'grupos') {
+        drawer.classList.remove('closed');
+    } else {
+        drawer.classList.add('closed');
+    }
+}
+
+/**
+ * Alterna abrir/fechar a gaveta do Critério de Desempate
+ */
+function toggleGavetaDesempateSaaS() {
+    const cardBox = document.getElementById('box-criterio-desempate');
+    if (cardBox) cardBox.classList.toggle('aberto');
+}
+
+// Memória auxiliar para gerenciar a troca automática (Auto-Swap)
+let valorAnteriorDesempateSaaS = {};
+
+/**
+ * Gerencia a troca automática sem valores duplicados (Auto-Swap)
+ */
+function gerenciarTrocaDesempateSaaS(selectAlterado) {
+    const idAlterado = selectAlterado.id;
+    const novoValor = parseInt(selectAlterado.value, 10);
+    const valorAntigo = valorAnteriorDesempateSaaS[idAlterado] !== undefined ? valorAnteriorDesempateSaaS[idAlterado] : 0;
+
+    const todosSelects = document.querySelectorAll('.select-ordem-desempate');
+
+    // Se selecionou uma posição ativa (1º a 4º), troca com quem já estava nela
+    if (novoValor > 0) {
+        todosSelects.forEach(sel => {
+            if (sel.id !== idAlterado && parseInt(sel.value, 10) === novoValor) {
+                sel.value = String(valorAntigo);
+                valorAnteriorDesempateSaaS[sel.id] = valorAntigo;
+            }
+        });
+    }
+
+    valorAnteriorDesempateSaaS[idAlterado] = novoValor;
+    atualizarPilulaResumoDesempateSaaS();
+}
+
+/**
+ * Recalcula e atualiza o texto da pílula de resumo no topo
+ */
+function atualizarPilulaResumoDesempateSaaS() {
+    const selects = document.querySelectorAll('.select-ordem-desempate');
+    const itensAtivos = [];
+
+    selects.forEach(sel => {
+        const val = parseInt(sel.value, 10);
+        const nomeItem = sel.getAttribute('data-item');
+
+        valorAnteriorDesempateSaaS[sel.id] = val;
+
+        if (val > 0) {
+            itensAtivos.push({ ordem: val, nome: nomeItem });
+        }
+    });
+
+    itensAtivos.sort((a, b) => a.ordem - b.ordem);
+
+    const badge = document.getElementById('lbl-badge-desempate-sequencia');
+    if (!badge) return;
+
+    if (itensAtivos.length === 0) {
+        badge.textContent = 'Nenhum critério selecionado';
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#ef4444';
+    } else {
+        badge.style.background = 'rgba(46, 139, 87, 0.15)';
+        badge.style.color = 'var(--cor-primaria, #28a745)';
+
+        const textoSequencia = itensAtivos
+            .map((item, idx) => `${idx + 1}º ${item.nome}`)
+            .join(' ➔ ');
+
+        badge.textContent = textoSequencia;
+    }
 }
 
 /**
@@ -1328,6 +1426,8 @@ function toggleBlocoFinanceiroRankingSaaS(isAtivo) {
     container.style.display = isAtivo ? 'block' : 'none';
 }
 
+
+
 /**
  * Gravação Atômica das Regras do Ranking no Firebase
  */
@@ -1366,10 +1466,15 @@ function salvarConfigRankingSaas() {
             pontosWO: parseInt(document.getElementById('select-ranking-barragem-wo').value) || 0
         },
         grupos: {
+			faseInicial: document.getElementById('select-ranking-grupos-fase-inicial').value, 
             tamanhoGrupo: parseInt(document.getElementById('select-ranking-grupos-tamanho').value) || 4,
             classificadosGrupo: document.getElementById('select-ranking-grupos-classificados').value,
-            criterioDesempate: document.getElementById('select-ranking-grupos-desempate').value,
-            cabecasChave: document.getElementById('select-ranking-grupos-cabecas').value,
+            criterioDesempateObjeto: {
+                Games: parseInt(document.getElementById('sel-desempate-games').value, 10) || 0,
+                Confronto: parseInt(document.getElementById('sel-desempate-confronto').value, 10) || 0,
+                Sorteio: parseInt(document.getElementById('sel-desempate-sorteio').value, 10) || 0,
+                Sets: parseInt(document.getElementById('sel-desempate-sets').value, 10) || 0
+            },
             tratarDesistência: document.getElementById('select-ranking-grupos-desistência').value,
             prazoRodada: parseInt(document.getElementById('select-ranking-grupos-prazo-rodada').value) || 7,
             estouroPrazo: document.getElementById('select-ranking-grupos-estouro').value

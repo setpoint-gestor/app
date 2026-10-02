@@ -76,14 +76,14 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
         if (!id) {
             return `
                 <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
-                    <span class="seed-num" style="display: inline-block; width: 22px; flex-shrink: 0; font-weight: 400; color: #94a3b8;"></span>
+                    <span class="seed-num" style="display: inline-block; width: 16px; flex-shrink: 0; font-weight: 400; color: #94a3b8;"></span>
                     <span style="color: #94a3b8; font-weight: 500;">A definir</span>
                 </div>
             `;
         }
         const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
         const nomeStr = j.apelido || j.nomeCompleto || 'A definir';
-        const cap = (s) => (typeof capitalizarNome === 'function') ? capitalizarNome(s) : s;
+        const cap = (s) => (typeof capitalizarNome === 'function') ? capitalizarNome(s) : s; 
 
         let posClean = '';
         if (posSeedOverride !== null && posSeedOverride !== undefined && posSeedOverride !== '') {
@@ -93,7 +93,7 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
             posClean = posRaw.replace('º', '').trim();
         }
         
-        const seedHtml = `<span class="seed-num" style="display: inline-block; width: 22px; flex-shrink: 0; font-weight: 400; color: #94a3b8; text-align: left;">${posClean}</span>`;
+        const seedHtml = `<span class="seed-num" style="display: inline-block; width: 16px; flex-shrink: 0; font-weight: 400; color: #94a3b8; text-align: left;">${posClean}</span>`;
         const nomeForm = (id === idLogado) ? `${cap(nomeStr)} <span class="tag-voce" style="font-size: 10px; color: #15803d; font-weight: 800;">(Você)</span>` : cap(nomeStr);
 
         return `
@@ -304,6 +304,9 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
         let htmlCardsJogo = '';
 
         rodadaFase.forEach((confItem, idxJogo) => {
+            if (!confItem) {
+                confItem = { fase: pot, jogador1Id: null, jogador2Id: null, isBye: false };
+            }
             const p1 = confItem.jogador1Id;
             const p2 = confItem.jogador2Id;
             const ehBye = confItem.isBye || (p1 && !p2 && pot === faseInicial);
@@ -331,7 +334,7 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
                         </div>
                         <div class="match-player" style="padding: 2px 0; font-weight: 500; color: #94a3b8; font-style: italic; font-size: 11px;">
                             <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
-                                <span style="display: inline-block; width: 22px; flex-shrink: 0;"></span>
+                                <span style="display: inline-block; width: 12px; flex-shrink: 0;"></span>
                                 <span>Classificado (Folga)</span>
                             </div>
                             <div style="width: 14px; min-width: 14px; flex-shrink: 0;"></div>
@@ -507,39 +510,73 @@ async function exportarMataMataPNGSaaS() {
     // Remove elementos de navegação/botões que não devem sair no PNG
     wrapperClone.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => el.remove());
 
-    // Identificação do Clube
+    // Identificação do Clube e Contexto do Torneio
     const elNomeClube = document.getElementById('txt-nome-clube');
     let nomeClubeRaw = elNomeClube ? elNomeClube.textContent.trim() : 'Clube';
     if (!nomeClubeRaw || nomeClubeRaw.toUpperCase() === 'CARREGANDO...') {
         nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || 'Clube Olímpico';
     }
 
-    // 🎯 REGRAS DE CONTEXTO SAAS (3 ESTADOS DA APLICAÇÃO)
     const ehHistorico = !!(typeof edicaoHistoricaFocoSaaS !== 'undefined' && edicaoHistoricaFocoSaaS);
     const confRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = ehHistorico ? (edicaoHistoricaFocoSaaS.contrato || {}) : (confRanking.calendario || {});
     const faseAtual = parseInt(confRanking.faseAtual, 10) || 1;
-    const modelo = confRanking.calendario?.formatoTorneio || 'grupos';
+    const modelo = cal.formatoTorneio || confRanking.calendario?.formatoTorneio || 'grupos';
     const ehHomologadoAtivo = !ehHistorico && ((modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && faseAtual >= 5));
 
-    let tagContextoHtml = '';
+    // Formatação de Categoria e Período (DD/MM para torneio ativo, DD/MM/AAAA para acervo histórico)
+    const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
+    const clsTxt = typeof abaClasseAtivaSaaS !== 'undefined' ? `Classe ${abaClasseAtivaSaaS}` : '';
+    const genTxt = (typeof abaGeneroAtivaSaaS !== 'undefined' && abaGeneroAtivaSaaS !== 'UNIFICADO') 
+        ? (abaGeneroAtivaSaaS.charAt(0) + abaGeneroAtivaSaaS.slice(1).toLowerCase()) 
+        : '';
+    const catFormatada = [clsTxt, genTxt].filter(Boolean).join(' • ');
+
+    const fmtData = (str, comAno = false) => {
+        if (!str) return '';
+        const p = str.split('-');
+        if (p.length === 3) {
+            return comAno ? `${p[2]}/${p[1]}/${p[0]}` : `${p[2]}/${p[1]}`;
+        }
+        return str;
+    };
+    const dtInicio = fmtData(cal.inicioJogos, ehHistorico);
+    const dtFim = fmtData(cal.fimTorneio, ehHistorico);
+    const periodoStr = (dtInicio && dtFim) ? `${dtInicio} a ${dtFim}` : '';
+
+    const dataHojeStr = new Date().toLocaleDateString('pt-BR');
+
+    // Badges Contextuais de Estado
+    let badgeEstadoHtml = '';
     if (ehHistorico) {
-        tagContextoHtml = `<span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 12px; border: 1px solid #cbd5e1; font-family: sans-serif;">[Acervo Histórico]</span>`;
+        badgeEstadoHtml = `<span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 12px; border: 1px solid #cbd5e1; font-family: sans-serif;">[Acervo Histórico]</span>`;
     } else if (ehHomologadoAtivo) {
-        tagContextoHtml = `<span style="background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 12px; border: 1px solid #86efac; font-family: sans-serif;">✓ Homologado</span>`;
+        badgeEstadoHtml = `<span style="background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 12px; border: 1px solid #86efac; font-family: sans-serif;">✓ Homologado</span>`;
     }
 
-    // Cabeçalho elegante da imagem
+    const badgePeriodoHtml = periodoStr 
+        ? `<span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: sans-serif; display: inline-flex; align-items: center; gap: 4px;">📅 ${periodoStr}</span>` 
+        : '';
+
+    // Cabeçalho elegante e completo no Padrão SaaS
     const headerClone = document.createElement('div');
     headerClone.style.marginBottom = '16px';
     headerClone.style.paddingBottom = '12px';
     headerClone.style.borderBottom = '2px solid #e2e8f0';
     headerClone.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h2 style="margin:0; font-size: 18px; font-weight: 800; color: #0f172a; font-family: sans-serif;">🏆 Quadro Eliminatório - ${nomeClubeRaw}</h2>
-                <span style="font-size: 12px; color: #64748b; font-weight: 600; font-family: sans-serif;">Chave Oficial da Competição</span>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; font-family: sans-serif; margin-bottom: 4px;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: #0f172a;">🏆 ${nomeClubeRaw.toUpperCase()}</h2>
+            ${badgeEstadoHtml ? `<div>${badgeEstadoHtml}</div>` : ''}
+        </div>
+        <div style="font-size: 13.5px; font-weight: 800; color: #2563eb; margin-bottom: 8px; font-family: sans-serif;">
+            ${nomeTorneio}${catFormatada ? ' — ' + catFormatada : ''}
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-family: sans-serif;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 11.5px; color: #64748b; font-weight: 600;">Fase Eliminatória • Modelo Grupos (Chaves)</span>
+                ${badgePeriodoHtml}
             </div>
-            ${tagContextoHtml ? `<div>${tagContextoHtml}</div>` : ''}
+            <span style="font-size: 11px; color: #64748b; font-weight: 600;">${dataHojeStr}</span>
         </div>
     `;
 

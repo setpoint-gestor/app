@@ -39,6 +39,7 @@ function abrirLeaderboardSaaS() {
     abaVisaoLeaderboardSaaS = 'TORNEIO';
     modoVisaoPiramideSaaS = 'lista';
     modoVisaoMataMataSaaS = 'lista';
+	abaFaseAtivaSaaS = 'AUTO'; // 👈 CORREÇÃO: Restaura o cálculo automático da fase ativ
 
     // 🧹 RESET DE UX: Força o filtro de súmulas a iniciar sempre em 'TODOS'
     abaStatusAtivoSaaS = 'TODOS';
@@ -428,14 +429,12 @@ function renderizarLeaderboardSaaS() {
 
         const chaveTabela = (divisaoGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
         
-        // 🎯 Proteção de Modelos: Busca Semeadura exclusivamente no modelo de Grupos
+        // 🎯 Proteção de Modelos: Lê a tabela oficial sorteada dos grupos
         let listaIDs = [];
         if (modelo === 'grupos') {
-            listaIDs = (typeof rankingSemeaduraGlobal !== 'undefined' && rankingSemeaduraGlobal && rankingSemeaduraGlobal[chaveTabela] && rankingSemeaduraGlobal[chaveTabela].length > 0)
-                ? rankingSemeaduraGlobal[chaveTabela]
-                : ((typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
-                    ? rankingTabelasGlobal[chaveTabela]
-                    : []);
+            listaIDs = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
+                ? rankingTabelasGlobal[chaveTabela]
+                : []; 
         } else {
             listaIDs = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveTabela])
                 ? rankingTabelasGlobal[chaveTabela]
@@ -1542,9 +1541,15 @@ function renderizarLeaderboardSaaS() {
 			
             let htmlHall = '';
 
-            const idCampeao = listaIDs[0];
-            const idVice = listaIDs[1];
-            const idTerceiro = listaIDs[2];
+            // 🟢 RECALCULA A CLASSIFICAÇÃO DO PÓDIO EM RAM APENAS PARA O HALL DE CAMPEÕES (SEM ALTERAR OS GRUPOS)
+            let listaClassificacaoHall = listaIDs;
+            if (modelo === 'grupos' && typeof obterClassificacaoFinalGruposMataMataSaaS === 'function') {
+                listaClassificacaoHall = obterClassificacaoFinalGruposMataMataSaaS(chaveTabela, listaIDs, rankingChavesGlobal, partidasGlobal);
+            }
+
+            const idCampeao = listaClassificacaoHall[0];
+            const idVice = listaClassificacaoHall[1];
+            const idTerceiro = listaClassificacaoHall[2];
 
             const objCampeao = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idCampeao]) ? jogadoresGlobal[idCampeao] : {};
             const objVice = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idVice]) ? jogadoresGlobal[idVice] : {};
@@ -1623,13 +1628,13 @@ function renderizarLeaderboardSaaS() {
 
             htmlHall += `</div>`;
 
-            if (listaIDs.length > 3) {
+            if (listaClassificacaoHall.length > 3) {
                 htmlHall += `
                     <div id="box-restante-hall" style="display: none; margin-top: 8px; flex-direction: column; gap: 8px;">
                 `;
 
-                for (let i = 3; i < listaIDs.length; i++) {
-                    const idOutro = listaIDs[i];
+                for (let i = 3; i < listaClassificacaoHall.length; i++) {
+                    const idOutro = listaClassificacaoHall[i];
                     const objOutro = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idOutro]) ? jogadoresGlobal[idOutro] : {};
                     const nomeOutro = capitalizarNome(objOutro.nomeCompleto || objOutro.apelido || 'Atleta');
 
@@ -1648,8 +1653,8 @@ function renderizarLeaderboardSaaS() {
                 htmlHall += `</div>`;
 
                 htmlHall += `
-                    <button type="button" id="btn-sanfona-hall" onclick="toggleSanfonaHallCampeoesSaaS(${listaIDs.length})" style="width: 100%; background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 12px; color: #0284c7; font-weight: 700; font-size: 12.5px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                        <span>Ver Classificação Completa (${listaIDs.length} atletas)</span> 🔽
+                    <button type="button" id="btn-sanfona-hall" onclick="toggleSanfonaHallCampeoesSaaS(${listaClassificacaoHall.length})" style="width: 100%; background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 12px; color: #0284c7; font-weight: 700; font-size: 12.5px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <span>Ver Classificação Completa (${listaClassificacaoHall.length} atletas)</span> 🔽
                     </button>
                 `;
             }
@@ -1842,20 +1847,38 @@ function renderizarLeaderboardSaaS() {
                 </div>
             `;
             let numGrupo = 1;
+			
+			const mapaGruposReais = {};
+            const atletasMapeados = new Set();
 
-            // 🎯 CÁLCULO DE AGRUPAMENTO EQUILIBRADO (SSOT)
-            const listaIDsLimpos = listaIDs.filter(Boolean);
-            const totalAtletas = listaIDsLimpos.length;
-            const numGrupos = totalAtletas > 0 ? Math.ceil(totalAtletas / tamanhoGrupo) : 0;
-            const baseGrupo = totalAtletas > 0 ? Math.floor(totalAtletas / numGrupos) : 0;
-            const restoGrupo = totalAtletas > 0 ? totalAtletas % numGrupos : 0;
+            // Mapeia os atletas pelo grupo real gravado nas partidas do torneio atual
+            Object.values(partidasGlobal).forEach(partida => {
+                if (!partida || partida.categoria !== chaveTabela) return;
 
-            let ponteiroAtletas = 0;
+                const dp = partida.dadosPlacar || {};
+                const tagG = partida.tagGrupoRanking || dp.tagGrupoRanking || "";
 
-            for (let g = 0; g < numGrupos; g++) {
-                const qtdNoGrupo = g < restoGrupo ? baseGrupo + 1 : baseGrupo;
-                const membrosChave = listaIDsLimpos.slice(ponteiroAtletas, ponteiroAtletas + qtdNoGrupo);
-                ponteiroAtletas += qtdNoGrupo;
+                if (tagG) {
+                    if (!mapaGruposReais[tagG]) {
+                        mapaGruposReais[tagG] = new Set();
+                    }
+                    if (partida.jogador1Id) {
+                        mapaGruposReais[tagG].add(partida.jogador1Id);
+                        atletasMapeados.add(partida.jogador1Id);
+                    }
+                    if (partida.jogador2Id) {
+                        mapaGruposReais[tagG].add(partida.jogador2Id);
+                        atletasMapeados.add(partida.jogador2Id);
+                    }
+                }
+            });
+
+            // 🎯 CÁLCULO DE AGRUPAMENTO EQUILIBRADO UNIVERSAL (SSOT)
+            const gruposProcessados = montarGruposUniversaisSaaS(listaIDs, mapaGruposReais, tamanhoGrupo);
+
+            gruposProcessados.forEach(grupoInfo => {
+                const numGrupo = grupoInfo.numGrupo;
+                const membrosChave = grupoInfo.membros;
 
                 membrosChave.sort((a, b) => {
                     const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
@@ -1926,8 +1949,7 @@ function renderizarLeaderboardSaaS() {
                 });
 
                 htmlGrupos += `</div>`;
-                numGrupo++;
-            }
+            });
             
             let htmlMataMata = '';
             
@@ -2240,6 +2262,9 @@ function abrirGruposAcervoSaaS(idEdicao) {
     if (selectClasse) selectClasse.style.display = 'none';
     if (selectGenero) selectGenero.style.display = 'none';
     if (containerDropdowns) containerDropdowns.style.display = 'none';
+	
+	// 🌳 Força a abertura padrão na Visão Árvore (Mata-Mata) para os Grupos do Histórico
+    modoVisaoMataMataSaaS = 'arvore';
 
     renderizarHTMLGruposAcervoSaaS();
 
@@ -2260,7 +2285,6 @@ function renderizarHTMLGruposAcervoSaaS() {
     const catAtiva = categoriaHistoricaAtivaSaaS || categorias[0] || '';
     const partidasMap = edicao.partidas || {};
 
-    // 🎯 CORREÇÃO DO TÍTULO: Exibe a identificação oficial do modelo
     if (txtSub) {
         txtSub.innerHTML = `Ranking Oficial do Clube • Modelo Grupos (Chaves) <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
     }
@@ -2372,7 +2396,6 @@ function renderizarHTMLGruposAcervoSaaS() {
         const quartasBrutas = partidasPorFaseBrutas[8] || [];
         const rodadaQuartasOrdenada = new Array(4).fill(null);
 
-        // 🎯 1. Alinhamento Estrutural das Quartas de Final (Slots 0, 1, 2, 3)
         quartasBrutas.forEach(qPartida => {
             const p1 = qPartida.jogador1Id;
             const p2 = qPartida.jogador2Id;
@@ -2382,7 +2405,6 @@ function renderizarHTMLGruposAcervoSaaS() {
             let idTop = (s1 < s2) ? p1 : p2;
             let idBottom = (s1 < s2) ? p2 : p1;
 
-            // No QF2 (Sementes 5 e 6), a chave coloca a semente 6 no topo e a semente 5 na base
             if ((s1 === 5 && s2 === 6) || (s1 === 6 && s2 === 5)) {
                 idTop = (s1 === 6) ? p1 : p2;
                 idBottom = (s1 === 5) ? p1 : p2;
@@ -2391,13 +2413,12 @@ function renderizarHTMLGruposAcervoSaaS() {
             const objP = formatarPartidaComSeeds(8, qPartida, idTop, idBottom, false);
 
             if (s1 === 5 || s2 === 5 || s1 === 6 || s2 === 6) {
-                rodadaQuartasOrdenada[1] = objP; // Slot 1 (QF2)
+                rodadaQuartasOrdenada[1] = objP;
             } else {
-                rodadaQuartasOrdenada[2] = objP; // Slot 2 (QF3)
+                rodadaQuartasOrdenada[2] = objP;
             }
         });
 
-        // Preenchimento automático dos BYEs (Seed 1 no Slot 0, Seed 3 no Slot 3)
         if (!rodadaQuartasOrdenada[0]) {
             const idBye1 = Object.keys(mapaSeedsBracket).find(id => mapaSeedsBracket[id] === '1');
             if (idBye1) rodadaQuartasOrdenada[0] = formatarPartidaComSeeds(8, null, idBye1, null, true);
@@ -2452,31 +2473,57 @@ function renderizarHTMLGruposAcervoSaaS() {
     if (maiorFase >= 4) {
         const semisBrutas = partidasPorFaseBrutas[4] || [];
         const rodadaQuartasOrdenada = historicoRodadas[8] || [];
-
-        // 🎯 2. Alinhamento Estrutural das Semi-Finais (Conectado ao fluxo das Quartas)
-        const idQF0_Top = rodadaQuartasOrdenada[0]?.jogador1Id || rodadaQuartasOrdenada[0]?.jogador2Id;
-        const idQF2_Adv = rodadaQuartasOrdenada[2]?.vencedorId || (rodadaQuartasOrdenada[2]?.dadosPlacar?.vencedorCodigo === 'J2' ? rodadaQuartasOrdenada[2]?.jogador2Id : rodadaQuartasOrdenada[2]?.jogador1Id);
-
         const rodadaSemisOrdenada = new Array(2).fill(null);
 
-        semisBrutas.forEach(sPartida => {
-            const p1 = sPartida.jogador1Id;
-            const p2 = sPartida.jogador2Id;
+        const temQuartas = rodadaQuartasOrdenada.some(Boolean);
 
-            const ehSemi1 = (p1 === idQF0_Top || p2 === idQF0_Top);
+        if (temQuartas) {
+            const idQF0_Top = rodadaQuartasOrdenada[0]?.jogador1Id || rodadaQuartasOrdenada[0]?.jogador2Id;
+            const idQF2_Adv = rodadaQuartasOrdenada[2]?.vencedorId || (rodadaQuartasOrdenada[2]?.dadosPlacar?.vencedorCodigo === 'J2' ? rodadaQuartasOrdenada[2]?.jogador2Id : rodadaQuartasOrdenada[2]?.jogador1Id);
 
-            if (ehSemi1) {
-                // Semi 1: Topo = Adriano Feitosa (Seed 1), Base = Alice Pereira (Seed 5)
-                const idTop = (p1 === idQF0_Top) ? p1 : p2;
-                const idBottom = (p1 === idQF0_Top) ? p2 : p1;
-                rodadaSemisOrdenada[0] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
-            } else {
-                // Semi 2: Topo = Alexandre Voj (Seed 7), Base = Alice Duck (Seed 3)
-                const idTop = (p1 === idQF2_Adv) ? p1 : p2;
-                const idBottom = (p1 === idQF2_Adv) ? p2 : p1;
-                rodadaSemisOrdenada[1] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
+            semisBrutas.forEach(sPartida => {
+                const p1 = sPartida.jogador1Id;
+                const p2 = sPartida.jogador2Id;
+
+                const ehSemi1 = (p1 === idQF0_Top || p2 === idQF0_Top);
+
+                if (ehSemi1) {
+                    const idTop = (p1 === idQF0_Top) ? p1 : p2;
+                    const idBottom = (p1 === idQF0_Top) ? p2 : p1;
+                    rodadaSemisOrdenada[0] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
+                } else {
+                    const idTop = (p1 === idQF2_Adv) ? p1 : p2;
+                    const idBottom = (p1 === idQF2_Adv) ? p2 : p1;
+                    rodadaSemisOrdenada[1] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
+                }
+            });
+        } else {
+            semisBrutas.forEach(sPartida => {
+                const p1 = sPartida.jogador1Id;
+                const p2 = sPartida.jogador2Id;
+                const s1 = parseInt(mapaSeedsBracket[p1] || '999', 10);
+                const s2 = parseInt(mapaSeedsBracket[p2] || '999', 10);
+                const minSeed = Math.min(s1, s2);
+
+                if (minSeed === 1 || semisBrutas.length === 1) {
+                    const idTop = (s1 < s2) ? p1 : p2;
+                    const idBottom = (s1 < s2) ? p2 : p1;
+                    rodadaSemisOrdenada[0] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
+                } else {
+                    let idTop = p1, idBottom = p2;
+                    if (s1 === 2) { idTop = p2; idBottom = p1; }
+                    else if (s2 === 2) { idTop = p1; idBottom = p2; }
+                    else if (s1 < s2) { idTop = p1; idBottom = p2; }
+                    rodadaSemisOrdenada[1] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
+                }
+            });
+        }
+
+        for (let k = 0; k < 2; k++) {
+            if (!rodadaSemisOrdenada[k]) {
+                rodadaSemisOrdenada[k] = { fase: 4, jogador1Id: null, jogador2Id: null, isBye: false };
             }
-        });
+        }
 
         historicoRodadas[4] = rodadaSemisOrdenada;
     }
@@ -2487,7 +2534,6 @@ function renderizarHTMLGruposAcervoSaaS() {
         const semi1 = rodadaSemis[0];
         const semi2 = rodadaSemis[1];
 
-        // 🎯 Conecta os vencedores das Semis: Semi 1 no topo, Semi 2 na base
         const idTop = semi1?.vencedorId || (semi1?.dadosPlacar?.vencedorCodigo === 'J2' ? semi1?.jogador2Id : semi1?.jogador1Id) || jogoFinal.jogador1Id;
         const idBottom = semi2?.vencedorId || (semi2?.dadosPlacar?.vencedorCodigo === 'J2' ? semi2?.jogador2Id : semi2?.jogador1Id) || jogoFinal.jogador2Id;
 
@@ -2539,9 +2585,34 @@ function renderizarHTMLGruposAcervoSaaS() {
     `;
 
     const semeadura = edicao.semeaduraGrupos || {};
-    const listaIDs = (semeadura[catAtiva] && semeadura[catAtiva].length > 0)
-        ? semeadura[catAtiva]
-        : ((edicao.classificacaoFinal && edicao.classificacaoFinal[catAtiva]) || []);
+    const tabelasGrupos = edicao.tabelasGrupos || edicao.semeaduraGrupos || {};
+    const listaIDs = (tabelasGrupos[catAtiva] && tabelasGrupos[catAtiva].length > 0)
+        ? tabelasGrupos[catAtiva]
+        : ((semeadura[catAtiva] && semeadura[catAtiva].length > 0) ? semeadura[catAtiva] : ((edicao.classificacaoFinal && edicao.classificacaoFinal[catAtiva]) || [])); 
+		
+    const mapaGruposReais = {};
+    const atletasMapeados = new Set();
+
+    Object.values(partidasMap).forEach(partida => {
+        if (!partida || (partida.categoria && partida.categoria !== catAtiva)) return;
+
+        const dp = partida.dadosPlacar || {};
+        const tagG = partida.tagGrupoRanking || dp.tagGrupoRanking || "";
+
+        if (tagG) {
+            if (!mapaGruposReais[tagG]) {
+                mapaGruposReais[tagG] = new Set();
+            }
+            if (partida.jogador1Id) {
+                mapaGruposReais[tagG].add(partida.jogador1Id);
+                atletasMapeados.add(partida.jogador1Id);
+            }
+            if (partida.jogador2Id) {
+                mapaGruposReais[tagG].add(partida.jogador2Id);
+                atletasMapeados.add(partida.jogador2Id);
+            }
+        }
+    });
 
     if (listaIDs.length > 0) {
         const estatisticas = {};
@@ -2580,20 +2651,11 @@ function renderizarHTMLGruposAcervoSaaS() {
             }
         });
 
-        // 🎯 CÁLCULO DE AGRUPAMENTO EQUILIBRADO (SSOT)
-        const listaIDsLimpos = listaIDs.filter(Boolean);
-        const totalAtletas = listaIDsLimpos.length;
-        const numGrupos = totalAtletas > 0 ? Math.ceil(totalAtletas / tamanhoGrupo) : 0;
-        const baseGrupo = totalAtletas > 0 ? Math.floor(totalAtletas / numGrupos) : 0;
-        const restoGrupo = totalAtletas > 0 ? totalAtletas % numGrupos : 0;
+        const gruposProcessados = montarGruposUniversaisSaaS(listaIDs, mapaGruposReais, tamanhoGrupo);
 
-        let ponteiroAtletas = 0;
-        let numGrupo = 1;
-
-        for (let g = 0; g < numGrupos; g++) {
-            const qtdNoGrupo = g < restoGrupo ? baseGrupo + 1 : baseGrupo;
-            const membrosChave = listaIDsLimpos.slice(ponteiroAtletas, ponteiroAtletas + qtdNoGrupo);
-            ponteiroAtletas += qtdNoGrupo;
+        gruposProcessados.forEach(grupoInfo => {
+            const numGrupo = grupoInfo.numGrupo;
+            const membrosChave = grupoInfo.membros;
 
             membrosChave.sort((a, b) => {
                 const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
@@ -2629,8 +2691,10 @@ function renderizarHTMLGruposAcervoSaaS() {
                 const nomeAtleta = atleta.apelido || atleta.nomeCompleto || 'Atleta';
                 const cap = (s) => (typeof capitalizarNome === 'function') ? capitalizarNome(s) : s;
 
-                const idxOriginal = listaIDs.indexOf(idAtleta);
-                const posSeed = idxOriginal !== -1 ? String(idxOriginal + 1) : `${ponteiroAtletas - qtdNoGrupo + idx + 1}`;
+                // 🎯 Busca a semente real do atleta na lista semeaduraGrupos do histórico
+                const listaSemeaduraHistorica = semeadura[catAtiva] || [];
+                const idxOriginal = listaSemeaduraHistorica.indexOf(idAtleta);
+                const posSeed = idxOriginal !== -1 ? String(idxOriginal + 1) : String(idx + 1);
 
                 const ehVoce = (idAtleta === idLogado);
                 const isClassificado = posInterna <= classificadosQtd; 
@@ -2654,8 +2718,7 @@ function renderizarHTMLGruposAcervoSaaS() {
             });
 
             htmlListAcervo += `</div>`;
-            numGrupo++;
-        }
+        });
     } else {
         htmlListAcervo += '<p style="text-align: center; color: #94a3b8; margin-top: 40px;">Nenhum inscrito localizado para esta categoria.</p>';
     }
