@@ -2768,3 +2768,57 @@ body.dark-mode .match-player {
 body.dark-mode .match-player.winner {
     color: #f8fafc !important;
 }
+
+/* ======================================================== */
+/* 20. GAVETA DESLIZANTE DE SUBCAMPOS (FASE INICIAL)        */
+/* ======================================================== */
+#modal-config-ranking .drawer-container {
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin-top 0.3s ease;
+    opacity: 1;
+    margin-top: 4px;
+    border-top: 1px solid #f1f5f9;
+}
+
+#modal-config-ranking .drawer-container.closed {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    margin-top: 0 !important;
+    border-top-color: transparent !important;
+    pointer-events: none !important;
+}
+
+/* Ajuste de contraste para o Modo Escuro */
+body.dark-mode #modal-config-ranking .drawer-container {
+    border-top-color: #333333;
+}
+
+body.dark-mode #modal-config-ranking .drawer-container.closed {
+    border-top-color: transparent !important;
+}
+
+
+/* ======================================================== */
+/* 21. CORREÇÃO DE LARGURA E ENQUADRAMENTO DA PÍLULA        */
+/* ======================================================== */
+#box-criterio-desempate .coluna-acao-direita {
+    max-width: 65% !important;
+    justify-content: flex-end !important;
+}
+
+#lbl-badge-desempate-sequencia {
+    font-size: 10.5px !important;
+    padding: 3px 8px !important;
+    white-space: nowrap !important;
+    letter-spacing: -0.2px !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    display: inline-block !important;
+}
+
+@media (max-width: 768px) {
+    #box-criterio-desempate .coluna-acao-direita {
+        max-width: 50% !important;
+    }
+}
