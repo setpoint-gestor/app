@@ -2770,6 +2770,54 @@ body.dark-mode .match-player.winner {
 }
 
 /* ======================================================== */
+/* AJUSTES EXCLUSIVOS DE MOBILE (DOTS & GESTOS)    */
+/* ======================================================== */
+.dots-bar-saas {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    /* Oculta o dropdown de jogos no celular */
+    .bracket-quadrante-row {
+        display: none !important;
+    }
+
+    /* Exibe a barra de dots no rodapé centralizado no celular */
+    .dots-bar-saas {
+        display: flex !important;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 190;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(4px);
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1px solid #ddd6fe;
+        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+    }
+
+    .dots-bar-saas .dot-item {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #cbd5e1;
+        transition: all 0.25s ease;
+        cursor: pointer;
+    }
+
+    .dots-bar-saas .dot-item.active {
+        background: #8b5cf6;
+        width: 18px;
+        border-radius: 10px;
+    }
+}
+
+/* ======================================================== */
 /* 20. GAVETA DESLIZANTE DE SUBCAMPOS (FASE INICIAL)        */
 /* ======================================================== */
 #modal-config-ranking .drawer-container {
@@ -2804,7 +2852,7 @@ body.dark-mode #modal-config-ranking .drawer-container.closed {
 /* ======================================================== */
 #box-criterio-desempate .coluna-acao-direita {
     max-width: 65% !important;
-    justify-content: flex-end !important;
+    justify-content: flex-end !important; 
 }
 
 #lbl-badge-desempate-sequencia {
