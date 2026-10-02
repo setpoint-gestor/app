@@ -1935,106 +1935,112 @@ function obterOrdemPrioridadePartidasSaaS(numPartidas) {
 
 
 /* ======================================================== */
-/* CHAVEAMENTO ELIMINATÓRIO OFICIAL COM PRIORIDADE DE BYES  */
+/* CHAVEAMENTO ELIMINATÓRIO OFICIAL ITF/ATP (UNIVERSAL)     */
 /* ======================================================== */
 function gerarCruzamentosMataMataSaaS(listaClassificados, classificadosPorGrupo = 2, chaveCat = '') {
     const totalClassific = listaClassificados.filter(id => id !== null && id !== undefined).length;
+    if (totalClassific < 2) return { totalClassificados: totalClassific, faseAtual: 2, rodada1: [] };
+
     const tamanhoChave = calcularPotenciaDeDoisSuperiorSaaS(totalClassific);
     const numPartidas = tamanhoChave / 2;
+    const numByes = tamanhoChave - totalClassific;
 
-    const primeiros = [];
-    const segundosMap = {};
-    const totalGrupos = Math.ceil(listaClassificados.length / classificadosPorGrupo);
-
-    // 1. Separa 1ºs e 2ºs colocados guardando a referência exata do grupo de origem
-    listaClassificados.forEach((idAtleta, idx) => {
-        if (!idAtleta) return;
-        const grupoIdx = Math.floor(idx / classificadosPorGrupo) + 1;
-        const posNoGrupo = (idx % classificadosPorGrupo) + 1;
-
-        if (posNoGrupo === 1) {
-            primeiros.push({ id: idAtleta, grupoIdx });
-        } else if (posNoGrupo === 2) {
-            segundosMap[grupoIdx] = idAtleta;
-        }
-    });
-
-    // 2. REGRA ATP/ITF: Reordena os campeões de grupo estritamente pela Semente/Ranking
     const semeaduraOriginal = (typeof rankingSemeaduraGlobal !== 'undefined' && chaveCat && rankingSemeaduraGlobal[chaveCat]) 
         ? rankingSemeaduraGlobal[chaveCat] 
         : null;
 
-    if (semeaduraOriginal && semeaduraOriginal.length > 0) {
-        primeiros.sort((a, b) => {
-            const idxA = semeaduraOriginal.indexOf(a.id);
-            const idxB = semeaduraOriginal.indexOf(b.id);
-            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-            if (idxA !== -1) return -1;
-            if (idxB !== -1) return 1;
-            return 0;
-        });
+    // Helper para obter a semente oficial do atleta no ranking (#1, #2, #3...)
+    const obterSementeId = (id) => {
+        if (!id || !semeaduraOriginal) return 999;
+        const idx = semeaduraOriginal.indexOf(id);
+        return idx !== -1 ? idx + 1 : 999;
+    };
+
+    // 1. Mapeia 1ºs e 2ºs colocados preservando a semente oficial de cada um
+    const primeiros = [];
+    const segundos = [];
+
+    listaClassificados.forEach((idAtleta, idx) => {
+        if (!idAtleta) return;
+        const grupoIdx = Math.floor(idx / classificadosPorGrupo) + 1;
+        const posNoGrupo = (idx % classificadosPorGrupo) + 1;
+        const semente = obterSementeId(idAtleta);
+
+        if (posNoGrupo === 1) {
+            primeiros.push({ id: idAtleta, grupoIdx, semente, posNoGrupo });
+        } else if (posNoGrupo === 2) {
+            segundos.push({ id: idAtleta, grupoIdx, semente, posNoGrupo });
+        }
+    });
+
+    // Ordena ambos os potes rigorosamente por semente (#1, #2, #3...)
+    primeiros.sort((a, b) => a.semente - b.semente);
+    segundos.sort((a, b) => a.semente - b.semente);
+
+    // Array de N slots para o quadro (0 até tamanhoChave - 1)
+    const slotsQuadro = new Array(tamanhoChave).fill(null);
+    const gruposNaMetadeSuperior = new Set();
+
+    // 2. Alocação dos Cabeças de Chave principais (1ºs colocados)
+    const ordemPrioridadePartidas = obterOrdemPrioridadePartidasSaaS(numPartidas);
+
+    primeiros.forEach((p, i) => {
+        const matchIdx = ordemPrioridadePartidas[i];
+        const slotPos = matchIdx * 2; // Posição do confronto no quadro
+        slotsQuadro[slotPos] = p.id;
+
+        // Registra se o 1º colocado deste grupo ficou na Metade Superior
+        if (slotPos < tamanhoChave / 2) {
+            gruposNaMetadeSuperior.add(p.grupoIdx);
+        }
+    });
+
+    // 3. Atribuição de BYEs prioritários para as sementes mais altas (#1, #2...)
+    for (let i = 0; i < numByes; i++) {
+        const matchIdx = ordemPrioridadePartidas[i];
+        const slotByePos = matchIdx * 2 + 1; // Posição do adversário do BYE
+        slotsQuadro[slotByePos] = "BYE";
     }
 
-    const numByes = tamanhoChave - totalClassific;
-    const ordem = obterOrdemPrioridadePartidasSaaS(numPartidas);
+    // 4. Alocação dos 2ºs Colocados aplicando a Regra da Metade Oposta (ITF)
+    segundos.forEach(s => {
+        // Se o 1º do grupo está no Topo, o 2º deve ir obrigatoriamente para a Metade Inferior
+        const prefereMetadeInferior = gruposNaMetadeSuperior.has(s.grupoIdx);
 
-    const partidas = new Array(numPartidas).fill(null).map(() => ({
-        fase: tamanhoChave,
-        jogador1Id: null,
-        jogador2Id: null,
-        isBye: false
-    }));
+        let slotEscolhido = -1;
 
-    // 3. Aloca os Campeões (1ºs colocados) na prioridade oficial de cabeças de chave
-    const numPrimeiros = primeiros.length;
-    for (let i = 0; i < numPrimeiros; i++) {
-        const matchIdx = ordem[i];
-        partidas[matchIdx].jogador1Id = primeiros[i].id;
-    }
+        for (let i = 0; i < tamanhoChave; i++) {
+            const slotCandidate = prefereMetadeInferior 
+                ? (Math.floor(tamanhoChave / 2) + i) % tamanhoChave 
+                : i;
 
-    // 4. Concede BYE prioritariamente para os melhores 1ºs colocados (Semente #1, #2...)
-    const byesParaPrimeiros = Math.min(numByes, numPrimeiros);
-    for (let i = 0; i < byesParaPrimeiros; i++) {
-        const matchIdx = ordem[i];
-        partidas[matchIdx].isBye = true;
-    }
-
-    // 5. Preenche os confrontos reais cruzando obrigatoriamente com o 2.º colocado do grupo oposto
-    for (let i = byesParaPrimeiros; i < numPrimeiros; i++) {
-        const matchIdx = ordem[i];
-        const gOrigem = primeiros[i].grupoIdx;
-        const gOposto = totalGrupos - gOrigem + 1;
-        
-        // Aloca o 2.º colocado do grupo espelhado
-        if (segundosMap[gOposto]) {
-            partidas[matchIdx].jogador2Id = segundosMap[gOposto];
-            delete segundosMap[gOposto];
-        } else {
-            // Fallback de segurança para qualquer outro 2.º disponível
-            const sobrouKey = Object.keys(segundosMap)[0];
-            if (sobrouKey) {
-                partidas[matchIdx].jogador2Id = segundosMap[sobrouKey];
-                delete segundosMap[sobrouKey];
+            if (slotsQuadro[slotCandidate] === null) {
+                slotEscolhido = slotCandidate;
+                break;
             }
         }
-    }
 
-    // 6. Se restarem BYEs extras para 2ºs colocados ou jogos abertos entre 2ºs
-    const segundosRestantes = Object.values(segundosMap);
-    const byesExtras = numByes - byesParaPrimeiros;
-    for (let i = 0; i < byesExtras; i++) {
-        const matchIdx = ordem[numPrimeiros + i];
-        if (segundosRestantes.length > 0) {
-            partidas[matchIdx].jogador1Id = segundosRestantes.shift();
-            partidas[matchIdx].isBye = true;
+        if (slotEscolhido !== -1) {
+            slotsQuadro[slotEscolhido] = s.id; 
         }
-    }
+    });
 
-    const inicioAbertos = numPrimeiros + byesExtras;
-    for (let i = inicioAbertos; i < numPartidas; i++) {
-        const matchIdx = ordem[i];
-        if (segundosRestantes.length > 0) partidas[matchIdx].jogador1Id = segundosRestantes.shift();
-        if (segundosRestantes.length > 0) partidas[matchIdx].jogador2Id = segundosRestantes.shift();
+    // 5. Monta o objeto oficial de partidas da Rodada 1
+    const partidas = [];
+    for (let i = 0; i < numPartidas; i++) {
+        const id1 = slotsQuadro[i * 2];
+        const id2 = slotsQuadro[i * 2 + 1];
+
+        const ehBye = id1 === "BYE" || id2 === "BYE";
+        const p1 = id1 === "BYE" ? null : id1;
+        const p2 = id2 === "BYE" ? null : id2;
+
+        partidas.push({
+            fase: tamanhoChave,
+            jogador1Id: p1,
+            jogador2Id: p2,
+            isBye: ehBye
+        });
     }
 
     return {

@@ -9,16 +9,21 @@
  * ========================================================
  */
 
+// Variável de controle do bloco de 8 jogos ativo
+let quadranteAtivoMataMataSaaS = 0;
+
 function selecionarQuadranteSaaS(idxVal) {
-    const idx = parseInt(idxVal, 10);
-    const viewport = document.getElementById('bracket-scroll-viewport');
-    const elementoAlvo = document.getElementById(`ancora-quadrante-${idx}`);
+    quadranteAtivoMataMataSaaS = parseInt(idxVal, 10) || 0;
     
-    if (elementoAlvo && viewport) {
-        viewport.scrollTo({
-            top: elementoAlvo.offsetTop - 12,
-            behavior: 'smooth'
-        });
+    // Re-renderiza a árvore filtrando estritamente os 8 jogos do bloco selecionado
+    const containerAlvo = document.getElementById('body-leaderboard-scroll');
+    if (containerAlvo && window.chaveCatDataUltimaSaaS) {
+        renderizarVisaoMataMataSaaS(
+            containerAlvo, 
+            window.chaveCatDataUltimaSaaS, 
+            localStorage.getItem('jogadorLogadoId'),
+            window.partidasCustomizadasUltimaSaaS
+        );
     }
 }
 
@@ -57,6 +62,10 @@ function rolarMataMataSaaS(direcao) {
 
 function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, partidasCustomizadas = null) {
     if (!containerAlvo || !chaveCatData) return;
+
+    // Guarda referências para permitir a re-renderização instantânea ao trocar no dropdown
+    window.chaveCatDataUltimaSaaS = chaveCatData;
+    window.partidasCustomizadasUltimaSaaS = partidasCustomizadas;
 
     const confRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const rodadaAtualBanco = chaveCatData.rodada1 || [];
@@ -264,14 +273,15 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
 
     let htmlDropdownSaaS = '';
     if (totalJogosR1 > jogosPorBloco) {
-        const totalBlocos = Math.ceil(totalJogosR1 / jogosPorBloco);
-        let htmlOptions = '';
+    const totalBlocos = Math.ceil(totalJogosR1 / jogosPorBloco);
+		let htmlOptions = '';
 
-        for (let b = 0; b < totalBlocos; b++) {
-            const ini = (b * jogosPorBloco) + 1;
-            const fim = Math.min((b + 1) * jogosPorBloco, totalJogosR1);
-            htmlOptions += `<option value="${b}">📍 Jogos ${ini} a ${fim}</option>`;
-        }
+		for (let b = 0; b < totalBlocos; b++) {
+			const ini = (b * jogosPorBloco) + 1;
+			const fim = Math.min((b + 1) * jogosPorBloco, totalJogosR1);
+			const selected = (b === quadranteAtivoMataMataSaaS) ? 'selected' : '';
+			htmlOptions += `<option value="${b}" ${selected}>📍 Jogos ${ini} a ${fim}</option>`;
+		}
 
         htmlDropdownSaaS = `
             <div class="bracket-quadrante-row" data-html2canvas-ignore="true">
@@ -281,19 +291,33 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
             </div>
         `;
     }
+	
+	// Construção da barra de bolinhas (dots) para navegação mobile
+    let htmlDotsSaaS = '';
+    if (totalJogosR1 > jogosPorBloco) {
+        const totalBlocos = Math.ceil(totalJogosR1 / jogosPorBloco);
+        let dotsItems = '';
+        for (let b = 0; b < totalBlocos; b++) {
+            const activeClass = (b === quadranteAtivoMataMataSaaS) ? 'active' : '';
+            dotsItems += `<div class="dot-item ${activeClass}" onclick="selecionarQuadranteSaaS(${b})" title="Bloco ${b + 1}"></div>`;
+        }
+        htmlDotsSaaS = `<div class="dots-bar-saas" data-html2canvas-ignore="true">${dotsItems}</div>`;
+    }
 
     let htmlColunas = '';
+
 
     for (let pot = faseInicial; pot >= 2; pot /= 2) {
         const rotuloFase = (typeof obterRotuloFaseMataMataSaaS === 'function')
             ? obterRotuloFaseMataMataSaaS(pot)
             : `Fase ${pot}`;
 
+        // 🟢 1. Preenche a variável rodadaFase com os jogos do banco/histórico
         let rodadaFase = [];
         if (parseInt(chaveCatData.faseAtual, 10) === pot && rodadaAtualBanco.length > 0) {
             rodadaFase = rodadaAtualBanco;
         } else if (historicoRodadas[pot] || historicoRodadas[String(pot)]) {
-            rodadaFase = historicoRodadas[pot] || historicoRodadas[String(pot)];
+            rodadaFase = historicoRodadas[pot] || historicoRodadas[String(pot)]; 
         } else {
             const numJogos = pot / 2;
             for (let i = 0; i < numJogos; i++) {
@@ -301,12 +325,25 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
             }
         }
 
+        // 🟢 2. Cálculo do intervalo proporcional de jogos para o quadrante ativo
+        const fatorEscala = faseInicial / pot;
+        const inicioJogoPot = Math.floor((quadranteAtivoMataMataSaaS * jogosPorBloco) / fatorEscala);
+        const fimJogoPot = Math.ceil(((quadranteAtivoMataMataSaaS + 1) * jogosPorBloco) / fatorEscala);
+
         let htmlCardsJogo = '';
 
         rodadaFase.forEach((confItem, idxJogo) => {
+            // FILTRO ESTRITO: Exibe APENAS os 8 jogos do bloco selecionado
+            if (totalJogosR1 > jogosPorBloco) {
+                if (idxJogo < inicioJogoPot || idxJogo >= fimJogoPot) {
+                    return; // Oculta jogos fora do intervalo de 8
+                }
+            }
+
             if (!confItem) {
                 confItem = { fase: pot, jogador1Id: null, jogador2Id: null, isBye: false };
             }
+            
             const p1 = confItem.jogador1Id;
             const p2 = confItem.jogador2Id;
             const ehBye = confItem.isBye || (p1 && !p2 && pot === faseInicial);
@@ -424,6 +461,7 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
                     ${htmlColunas}
                 </div>
             </div>
+            ${htmlDotsSaaS}
             <button type="button" class="btn-voltar-arvore-saas" onclick="alternarVisaoMataMataSaaS()" title="Voltar para a Visão Lista" data-html2canvas-ignore="true">
                 <span class="material-icons" style="font-size: 20px;">format_list_bulleted</span>
             </button>
@@ -436,6 +474,38 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
         if (viewport) {
             viewport.onscroll = atualizarVisibilidadeSetasSaaS;
             atualizarVisibilidadeSetasSaaS();
+
+            // Captura de gestos VERTICAIS no celular para alternar blocos de 8 jogos
+            if (totalJogosR1 > jogosPorBloco) {
+                let touchStartX = 0;
+                let touchStartY = 0;
+
+                viewport.addEventListener('touchstart', (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                    touchStartY = e.changedTouches[0].screenY;
+                }, { passive: true });
+
+                viewport.addEventListener('touchend', (e) => {
+                    const touchEndX = e.changedTouches[0].screenX;
+                    const touchEndY = e.changedTouches[0].screenY;
+
+                    const diffX = touchEndX - touchStartX;
+                    const diffY = touchEndY - touchStartY;
+
+                    // Detecta se a rolagem foi predominantemente VERTICAL (mínimo 40px)
+                    if (Math.abs(diffY) > 40 && Math.abs(diffY) > Math.abs(diffX)) {
+                        const totalBlocos = Math.ceil(totalJogosR1 / jogosPorBloco);
+
+                        if (diffY < 0 && quadranteAtivoMataMataSaaS < totalBlocos - 1) {
+                            // Roulou para CIMA -> Muda para os próximos 8 jogos (ex: 9 a 16)
+                            selecionarQuadranteSaaS(quadranteAtivoMataMataSaaS + 1);
+                        } else if (diffY > 0 && quadranteAtivoMataMataSaaS > 0) {
+                            // Roulou para BAIXO -> Volta para os 8 jogos anteriores (ex: 1 a 8)
+                            selecionarQuadranteSaaS(quadranteAtivoMataMataSaaS - 1);
+                        }
+                    }
+                }, { passive: true });
+            }
         }
     }, 50);
 }
