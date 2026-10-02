@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="css/regras.css?v=4"> 
     <link rel="stylesheet" href="css/logs.css?v=4">
 	<!-- NOVO: Estilo exclusivo do Módulo de Ranking -->
-    <link rel="stylesheet" href="css/ranking.css?v=4">  
+    <link rel="stylesheet" href="css/ranking.css?v=4">   
 	
 </head>
 <body>
@@ -1600,19 +1600,19 @@
 
                     <div class="saas-row">
                         <label for="saas-quadra">Quadra:</label>
-                        <select id="saas-quadra" class="saas-field" onchange="atualizarOpcoesHorarioSaaS()">
+                        <select id="saas-quadra" class="saas-field" onchange="atualizarHorariosDisponiveisSaaS()">
                         </select>
                     </div>
 
                     <div class="saas-row">
                         <label for="saas-dia">Dia:</label>
-                        <select id="saas-dia" class="saas-field" onchange="atualizarOpcoesHorarioSaaS()">
+                        <select id="saas-dia" class="saas-field" onchange="atualizarHorariosDisponiveisSaaS()">
                         </select>
                     </div>
 
                     <div class="saas-row">
 						<label for="saas-duracao">Duração:</label>
-						<select id="saas-duracao" class="saas-field" onchange="atualizarOpcoesHorarioSaaS()">
+						<select id="saas-duracao" class="saas-field" onchange="atualizarHorariosDisponiveisSaaS()">
 							<option value="1">1 hora</option>
 							<option value="2">2 horas</option>
 							<option value="ranking" id="opt-duracao-ranking" style="display: none;">Ranking</option>
@@ -2161,45 +2161,130 @@
 
 								<!-- BLOCO DINÂMICO: GRUPOS -->
 								<div id="bloco-regras-grupos" style="display: none;">
+									
+									<!-- 1. CAMPO MESTRE: FASE INICIAL -->
 									<div class="ctrl-row">
 										<div class="ctrl-text">
-											<span class="ctrl-title">Tamanho do Grupo</span>
-											<span class="ctrl-desc">Quantidade de atletas por chave/grupo.</span>
+											<span class="ctrl-title">Fase Inicial</span>
+											<span class="ctrl-desc">Define por onde a competição se inicia.</span>
 										</div>
-										<select class="modern-select" id="select-ranking-grupos-tamanho">
-											<option value="3">3 atletas</option>
-											<option value="4" selected>4 atletas</option>
-											<option value="5">5 atletas</option>
-											<option value="6">6 atletas</option>
-											<option value="7">7 atletas</option>
-											<option value="8">8 atletas</option>
-											<option value="9">9 atletas</option>
-											<option value="10">10 atletas</option> 
+										<select class="modern-select" id="select-ranking-grupos-fase-inicial" onchange="toggleGavetaFaseInicialRankingSaaS()">
+											<option value="grupos" selected>Fase de Grupos</option>
+											<option value="matamata">Mata-Mata</option>
 										</select>
 									</div>
 
-									<div class="ctrl-row">
-										<div class="ctrl-text">
-											<span class="ctrl-title">Classificados por Grupo</span>
-											<span class="ctrl-desc">Atletas que avançam para a próxima fase.</span>
+									<!-- 2. GAVETA DESLIZANTE DE SUBCAMPOS DOS GRUPOS -->
+									<div class="drawer-container" id="drawer-grupos-fase-inicial">
+										<div class="ctrl-row">
+											<div class="ctrl-text">
+												<span class="ctrl-title">Tamanho do Grupo</span>
+												<span class="ctrl-desc">Quantidade de atletas por chave/grupo.</span>
+											</div>
+											<select class="modern-select" id="select-ranking-grupos-tamanho">
+												<option value="3">3 atletas</option>
+												<option value="4" selected>4 atletas</option>
+												<option value="5">5 atletas</option>
+												<option value="6">6 atletas</option>
+												<option value="7">7 atletas</option>
+												<option value="8">8 atletas</option>
+												<option value="9">9 atletas</option>
+												<option value="10">10 atletas</option> 
+											</select>
 										</div>
-										<select class="modern-select" id="select-ranking-grupos-classificados">
-											<option value="1">1º colocado</option>
-											<option value="2" selected>1º e 2º colocados</option>
-											<option value="dinamico">Dinâmico (1º ou 2º conforme chave)</option>
-										</select>
+
+										<div class="ctrl-row">
+											<div class="ctrl-text">
+												<span class="ctrl-title">Classificados por Grupo</span>
+												<span class="ctrl-desc">Atletas que avançam para a próxima fase.</span>
+											</div>
+											<select class="modern-select" id="select-ranking-grupos-classificados">
+												<option value="1">1º colocado</option>
+												<option value="2" selected>1º e 2º colocados</option>
+												<option value="dinamico">Dinâmico (1º ou 2º conforme chave)</option>
+											</select>
+										</div>
 									</div>
 
-									<div class="ctrl-row">
-										<div class="ctrl-text">
-											<span class="ctrl-title">Critério de Desempate</span>
-											<span class="ctrl-desc">Ordem de desempate de pontos no grupo.</span>
+									<!-- CARD ENVELOPADO: CRITÉRIO DE DESEMPATE INTELIGENTE -->
+									<div class="card-agendar-box" id="box-criterio-desempate" style="margin-top: 10px;">
+										<div class="acordeao-trigger-row" onclick="event.stopPropagation(); toggleGavetaDesempateSaaS();">
+											<div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+												<i class="material-icons" style="color: var(--cor-primaria); font-size: 22px;">swap_vert</i>
+												<div class="ctrl-text">
+													<span class="ctrl-title">Critério de Desempate</span>
+													<span class="ctrl-desc">Ordem de preferência para desempate</span>
+												</div>
+											</div>
+											<div class="coluna-acao-direita" style="width: auto;">
+												<span class="badge-contador" id="lbl-badge-desempate-sequencia" style="font-size: 11.5px; padding: 5px 12px;">
+													1º Games ➔ 2º Confronto ➔ 3º Sorteio
+												</span>
+												<i class="material-icons icon-seta-acordeao">expand_more</i>
+											</div>
 										</div>
-										<select class="modern-select" id="select-ranking-grupos-desempate">
-											<option value="games_confronto_sorteio" selected>Saldo de Games > Confronto Direto > Sorteio</option>
-											<option value="confronto_games">Confronto Direto > Saldo de Games</option>
-											<option value="sets_games">Saldo de Sets > Saldo de Games</option>
-										</select>
+
+										<div class="sub-drawer-box">
+											<div class="sub-list-box">
+												
+												<div class="sub-list-row">
+													<div class="sub-item-info">
+														<span class="sub-item-title">Saldo de Games</span>
+														<span class="sub-item-desc">Diferença entre games vencidos e perdidos</span>
+													</div>
+													<select class="modern-select select-ordem-desempate" id="sel-desempate-games" data-item="Games" style="width: 110px;" onchange="gerenciarTrocaDesempateSaaS(this)">
+														<option value="1" selected>1º Lugar</option>
+														<option value="2">2º Lugar</option>
+														<option value="3">3º Lugar</option>
+														<option value="4">4º Lugar</option>
+														<option value="0">Desativado</option>
+													</select>
+												</div>
+
+												<div class="sub-list-row">
+													<div class="sub-item-info">
+														<span class="sub-item-title">Confronto Direto</span>
+														<span class="sub-item-desc">Resultado da partida direta entre os empatados</span>
+													</div>
+													<select class="modern-select select-ordem-desempate" id="sel-desempate-confronto" data-item="Confronto" style="width: 110px;" onchange="gerenciarTrocaDesempateSaaS(this)">
+														<option value="1">1º Lugar</option>
+														<option value="2" selected>2º Lugar</option>
+														<option value="3">3º Lugar</option>
+														<option value="4">4º Lugar</option>
+														<option value="0">Desativado</option>
+													</select>
+												</div>
+
+												<div class="sub-list-row">
+													<div class="sub-item-info">
+														<span class="sub-item-title">Sorteio no App</span>
+														<span class="sub-item-desc">Definição aleatória automática pelo sistema</span>
+													</div>
+													<select class="modern-select select-ordem-desempate" id="sel-desempate-sorteio" data-item="Sorteio" style="width: 110px;" onchange="gerenciarTrocaDesempateSaaS(this)">
+														<option value="1">1º Lugar</option>
+														<option value="2">2º Lugar</option>
+														<option value="3" selected>3º Lugar</option>
+														<option value="4">4º Lugar</option>
+														<option value="0">Desativado</option>
+													</select>
+												</div>
+
+												<div class="sub-list-row">
+													<div class="sub-item-info">
+														<span class="sub-item-title">Saldo de Sets</span>
+														<span class="sub-item-desc">Diferença de sets em formatos de múltiplos sets</span>
+													</div>
+													<select class="modern-select select-ordem-desempate" id="sel-desempate-sets" data-item="Sets" style="width: 110px;" onchange="gerenciarTrocaDesempateSaaS(this)">
+														<option value="1">1º Lugar</option>
+														<option value="2">2º Lugar</option>
+														<option value="3">3º Lugar</option>
+														<option value="4">4º Lugar</option>
+														<option value="0" selected>Desativado</option>
+													</select>
+												</div>
+
+											</div>
+										</div>
 									</div>
 
 									<div class="ctrl-row">
@@ -3249,6 +3334,7 @@
 	<script src="js/ranking-torneio.js?v=4"></script>
 	<script src="js/ranking-ui-pdf.js?v=4"></script>
 	<script src="js/piramide.js?v=4"></script>
+	<script src="js/grupos.js?v=4"></script>
 	<script src="js/sorteio-potes.js?v=4"></script>
 	
 	<!-- PWA: Registro do Motor Offline e Atualizador Automático -->
