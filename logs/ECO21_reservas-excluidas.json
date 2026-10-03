@@ -2417,5 +2417,201 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Del Potro": true,
+      "Federer": true
+    },
+    "data": "29-09-2026",
+    "dataLocal": "03/10/2026, 06:11:44",
+    "duracao": "1 Hora",
+    "horario": "13:00 - 14:00",
+    "jogadores": "Del Potro, Federer",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, ROGER FEDERER",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 13,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-03T09:11:44.524Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Davydenko": true,
+      "Federer": true
+    },
+    "data": "29-09-2026",
+    "dataLocal": "03/10/2026, 06:11:44",
+    "duracao": "1 Hora",
+    "horario": "15:00 - 16:00",
+    "jogadores": "Federer, Davydenko",
+    "jogadores_completo": "ROGER FEDERER, NICOLAY DAVYDENKO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ROGER FEDERER",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 15,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-03T09:11:44.526Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Djokovic": true,
+      "Nadal": true
+    },
+    "data": "29-09-2026",
+    "dataLocal": "03/10/2026, 06:11:44",
+    "duracao": "1 Hora",
+    "horario": "13:00 - 14:00",
+    "jogadores": "Djokovic, Nadal",
+    "jogadores_completo": "NOVAK DJOKOVIC, RAFAEL NADAL",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "NOVAK DJOKOVIC",
+    "origem": "sistema",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 13,
+        "quadra": "Quadra - 2"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-03T09:11:44.526Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Del Potro": true,
+      "Soderling": true
+    },
+    "data": "29-09-2026",
+    "dataLocal": "03/10/2026, 06:11:44",
+    "duracao": "1 Hora",
+    "horario": "15:00 - 16:00",
+    "jogadores": "Del Potro, Soderling",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, ROBIN SODERLING",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "origem": "sistema",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 15,
+        "quadra": "Quadra - 2"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-03T09:11:44.526Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Davydenko": true,
+      "Soderling": true
+    },
+    "data": "29-09-2026",
+    "dataLocal": "03/10/2026, 06:11:44",
+    "duracao": "1 Hora",
+    "horario": "13:00 - 14:00",
+    "jogadores": "Davydenko, Soderling",
+    "jogadores_completo": "NICOLAY DAVYDENKO, ROBIN SODERLING",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "NICOLAY DAVYDENKO",
+    "origem": "sistema",
+    "quadra": "Quadra 3 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 13,
+        "quadra": "Quadra - 3"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-03T09:11:44.527Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Murray": true,
+      "Verdasco": true
+    },
+    "data": "29-09-2026",
+    "dataLocal": "03/10/2026, 06:11:44",
+    "duracao": "1 Hora",
+    "horario": "13:00 - 14:00",
+    "jogadores": "Murray, Verdasco",
+    "jogadores_completo": "ANDY MURRAY, FERNANDO VERDASCO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ANDY MURRAY",
+    "origem": "sistema",
+    "quadra": "Quadra 4 - Roger Federer",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 13,
+        "quadra": "Quadra - 4"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-03T09:11:44.527Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Davydenko": true,
+      "Del Potro": true
+    },
+    "data": "29-09-2026",
+    "dataLocal": "03/10/2026, 06:11:44",
+    "duracao": "1 Hora",
+    "horario": "16:00 - 17:00",
+    "jogadores": "Davydenko, Del Potro",
+    "jogadores_completo": "NICOLAY DAVYDENKO, JUAN MARTIN DEL POTRO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "NICOLAY DAVYDENKO",
+    "origem": "sistema",
+    "quadra": "Quadra 7 - kids",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 16,
+        "quadra": "Quadra - 7"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-03T09:11:44.527Z"
   }
 ]
