@@ -2613,5 +2613,227 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-10-03T09:11:44.527Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Duck": true
+    },
+    "data": "30-09-2026",
+    "dataLocal": "04/10/2026, 06:20:53",
+    "duracao": "1 Hora",
+    "horario": "22:00 - 23:00",
+    "jogadores": "Alex, Alice Duck",
+    "jogadores_completo": "ALEX SOUZA, ALICE DUCK",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 22,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T09:20:53.870Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Almir": true
+    },
+    "data": "30-09-2026",
+    "dataLocal": "04/10/2026, 06:20:53",
+    "duracao": "1 Hora",
+    "horario": "22:00 - 23:00",
+    "jogadores": "Almir, Adriano Feitosa",
+    "jogadores_completo": "ALMIR ALVES DA CRUZ, ADRIANO GOMES FEITOSA",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ALMIR ALVES DA CRUZ",
+    "origem": "sistema",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 22,
+        "quadra": "Quadra - 2"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T09:20:53.870Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "Administração (Gestor)",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Luciane Vieira": true,
+      "Zoti": true
+    },
+    "data": "04-10-2026",
+    "dataLocal": "04/10/2026, 06:49:04",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Zoti, Luciane Vieira",
+    "jogadores_completo": "MARCELO ZOTI, LUCIANE VIEIRA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "MARCELO ZOTI",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 6
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T09:49:04.544Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Duck": true
+    },
+    "data": "30-09-2026",
+    "dataLocal": "04/10/2026, 06:20:53",
+    "duracao": "1 Hora",
+    "horario": "22:00 - 23:00",
+    "jogadores": "Alex, Alice Duck",
+    "jogadores_completo": "ALEX SOUZA, ALICE DUCK",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 22,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T09:20:53.870Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Duck": true
+    },
+    "data": "30-09-2026",
+    "dataLocal": "04/10/2026, 06:20:53",
+    "duracao": "1 Hora",
+    "horario": "22:00 - 23:00",
+    "jogadores": "Alex, Alice Duck",
+    "jogadores_completo": "ALEX SOUZA, ALICE DUCK",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 22,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T09:20:53.870Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Almir": true
+    },
+    "data": "30-09-2026",
+    "dataLocal": "04/10/2026, 06:20:53",
+    "duracao": "1 Hora",
+    "horario": "22:00 - 23:00",
+    "jogadores": "Almir, Adriano Feitosa",
+    "jogadores_completo": "ALMIR ALVES DA CRUZ, ADRIANO GOMES FEITOSA",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ALMIR ALVES DA CRUZ",
+    "origem": "sistema",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 22,
+        "quadra": "Quadra - 2"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T09:20:53.870Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "Administração (Gestor)",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Luciane Vieira": true,
+      "Zoti": true
+    },
+    "data": "04-10-2026",
+    "dataLocal": "04/10/2026, 06:49:04",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Zoti, Luciane Vieira",
+    "jogadores_completo": "MARCELO ZOTI, LUCIANE VIEIRA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "MARCELO ZOTI",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 6
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T09:49:04.544Z"
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Duck": true
+    },
+    "data": "30-09-2026",
+    "dataLocal": "04/10/2026, 06:20:53",
+    "duracao": "1 Hora",
+    "horario": "22:00 - 23:00",
+    "jogadores": "Alex, Alice Duck",
+    "jogadores_completo": "ALEX SOUZA, ALICE DUCK",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 22,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T09:20:53.870Z"
   }
 ]
