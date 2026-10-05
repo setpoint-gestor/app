@@ -2835,5 +2835,86 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-10-04T09:20:53.870Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "Administração (Gestor)",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alice Pereira": true
+    },
+    "data": "04-10-2026",
+    "dataLocal": "04/10/2026, 17:16:44",
+    "duracao": "1 Hora",
+    "horario": "18:00 - 19:00",
+    "jogadores": "Adriano Feitosa, Alice Pereira",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALICE ALMEIDA PEREIRA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 18
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T20:16:44.960Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "Administração (Gestor)",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alice Pereira": true
+    },
+    "data": "04-10-2026",
+    "dataLocal": "04/10/2026, 17:16:44",
+    "duracao": "1 Hora",
+    "horario": "18:00 - 19:00",
+    "jogadores": "Adriano Feitosa, Alice Pereira",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALICE ALMEIDA PEREIRA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 18
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T20:16:44.960Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "Administração (Gestor)",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alice Pereira": true
+    },
+    "data": "04-10-2026",
+    "dataLocal": "04/10/2026, 17:16:44",
+    "duracao": "1 Hora",
+    "horario": "18:00 - 19:00",
+    "jogadores": "Adriano Feitosa, Alice Pereira",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALICE ALMEIDA PEREIRA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 18
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-04T20:16:44.960Z"
   }
 ]
