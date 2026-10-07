@@ -51,5 +51,33 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-07T16:50:26.082Z",
+    "dataLocal": "07/10/2026, 13:50:26",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "05-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "DIEGO NERY",
+    "confirmacoes": {
+      "Nery": true,
+      "Rone": true
+    },
+    "jogadores": "Nery, Rone",
+    "jogadores_completo": "DIEGO NERY, RONALDO TABORDA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 1,
+        "hora": 6
+      }
+    ]
   }
 ]
