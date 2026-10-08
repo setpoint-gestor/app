@@ -12,7 +12,7 @@
     width: 100%;
     max-width: 500px;
     padding: 0 15px;
-    box-sizing: border-box;
+    box-sizing: border-box; 
     margin: 0 auto;
 }
 
@@ -122,8 +122,98 @@
 /* ======================================================== */
 /* 3. ESTRUTURA DE SUPORTE PARA O FORMULÁRIO / DROPDOWN     */
 /* ======================================================== */
+
 .modal-form-overlay.visivel {
     display: flex !important;
+}
+
+/* ESTILIZAÇÃO ESPECÍFICA DO MODAL DE QUADRAS (#modal-form-quadra) */
+#modal-form-quadra .modal-form-content {
+    max-width: 540px !important;
+    padding: 0 !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    text-align: left !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25) !important;
+    background: #ffffff !important;
+}
+
+#modal-form-quadra #faixa-status-quadra {
+    padding: 16px 20px !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    text-align: center !important;
+}
+
+#modal-form-quadra .modal-form-content > .input-group {
+    padding: 0 20px !important;
+    margin-top: 14px !important;
+    box-sizing: border-box !important;
+}
+
+#modal-form-quadra .modal-form-content > div[style*="display: flex"] {
+    padding: 0 20px !important;
+    margin-top: 14px !important;
+    box-sizing: border-box !important;
+}
+
+#modal-form-quadra .modal-form-content > div[style*="margin-top: 20px"] {
+    padding: 0 20px 20px 20px !important;
+    margin-top: 20px !important;
+}
+
+#modal-form-quadra .input-group {
+    margin: 0 !important;
+}
+
+#modal-form-quadra .input-group label {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    margin-bottom: 6px !important;
+    display: block !important;
+}
+
+#modal-form-quadra .input-group input.input-app,
+#modal-form-quadra .input-group select.input-app {
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+    height: 42px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+}
+
+#modal-form-quadra .modal-form-content > div[style*="margin-top: 20px"] button {
+    height: 44px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+}
+
+/* RESPONSIVIDADE MOBILE DO MODAL NO CELULAR */
+@media (max-width: 540px) {
+    #modal-form-quadra .modal-form-content {
+        max-width: 92vw !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+    }
+
+    /* Empilha apenas a primeira linha (Tipo de Piso + VIP) no celular */
+    #modal-form-quadra .modal-form-content > div[style*="display: flex; gap: 10px"]:first-of-type {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    /* Mantém a linha de Refletores e Arquibancada lado a lado no celular */
+    #modal-form-quadra .modal-form-content > div:has(#check-luz-quadra) {
+        flex-direction: row !important;
+        gap: 10px !important;
+    }
 }
 
 .switch-premium {
@@ -212,6 +302,7 @@
     margin-top: 10px !important;
 }
 
+/* OUVINTE DO MENU DROPDOWN (PRESERVADO PARA EVITAR VAZAMENTO NA LISTA) */
 .dropdown-saas-menu {
     display: none;
     position: absolute;
@@ -272,98 +363,79 @@
     background-color: #dc3545 !important;
 }
 
-
 /* ======================================================== */
 /* 4. 🌓 COBERTURA DE MODO ESCURO: GERENCIADOR DE QUADRAS   */
 /* ======================================================== */
 
-/* Cabeçalho interno e indicador de quantidade de quadras */
 body.dark-mode #tela-gerenciador-quadras .header-painel {
-    background-color: #1e1e1e !important; /* Grafite unificado com o QG e Cadastro[cite: 2] */
+    background-color: #1e1e1e !important;
     border-bottom: 1px solid #333333 !important;
 }
 body.dark-mode #tela-gerenciador-quadras .header-painel h2 {
     color: #f8fafc !important;
 }
 body.dark-mode #indicador-qtd-quadras {
-    color: #94a3b8 !important; /* Texto de contagem em cinza suave[cite: 2] */
+    color: #94a3b8 !important;
 }
 body.dark-mode #link-reset-secreto {
-    color: #475569 !important; /* Muta o link secreto no escuro para ficar discreto[cite: 2] */
+    color: #475569 !important;
 }
 
-/* 🔍 Barra de Pesquisa de Quadras */
 body.dark-mode #busca-quadra {
-    background-color: #1e1e1e !important; /* Grafite fosco integrado[cite: 2] */
-    border: 1px solid #333333 !important;   /* Borda escura neutra */
+    background-color: #1e1e1e !important;
+    border: 1px solid #333333 !important;
     color: #ffffff !important;
 }
 body.dark-mode #busca-quadra:focus {
-    border-color: var(--cor-primaria) !important; /* Acende o verde SetPoint ao focar[cite: 2] */
+    border-color: var(--cor-primaria) !important;
 }
 
-/* ======================================================== */
-/* 🎛️ BLINDAGEM DOS BOTÕES DE CONTROLE (INVERTER E FILTROS) */
-/* ======================================================== */
-
-/* Neutraliza o cinza claro (#e2e8f0) injetado pelo JS quando inativos */
 body.dark-mode #btn-inverter-ordem,
 body.dark-mode #btn-filtros-global-quadras {
-    background-color: rgba(255, 255, 255, 0.05) !important; /* Efeito Matte/Vidro */
-    color: #cbd5e1 !important;                               /* Ícone em prata claro[cite: 6] */
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #cbd5e1 !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Intercepta o estilo injetado pelo JS quando ativos e joga o Verde SetPoint */
 body.dark-mode #btn-inverter-ordem[style*="1e293b"],
 body.dark-mode #btn-inverter-ordem[style*="var"],
 body.dark-mode #btn-filtros-global-quadras[style*="1e293b"],
 body.dark-mode #btn-filtros-global-quadras[style*="var"] {
-    background-color: var(--cor-primaria) !important; /* Substitui o azul antigo pelo verde oficial[cite: 2] */
+    background-color: var(--cor-primaria) !important;
     color: #ffffff !important;
     border-color: var(--cor-primaria) !important;
 }
 
-/* 📂 Gaveta de Configuração de Exibição Global (Pílulas) */
 body.dark-mode #gaveta-filtros-global-quadras {
-    background: #1e1e1e !important;          /* Caixa em grafite fosco elevado[cite: 2] */
+    background: #1e1e1e !important;
     border: 1px solid #333333 !important;
 }
 body.dark-mode #gaveta-filtros-global-quadras h4 {
     color: #f8fafc !important;
 }
 body.dark-mode #gaveta-filtros-global-quadras label {
-    color: #cbd5e1 !important;               /* Nomes dos filtros em prata claro[cite: 2] */
+    color: #cbd5e1 !important;
 }
 
-/* ======================================================== */
-/* 🏟️ COBERTURA DE MODO ESCURO: OS CARDS DAS QUADRAS        */
-/* ======================================================== */
-
-/* O Card Premium da Quadra (Efeito Ilha Carbono)[cite: 9] */
 body.dark-mode .quadra-card-premium {
-    background: #1e1e1e !important;          /* Elevação idêntica à dos sócios[cite: 2] */
-    border: 1px solid #333333 !important;    /* Elimina a linha clara do modo claro[cite: 9] */
+    background: #1e1e1e !important;
+    border: 1px solid #333333 !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Identificação Fixa (Ex: Quadra 1) */
 body.dark-mode .quadra-titulo-fixo {
-    color: #f8fafc !important;               /* Branco puro de alto contraste */
+    color: #f8fafc !important;
 }
 
-/* Nome Personalizado / Identificação (Ex: Quadra 1 - Coberta) */
 body.dark-mode .quadra-sub-nome,
 body.dark-mode .quadra-info-block div[style*="color"] {
-    color: #94a3b8 !important;               /* Substitui o cinza antigo por ardósia suave[cite: 2, 10] */
+    color: #94a3b8 !important;
 }
 
-/* Círculo com o Número da Quadra (Avatar) quando não ativo */
 body.dark-mode .quadra-avatar-status {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-/* Botão de 3 pontinhos do card */
 body.dark-mode .quadra-btn-kebab {
     color: #94a3b8 !important;
 }
@@ -371,33 +443,30 @@ body.dark-mode .quadra-btn-kebab:active {
     background: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* 🏪 Menu Dropdown Flutuante de Ações da Quadra */
 body.dark-mode .dropdown-saas-menu {
-    background: #252525 !important;          /* Fundo chumbo isolado de primeiro plano[cite: 2] */
+    background: #252525 !important;
     border: 1px solid #333333 !important;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
 }
 body.dark-mode .dropdown-saas-menu button {
     background: #252525 !important;
-    color: #cbd5e1 !important;               /* Opções textuais limpas em prata[cite: 6] */
+    color: #cbd5e1 !important;
 }
 body.dark-mode .dropdown-saas-menu button:active {
-    background: #333333 !important;          /* Destaque escuro ao pressionar a opção[cite: 2] */
+    background: #333333 !important;
 }
 body.dark-mode .dropdown-saas-menu button .material-icons {
-    color: #94a3b8 !important;               /* Ícones das opções em cinza nítido[cite: 2] */
+    color: #94a3b8 !important;
 }
 body.dark-mode .dropdown-saas-menu .item-excluir-saas,
 body.dark-mode .dropdown-saas-menu .item-excluir-saas .material-icons {
-    color: #f87171 !important;               /* Vermelho pastel elétrico para exclusão destrutiva */
+    color: #f87171 !important;
 }
 
-/* ↖️ CONTRASTE DA SETA DE VOLTAR NO MODO ESCURO */
 body.dark-mode #tela-gerenciador-quadras .header-painel button.material-icons {
-    color: #cbd5e1 !important; /* Destaca a seta em prata claro sobre o cabeçalho escuro */
+    color: #cbd5e1 !important;
 }
 
-/* Efeito tátil de clique para a setinha no celular */
 body.dark-mode #tela-gerenciador-quadras .header-painel button.material-icons:active {
     color: #ffffff !important;
     transform: scale(0.9) !important;
