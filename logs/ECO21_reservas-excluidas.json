@@ -3862,5 +3862,38 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-10-08T21:48:23.216Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-08T21:57:46.029Z",
+    "dataLocal": "08/10/2026, 18:57:46",
+    "autor": "ALEXANDRE CAMARGO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "10-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Ana Julia": false,
+      "Gustavo Carvalho": false,
+      "Murray": false
+    },
+    "jogadores": "Alexandre Camargo, Murray, Ana Julia, Gustavo Carvalho",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ANDY MURRAY, ANA JULIA MARTINS, GUSTAVO CARVALHO",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 7
+      },
+      {
+        "dia": 6,
+        "hora": 8
+      }
+    ]
   }
 ]
