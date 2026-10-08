@@ -218,7 +218,7 @@ function abrirVisaoQuadras() {
                 }
             };
             
-            tabContainer.appendChild(btn); 
+            tabContainer.appendChild(btn);  
         }
 
         const abasGeradas = Array.from(tabContainer.querySelectorAll('.tab-button')).map(b => b.dataset.nomeReal);
@@ -244,8 +244,6 @@ function abrirVisaoQuadras() {
         }
     });
 }
-
-
 
 // ==========================================
 // 3. SELEÇÃO DE ABAS COM CAPTURA DE TEXTO BLINDADA
@@ -280,29 +278,47 @@ function selecionarQuadraSaaS(nomeQuadra) {
             }
             ultimoCliqueTituloQuadra = tempoAtual;
         };
+
+        // 🚨 DESTAQUE EM VERMELHO PARA QUADRA INTERDITADA
+        const containerTitulo = lblTitulo.closest('.container-titulo-central') || lblTitulo.parentElement;
+        if (containerTitulo) {
+            let status = 'liberada';
+            if (configQuadrasGlobal && configQuadrasGlobal.nomes) {
+                const qtd = parseInt(configQuadrasGlobal.quantidade) || 0;
+                for (let i = 1; i <= qtd; i++) {
+                    const dadosQ = configQuadrasGlobal.nomes[i];
+                    const nomeF = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${i}`) : (dadosQ || `Quadra ${i}`);
+                    if (nomeF === nomeQuadra) {
+                        status = configQuadrasGlobal.nomes['status_' + i] || 'liberada';
+                        break;
+                    }
+                }
+            }
+            const ehInterditada = (status === 'interditada' || status === 'interdita');
+            containerTitulo.classList.toggle('header-quadra-interditada', ehInterditada);
+        }
     }
     
     // CORREÇÃO DE PINTURA (O BOTÃO VERDE): Avalia o metadado real e ignora a string visual curta
-	document.querySelectorAll('.tab-button').forEach(btn => {
-		if (btn.dataset.nomeReal === nomeQuadra) {
-			btn.classList.add('selected'); // Injeta a classe de foco (Verde)
-			
-			// 💉 Só arrasta o menu se for mobile (evita o tranco horizontal no computador)
-			if (window.innerWidth <= 767) {
-				btn.scrollIntoView({ 
-					behavior: 'smooth', 
-					block: 'nearest', 
-					inline: 'center' 
-				});
-			}
-		} else {
-			btn.classList.remove('selected');
-		}
-	});
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        if (btn.dataset.nomeReal === nomeQuadra) {
+            btn.classList.add('selected'); // Injeta a classe de foco (Verde)
+            
+            // 💉 Só arrasta o menu se for mobile (evita o tranco horizontal no computador)
+            if (window.innerWidth <= 767) {
+                btn.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'nearest', 
+                    inline: 'center' 
+                });
+            }
+        } else {
+            btn.classList.remove('selected');
+        }
+    });
 
     carregarAgendamentosDaQuadra(nomeQuadra);
 }
-
 
 // ==========================================
 // 4. CONEXÃO EM LOTE DO BANCO SAAS COM A PLANILHA

@@ -34,7 +34,7 @@ auth.onAuthStateChanged((user) => {
                     elVersaoGestor.textContent = "v" + versaoAndroidNativa;
                     
                     // 🤖 MÁGICA: O APK (God Mode) avisa o Firebase qual é a versão atual!
-                    database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa);
+                    //database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa);
                 } else {
                     elVersaoGestor.textContent = "v" + versaoWebGlobal;
                 }
@@ -109,7 +109,7 @@ auth.onAuthStateChanged((user) => {
                         elVersaoGestor.textContent = "v" + versaoAndroidNativa;
                         
                         // 🤖 MÁGICA: O Gestor (APK) avisa o Firebase qual é a versão atual!
-                        database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa);
+                        //database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa);
                         
                     } else {
                         // Se não for APK (Web/PC), mostra a versão que o Firebase enviou
@@ -223,7 +223,7 @@ function loginGestorAuth() {
                         elVersaoGestor.textContent = "v" + versaoAndroidNativa;
                         
                         // 🤖 MÁGICA: O Gestor (APK) avisa o Firebase qual é a versão atual!
-                        database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa); 
+                        //database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa); 
                         
                     } else {
                         // Se não for APK (Web/PC), mostra a versão que o Firebase enviou
@@ -1004,14 +1004,22 @@ function verificarAtualizacaoDisponivelSaaS() {
         const forcar = configSaaS.forcar_atualizacao === true;
         const canal = configSaaS.canal_distribuicao || "APK_DIRETO";
 
+        // 🛡️ TRAVA ANTI-SOBRESCRITA: O aparelho só atualiza o Firebase se a versão dele for MAIOR que a do servidor
+        const eVersaoMaisRecente = compararVersoesSemVerSaaS(versaoServidor, versaoLocal);
+        if (eVersaoMaisRecente && window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
+            console.log(`🚀 [SaaS Update] Dispositivo com versão superior identificada (v${versaoLocal}). Sincronizando servidor...`);
+            database.ref('Clubes/SaaS_Config/versao_web').set(versaoLocal);
+            return; // Se este aparelho acabou de atualizar o servidor para a nova versão, interrompe aqui
+        }
+
         // Guarda a URL globalmente para o botão "Atualizar Agora"
         window.urlApkAtualizacaoSaaS = urlApk;
 
-        // Avalia se existe uma versão mais recente no servidor
+        // Avalia se existe uma versão mais recente no servidor para este aparelho
         const haNovaVersao = compararVersoesSemVerSaaS(versaoLocal, versaoServidor);
 
         if (haNovaVersao && canal === "APK_DIRETO") {
-            console.log(`🚀 [SaaS Update] Nova versão identificada: v${versaoLocal} -> v${versaoServidor}`);
+            console.log(`🚀 [SaaS Update] Nova versão identificada no servidor: v${versaoLocal} -> v${versaoServidor}`);
             
             // Preenche as pílulas visuais da modal
             const elAtual = document.getElementById('lbl-versao-atual-app');

@@ -1347,12 +1347,17 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
 
 
 // ====================================================================
-// 10. OUVINTE GLOBAL: SINCRONIZA A VERSÃO DA WEB/IOS COM O FIREBASE
+// 10. OUVINTE GLOBAL: SINCRONIZA A VERSÃO DA WEB/IOS COM O FIREBASE (100% ONLINE)
 // ====================================================================
 database.ref('Clubes/SaaS_Config/versao_web').on('value', (snapshot) => {
     if (snapshot.exists()) {
         versaoWebGlobal = snapshot.val();
         console.log("📱 [SaaS Version] Versão Web/iOS sincronizada: v" + versaoWebGlobal);
+
+        // 🚀 DISPARO EM TEMPO REAL: Se houver mudança no banco, avalia a versão na hora sem precisar trocar de aba
+        if (typeof verificarAtualizacaoDisponivelSaaS === 'function') {
+            verificarAtualizacaoDisponivelSaaS();
+        }
     }
 });
 
