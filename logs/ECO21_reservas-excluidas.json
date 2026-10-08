@@ -3643,5 +3643,62 @@
         "hora": 20
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALEXANDRE CAMARGO",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Allana Barbosa": false
+    },
+    "data": "09-10-2026",
+    "dataLocal": "08/10/2026, 18:01:10",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Alexandre Camargo, Allana Barbosa",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ALLANA BARBOSA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "origem": "manual",
+    "quadra": "Quadra 4 - Roger Federer",
+    "slotsExcluidos": [
+      {
+        "dia": 5,
+        "hora": 6
+      },
+      {
+        "dia": 5,
+        "hora": 7
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-08T21:01:10.572Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALEXANDRE CAMARGO",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Camargo": true
+    },
+    "data": "08-10-2026",
+    "dataLocal": "08/10/2026, 18:01:23",
+    "duracao": "1 Hora",
+    "horario": "17:00 - 18:00",
+    "jogadores": "Alexandre Camargo",
+    "jogadores_completo": "ALEXANDRE CAMARGO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "origem": "manual",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 17
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-08T21:01:23.964Z"
   }
 ]
