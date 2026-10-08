@@ -3752,5 +3752,31 @@
         "hora": 18
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-08T21:43:14.129Z",
+    "dataLocal": "08/10/2026, 18:43:14",
+    "autor": "ALEXANDRE CAMARGO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "18:00 - 19:00",
+    "duracao": "1 Hora",
+    "data": "08-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "confirmacoes": {
+      "Alexandre Camargo": true
+    },
+    "jogadores": "Alexandre Camargo",
+    "jogadores_completo": "ALEXANDRE CAMARGO",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 18
+      }
+    ]
   }
 ]
