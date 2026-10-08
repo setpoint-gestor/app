@@ -18,7 +18,7 @@ function formatarNomePiramideSaaS(atleta) {
         const apelidoTrim = atleta.apelido.trim();
         const palavrasApelido = apelidoTrim.split(/\s+/);
         if (palavrasApelido.length === 1) {
-            return cap(palavrasApelido[0]);
+            return cap(palavrasApelido[0]);  
         }
     }
 
@@ -147,13 +147,38 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
         }
     }
 
+    // 🛡️ TRAVA VISUAL DE 35 ATLETAS & MODO FOCO DO DESAFIANTE
+    let listaExibicaoVisual = [];
+    
+    // Se o jogador logado estiver abaixo da posição 35 (index > 34), ativamos a visão especial
+    if (!isHistorico && idxLogado > 34) {
+        // 1. Mantém as primeiras 28 posições normais (forma perfeitamente as linhas 1 a 7)
+        listaExibicaoVisual = listaIDs.slice(0, 28);
+        
+        // 2. Monta a última linha (8ª linha) com 7 espaços exatos para fechar os 35 cards
+        listaExibicaoVisual.push(listaIDs[28]); // 1º espaço: O 29º colocado real
+        listaExibicaoVisual.push("GHOST_DOTS"); // 2º espaço: O card fantasma de três pontinhos [...]
+        
+        // 3. Preenche os 5 espaços finais com os oponentes válidos e o próprio jogador logado na ponta
+        for (let i = idxLogado - 4; i <= idxLogado; i++) {
+            if (listaIDs[i]) {
+                listaExibicaoVisual.push(listaIDs[i]);
+            } else {
+                listaExibicaoVisual.push("GHOST_DOTS"); // Fallback de segurança se a lista acabar
+            }
+        }
+    } else {
+        // Comportamento normal: recorta secamente nos 35 primeiros
+        listaExibicaoVisual = listaIDs.slice(0, 35);
+    }
+
     // Agrupa os atletas em camadas crescentes (1, 2, 3, 4...)
     const tiers = [];
     let index = 0;
     let tierSize = 1;
 
-    while (index < listaIDs.length) {
-        tiers.push(listaIDs.slice(index, index + tierSize));
+    while (index < listaExibicaoVisual.length) {
+        tiers.push(listaExibicaoVisual.slice(index, index + tierSize));
         index += tierSize;
         tierSize++;
     }
@@ -219,8 +244,18 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
         pyrHtml += `<div class="p2-shelf" style="width: ${widthPct.toFixed(1)}%; ${borderStyle}">`;
 
         tier.forEach((idAtleta) => {
+            // 👻 RENDERIZAÇÃO DO CARD FANTASMA (TRÊS PONTINHOS)
+            if (idAtleta === "GHOST_DOTS") {
+                pyrHtml += `
+                    <div class="pyr-tile ghost-tile" style="background: transparent; border: 1px dashed #94a3b8; box-shadow: none; cursor: default; display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 16px; color: #94a3b8; font-weight: 800; letter-spacing: 2px;">...</span>
+                    </div>
+                `;
+                return; // Pula para a próxima iteração
+            }
+
             const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-            const indexAtleta = listaIDs.indexOf(idAtleta);
+            const indexAtleta = listaIDs.indexOf(idAtleta); // Vai buscar o index real no Array completo!
             const pos = indexAtleta + 1;
             
             const nomeCompletoRaw = atleta.nomeCompleto || atleta.apelido || 'Atleta';

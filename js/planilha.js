@@ -31,7 +31,7 @@ window.saasSnapshotInicialRecebido = false;
 // ==========================================
 // 1.5. CAIXA DE ALARMES INVISÍVEIS (Limpeza de Fantasmas)
 // ==========================================
-window.alarmesReservasPendentes = [];
+window.alarmesReservasPendentes = []; 
 
 function limparAlarmesInvisiveisSaaS() {
     if (window.alarmesReservasPendentes) {
@@ -202,16 +202,19 @@ function abrirVisaoQuadras() {
             const statusBanco = (configQuadrasGlobal.nomes && configQuadrasGlobal.nomes['status_' + i]) || 'liberada';
             btn.dataset.statusSaas = statusBanco; 
 
-            if (statusBanco === 'interditada' || statusBanco === 'interdita') {
-                btn.classList.add('status-saas-interditada');
-            } else if (statusBanco === 'bloqueada') {
-                btn.classList.add('status-saas-bloqueada');
-            }
+            // 💬 Define a mensagem do hover no carregamento inicial da página
+			if (statusBanco === 'interditada' || statusBanco === 'interdita') {
+				btn.classList.add('status-saas-interditada');
+				btn.title = "Atenção: Esta quadra está interditada provisoriamente para manutenção.";
+			} else if (statusBanco === 'bloqueada') {
+				btn.classList.add('status-saas-bloqueada');
+				btn.title = "⚠️ Atenção: Esta quadra está bloqueada.";
+			}
             
             btn.onclick = () => {
                 selecionarQuadraSaaS(nomeQuadra);
                 if (statusBanco === 'interditada' || statusBanco === 'interdita') {
-                    showToast("🏟️ Atenção: Esta quadra está interditada provisoriamente para manutenção.", "warning");
+                    showToast("Atenção: Esta quadra está interditada provisoriamente para manutenção.", "error");
                 }
             };
             
@@ -345,11 +348,45 @@ function carregarAgendamentosDaQuadra(nomeQuadra) {
 
 // NOVO GATILHO SEGURO: Usado pelo core.js para forçar a repintura sem duplicar a conexão
 function forcarRepinturaPlanilha() {
+    // 🎨 Atualiza cor, mensagem de hover (title), status e alerta de clique das abas
+    document.querySelectorAll('.tab-container .tab-button').forEach((btn) => {
+        const nomeQuadraReal = btn.dataset.nomeReal;
+        let status = 'liberada';
+
+        if (configQuadrasGlobal && configQuadrasGlobal.nomes) {
+            const qtd = parseInt(configQuadrasGlobal.quantidade) || 0;
+            for (let i = 1; i <= qtd; i++) {
+                const dadosQ = configQuadrasGlobal.nomes[i];
+                const nomeF = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${i}`) : (dadosQ || `Quadra ${i}`);
+                if (nomeF === nomeQuadraReal) {
+                    status = configQuadrasGlobal.nomes['status_' + i] || 'liberada';
+                    break;
+                }
+            }
+        }
+
+        const ehInterditada = (status === 'interditada' || status === 'interdita');
+        const ehBloqueada = (status === 'bloqueada');
+
+        // Atualiza a memória de status do botão para o clique
+        btn.dataset.statusSaas = status;
+
+        // Injeta/remove as cores visuais na aba
+        btn.classList.toggle('status-saas-interditada', ehInterditada);
+        btn.classList.toggle('status-saas-bloqueada', ehBloqueada);
+
+        // 💬 Balão de texto flutuante ao passar o mouse (Hover)
+        if (ehInterditada) {
+            btn.title = "Atenção: Esta quadra está interditada provisoriamente para manutenção.";
+        } else if (ehBloqueada) {
+            btn.title = "⚠️ Atenção: Esta quadra está bloqueada.";
+        } else {
+            btn.title = "";
+        }
+    });
+
     renderizarDadosPlanilha(reservasLocaisCache);
 }
-
-
-
 // ====================================================================
 // 🧠 MOTOR ORQUESTRADOR DE RENDERIZAÇÃO DA GRADE (SaaS)
 // ====================================================================
@@ -879,7 +916,10 @@ function abrirAgendamentoSaaS(dia, hora) {
         let estaInscrito = isGestorLogado || isArbitroLogado || !!(confRanking.inscritosConfirmados && confRanking.inscritosConfirmados[idLogado]);
 
         // Na Fase 4 do modelo de Grupos (Mata-Mata), valida se o atleta está ativo na rodada atual
-        if (estaInscrito && !isGestorLogado && !isArbitroLogado && modeloRanking === 'grupos' && faseAtualRanking === 4 && dadosLogado) {
+		const emMataMataDireto = (modeloRanking === 'grupos' && confRanking.grupos?.faseInicial === 'matamata');
+		const emFaseMataMata = (modeloRanking === 'grupos' && ((emMataMataDireto && faseAtualRanking >= 3) || (!emMataMataDireto && faseAtualRanking >= 4)));
+
+		if (estaInscrito && !isGestorLogado && !isArbitroLogado && emFaseMataMata && dadosLogado) {
             const modoGenero = confRanking.divisaoGenero || 'separado';
             let generoKey = (dadosLogado.genero || 'MASCULINO').toUpperCase(); 
             if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
@@ -1720,8 +1760,11 @@ async function aplicarFiltroRankingModalSaaS() {
         // 4. CÁLCULO DE ADVERSÁRIOS ELEGÍVEIS (PIRÂMIDE / GRUPOS / BARRAGEM)
         let idsPermitidos = idsArray;
 
+        const emMataMataDireto = (modeloAtivo === 'grupos' && confRanking.grupos?.faseInicial === 'matamata');
+        const emFaseMataMata = (modeloAtivo === 'grupos' && ((emMataMataDireto && faseAtualRanking >= 3) || (!emMataMataDireto && faseAtualRanking >= 4)));
+
         if (modeloAtivo === 'grupos') {
-            if (faseAtualRanking === 4) {
+            if (emFaseMataMata) {
                 const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal)
                     ? rankingChavesGlobal[chaveTabela]
                     : null;
@@ -1736,7 +1779,7 @@ async function aplicarFiltroRankingModalSaaS() {
                             ? confrontoAtleta.jogador2Id 
                             : confrontoAtleta.jogador1Id;
 
-                        idsPermitidos = [idAdversario];
+                        idsPermitidos = idAdversario ? [idAdversario] : [];
                     } else {
                         idsPermitidos = [];
                     }
@@ -2395,7 +2438,9 @@ function validarEAgendarPartidaSaas() {
             objetoReservaReferencia.posicaoP1 = obterPosicaoTextoRankingSaaS(listaApelidos[0]);
             objetoReservaReferencia.posicaoP2 = obterPosicaoTextoRankingSaaS(listaApelidos[1]);
 
-            if (modeloDisputaOficial === 'grupos' && faseAtualRanking === 3) {
+            const emMataMataDireto = (modeloDisputaOficial === 'grupos' && confRanking.grupos?.faseInicial === 'matamata');
+
+            if (modeloDisputaOficial === 'grupos' && !emMataMataDireto && faseAtualRanking === 3) {
                 const idAtleta1 = Object.keys(bancoJogadores).find(key => 
                     bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
                     bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()
@@ -2419,7 +2464,7 @@ function validarEAgendarPartidaSaas() {
                         }
                     }
                 }
-            } else if (modeloDisputaOficial === 'grupos' && faseAtualRanking === 4) {
+            } else if (modeloDisputaOficial === 'grupos' && ((emMataMataDireto && faseAtualRanking >= 3) || (!emMataMataDireto && faseAtualRanking >= 4))) {
                 const idAtleta1 = Object.keys(bancoJogadores).find(key => 
                     bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
                     bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()

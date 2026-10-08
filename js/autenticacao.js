@@ -223,7 +223,7 @@ function loginGestorAuth() {
                         elVersaoGestor.textContent = "v" + versaoAndroidNativa;
                         
                         // 🤖 MÁGICA: O Gestor (APK) avisa o Firebase qual é a versão atual!
-                        database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa);
+                        database.ref('Clubes/SaaS_Config/versao_web').set(versaoAndroidNativa); 
                         
                     } else {
                         // Se não for APK (Web/PC), mostra a versão que o Firebase enviou
@@ -958,4 +958,139 @@ function dispararToastNotificacoesEntradaSaaS(total) {
         : `🔔 Você possui ${total} novas notificações.`;
         
     showToast(mensagem, "info", 4000);
+}
+
+// ==========================================
+// 8. MOTOR DE VERIFICAÇÃO DE ATUALIZAÇÃO (SAAS)
+// ==========================================
+
+/**
+ * Compara duas versões no formato SemVer (ex: "1.8.6" vs "1.8.7").
+ * Retorna true se versaoServidor for maior que versaoLocal.
+ */
+function compararVersoesSemVerSaaS(versaoLocal, versaoServidor) {
+    if (!versaoLocal || !versaoServidor) return false;
+    
+    const vLocal = versaoLocal.replace(/[^0-9.]/g, '').split('.').map(Number);
+    const vServidor = versaoServidor.replace(/[^0-9.]/g, '').split('.').map(Number);
+    
+    const maxLen = Math.max(vLocal.length, vServidor.length);
+    for (let i = 0; i < maxLen; i++) {
+        const numLocal = vLocal[i] || 0;
+        const numServidor = vServidor[i] || 0;
+        
+        if (numServidor > numLocal) return true;
+        if (numServidor < numLocal) return false;
+    }
+    return false;
+}
+
+/**
+ * Consulta o nó SaaS_Config no Firebase e avalia se o app necessita de atualização.
+ */
+function verificarAtualizacaoDisponivelSaaS() {
+    // Obtém a versão instalada localmente no dispositivo ou salva na memória permanente da Web (localStorage)
+    let versaoLocal = localStorage.getItem('versaoWebLocalSimulada') || "1.8.6"; 
+    if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
+        versaoLocal = window.AndroidBridge.getAppVersion();
+    }
+
+    database.ref('Clubes/SaaS_Config').once('value').then((snapshot) => {
+        if (!snapshot.exists()) return;
+        
+        const configSaaS = snapshot.val();
+        const versaoServidor = configSaaS.versao_web || "1.8.6";
+        const urlApk = configSaaS.url_apk || "";
+        const forcar = configSaaS.forcar_atualizacao === true;
+        const canal = configSaaS.canal_distribuicao || "APK_DIRETO";
+
+        // Guarda a URL globalmente para o botão "Atualizar Agora"
+        window.urlApkAtualizacaoSaaS = urlApk;
+
+        // Avalia se existe uma versão mais recente no servidor
+        const haNovaVersao = compararVersoesSemVerSaaS(versaoLocal, versaoServidor);
+
+        if (haNovaVersao && canal === "APK_DIRETO") {
+            console.log(`🚀 [SaaS Update] Nova versão identificada: v${versaoLocal} -> v${versaoServidor}`);
+            
+            // Preenche as pílulas visuais da modal
+            const elAtual = document.getElementById('lbl-versao-atual-app');
+            const elNova = document.getElementById('lbl-versao-nova-app');
+            const btnAdiar = document.getElementById('btn-saas-adiar-atualizacao');
+            
+            if (elAtual) elAtual.textContent = "v" + versaoLocal;
+            if (elNova) elNova.textContent = "v" + versaoServidor;
+            
+            // Se a atualização for obrigatória, oculta o botão de adiar
+            if (btnAdiar) {
+                btnAdiar.style.display = forcar ? 'none' : 'inline-block';
+            }
+
+            // Exibe a modal de atualização
+            const modal = document.getElementById('modal-atualizacao-disponivel');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+    }).catch(err => {
+        console.error("❌ [SaaS Update] Erro ao verificar atualização:", err);
+    });
+}
+
+// Dispara a verificação automaticamente no boot do aplicativo
+window.addEventListener('load', () => {
+    setTimeout(verificarAtualizacaoDisponivelSaaS, 1200);
+});
+
+/**
+ * Executa o download/abertura do link do novo APK no celular,
+ * ou atualiza a exibição visual no computador de forma permanente sem disparar download.
+ */
+function executarDownloadEInstalacaoApkSaaS() {
+    const isNativo = !!(window.AndroidBridge || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
+
+    // 🖥️ SE FOR NO NAVEGADOR (COMPUTADOR / LOCALHOST)
+    if (!isNativo) {
+        const elNova = document.getElementById('lbl-versao-nova-app');
+        const novaVersaoTexto = elNova ? elNova.textContent.replace('v', '').trim() : '';
+
+        if (novaVersaoTexto) {
+            // Guarda na memória permanente do navegador (localStorage) para persistir ao dar F5
+            localStorage.setItem('versaoWebLocalSimulada', novaVersaoTexto);
+
+            // Atualiza o texto do topo da página no computador
+            const elVersaoGestor = document.getElementById('txt-versao-gestor');
+            if (elVersaoGestor) {
+                elVersaoGestor.textContent = "v" + novaVersaoTexto;
+            }
+        }
+
+        // Fecha a janela de atualização
+        const modal = document.getElementById('modal-atualizacao-disponivel');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+
+        if (typeof showToast === 'function') {
+            showToast(`Painel atualizado para a versão v${novaVersaoTexto}!`, 'success');
+        }
+        return;
+    }
+
+    // 📱 SE FOR NO CELULAR (NATIVO ANDROID)
+    const url = window.urlApkAtualizacaoSaaS || "https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq"; 
+    
+    // Altera o texto do botão para indicar início do download
+    const btn = document.getElementById('btn-saas-confirmar-atualizacao');
+    if (btn) {
+        btn.textContent = "Iniciando download...";
+        btn.disabled = true; // Impede cliques duplos
+    }
+
+    // Abre o link de download direto no navegador do celular (que cuida da instalação)
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+        window.Capacitor.Plugins.Browser.open({ url: url });
+    } else {
+        window.open(url, '_system');
+    }
 }

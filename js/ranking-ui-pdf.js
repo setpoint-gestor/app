@@ -393,7 +393,10 @@ function renderizarLeaderboardSaaS() {
         const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
         const cal = configRanking.calendario || {};
 
-        const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && faseAtual >= 5);
+        const emMataMataDireto = (modelo === 'grupos' && configRanking.grupos?.faseInicial === 'matamata');
+        const emFaseMataMata = (modelo === 'grupos' && ((emMataMataDireto && faseAtual >= 3) || (!emMataMataDireto && faseAtual >= 4)));
+
+        const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
 
         if (txtSub) {
             if (torneioConcluido) {
@@ -471,7 +474,7 @@ function renderizarLeaderboardSaaS() {
                 ? rankingChavesGlobal[chaveTabela] 
                 : null;
 
-            if (faseAtual >= 4 && modelo === 'grupos' && dadosChaveCat && dadosChaveCat.faseAtual >= 2) {
+            if (emFaseMataMata && dadosChaveCat && dadosChaveCat.faseAtual >= 2) {
                 const rodada1 = dadosChaveCat.rodada1 || [];
                 const tamanhoChaveAtual = parseInt(dadosChaveCat.faseAtual, 10) || (rodada1.length * 2);
                 const totalClassific = parseInt(dadosChaveCat.totalClassificados, 10) || tamanhoChaveAtual;
@@ -497,14 +500,43 @@ function renderizarLeaderboardSaaS() {
                 }
 
                 selectFase.style.display = 'block';
-                selectFase.innerHTML = `
-                    ${opcoesMataMata}
-                    <option value="GRUPOS" ${abaFaseAtivaSaaS === 'GRUPOS' ? 'selected' : ''}>Grupos</option>
-                    <option value="TODAS" ${abaFaseAtivaSaaS === 'TODAS' ? 'selected' : ''}>Todas</option>
-                `;
+
+                if (emMataMataDireto) {
+                    selectFase.innerHTML = `
+                        ${opcoesMataMata}
+                        <option value="TODAS" ${abaFaseAtivaSaaS === 'TODAS' ? 'selected' : ''}>Todas</option>
+                    `;
+                } else {
+                    const tamanhoGrupoConfig = parseInt(configRanking.grupos?.tamanhoGrupo, 10) || 4;
+                    const mapaGruposReaisCalc = {};
+                    const partidasG = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
+                    
+                    Object.values(partidasG).forEach(p => {
+                        if (!p || p.categoria !== chaveTabela) return;
+                        const dp = p.dadosPlacar || {};
+                        const tagG = p.tagGrupoRanking || dp.tagGrupoRanking || "";
+                        if (tagG) {
+                            if (!mapaGruposReaisCalc[tagG]) mapaGruposReaisCalc[tagG] = new Set();
+                            if (p.jogador1Id) mapaGruposReaisCalc[tagG].add(p.jogador1Id);
+                            if (p.jogador2Id) mapaGruposReaisCalc[tagG].add(p.jogador2Id); 
+                        }
+                    });
+
+                    const gruposCalc = (typeof montarGruposUniversaisSaaS === 'function') 
+                        ? montarGruposUniversaisSaaS(listaIDs, mapaGruposReaisCalc, tamanhoGrupoConfig) 
+                        : [];
+                    const totalGruposQtd = gruposCalc.length;
+                    const rotuloGrupos = totalGruposQtd > 0 ? `Grupos (${totalGruposQtd})` : `Grupos`;
+
+                    selectFase.innerHTML = `
+                        ${opcoesMataMata}
+                        <option value="GRUPOS" ${abaFaseAtivaSaaS === 'GRUPOS' ? 'selected' : ''}>${rotuloGrupos}</option>
+                        <option value="TODAS" ${abaFaseAtivaSaaS === 'TODAS' ? 'selected' : ''}>Todas</option>
+                    `;
+                }
             } else {
 				selectFase.style.display = 'none';
-				if (modelo === 'grupos') abaFaseAtivaSaaS = 'GRUPOS';
+				if (modelo === 'grupos' && !emMataMataDireto) abaFaseAtivaSaaS = 'GRUPOS';
 			}
         }
 		
@@ -570,7 +602,6 @@ function renderizarLeaderboardSaaS() {
         }
 
         if (btnArvore) {
-            const emFaseMataMata = (faseAtual >= 4 && modelo === 'grupos');
             btnArvore.style.display = (emFaseMataMata && abaVisaoLeaderboardSaaS === 'TORNEIO') ? 'flex' : 'none';
             
             if (modoVisaoMataMataSaaS === 'arvore') {
@@ -1953,7 +1984,7 @@ function renderizarLeaderboardSaaS() {
             
             let htmlMataMata = '';
             
-            if (faseAtual >= 4) {
+            if (emFaseMataMata) {
                 const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) 
                     ? rankingChavesGlobal[chaveTabela] 
                     : null;
@@ -2116,10 +2147,10 @@ function renderizarLeaderboardSaaS() {
                 `;
             }
 
-            if (faseAtual >= 4) {
-                if (abaFaseAtivaSaaS === 'GRUPOS') {
+            if (emFaseMataMata) {
+                if (abaFaseAtivaSaaS === 'GRUPOS' && !emMataMataDireto) {
                     bodyList.innerHTML = htmlGrupos;
-                } else if (abaFaseAtivaSaaS === 'TODAS') {
+                } else if (abaFaseAtivaSaaS === 'TODAS' && !emMataMataDireto) {
                     const htmlSeparador = `
                         <div style="display:flex; align-items:center; gap:8px; margin:18px 0 10px 0;">
                             <span style="font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; white-space:nowrap;">📊 Histórico da Fase de Grupos</span>
@@ -2166,63 +2197,6 @@ function trocarGeneroLeaderboardSaaS(gen) {
     renderizarLeaderboardSaaS();
 }
 
-/* RENDERING E FILTRO DA TABELA DO RANKING GERAL (ABA 7) */
-function renderizarTabelaRankingGeralSaaS() {
-    const tbody = document.getElementById('tbody-ranking-geral-saas');
-    const selClasse = document.getElementById('sel-classe-geral');
-    const selGenero = document.getElementById('sel-genero-geral');
-
-    if (!tbody) return;
-
-    const classe = selClasse ? selClasse.value : 'B';
-    const genero = selGenero ? selGenero.value : 'MASCULINO';
-    const chaveTabela = `${classe}_${genero}`;
-
-    const listaGeralIDs = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal && rankingGeralGlobal[chaveTabela])
-        ? rankingGeralGlobal[chaveTabela]
-        : [];
-
-    const dictPontos = (typeof rankingPontosGeralGlobal !== 'undefined' && rankingPontosGeralGlobal && rankingPontosGeralGlobal[chaveTabela])
-        ? rankingPontosGeralGlobal[chaveTabela]
-        : ((typeof pontosGeralGlobal !== 'undefined' && pontosGeralGlobal && pontosGeralGlobal[chaveTabela])
-            ? pontosGeralGlobal[chaveTabela]
-            : {});
-
-    if (!Array.isArray(listaGeralIDs) || listaGeralIDs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: #94a3b8;">Nenhum atleta cadastrado nesta categoria do Ranking Geral.</td></tr>';
-        return;
-    }
-
-    let html = '';
-    listaGeralIDs.forEach((idAtleta, index) => {
-        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-        const pos = index + 1;
-        const nomeAtleta = atleta.nomeCompleto || atleta.apelido || 'Atleta';
-        const pts = parseInt(dictPontos[idAtleta], 10) || 0;
-
-        html += `
-            <tr class="row-atleta-geral-item" data-nome="${nomeAtleta.toLowerCase()}">
-                <td style="text-align: left; padding-left: 8px; font-weight: 800; color: #64748b;">${pos}º</td>
-                <td style="text-align: left; font-weight: 700; color: #1e293b;">${nomeAtleta}</td>
-                <td style="text-align: right; padding-right: 8px; font-weight: 800; color: ${pts > 0 ? '#15803d' : '#94a3b8'};">${pts} pts</td>
-            </tr>
-        `;
-    });
-
-    tbody.innerHTML = html;
-}
-
-function filtrarTabelaRankingGeralSaaS() {
-    const inp = document.getElementById('inp-busca-atleta-geral');
-    if (!inp) return;
-    const termo = inp.value.toLowerCase().trim();
-    const rows = document.querySelectorAll('#tbody-ranking-geral-saas .row-atleta-geral-item');
-
-    rows.forEach(tr => {
-        const nome = tr.getAttribute('data-nome') || '';
-        tr.style.display = nome.includes(termo) ? '' : 'none';
-    });
-}
 
 /* ======================================================== */
 /* 3. CONTROLES DA ABA DE HISTÓRICO E ACERVO                 */

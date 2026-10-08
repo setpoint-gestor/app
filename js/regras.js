@@ -100,19 +100,28 @@ function atualizarBotaoRodapeRankingSaaS() {
         }
     });
 
-    // TRAVA MOBILE: Se estiver no celular e nenhuma sanfona estiver aberta, oculta o botão do rodapé
     if (isMobile && idxAbaAtiva === -1) {
         btnFooter.style.setProperty('display', 'none', 'important');
         return;
     }
 
-    // Se estiver no Desktop e nenhuma aba tiver a classe active, assume a primeira aba (0)
     if (idxAbaAtiva === -1) {
         idxAbaAtiva = 0;
     }
 
+    // 🛡️ RESET DE NAVEGAÇÃO: Se saiu da Aba 7 (Ranking Geral), força o modo de volta para "OFICIAL"
+    if (idxAbaAtiva !== 6) {
+        if (typeof modoTabelaGeralSaaS !== 'undefined') {
+            modoTabelaGeralSaaS = "OFICIAL";
+        }
+        if (typeof rascunhoRankingInicialSaaS !== 'undefined') {
+            rascunhoRankingInicialSaaS = [];
+        }
+    }
+
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const modelo = conf.calendario?.formatoTorneio || "grupos";
+    const faseInicialGrupos = conf.grupos?.faseInicial || "grupos";
     const faseAtual = parseInt(conf.faseAtual, 10) || 1;
 
     // 🔵 ABA 5 (índice 4): Gestão da Temporada
@@ -123,6 +132,8 @@ function atualizarBotaoRodapeRankingSaaS() {
 
         const panelFase1 = document.querySelectorAll('#container-fases-gestor .fase-panel')[0];
         const formularioFase1Ativo = panelFase1 && panelFase1.classList.contains('ativa');
+
+        const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
 
         if (faseAtual === 1) {
             if (formularioFase1Ativo) {
@@ -139,24 +150,19 @@ function atualizarBotaoRodapeRankingSaaS() {
             corBotao = '#3b82f6';
             acaoOnClick = 'salvarCalendarioEAbrirInscricoesSaaS()';
         } else if (faseAtual === 2) {
+            const txtGruposFase2 = emMataMataDireto 
+                ? '<i class="material-icons">lock</i> Encerrar Inscrições e Iniciar Mata-Mata Direto'
+                : '<i class="material-icons">lock</i> Encerrar Inscrições e Congelar Grupos';
+
             const titulosFase2 = {
                 piramide: '<i class="material-icons">lock</i> Encerrar Inscrições e Iniciar Pirâmide',
                 barragem: '<i class="material-icons">lock</i> Encerrar Inscrições e Iniciar Barragem',
-                grupos: '<i class="material-icons">lock</i> Encerrar Inscrições e Congelar Grupos'
+                grupos: txtGruposFase2
             };
-            textoBotao = titulosFase2[modelo] || '<i class="material-icons">lock</i> Encerrar Inscrições e Congelar Grupos';
+            textoBotao = titulosFase2[modelo] || txtGruposFase2;
             corBotao = '#f59e0b';
             acaoOnClick = 'encerrarInscricoesECriarChavesSaaS()';
-        } else if (faseAtual === 3) {
-            const titulosFase3 = {
-                piramide: '<i class="material-icons">alt_route</i> Encerrar Pirâmide e Homologar Posições',
-                barragem: '<i class="material-icons">alt_route</i> Encerrar Barragem e Consolidar Ranking',
-                grupos: '<i class="material-icons">alt_route</i> Encerrar Grupos e Gerar Mata-Mata'
-            };
-            textoBotao = titulosFase3[modelo] || '<i class="material-icons">alt_route</i> Encerrar Grupos e Gerar Mata-Mata';
-            corBotao = '#f59e0b';
-            acaoOnClick = 'encerrarFase3EAvancarSaaS()';
-        } else if (modelo === 'grupos' && faseAtual === 4) {
+        } else if ((modelo === 'grupos' && !emMataMataDireto && faseAtual === 4) || (emMataMataDireto && faseAtual === 3)) {
             const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
             const chavesList = Object.values(chavesMap);
             
@@ -179,7 +185,16 @@ function atualizarBotaoRodapeRankingSaaS() {
                 textoBotao = '<i class="material-icons">workspace_premium</i> Concluir Torneio e Somar Pontos no Ranking';
                 corBotao = '#16a34a';
             }
-        } else if (faseAtual >= 4) {
+        } else if (faseAtual === 3 && !emMataMataDireto) {
+            const titulosFase3 = {
+                piramide: '<i class="material-icons">alt_route</i> Encerrar Pirâmide e Homologar Posições',
+                barragem: '<i class="material-icons">alt_route</i> Encerrar Barragem e Consolidar Ranking',
+                grupos: '<i class="material-icons">alt_route</i> Encerrar Grupos e Gerar Mata-Mata'
+            };
+            textoBotao = titulosFase3[modelo] || '<i class="material-icons">alt_route</i> Encerrar Grupos e Gerar Mata-Mata';
+            corBotao = '#f59e0b';
+            acaoOnClick = 'encerrarFase3EAvancarSaaS()';
+        } else if ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 4 && modelo !== 'grupos') || (faseAtual >= 5)) {
             textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
             corBotao = '#2563eb';
             acaoOnClick = 'reiniciarEsteiraNovoTorneioSaaS()';
@@ -191,34 +206,56 @@ function atualizarBotaoRodapeRankingSaaS() {
 
         btnFooter.innerHTML = textoBotao; 
         btnFooter.setAttribute('onclick', acaoOnClick);
-        btnFooter.style.cssText = `background-color: ${corBotao} !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;`;
+        btnFooter.style.cssText = `background-color: ${corBotao} !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; opacity: 1; pointer-events: auto;`;
 
+    // 🟣 ABA 6 (índice 5): Histórico de Torneios
     } else if (idxAbaAtiva === 5) {
-        // 🟣 ABA 6 (índice 5): Histórico de Torneios
         btnFooter.innerHTML = '<i class="material-icons">picture_as_pdf</i> Exportar Relatório Geral do Acervo (PDF)';
         btnFooter.setAttribute('onclick', 'exportarRelatorioHistoricoSaaS()');
-        btnFooter.style.cssText = 'background-color: #8b5cf6 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+        btnFooter.style.cssText = 'background-color: #8b5cf6 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; opacity: 1; pointer-events: auto;';
 
+    // 🟠 ABA 7 (índice 6): Ranking Geral
+    // 🟠 ABA 7 (índice 6): Ranking Geral
     } else if (idxAbaAtiva === 6) { 
-        // 🟠 ABA 7 (índice 6): Ranking Geral
         const vConfig = document.getElementById('visao-config-ranking-geral');
         const estaEmConfig = vConfig && vConfig.style.display !== 'none';
 
         if (estaEmConfig) {
             btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">save</i> Salvar Parâmetros do Ranking Geral';
             btnFooter.setAttribute('onclick', 'salvarParametrosRankingGeralSaaS()');
-            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; opacity: 1; pointer-events: auto;';
+        } else if (typeof modoTabelaGeralSaaS !== 'undefined' && modoTabelaGeralSaaS === "EDICAO_INICIAL") {
+            btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">save</i> Salvar Ranking Inicial';
+            btnFooter.setAttribute('onclick', 'salvarRankingInicialNoBancoSaaS()');
+            btnFooter.style.cssText = 'background-color: var(--cor-primaria, #28a745) !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; opacity: 1; pointer-events: auto;';
         } else {
+            const selClasse = document.getElementById('sel-classe-geral');
+            const selGenero = document.getElementById('sel-genero-geral');
+            const classe = selClasse ? selClasse.value : 'B';
+            const genero = selGenero ? selGenero.value : 'MASCULINO';
+            const chaveTabela = `${classe}_${genero}`;
+
+            const listaGeralIDs = (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal && rankingGeralGlobal[chaveTabela])
+                ? rankingGeralGlobal[chaveTabela]
+                : [];
+
+            const temAtletas = Array.isArray(listaGeralIDs) && listaGeralIDs.length > 0;
+
             btnFooter.innerHTML = '<i class="material-icons" style="font-size: 18px;">picture_as_pdf</i> Exportar Ranking Geral (PDF)';
             btnFooter.setAttribute('onclick', 'exportarRankingGeralPDFSaaS()');
-            btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+            
+            if (temAtletas) {
+                btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; opacity: 1; pointer-events: auto;';
+            } else {
+                btnFooter.style.cssText = 'background-color: #f97316 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; opacity: 0.5; pointer-events: none;';
+            }
         }
 
+    // 🟢 ABAS 1 A 4 (índices 0, 1, 2, 3): Parâmetros, Torneio, Regras, Taxas
     } else {
-        // 🟢 ABAS 1 A 4 (índices 0 a 3): Parâmetros Padrão do Ranking
         btnFooter.innerHTML = 'Salvar Parâmetros do Ranking';
         btnFooter.setAttribute('onclick', 'salvarConfigRankingSaas()');
-        btnFooter.style.cssText = 'background-color: #28a745 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;';
+        btnFooter.style.cssText = 'background-color: #28a745 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; opacity: 1; pointer-events: auto;';
     }
 }
 
@@ -1242,8 +1279,7 @@ function abrirModalConfigRanking() {
     document.getElementById('sel-desempate-sets').value = String(desempateObj.Sets !== undefined ? desempateObj.Sets : 0);
     atualizarPilulaResumoDesempateSaaS();
     
-	document.getElementById('select-ranking-grupos-desistência').value = gru.tratarDesistência || "anular";
-    document.getElementById('select-ranking-grupos-prazo-rodada').value = String(gru.prazoRodada !== undefined ? gru.prazoRodada : 7);
+	document.getElementById('select-ranking-grupos-prazo-rodada').value = String(gru.prazoRodada !== undefined ? gru.prazoRodada : 7);
     document.getElementById('select-ranking-grupos-estouro').value = gru.estouroPrazo || "sorteio";
 
     // ABA 3: Regras de Jogo & Súmula
@@ -1282,6 +1318,8 @@ function abrirModalConfigRanking() {
         carregarHistoricoTorneiosSaaS();
     }
 
+    aplicarTravaParametrosCongeladosSaaS(conf);
+	
     abrirModalConfig('modal-config-ranking');
 }
 
@@ -1475,14 +1513,13 @@ function salvarConfigRankingSaas() {
                 Sorteio: parseInt(document.getElementById('sel-desempate-sorteio').value, 10) || 0,
                 Sets: parseInt(document.getElementById('sel-desempate-sets').value, 10) || 0
             },
-            tratarDesistência: document.getElementById('select-ranking-grupos-desistência').value,
             prazoRodada: parseInt(document.getElementById('select-ranking-grupos-prazo-rodada').value) || 7,
             estouroPrazo: document.getElementById('select-ranking-grupos-estouro').value
         },
 		sumula: {
 			formatoPartida: document.getElementById('select-ranking-formato-partida').value,
 			decisaoTerceiroSet: document.getElementById('select-ranking-decisao-3set').value,
-			vantagemGames: document.getElementById('select-ranking-vantagem-games').value,
+			vantagemGames: document.getElementById('select-ranking-vantagem-games').value, 
 			prazoAutoconf: isNaN(elPrazoConf) ? 24 : elPrazoConf,
 			toleranciaWO: isNaN(elTolWO) ? 15 : elTolWO
 		},
@@ -1774,4 +1811,89 @@ function processarDisparoTemporadaFirebase(tipoOrdem) {
 
 function solicitarResetRankingSaaS() {
     showToast("Ação de zerar classificação (Será conectada na Etapa 5).", "info");
+}
+
+
+/* ========================================================
+   FUNÇÃO AUXILIAR: TRAVA DE SEGURANÇA PARA TORNEIO ATIVO
+   ======================================================== */
+function aplicarTravaParametrosCongeladosSaaS(confRanking) {
+    const conf = confRanking || {};
+    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+    const modelo = conf.calendario?.formatoTorneio || "grupos";
+    const faseInicialGrupos = conf.grupos?.faseInicial || "grupos";
+
+    const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
+    const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
+
+    // A trava só se aplica se o torneio estiver aberto (faseAtual > 1) E AINDA NÃO estiver concluído
+    const ehTorneioAtivo = (faseAtual > 1 && !torneioConcluido);
+
+    // Lista dos IDs dos campos sensíveis que devem ser congelados durante a competição
+    const idsCamposSensiveis = [
+        'select-ranking-genero',
+        'select-ranking-alcance-tipo',
+        'select-ranking-limite-posicoes',
+        'select-ranking-limite-mensal',
+        'select-ranking-aceite-minimo',
+        'select-ranking-mecanica-troca',
+        'select-ranking-entrada-inscritos',
+        'select-ranking-barragem-vitoria',
+        'select-ranking-barragem-derrota',
+        'select-ranking-barragem-wo',
+        'select-ranking-grupos-fase-inicial', 
+        'select-ranking-grupos-tamanho',
+        'select-ranking-grupos-classificados', 
+        'sel-desempate-games',
+        'sel-desempate-confronto',
+        'sel-desempate-sorteio',
+        'sel-desempate-sets',
+        'select-ranking-grupos-prazo-rodada',
+        'select-ranking-grupos-estouro',
+        'select-ranking-formato-partida',
+        'select-ranking-decisao-3set',
+        'select-ranking-vantagem-games',
+        'select-ranking-max-jogos',
+        'select-ranking-prazo-autoconf',
+        'select-ranking-tolerancia-wo',
+        'select-ranking-prazo-inatividade'
+    ];
+
+    idsCamposSensiveis.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = ehTorneioAtivo;
+            if (ehTorneioAtivo) {
+                el.style.opacity = '0.6';
+                el.style.backgroundColor = '#f1f5f9';
+                el.style.cursor = 'not-allowed';
+            } else {
+                el.style.opacity = '';
+                el.style.backgroundColor = '';
+                el.style.cursor = '';
+            }
+        }
+    });
+
+    // Controle do Banner de Aviso posicionado fora do contêiner da sanfona
+    let banner = document.getElementById('banner-trava-parametros-ranking');
+    if (ehTorneioAtivo) {
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'banner-trava-parametros-ranking';
+            banner.style.cssText = 'background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; color: #991b1b; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px;';
+            banner.innerHTML = `<i class="material-icons" style="font-size: 18px; color: #dc2626;">lock</i> <span><b>Parâmetros Congelados:</b> As regras operacionais estão travadas durante o torneio ativo. Para alterar, conclua ou zere a temporada.</span>`;
+
+            const containerGeral = document.querySelector('#modal-config-ranking .sanfona-container');
+            if (containerGeral && containerGeral.parentNode) {
+                containerGeral.parentNode.insertBefore(banner, containerGeral);
+            }
+        } else {
+            banner.style.display = 'flex';
+        }
+    } else {
+        if (banner) {
+            banner.style.display = 'none';
+        }
+    }
 }

@@ -27,7 +27,7 @@ let sorteioPotesGlobal = {
 // BLOCO 2: INJEÇÃO DINÂMICA DO MODAL E CSS NO DOM (RESPONSIVO MOBILE)
 // ========================================================
 function garantirModalSorteioNoDOMSaaS() {
-    if (document.getElementById('modal-sorteio-potes')) return; 
+    if (document.getElementById('modal-sorteio-potes')) return;  
 
     const modalHTML = `
     <style id="style-sorteio-potes-anim">
@@ -625,6 +625,11 @@ window.SorteioPotes = {
     },
 
     irParaCentralRankingSaaS: function () {
+        // 🚀 Sincroniza imediatamente a memória RAM local para Fase 3 (Mata-Mata)
+        if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
+            configRegrasGlobal.ranking.faseAtual = 3;
+        }
+
         SorteioPotes.fecharModalSorteioSaaS();
         if (typeof abrirLeaderboardSaaS === 'function') {
             abrirLeaderboardSaaS();
