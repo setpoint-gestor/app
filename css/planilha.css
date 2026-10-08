@@ -24,7 +24,7 @@
 
 /* ======================================================== */
 /* AJUSTES ANATÔMICOS DE RETICÊNCIAS E BADGES NO CABEÇALHO   */
-/* ======================================================== */
+/* ======================================================== */   
 .header-left {
     display: flex;
     align-items: center;
@@ -317,6 +317,17 @@
     font-size: 13px;
     color: #475569;
     font-weight: 500;
+}
+
+/* Destaque em Vermelho no Cabeçalho Central (Ícone + Título) quando a quadra estiver interditada */
+.container-titulo-central.header-quadra-interditada #btn-trigger-mapa-mobile,
+.container-titulo-central.header-quadra-interditada #lbl-quadra-titulo {
+    color: #dc3545 !important;
+}
+
+body.dark-mode .container-titulo-central.header-quadra-interditada #btn-trigger-mapa-mobile,
+body.dark-mode .container-titulo-central.header-quadra-interditada #lbl-quadra-titulo {
+    color: #f87171 !important;
 }
 
 /* ======================================================== */
