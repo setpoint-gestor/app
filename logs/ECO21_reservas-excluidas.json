@@ -3831,5 +3831,36 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALEXANDRE CAMARGO",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Xara": true
+    },
+    "data": "08-10-2026",
+    "dataLocal": "08/10/2026, 18:48:23",
+    "duracao": "2 Horas",
+    "horario": "20:00 - 22:00",
+    "jogadores": "Alexandre Camargo, Xara",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ARNOLD DUCK",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "origem": "manual",
+    "quadra": "Quadra 4 - Roger Federer",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 20
+      },
+      {
+        "dia": 4,
+        "hora": 21
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-08T21:48:23.216Z"
   }
 ]
