@@ -3960,5 +3960,27 @@
     "jogadores": "Alexandre Camargo, Ana Maria Marinho",
     "jogadores_completo": "ALEXANDRE CAMARGO, ANA MARIA MARINHO GOMES",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-09T00:53:58.679Z",
+    "dataLocal": "08/10/2026, 21:53:58",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (2 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "11-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Alexandre Camargo, Ana Maria Marinho",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ANA MARIA MARINHO GOMES",
+    "slotsExcluidos": []
   }
 ]
