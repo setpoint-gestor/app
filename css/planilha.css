@@ -19,7 +19,7 @@
     justify-content: space-between;
     padding: 0 15px;
     box-sizing: border-box;
-    border-bottom: 1px solid #cbd5e1;    
+    border-bottom: 1px solid #cbd5e1;     
 }
 
 /* ======================================================== */
@@ -264,6 +264,10 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+.agenda-trigger {
+    position: relative !important;
+}
+
 #agenda-icone, #legenda-icone {
     display: inline-block;
     transition: transform 0.2s;
@@ -328,6 +332,97 @@
 body.dark-mode .container-titulo-central.header-quadra-interditada #btn-trigger-mapa-mobile,
 body.dark-mode .container-titulo-central.header-quadra-interditada #lbl-quadra-titulo {
     color: #f87171 !important;
+}
+
+/* ======================================================== */
+/* BADGE NUMÉRICO DA AGENDA (CALENDÁRIO) & CARDS TICKET PASS */
+/* ======================================================== */
+.badge-agenda-count {
+    position: absolute;
+    top: -6px;
+    left: 14px;
+    background-color: var(--bg-reserva-2h, lightblue);
+    color: #0369a1;
+    border: 1px solid #0284c7;
+    font-size: 10px;
+    font-weight: 900;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25);
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+/* Suporte ao Modo Escuro */
+body.dark-mode .badge-agenda-count {
+    background-color: var(--bg-reserva-2h, lightblue) !important;
+    color: #0369a1 !important;
+    border-color: #0284c7 !important;
+}
+
+.op4-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.op4-ticket {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    display: flex;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.op4-stub {
+    background: #f1f5f9;
+    border-right: 2px dashed #cbd5e1;
+    padding: 8px 10px;
+    width: 80px;
+    flex-shrink: 0;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.op4-body {
+    padding: 8px 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: left;
+}
+
+/* Suporte ao Modo Escuro */
+body.dark-mode .op4-ticket {
+    background: #1e1e1e !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode .op4-stub {
+    background: #252525 !important;
+    border-right-color: #444444 !important;
+}
+
+body.dark-mode .op4-stub span {
+    color: #f8fafc !important;
+}
+
+body.dark-mode .op4-body strong {
+    color: #f8fafc !important;
+}
+
+body.dark-mode .op4-body span {
+    color: #94a3b8 !important;
 }
 
 /* ======================================================== */
