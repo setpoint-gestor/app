@@ -3917,5 +3917,48 @@
     "jogadores": "Alexandre Camargo, Ana Maria Marinho",
     "jogadores_completo": "ALEXANDRE CAMARGO, ANA MARIA MARINHO GOMES",
     "slotsExcluidos": []
+  },
+  {
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Ana Maria Marinho": true
+    },
+    "data": "11-10-2026",
+    "dataLocal": "08/10/2026, 19:58:08",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Alexandre Camargo, Ana Maria Marinho",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ANA MARIA MARINHO GOMES",
+    "motivo": "Convite expirado. Reserva MANTIDA (2 confirmado(s)). Jogadores pendentes foram removidos.",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "origem": "sistema",
+    "quadra": "Quadra 3 - Coberta",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-08T22:58:08.283Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-09T00:30:18.100Z",
+    "dataLocal": "08/10/2026, 21:30:18",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (2 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "11-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Alexandre Camargo, Ana Maria Marinho",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ANA MARIA MARINHO GOMES",
+    "slotsExcluidos": []
   }
 ]
