@@ -24,14 +24,14 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 	
     <link rel="stylesheet" href="css/global.css?v=4">
-    <link rel="stylesheet" href="css/cadastro.css?v=4">
+    <link rel="stylesheet" href="css/cadastro.css?v=4"> 
     <link rel="stylesheet" href="css/quadras.css?v=4">
     <link rel="stylesheet" href="css/planilha.css?v=4">
     <link rel="stylesheet" href="css/config.css?v=4"> 
     <link rel="stylesheet" href="css/regras.css?v=4"> 
     <link rel="stylesheet" href="css/logs.css?v=4">
 	<!-- NOVO: Estilo exclusivo do Módulo de Ranking -->
-    <link rel="stylesheet" href="css/ranking.css?v=4">   
+    <link rel="stylesheet" href="css/ranking.css?v=4">    
 	
 </head>
 <body>
@@ -552,7 +552,11 @@
         <div class="header-legenda-container">
             <div class="header-legenda-linha">
                 <div id="agenda-trigger" class="agenda-trigger" onclick="toggleAgendaVisual()">
-                    📅 <span id="agenda-icone">▼</span>
+                    <span style="position: relative; display: inline-flex; align-items: center; margin-right: 4px;">
+                        📅
+                        <span class="badge-agenda-count" id="badge-agenda-contador" style="display: none;">0</span>
+                    </span>
+                    <span id="agenda-icone">▼</span>
                 </div>
                 <div class="container-titulo-central">
                     <button id="btn-trigger-mapa-mobile" onclick="abrirMapaQuadrasMobile()">
@@ -3396,7 +3400,7 @@
 				</button>
 			</div>
 
-		</div>
+		</div>  
 	</div>
 	
 	<script src="js/core.js?v=4"></script> 
