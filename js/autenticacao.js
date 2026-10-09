@@ -989,7 +989,9 @@ function compararVersoesSemVerSaaS(versaoLocal, versaoServidor) {
  * Consulta o nó SaaS_Config no Firebase e avalia se o app necessita de atualização.
  */
 function verificarAtualizacaoDisponivelSaaS() {
-    // Obtém a versão instalada localmente no dispositivo ou salva na memória permanente da Web (localStorage)
+    // 🛑 Aborta a verificação se o usuário já clicou em Atualizar
+    if (window.isBaixandoAtualizacao) return;
+
     let versaoLocal = localStorage.getItem('versaoWebLocalSimulada') || "1.8.6"; 
     if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
         versaoLocal = window.AndroidBridge.getAppVersion();
@@ -1004,24 +1006,21 @@ function verificarAtualizacaoDisponivelSaaS() {
         const forcar = configSaaS.forcar_atualizacao === true;
         const canal = configSaaS.canal_distribuicao || "APK_DIRETO";
 
-        // 🛡️ TRAVA ANTI-SOBRESCRITA: O aparelho só atualiza o Firebase se a versão dele for MAIOR que a do servidor
+        // Trava de elevação (Aparelho atualizado sobrescreve o banco)
         const eVersaoMaisRecente = compararVersoesSemVerSaaS(versaoServidor, versaoLocal);
         if (eVersaoMaisRecente && window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
             console.log(`🚀 [SaaS Update] Dispositivo com versão superior identificada (v${versaoLocal}). Sincronizando servidor...`);
             database.ref('Clubes/SaaS_Config/versao_web').set(versaoLocal);
-            return; // Se este aparelho acabou de atualizar o servidor para a nova versão, interrompe aqui
+            return; 
         }
 
-        // Guarda a URL globalmente para o botão "Atualizar Agora"
         window.urlApkAtualizacaoSaaS = urlApk;
 
-        // Avalia se existe uma versão mais recente no servidor para este aparelho
         const haNovaVersao = compararVersoesSemVerSaaS(versaoLocal, versaoServidor);
 
-        if (haNovaVersao && canal === "APK_DIRETO") {
-            console.log(`🚀 [SaaS Update] Nova versão identificada no servidor: v${versaoLocal} -> v${versaoServidor}`);
+        if (haNovaVersao && canal === "APK_DIRETO" && !window.isBaixandoAtualizacao) {
+            console.log(`🚀 [SaaS Update] Nova versão: v${versaoLocal} -> v${versaoServidor}`);
             
-            // Preenche as pílulas visuais da modal
             const elAtual = document.getElementById('lbl-versao-atual-app');
             const elNova = document.getElementById('lbl-versao-nova-app');
             const btnAdiar = document.getElementById('btn-saas-adiar-atualizacao');
@@ -1029,16 +1028,12 @@ function verificarAtualizacaoDisponivelSaaS() {
             if (elAtual) elAtual.textContent = "v" + versaoLocal;
             if (elNova) elNova.textContent = "v" + versaoServidor;
             
-            // Se a atualização for obrigatória, oculta o botão de adiar
             if (btnAdiar) {
                 btnAdiar.style.display = forcar ? 'none' : 'inline-block';
             }
 
-            // Exibe a modal de atualização
             const modal = document.getElementById('modal-atualizacao-disponivel');
-            if (modal) {
-                modal.style.display = 'flex';
-            }
+            if (modal) modal.style.display = 'flex';
         }
     }).catch(err => {
         console.error("❌ [SaaS Update] Erro ao verificar atualização:", err);
@@ -1051,54 +1046,86 @@ window.addEventListener('load', () => {
 });
 
 /**
- * Executa o download/abertura do link do novo APK no celular,
- * ou atualiza a exibição visual no computador de forma permanente sem disparar download.
+ * Download silencioso via Capacitor Filesystem + FileOpener (Versão Final Limpa)
  */
-function executarDownloadEInstalacaoApkSaaS() {
-    const isNativo = !!(window.AndroidBridge || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
+async function executarDownloadEInstalacaoApkSaaS() {
+    window.isBaixandoAtualizacao = true;
 
-    // 🖥️ SE FOR NO NAVEGADOR (COMPUTADOR / LOCALHOST)
+    const btnConfirmar = document.getElementById('btn-saas-confirmar-atualizacao');
+    const btnAdiar = document.getElementById('btn-saas-adiar-atualizacao');
+    const containerProgresso = document.getElementById('container-progresso-download');
+    const barraProgresso = document.getElementById('barra-progresso-download');
+    const txtPorcentagem = document.getElementById('txt-porcentagem-download');
+    const txtStatus = document.getElementById('txt-status-download');
+
+    if (btnConfirmar) btnConfirmar.style.display = 'none';
+    if (btnAdiar) btnAdiar.style.display = 'none';
+    if (containerProgresso) containerProgresso.style.display = 'block';
+
+    const url = window.urlApkAtualizacaoSaaS || "https://setpoint-gestor.github.io/app/app-debug.apk";
+    const isNativo = !!(window.Capacitor && window.Capacitor.isNativePlatform());
+
     if (!isNativo) {
         const elNova = document.getElementById('lbl-versao-nova-app');
         const novaVersaoTexto = elNova ? elNova.textContent.replace('v', '').trim() : '';
-
         if (novaVersaoTexto) {
-            // Guarda na memória permanente do navegador (localStorage) para persistir ao dar F5
             localStorage.setItem('versaoWebLocalSimulada', novaVersaoTexto);
-
-            // Atualiza o texto do topo da página no computador
-            const elVersaoGestor = document.getElementById('txt-versao-gestor');
-            if (elVersaoGestor) {
-                elVersaoGestor.textContent = "v" + novaVersaoTexto;
-            }
         }
-
-        // Fecha a janela de atualização
         const modal = document.getElementById('modal-atualizacao-disponivel');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-
-        if (typeof showToast === 'function') {
-            showToast(`Painel atualizado para a versão v${novaVersaoTexto}!`, 'success');
-        }
+        if (modal) modal.style.display = 'none';
+        window.isBaixandoAtualizacao = false;
         return;
     }
 
-    // 📱 SE FOR NO CELULAR (NATIVO ANDROID)
-    const url = window.urlApkAtualizacaoSaaS || "https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq"; 
-    
-    // Altera o texto do botão para indicar início do download
-    const btn = document.getElementById('btn-saas-confirmar-atualizacao');
-    if (btn) {
-        btn.textContent = "Iniciando download...";
-        btn.disabled = true; // Impede cliques duplos
-    }
+    try {
+        const Filesystem = window.Capacitor.Plugins.Filesystem;
+        const FileOpener = window.Capacitor.Plugins.FileOpener || window.Capacitor.Plugins.CapawesomeTeamCapacitorFileOpener;
 
-    // Abre o link de download direto no navegador do celular (que cuida da instalação)
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
-        window.Capacitor.Plugins.Browser.open({ url: url });
-    } else {
-        window.open(url, '_system');
+        if (!Filesystem || !FileOpener) throw new Error("Plugins nativos ausentes.");
+
+        if (txtStatus) txtStatus.innerText = "Baixando atualização...";
+
+        const progressListener = await Filesystem.addListener('progress', (status) => {
+            if (status.bytes > 0 && status.contentLength > 0) {
+                const percent = Math.round((status.bytes / status.contentLength) * 100);
+                if (barraProgresso) barraProgresso.style.width = percent + '%';
+                if (txtPorcentagem) txtPorcentagem.innerText = percent + '%';
+            }
+        });
+
+        const res = await Filesystem.downloadFile({
+            url: url,
+            path: 'app-update.apk',
+            directory: 'CACHE'
+        });
+
+        if (progressListener && typeof progressListener.remove === 'function') {
+            progressListener.remove();
+        }
+
+        if (txtStatus) txtStatus.innerText = "Abrindo instalador...";
+        if (barraProgresso) barraProgresso.style.width = '100%';
+        if (txtPorcentagem) txtPorcentagem.innerText = '100%';
+
+        // Caminho do arquivo retornado pelo sistema
+        const caminhoFinal = res.path || res.uri;
+
+        await FileOpener.openFile({
+            path: caminhoFinal,
+            filePath: caminhoFinal
+        });
+
+        // Oculta a janela após 1 segundo para deixar o instalador brilhar
+        setTimeout(() => {
+            const modal = document.getElementById('modal-atualizacao-disponivel');
+            if (modal) modal.style.display = 'none';
+        }, 1000);
+
+    } catch (erro) {
+        console.error("Erro no download nativo:", erro);
+        
+        if (txtStatus) txtStatus.innerText = "Erro ao atualizar. Tente novamente.";
+        if (btnConfirmar) btnConfirmar.style.display = 'block';
+        window.isBaixandoAtualizacao = false;
     }
 }

@@ -31,7 +31,7 @@ window.saasSnapshotInicialRecebido = false;
 // ==========================================
 // 1.5. CAIXA DE ALARMES INVISÍVEIS (Limpeza de Fantasmas)
 // ==========================================
-window.alarmesReservasPendentes = []; 
+window.alarmesReservasPendentes = [];    
 
 function limparAlarmesInvisiveisSaaS() {
     if (window.alarmesReservasPendentes) {
@@ -429,6 +429,16 @@ function renderizarDadosPlanilha(reservas) {
     limparGridEAplicarGradesFixas(configAula, configDupla);
     plotarReservasAtivas(reservas);
     aplicarValidacoesETempoReal();
+
+    // 📅 ATUALIZAÇÃO REATIVA DA AGENDA PESSOAL E DO BADGE NUMÉRICO
+    if (typeof atualizarBadgeAgendaSaaS === 'function') {
+        atualizarBadgeAgendaSaaS();
+    }
+
+    const gavetaAgenda = document.getElementById('agenda-conteudo');
+    if (gavetaAgenda && gavetaAgenda.style.display === 'block' && typeof renderizarAgendaPessoalSaaS === 'function') {
+        renderizarAgendaPessoalSaaS();
+    }
 	
     // 🎟️ CONSOME A FICHA: Só recalcula os horários do modal se o usuário pediu (trocando a quadra)
     if (window.solicitouAtualizacaoModal && typeof window.atualizarHorariosModalSaaS === 'function') {
@@ -2037,7 +2047,7 @@ function obterPosicaoTextoRankingSaaS(nomeOuApelido) {
         if (!j) return false;
         const nomeComp = (j.nomeCompleto || "").trim().toUpperCase();
         const apelido = (j.apelido || "").trim().toUpperCase();
-        return nomeComp === nomeUpper || apelido === nomeUpper;
+        return nomeComp === nomeUpper || apelido === nomeUpper; 
     });
 
     if (!idAtleta) return "";
@@ -2046,19 +2056,30 @@ function obterPosicaoTextoRankingSaaS(nomeOuApelido) {
     if (!atleta || !atleta.classe) return "";
 
     const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const modeloAtivo = confRanking.calendario?.formatoTorneio || 'piramide';
+    const modeloAtivo = confRanking.calendario?.formatoTorneio || confRanking.modeloAtivo || 'piramide';
 
     const modoGenero = confRanking.divisaoGenero || 'separado';
     let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
     if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
     const chaveCat = (modoGenero === 'unificado') ? `${atleta.classe.toUpperCase()}_UNIFICADO` : `${atleta.classe.toUpperCase()}_${generoKey}`;
 
-    // 🏆 BUSCA A POSIÇÃO / SEMENTE DIRETO DO COFRE BLINDADO DE SEMEADURA NA RAM (SSOT)
-    const tabela = (typeof rankingSemeaduraGlobal !== 'undefined' && rankingSemeaduraGlobal && rankingSemeaduraGlobal[chaveCat])
-        ? rankingSemeaduraGlobal[chaveCat]
-        : ((typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveCat])
+    // 🏆 PRIORIZAÇÃO INTELIGENTE DE TABELA POR MODELO:
+    // - Pirâmide / Barragem: lê prioritariamente a tabela viva/dinâmica (rankingTabelasGlobal)
+    // - Grupos: preserva intocada a prioridade da semeadura fixa (rankingSemeaduraGlobal)
+    let tabela = null;
+    if (modeloAtivo === 'piramide' || modeloAtivo === 'barragem') {
+        tabela = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveCat])
             ? rankingTabelasGlobal[chaveCat]
-            : null);
+            : ((typeof rankingSemeaduraGlobal !== 'undefined' && rankingSemeaduraGlobal && rankingSemeaduraGlobal[chaveCat])
+                ? rankingSemeaduraGlobal[chaveCat]
+                : null);
+    } else {
+        tabela = (typeof rankingSemeaduraGlobal !== 'undefined' && rankingSemeaduraGlobal && rankingSemeaduraGlobal[chaveCat])
+            ? rankingSemeaduraGlobal[chaveCat]
+            : ((typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal && rankingTabelasGlobal[chaveCat])
+                ? rankingTabelasGlobal[chaveCat]
+                : null);
+    }
 
     if (!tabela) return ""; 
 
@@ -2072,7 +2093,6 @@ function obterPosicaoTextoRankingSaaS(nomeOuApelido) {
 
     return "";
 }
-
 
 // ====================================================================
 // 🏆 AUXILIAR DE POSIÇÃO DO RANKING (GERAÇÃO DE TAG HTML PARA TELA)
@@ -3026,10 +3046,196 @@ function toggleAgendaVisual() {
         bloco.style.display = 'none'; 
         icone.parentElement.classList.remove('expandido'); 
     } else { 
+        renderizarAgendaPessoalSaaS();
         bloco.style.display = 'block'; 
         icone.parentElement.classList.add('expandido'); 
         document.getElementById('legenda-bloco').style.display = 'none';   
     }
+}
+
+/* ======================================================== */
+/* 10. MÓDULO AGENDA PESSOAL DO ATLETA (TICKET PASS)         */
+/* ======================================================== */
+function atualizarBadgeAgendaSaaS() {
+    const badge = document.getElementById('badge-agenda-contador');
+    if (!badge) return;
+
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+    const normNomeLogado = norm(nomeLogado);
+
+    if ((!idLogado && !normNomeLogado) || isGestorLogado) {
+        badge.style.display = 'none';
+        return;
+    }
+
+    const agora = new Date();
+    const hojeYMD = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+    const horaAtual = agora.getHours();
+
+    let jogosFuturosCount = 0;
+
+    Object.keys(reservasGeralGlobal || {}).forEach(quadraKey => {
+        const slots = reservasGeralGlobal[quadraKey] || {};
+        Object.keys(slots).forEach(slotKey => {
+            const r = slots[slotKey];
+            if (!r || !r.dataCompleta || r.status === 'aula_cancelada') return;
+            if (r.borda === undefined && parseInt(r.duracao) === 2) return;
+
+            if (r.dataCompleta < hojeYMD) return;
+
+            const duracao = parseInt(r.duracao) || 1;
+            if (r.dataCompleta === hojeYMD && (r.hora + duracao <= horaAtual)) return;
+
+            const jogsComp = norm(r.jogadores_completo || '');
+            const jogsAp = norm(r.jogadores || '');
+            const org = norm(r.organizador || '');
+
+            const pertenceAoAtleta = jogsComp.includes(normNomeLogado) || jogsAp.includes(normNomeLogado) || org.includes(normNomeLogado);
+
+            if (pertenceAoAtleta) {
+                jogosFuturosCount++;
+            }
+        });
+    });
+
+    if (jogosFuturosCount > 0) {
+        badge.textContent = jogosFuturosCount;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function renderizarAgendaPessoalSaaS() {
+    const container = document.getElementById('agenda-conteudo');
+    if (!container) return;
+
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+    const normNomeLogado = norm(nomeLogado);
+
+    if (!normNomeLogado) {
+        container.innerHTML = `<p class="agenda-nenhuma-reserva">Nenhum atleta identificado na sessão.</p>`;
+        return;
+    }
+
+    const agora = new Date();
+    const hojeYMD = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+    const horaAtual = agora.getHours();
+
+    const diasSemanaCurto = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+    const meusJogosFuturos = [];
+
+    Object.keys(reservasGeralGlobal || {}).forEach(quadraKey => {
+        const slots = reservasGeralGlobal[quadraKey] || {};
+        Object.keys(slots).forEach(slotKey => {
+            const r = slots[slotKey];
+            if (!r || !r.dataCompleta || r.status === 'aula_cancelada') return;
+            if (r.borda === undefined && parseInt(r.duracao) === 2) return;
+
+            if (r.dataCompleta < hojeYMD) return;
+
+            const duracao = parseInt(r.duracao) || 1;
+            if (r.dataCompleta === hojeYMD && (r.hora + duracao <= horaAtual)) return;
+
+            const jogsComp = norm(r.jogadores_completo || '');
+            const jogsAp = norm(r.jogadores || '');
+            const org = norm(r.organizador || '');
+
+            const pertenceAoAtleta = jogsComp.includes(normNomeLogado) || jogsAp.includes(normNomeLogado) || org.includes(normNomeLogado);
+            if (!pertenceAoAtleta) return;
+
+            let nomeQuadraAmigavel = quadraKey;
+            const numQuadra = quadraKey.match(/\d+/);
+            if (numQuadra && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+                const dadosQ = configQuadrasGlobal.nomes[numQuadra[0]];
+                if (dadosQ) {
+                    nomeQuadraAmigavel = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${numQuadra[0]}`) : dadosQ;
+                }
+            }
+
+            const partesData = r.dataCompleta.split('-');
+            const dataObj = new Date(parseInt(partesData[0]), parseInt(partesData[1]) - 1, parseInt(partesData[2]));
+            const diaSemanaTxt = diasSemanaCurto[dataObj.getDay()] || "DIA";
+            const dataFormatada = `${partesData[2]}/${partesData[1]}`;
+            const ehHoje = (r.dataCompleta === hojeYMD);
+
+            const rotuloStubDia = ehHoje ? "HOJE" : `${diaSemanaTxt} ${dataFormatada}`;
+            const horaFormatada = `${String(r.hora).padStart(2, '0')}:00`;
+
+            const ehRanking = (r.isRanking === true || r.tipo === 'ranking');
+            const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
+            const statusReserva = r.status || 'confirmada';
+
+            let badgeStatusHtml = '';
+            if (ehRanking) {
+                badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px;">🏆 Ranking</span>`;
+            } else if (statusReserva === 'pendente' || stPlacar === 'pendente_validacao') {
+                badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #d97706; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px;">Pendente</span>`;
+            } else {
+                badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #15803d; background: #dcfce7; border: 1px solid #86efac; padding: 2px 6px; border-radius: 6px;">Confirmado</span>`;
+            }
+
+            const listaParticipantes = (r.jogadores_completo || r.jogadores || '').split(',').map(s => s.trim()).filter(Boolean);
+            const outrosParticipantes = listaParticipantes
+                .filter(nome => !norm(nome).includes(normNomeLogado))
+                .map(nome => capitalizarNome(buscarInfoJogador(nome).apelido));
+
+            let textoParticipantes = "";
+            if (ehRanking) {
+                const adv = outrosParticipantes[0] || "Adversário";
+                textoParticipantes = `Desafio contra ${adv} (${duracao}h)`;
+            } else if (outrosParticipantes.length > 0) {
+                textoParticipantes = `Com ${outrosParticipantes.join(', ')} (${duracao}h)`;
+            } else {
+                textoParticipantes = `Reserva individual (${duracao}h)`;
+            }
+
+            meusJogosFuturos.push({
+                dataSort: `${r.dataCompleta}_${String(r.hora).padStart(2, '0')}`,
+                rotuloStubDia,
+                horaFormatada,
+                nomeQuadraAmigavel,
+                badgeStatusHtml,
+                textoParticipantes,
+                ehHoje
+            });
+        });
+    });
+
+    if (meusJogosFuturos.length === 0) {
+        container.innerHTML = `<p class="agenda-nenhuma-reserva">Você não possui jogos agendados a partir de hoje.</p>`;
+        return;
+    }
+
+    meusJogosFuturos.sort((a, b) => a.dataSort.localeCompare(b.dataSort));
+
+    let htmlCards = `<div class="op4-list">`;
+    meusJogosFuturos.forEach(j => {
+        const bgStub = j.ehHoje ? `style="background: #f0fdf4;"` : '';
+        const colorDay = j.ehHoje ? `style="color: var(--cor-primaria);"` : '';
+
+        htmlCards += `
+            <div class="op4-ticket">
+                <div class="op4-stub" ${bgStub}>
+                    <span style="font-size: 10px; font-weight: 900; color: #64748b;" ${colorDay}>${j.rotuloStubDia}</span>
+                    <span style="font-size: 13px; font-weight: 900; color: #1e293b;">${j.horaFormatada}</span>
+                </div>
+                <div class="op4-body">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="font-size: 12.5px; color: #1e293b;">${j.nomeQuadraAmigavel}</strong>
+                        ${j.badgeStatusHtml}
+                    </div>
+                    <span style="font-size: 11px; color: #64748b; margin-top: 2px;">${j.textoParticipantes}</span>
+                </div>
+            </div>
+        `;
+    });
+    htmlCards += `</div>`;
+
+    container.innerHTML = htmlCards;
 }
 
 function sairDaVisaoQuadras() {

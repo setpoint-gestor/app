@@ -20,7 +20,7 @@ if (!firebase.apps.length) {
 }
 
 const database = firebase.database();     
-const auth = firebase.auth(); 
+const auth = firebase.auth();   
 
 
 
@@ -101,14 +101,32 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App
     });
 }
 
-// 🔄 CHECAGEM DE VERSÃO AO RETORNAR DO SEGUNDO PLANO / TROCA DE ABA
+// 🔄 CHECAGEM DE VERSÃO AO RETORNAR DO SEGUNDO PLANO (HÍBRIDO: WEB + NATIVO)
+const acionarChecagemDeVersaoSaaS = () => {
+    // 🛑 TRAVA ANTI-RECARREGAMENTO: Se estiver baixando, ignora
+    if (window.isBaixandoAtualizacao) return; 
+    
+    if (typeof verificarAtualizacaoDisponivelSaaS === 'function') {
+        verificarAtualizacaoDisponivelSaaS();
+    }
+};
+
+// 1. Escuta padrão para Web / PWA (Troca de abas no navegador)
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-        if (typeof verificarAtualizacaoDisponivelSaaS === 'function') {
-            verificarAtualizacaoDisponivelSaaS();
-        }
+        acionarChecagemDeVersaoSaaS();
     }
 }); 
+
+// 2. Escuta NATIVA do Android/iOS (O aplicativo foi minimizado e reaberto)
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
+        // state.isActive é true quando o app volta para o primeiro plano
+        if (state.isActive) {
+            acionarChecagemDeVersaoSaaS();
+        }
+    });
+}
 
 // ==========================================
 // 3. UTILITÁRIOS GLOBAIS DE UI (Interface do Usuário)
@@ -742,6 +760,16 @@ function iniciarOuvinteMestreSaaS() {
     database.ref(`${raizBanco}/reservas`).on('value', (snapshot) => {
         reservasGeralGlobal = snapshot.val() || {};
         console.log("✓ [Core] Reservas globais da arena atualizadas na memória RAM.");
+
+        // 📅 REATIVIDADE EM TEMPO REAL DA AGENDA PESSOAL E DO BADGE
+        if (typeof atualizarBadgeAgendaSaaS === 'function') {
+            atualizarBadgeAgendaSaaS();
+        }
+
+        const gavetaAgenda = document.getElementById('agenda-conteudo');
+        if (gavetaAgenda && gavetaAgenda.style.display === 'block' && typeof renderizarAgendaPessoalSaaS === 'function') {
+            renderizarAgendaPessoalSaaS();
+        }
     });
 	
 	// --- 4.11. OUVINTE MESTRE DOS CONVITES DO RANKING ---
