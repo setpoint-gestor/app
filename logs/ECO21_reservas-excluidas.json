@@ -3982,5 +3982,38 @@
     "jogadores": "Alexandre Camargo, Ana Maria Marinho",
     "jogadores_completo": "ALEXANDRE CAMARGO, ANA MARIA MARINHO GOMES",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-10T12:34:27.915Z",
+    "dataLocal": "10/10/2026, 09:34:27",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "11-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "confirmacoes": {
+      "Alex": false,
+      "Alexandre Voj": true
+    },
+    "jogadores": "Alexandre Voj, Alex",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 7,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 2",
+        "dia": 7,
+        "hora": 7
+      }
+    ]
   }
 ]
