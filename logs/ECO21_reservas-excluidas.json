@@ -4178,5 +4178,39 @@
         "hora": 13
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-10T18:40:48.922Z",
+    "dataLocal": "10/10/2026, 15:40:48",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Aula cancelada pelo Professor",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "15:00 - 16:00",
+    "duracao": "1 Hora",
+    "data": "10-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Adriano Feitosa",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "jogadores": "Aula",
+    "jogadores_completo": "Aula",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 15
+      },
+      {
+        "dia": 6,
+        "hora": 16
+      },
+      {
+        "dia": 6,
+        "hora": 17
+      }
+    ]
   }
 ]
