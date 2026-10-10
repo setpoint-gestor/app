@@ -116,7 +116,7 @@
         transform: rotate(-180deg) !important;
     }
 	
-	/* Oculta o título redundante do acervo apenas no celular */
+    /* Oculta o título redundante do acervo apenas no celular */
     #modal-config-ranking .accordion-item:nth-of-type(6) .accordion-content-inner > div:first-child {
         display: none !important;
     }
@@ -126,44 +126,101 @@
         display: none;
     }
 
+    /* Transforma cada linha (<tr>) num Cartão Principal (Flexbox) */
     .table-exec-striped tr {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 8px 10px;
         background: #ffffff;
         border: 1px solid #cbd5e1;
         border-radius: 12px;
         padding: 12px;
         margin-bottom: 12px;
+        box-sizing: border-box;
     }
 
-    .table-exec-striped td {
-        padding: 0;
-        border: none;
-        text-align: left;
-    }
-
+    /* Linha 1 do Cartão (Título + Lixeira + PDF) */
     .table-exec-striped td.col-edicao {
         flex: 0 0 100%;
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start;
         align-items: center;
         border-bottom: 1px solid #f1f5f9;
         padding-bottom: 8px;
-        margin-bottom: 4px;
+        margin-bottom: 8px;
         font-weight: 700;
+        gap: 8px;
+        box-sizing: border-box;
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+        width: 100%;
+        border-right: none;
+        text-align: left;
     }
 
-    .table-exec-striped td.col-modelo,
-    .table-exec-striped td.col-periodo,
-    .table-exec-striped td.col-classificacao,
+    .table-exec-striped td.col-edicao strong {
+        flex: 1; 
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .table-exec-striped td.col-edicao button,
+    .table-exec-striped td.col-edicao a.pdf-link-inline {
+        flex-shrink: 0;
+        margin-left: 0;
+    }
+
+    /* ---------------------------------------------------- */
+    /* Linha 2 do Cartão (Distribuição dos 4 Elementos)     */
+    /* ---------------------------------------------------- */
+    
+    /* Reset base para as 4 células inferiores */
+    .table-exec-striped td:not(.col-edicao) {
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* 1º Elemento (Extrema Esquerda): Badge ("Grupos") */
+    .table-exec-striped td.col-modelo {
+        flex: 0 0 auto !important;
+        justify-content: flex-start !important;
+    }
+
+    /* 2º Elemento (Meio Esquerda): Data */
+    .table-exec-striped td.col-periodo {
+        flex: 1 1 0% !important;
+        justify-content: center !important;
+    }
+
+    .table-exec-striped td.col-periodo strong {
+        font-size: 10px !important;
+        font-weight: 600 !important;
+        color: #94a3b8 !important;
+        white-space: nowrap !important;
+    }
+
+    /* 3º Elemento (Meio Direita): Botão Tabelas */
+    .table-exec-striped td.col-classificacao {
+        flex: 1 1 0% !important;
+        justify-content: center !important;
+    }
+
+    /* 4º Elemento (Extrema Direita): Botão Súmulas */
     .table-exec-striped td.col-resultados {
-        flex: 0 0 auto;
-		border-bottom: none !important;
+        flex: 0 0 auto !important;
+        justify-content: flex-end !important;
     }
 
-    /* Oculta os ícones dos botões Tabelas e Súmulas apenas no celular para economizar espaço */
+    /* Ajustes finos nos botões inferiores para não estourar */
+    .table-exec-striped .btn-col-action {
+        padding: 4px 6px !important;
+        font-size: 10px !important;
+    }
+
     .table-exec-striped .btn-col-action i {
         display: none !important;
     }
