@@ -4100,5 +4100,31 @@
         "hora": 13
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "data": "10-10-2026",
+    "dataLocal": "10/10/2026, 13:05:46",
+    "duracao": "1 Hora",
+    "horario": "13:00 - 14:00",
+    "jogadores": "Adriano Feitosa",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 13
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-10T16:05:46.568Z"
   }
 ]
