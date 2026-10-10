@@ -196,7 +196,7 @@
         justify-content: center !important;
     }
 
-    .table-exec-striped td.col-periodo strong {
+    .table-exec-striped td.col-periodo strong { 
         font-size: 10px !important;
         font-weight: 600 !important;
         color: #94a3b8 !important;
@@ -809,28 +809,38 @@ td.col-edicao .pdf-link-inline {
 /* 4.1 ADAPTAÇÃO MOBILE: GESTÃO DA TEMPORADA (OPÇÃO 2)      */
 /* ======================================================== */
 @media (max-width: 768px) {
-    /* 1. Stepper Compacto Duplo (Quebra em duas linhas e centralização vertical) */
+    /* 1. Stepper Compacto em Linha Única (Sem quebra de linha) */
     #modal-config-ranking .stepper-container { 
-        flex-wrap: wrap !important; 
-        justify-content: center !important; 
-        gap: 10px 5px !important; 
-        margin-top: 16px !important;    /* Desgruda na medida exata do teto azul */
-        margin-bottom: 0px !important; /* Reduz drasticamente o buraco inferior */
+        flex-wrap: nowrap !important; /* 🟢 Impede a quebra de linha (força tudo na mesma linha) */
+        justify-content: space-between !important; /* 🟢 Distribui o espaço igualmente */
+        gap: 2px !important; 
+        margin-top: 16px !important;    
+        margin-bottom: 0px !important; 
+        padding: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     #modal-config-ranking .stepper-container::before { 
-        display: none !important; /* Remove linha conectora horizontal que quebra no empilhamento */
+        display: none !important; /* Mantém a linha de conexão cinza oculta no celular para não poluir */
     }
     #modal-config-ranking .step-node { 
-        gap: 6px !important; 
-        padding: 0 4px !important; 
+        flex: 1 1 0%; /* 🟢 Força cada uma das 5 fases a ter exatamente a mesma largura na tela */
+        gap: 4px !important; 
+        padding: 0 !important; 
+        min-width: 0 !important; /* Essencial para permitir que eles se espremam em telas menores */
     }
     #modal-config-ranking .step-circle { 
-        width: 32px !important; 
-        height: 32px !important; 
-        font-size: 13px !important; 
+        width: 28px !important; /* 🟢 Reduzimos levemente o círculo para garantir que 5 caibam ombro a ombro */
+        height: 28px !important; 
+        font-size: 12px !important; 
+        flex-shrink: 0 !important; /* Impede que o círculo amasse e vire um "ovo" */
     }
     #modal-config-ranking .step-label { 
-        font-size: 10px !important; 
+        font-size: 9px !important; /* 🟢 Letra um pouco menor para caber */
+        letter-spacing: -0.3px !important; /* Aproxima as letras milimetricamente */
+        text-align: center !important;
+        white-space: normal !important; /* Permite que o texto quebre em duas linhas embaixo do círculo, se necessário */
+        line-height: 1.1 !important;
     }
 
     /* 2. Formulários e Grids (Adequação de volume interno para o Safari) */
