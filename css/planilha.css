@@ -2320,3 +2320,43 @@ body.dark-mode #tabelaQuadra td .pos-tag {
     z-index: 99999;
 }
 
+/* ======================================================== */
+/* 26. DESTAQUE VISUAL PREMIUM NO CAMPO "TIPO" (MODAL AGENDAMENTO) */
+/* ======================================================== */
+.label-tipo-destaque {
+    color: #15803d !important;
+    font-weight: 900 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+.label-tipo-destaque .material-icons {
+    font-size: 18px;
+    color: #16a34a;
+}
+
+.campo-tipo-destaque {
+    background-color: #ffffff !important;
+    border: 1.5px solid var(--cor-primaria) !important;
+    box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.15) !important;
+    color: #1e293b !important;
+    font-weight: normal !important;
+}
+
+/* --- SUPORTE MODO ESCURO (DARK MODE) --- */
+body.dark-mode .label-tipo-destaque {
+    color: #4ade80 !important; /* Verde mais claro para leitura perfeita no fundo escuro */
+}
+
+body.dark-mode .label-tipo-destaque .material-icons {
+    color: #22c55e !important;
+}
+
+body.dark-mode .campo-tipo-destaque {
+    background-color: #252525 !important;
+    border-color: #2E8B57 !important;
+    box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.25) !important;
+    color: #f8fafc !important;
+}
+

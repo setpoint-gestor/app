@@ -9,6 +9,7 @@
     --bg-reserva-2h: lightblue;        /* 🔵 Azul oficial para reservas de 2h */
 	--bg-reserva-ranking: #FFEB99;     /* 🟡 Amarelo oficial para reservas de ranking */
     --bg-celula-aula: lightcoral;
+	--bg-celula-manutencao: #e2e8f0;   /* 💦 Cinza claro oficial para manutenção */
     --bg-celula-dupla: #f2f2f2;        /* ⚙️ Mantido o cinza para o horário de duplas administrativo */
     --txt-celula-tabela: #000000;
 	
@@ -25,13 +26,14 @@ body.dark-mode {
     --bg-reserva-1h: lightgreen;          /* 🟢 Sintonizado exatamente com o Modo Claro */
     --bg-reserva-2h: lightblue;           /* 🔵 Sintonizado exatamente com o Modo Claro */
 	--bg-reserva-ranking: #FFEB99;        /* 🟡 Mesma cor amarela suave do modo claro */
-    --bg-celula-aula: lightcoral !important;    
+    --bg-celula-aula: lightcoral !important;  
+    --bg-celula-manutencao: #334155 !important; /* 💦 Fundo grafite-azulado no modo escuro */	
     --bg-celula-dupla: #252525;   
     --txt-celula-tabela: #ffffff !important;   /* Forçado para branco para dar leitura perfeita nos fundos escuros */
 }
 
 body {
-    font-family: 'Roboto', sans-serif; 
+    font-family: 'Roboto', sans-serif;  
     margin: 0; 
     padding: 0;
     background-color: var(--bg-site); 
