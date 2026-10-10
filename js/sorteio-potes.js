@@ -16,7 +16,7 @@ let sorteioPotesGlobal = {
     inscritos: {},
     potesData: [],
     drawSequence: [],
-    gruposResultado: {},  
+    gruposResultado: {},   
     currentIndex: 0,
     autoTimer: null,
     isFastMode: false,
@@ -434,12 +434,30 @@ function runAutoDrawStepSaaS() {
     const elStatus = document.getElementById('statusTextPotes');
     const elProgress = document.getElementById('progressTextPotes');
 
+    const confRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const modeloAtivo = confRanking.calendario?.formatoTorneio || confRanking.modeloAtivo || "grupos";
+
+    // 🎯 SELO INTELIGENTE DENTRO DA BOLA (POSIÇÃO VS CABEÇA DE CHAVE)
     if (elSeed) {
         elSeed.style.display = 'inline-block';
-        elSeed.innerText = `Cabeça ${item.seedNum} (Pote ${item.poteNum})`;
+        if (modeloAtivo === 'piramide' || modeloAtivo === 'barragem') {
+            elSeed.innerText = `Posição ${item.seedNum}`;
+        } else {
+            elSeed.innerText = `Cabeça ${item.seedNum} (Pote ${item.poteNum})`;
+        }
     }
+
     if (elPlayer) elPlayer.innerText = item.nomeAtleta;
-    if (elStatus) elStatus.innerText = `Alocado no ${item.grupoDestino.replace('_', ' ')}`;
+
+    if (elStatus) {
+        if (modeloAtivo === 'piramide') {
+            elStatus.innerText = `Alocado na Posição ${item.seedNum} da Pirâmide`;
+        } else if (modeloAtivo === 'barragem') {
+            elStatus.innerText = `Alocado na Posição ${item.seedNum} da Barragem`;
+        } else {
+            elStatus.innerText = `Alocado no ${item.grupoDestino.replace('_', ' ')}`;
+        }
+    }
 
     s.currentIndex++;
     if (elProgress) elProgress.innerText = `${s.currentIndex}/${s.drawSequence.length} Concluídos`;
@@ -479,22 +497,50 @@ window.SorteioPotes = {
         const btnFinish = document.getElementById('btnFinishGoPotes');
         const globe = document.getElementById('globeWrapperPotes');
 
-        // 🎯 Rótulos formais para a pílula do modelo ativo
-        const rotulosModeloPilula = {
-            piramide: "Torneio Pirâmide",
-            barragem: "Torneio Barragem",
-            grupos: "Torneio de Grupos"
+        // 🎯 IDENTIDADE VISUAL TEMÁTICA POR FORMATO (CORES E ÍCONES)
+        const confRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const modeloAtivo = confRanking.calendario?.formatoTorneio || confRanking.modeloAtivo || "grupos";
+
+        const configsModelo = {
+            piramide: {
+                texto: "TORNEIO PIRÂMIDE",
+                icone: "leaderboard",
+                estilo: "background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #f59e0b;"
+            },
+            barragem: {
+                texto: "TORNEIO BARRAGEM",
+                icone: "bar_chart",
+                estilo: "background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.4); color: #38bdf8;"
+            },
+            grupos: {
+                texto: "TORNEIO DE GRUPOS",
+                icone: "emoji_events",
+                estilo: "background: rgba(132, 204, 22, 0.12); border: 1px solid rgba(132, 204, 22, 0.35); color: #a3e635;"
+            }
         };
 
-        const confRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-        const modeloAtivo = confRanking.modeloAtivo || confRanking.calendario?.modeloDisputa || "grupos";
-        const textoPilula = rotulosModeloPilula[modeloAtivo] || "Torneio Oficial";
+        const cfg = configsModelo[modeloAtivo] || configsModelo.grupos;
 
         if (elPilula) {
-            elPilula.innerHTML = `<i class="material-icons" style="font-size: 13px;">emoji_events</i> ${textoPilula}`;
+            elPilula.innerHTML = `<i class="material-icons" style="font-size: 13px;">${cfg.icone}</i> ${cfg.texto}`;
+            elPilula.setAttribute('style', `display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; ${cfg.estilo}`);
         }
+
         if (elTitle) elTitle.innerText = sorteioPotesGlobal.torneioNome;
-        if (elMicro) elMicro.innerText = `${preparo.sequencia.length} Atletas Confirmados • ${preparo.potes.length} Potes`;
+
+        // 🎯 PÍLULA DE INFORMAÇÕES INTELIGENTE (POTE ÚNICO VS MULTIPLOS POTES)
+        const totalAtletas = preparo.sequencia.length;
+        const qtdPotes = preparo.potes.length;
+        let textoPotesInfo = "";
+
+        if (modeloAtivo === 'piramide' || modeloAtivo === 'barragem') {
+            textoPotesInfo = "Pote Único";
+        } else {
+            textoPotesInfo = qtdPotes === 1 ? "1 Pote" : `${qtdPotes} Potes`;
+        }
+
+        if (elMicro) elMicro.innerText = `${totalAtletas} Atletas Confirmados • ${textoPotesInfo}`;
+
         if (btnFast) btnFast.style.display = 'block';
         if (btnFinish) btnFinish.style.display = 'none';
         if (globe) globe.classList.remove('fast-spinning');
@@ -544,8 +590,18 @@ window.SorteioPotes = {
         const elPlayer = document.getElementById('ballPlayerPotes');
         const btnFast = document.getElementById('btnFastForwardPotes');
         const btnFinish = document.getElementById('btnFinishGoPotes');
+        const statusBox = document.querySelector('.draw-status-box');
 
-        if (elStatus) elStatus.innerText = "✅ Sorteio Finalizado com Sucesso!";
+        // 🎯 1. DESTAKE VISUAL NA BARRA DE STATUS AO FINALIZAR
+        if (statusBox) {
+            statusBox.style.cssText = 'background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 12px; width: 100%; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; box-sizing: border-box;';
+        }
+
+        if (elStatus) {
+            elStatus.style.color = '#34d399';
+            elStatus.innerText = "🎉 Sorteio Concluído com Sucesso!";
+        }
+
         if (elProgress) elProgress.innerText = `${s.drawSequence.length}/${s.drawSequence.length} Concluídos`;
 
         // Deixa a bola lisa (amarela sem textos/badges)
@@ -557,6 +613,16 @@ window.SorteioPotes = {
 
         if (btnFast) btnFast.style.display = 'none';
         if (btnFinish) btnFinish.style.display = 'flex';
+
+        // 🎯 2. DISPARO FESTIVO DE CONFETES
+        if (typeof confetti === 'function') {
+            confetti({
+                particleCount: 80,
+                spread: 70,
+                origin: { y: 0.6 },
+                zIndex: 20000
+            });
+        }
 
         // Gravação dos Grupos no Banco de Dados
         if (typeof s.callbackConclusao === 'function') {

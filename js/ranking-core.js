@@ -17,7 +17,7 @@ let regrasSessaoRanking = null;
 let modoWOAtivoSaaS = false;
 let vencedorWOSaaS = null;
 let nomeVencedorWOSaaS = "";
-let motivoCustomizadoWOSaaS = ""; 
+let motivoCustomizadoWOSaaS = "";   
 
 let modoRETAtivoSaaS = false;
 let desistenteRETSaaS = null; 
@@ -36,8 +36,11 @@ function configurarGatilhoSumulaRanking(reserva) {
     if (!btnGatilho) return;
 
     const ehRanking = (reserva.tipo === 'ranking' || reserva.isRanking === true || reserva.isRanking === 'true');
+	
+	// 🟢 NOVA TRAVA: Verifica se a chave mestre do Módulo de Ranking está desligada (OFF)
+    const rankingLigado = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ranking && configRegrasGlobal.ranking.ativo !== false);
 
-    if (!ehRanking || !verificarAcessoSocioRanking(reserva)) {
+    if (!ehRanking || !verificarAcessoSocioRanking(reserva) || !rankingLigado) {
         btnGatilho.style.setProperty('display', 'none', 'important');
         return;
     }

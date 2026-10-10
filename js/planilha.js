@@ -461,8 +461,11 @@ function limparGridEAplicarGradesFixas(configAula, configDupla) {
             cel.innerHTML = ''; 
             cel.className = ''; 
             cel.style.backgroundColor = ''; 
+            cel.style.border = '';
             
-			cel.style.border = '';
+            // 🧱 CORREÇÃO: Tapa o buraco deixado pela exclusão de blocos mesclados
+            cel.rowSpan = 1;
+            cel.style.display = '';
 			
             cel.style.cursor = 'pointer';
             cel.style.pointerEvents = 'auto'; 
@@ -536,7 +539,54 @@ function limparGridEAplicarGradesFixas(configAula, configDupla) {
 // ====================================================================
 // 🎾 SUB-MÓDULO 2: PLOTAGEM DE RESERVAS ATIVAS E BORDAS CONTÍNUAS
 // ====================================================================
+// ====================================================================
+// 🎾 SUB-MÓDULO 2: PLOTAGEM DE RESERVAS ATIVAS E BORDAS CONTÍNUAS
+// ====================================================================
 function plotarReservasAtivas(reservas) {
+    
+    // ====================================================================
+    // 🌟 SUB-MÓDULO 2.1: MOTOR DE MESCLAGEM MESTRA (AULAS E MANUTENÇÕES)
+    // ====================================================================
+    const mapaMesclagemSaaS = {}; 
+    
+    for (let d = 1; d <= 7; d++) {
+        for (let h = 6; h <= 23; h++) {
+            const key = `${d}_${h}`;
+            if (mapaMesclagemSaaS[key] && mapaMesclagemSaaS[key].pular) continue;
+
+            const r = reservas[key];
+            if (!r || r.status === 'aula_cancelada') continue;
+
+            const ehAula = (r.tipo === 'aula' || (r.jogadores && r.jogadores.toLowerCase() === 'aula'));
+            const ehManutencao = (r.tipo === 'manutencao' || (r.jogadores && r.jogadores.includes('Manutenção')));
+
+            if (ehAula || ehManutencao) {
+                let span = 1;
+                for (let nextH = h + 1; nextH <= 23; nextH++) {
+                    const nextKey = `${d}_${nextH}`;
+                    const nextR = reservas[nextKey];
+                    
+                    if (!nextR || nextR.status === 'aula_cancelada') break;
+
+                    const ehNextAula = (nextR.tipo === 'aula' || (nextR.jogadores && nextR.jogadores.toLowerCase() === 'aula'));
+                    const ehNextManut = (nextR.tipo === 'manutencao' || (nextR.jogadores && nextR.jogadores.includes('Manutenção')));
+                    const ehMesmoOrganizador = (!r.organizador && !nextR.organizador) || (r.organizador === nextR.organizador);
+
+                    if (((ehAula && ehNextAula) || (ehManutencao && ehNextManut)) && ehMesmoOrganizador) {
+                        span++;
+                        mapaMesclagemSaaS[nextKey] = { pular: true }; 
+                    } else { 
+                        break; 
+                    }
+                }
+                
+                if (span > 1) {
+                    mapaMesclagemSaaS[key] = { rowSpan: span, horaFim: h + span, pular: false };
+                }
+            }
+        }
+    }
+
     Object.keys(reservas).forEach(key => {
         const r = reservas[key];
         if (!r || r.hora === undefined || r.dia === undefined) {
@@ -585,10 +635,87 @@ function plotarReservasAtivas(reservas) {
             cel.onclick = () => { cliqueCelula(r.dia, r.hora); };
             return;
         }
-        
+
         const isDark = document.body.classList.contains('dark-mode') || document.body.classList.contains('dark');
         const corBorda = isDark ? '2px solid #555' : '2px solid #666';
 
+        // 🎓 BIFURCAÇÃO AULA EXCEPCIONAL (Com Mesclagem Inteligente)
+        if (r.tipo === 'aula' || (r.jogadores && r.jogadores.toLowerCase() === 'aula')) {
+            const infoMescla = mapaMesclagemSaaS[`${r.dia}_${r.hora}`];
+            
+            if (infoMescla && infoMescla.pular) {
+                // 🧱 CORREÇÃO: Carimba a célula invisível para que o botão (+) saiba que ela está ocupada
+                cel.classList.add('celula-aula'); 
+                cel.style.display = 'none';
+                return;
+            }
+
+            cel.classList.add('celula-aula');
+            cel.style.color = 'var(--txt-celula-tabela)'; // Correção da cor da fonte para padronizar
+            cel.style.cursor = 'pointer';
+            
+            // Aplica as Bordas Estilo Jogo
+            cel.style.borderTop = corBorda;
+            cel.style.borderLeft = corBorda;
+            cel.style.borderRight = corBorda;
+            cel.style.borderBottom = corBorda;
+
+            if (infoMescla && infoMescla.rowSpan > 1) {
+                cel.rowSpan = infoMescla.rowSpan;
+                const horaFormatada = String(r.hora).padStart(2, '0') + ':00';
+                const horaFimFormatada = String(infoMescla.horaFim).padStart(2, '0') + ':00';
+                
+                // Remove o negrito (<b>) e adiciona um espaçamento
+                cel.innerHTML = `<span>Aula</span><br><span style="font-size:11.5px; opacity:0.8;">${horaFormatada} - ${horaFimFormatada}</span>`;
+            } else {
+                cel.innerHTML = '<span>Aula</span>'; // Remove o negrito
+            }
+
+            cel.onclick = () => {
+                if (navigator.vibrate) navigator.vibrate(30);
+                abrirMenuAcoesReservaSaaS(r.dia, r.hora, r);
+            };
+            return;
+        } 
+        
+        // 💦 BIFURCAÇÃO MANUTENÇÃO (Com Mesclagem Inteligente)
+        if (r.tipo === 'manutencao' || (r.jogadores && r.jogadores.includes('Manutenção'))) {
+            const infoMescla = mapaMesclagemSaaS[`${r.dia}_${r.hora}`];
+            
+            if (infoMescla && infoMescla.pular) {
+                // Carimba a célula invisível para ocultá-la e manter a busca livre informada
+                cel.classList.add('celula-manutencao');
+                cel.style.display = 'none';
+                return;
+            }
+
+            cel.classList.add('celula-manutencao');
+            cel.style.color = 'var(--txt-celula-especial)';
+            cel.style.cursor = 'pointer';
+
+            // Aplica as Bordas Estilo Jogo
+            cel.style.borderTop = corBorda;
+            cel.style.borderLeft = corBorda;
+            cel.style.borderRight = corBorda;
+            cel.style.borderBottom = corBorda;
+
+            if (infoMescla && infoMescla.rowSpan > 1) {
+                cel.rowSpan = infoMescla.rowSpan;
+                const horaFormatada = String(r.hora).padStart(2, '0') + ':00';
+                const horaFimFormatada = String(infoMescla.horaFim).padStart(2, '0') + ':00';
+                
+                cel.innerHTML = `<span>💦 Manutenção</span><br><span style="font-size:11.5px; opacity:0.8;">${horaFormatada} - ${horaFimFormatada}</span>`;
+            } else {
+                cel.innerHTML = '<span>💦 Manutenção</span>';
+            }
+
+            cel.onclick = () => {
+                if (navigator.vibrate) navigator.vibrate(30);
+                abrirMenuAcoesReservaSaaS(r.dia, r.hora, r);
+            };
+            return;
+        }
+        
         const confs = r.confirmacoes || {};
 
         const formatarNomeAtleta = (nomeBruto, index) => {
@@ -620,10 +747,7 @@ function plotarReservasAtivas(reservas) {
             return nomeStr;
         };
 
-        if (r.jogadores && r.jogadores.toLowerCase() === 'aula') {
-            cel.innerHTML = `${r.jogadores}`;
-            cel.classList.add('celula-aula');
-        } else if (r.jogadores && r.jogadores.toLowerCase() === 'dupla') {
+        if (r.jogadores && r.jogadores.toLowerCase() === 'dupla') {
             cel.innerHTML = `${r.jogadores}`;
             cel.classList.add('celula-dupla');
         } else if (r.duracao === 2) {
@@ -759,7 +883,7 @@ function plotarReservasAtivas(reservas) {
             if (ehRanking) {
                 cel.classList.add('celula-reserva-ranking');
             } else {
-                cel.classList.add('celula-reserva-1h'); 
+                cel.classList.add('celula-reserva-1h');  
             }
 
             cel.style.border = corBorda; 
@@ -923,7 +1047,87 @@ function abrirAgendamentoSaaS(dia, hora) {
     const campoJogador1 = document.getElementById('saas-jogador1');  
 
     if (!campoQuadra || !campoDia || !campoHora || !campoJogador1) return; 
-	
+
+    // ====================================================================
+    // 🎭 MÓDULO INTELIGENTE: PERFIS ESPECIAIS (AULA / MANUTENÇÃO)
+    // ====================================================================
+    
+    // 1. Identifica os perfis ativos do usuário logado
+    const idLogadoParaPerfis = localStorage.getItem('jogadorLogadoId');
+    let perfisLogadoEspeciais = {};
+    if (isGestorLogado) {
+        perfisLogadoEspeciais = { 'Admin': true }; // O Gestor herda poder de Admin para as lógicas
+    } else {
+        try { perfisLogadoEspeciais = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+    }
+
+    const ehAdminOuGestor = isGestorLogado || perfisLogadoEspeciais['Admin'] === true;
+    const ehProfessor = perfisLogadoEspeciais['Professor'] === true || perfisLogadoEspeciais['Prof'] === true;
+    const ehManutencao = perfisLogadoEspeciais['Manutenção'] === true || perfisLogadoEspeciais['Manut'] === true;
+
+    // 2. Verifica se o Professor tem permissão para dar aula NESTA quadra selecionada
+    let temPermissaoAulaNaQuadraAtiva = false;
+    let profResponsavelNaQuadra = "";
+    
+    let quadraParaFiltro = quadraSelecionadaSaaS || "Quadra 1";
+    const matchFiltro = quadraParaFiltro.match(/\d+/);
+    const chaveQuadraFiltro = matchFiltro ? `Quadra${matchFiltro[0]}` : "Quadra1";
+
+    if (configAulasGlobal && configAulasGlobal[chaveQuadraFiltro]) {
+        if (configAulasGlobal[chaveQuadraFiltro].Ativo === true) {
+            profResponsavelNaQuadra = configAulasGlobal[chaveQuadraFiltro].Professor || "";
+            const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+            const apelidoLogado = (jogadoresGlobal && jogadoresGlobal[idLogadoParaPerfis] && jogadoresGlobal[idLogadoParaPerfis].apelido) ? jogadoresGlobal[idLogadoParaPerfis].apelido : nomeLogado;
+            
+            if (ehAdminOuGestor) {
+                temPermissaoAulaNaQuadraAtiva = true;
+            } else if (ehProfessor) {
+                if (!profResponsavelNaQuadra || 
+                    profResponsavelNaQuadra.toLowerCase() === apelidoLogado.toLowerCase() || 
+                    profResponsavelNaQuadra.toLowerCase() === nomeLogado.toLowerCase()) {
+                    temPermissaoAulaNaQuadraAtiva = true;
+                }
+            }
+        }
+    }
+
+    // 3. Modifica a interface com base nos perfis detectados (SEM EMOJIS ERRADOS)
+    const containerTipoReserva = document.getElementById('linha-tipo-reserva');
+    const selectTipoReserva = document.getElementById('saas-tipo-reserva');
+
+    if (containerTipoReserva && selectTipoReserva) {
+        selectTipoReserva.innerHTML = ''; 
+
+        let adicionouOpcoesEspeciais = false;
+
+        // Sempre existe a opção de Jogo (Livre de emojis e textos adicionais)
+        selectTipoReserva.innerHTML += '<option value="jogo">Jogo</option>';
+
+        if (temPermissaoAulaNaQuadraAtiva || ehAdminOuGestor) {
+            selectTipoReserva.innerHTML += '<option value="aula">Aula</option>';
+            adicionouOpcoesEspeciais = true;
+        }
+
+        if (ehManutencao || ehAdminOuGestor) {
+            selectTipoReserva.innerHTML += '<option value="manutencao">Manutenção</option>';
+            adicionouOpcoesEspeciais = true;
+        }
+
+        // Se for um usuário comum, esconde totalmente o campo. Se for VIP, exibe.
+        if (!adicionouOpcoesEspeciais) {
+            containerTipoReserva.style.setProperty('display', 'none', 'important');
+        } else {
+            containerTipoReserva.style.setProperty('display', 'flex', 'important');
+        }
+        
+        selectTipoReserva.value = "jogo";
+        
+        // Chamamos a função camaleão para garantir que os campos de baixo fiquem certos
+        if (typeof alternarVisaoFormularioAgendamentoSaaS === 'function') {
+            alternarVisaoFormularioAgendamentoSaaS();
+        }
+    }
+  	
     // 🧠 GATILHO DA REGRA DE DURAÇÃO (SaaS): Lê o banco e controla a anatomia do campo
     if (campoDuracao) {
         const regraDuracao = (configRegrasGlobal && configRegrasGlobal.DuracaoPermitida) ? configRegrasGlobal.DuracaoPermitida : "1_2";
@@ -1194,6 +1398,7 @@ function abrirAgendamentoSaaS(dia, hora) {
 					// 💉 INJEÇÃO: Uma célula de dupla só está ocupada se o texto dela NÃO for mais "Dupla"
 					const estaOcupada = celAtual.classList.contains('celula-ocupada') || 
 										celAtual.classList.contains('celula-aula') || 
+										celAtual.classList.contains('celula-manutencao') || 
 										(celAtual.classList.contains('celula-dupla') && celAtual.textContent.trim() !== 'Dupla') || 
 										celAtual.classList.contains('celula-bloqueada');
 
@@ -1210,6 +1415,7 @@ function abrirAgendamentoSaaS(dia, hora) {
 						// 💉 INJEÇÃO: Avalia a hora seguinte da sequência de forma inteligente
 						const seguinteOcupada = celSeguinte.classList.contains('celula-ocupada') || 
 												celSeguinte.classList.contains('celula-aula') || 
+												celSeguinte.classList.contains('celula-manutencao') || 
 												(celSeguinte.classList.contains('celula-dupla') && celSeguinte.textContent.trim() !== 'Dupla') || 
 												celSeguinte.classList.contains('celula-bloqueada');
 
@@ -1255,6 +1461,7 @@ function abrirAgendamentoSaaS(dia, hora) {
 				const seguinteOcupada = celSeguinte ? (
 					celSeguinte.classList.contains('celula-ocupada') || 
 					celSeguinte.classList.contains('celula-aula') || 
+					celSeguinte.classList.contains('celula-manutencao') || 
 					(celSeguinte.classList.contains('celula-dupla') && celSeguinte.textContent.trim() !== 'Dupla') || 
 					celSeguinte.classList.contains('celula-bloqueada')
 				) : true;
@@ -1361,6 +1568,162 @@ function abrirAgendamentoSaaS(dia, hora) {
         abrirModalConfig('modal-agendamento');
 }
 
+
+// ====================================================================
+// 🎭 FUNÇÃO CAMALEÃO: ALTERNA OS CAMPOS BASEADO NO TIPO DE RESERVA
+// ====================================================================
+function alternarVisaoFormularioAgendamentoSaaS() {
+    const selectTipo = document.getElementById('saas-tipo-reserva');
+    if (!selectTipo) return;
+
+    const tipoEscolhido = selectTipo.value;
+
+    const linhaJogadores = document.getElementById('linha-jogadores-reserva');
+    const linhaAula = document.getElementById('linha-aula-professor');
+    const linhaManutencao = document.getElementById('linha-manutencao-responsavel');
+
+    // Reseta todos os campos para escondidos, para mostrar só o que importa
+    if (linhaJogadores) linhaJogadores.style.setProperty('display', 'none', 'important');
+    if (linhaAula) linhaAula.style.setProperty('display', 'none', 'important');
+    if (linhaManutencao) linhaManutencao.style.setProperty('display', 'none', 'important');
+
+    const isGestorOuAdmin = isGestorLogado || (function() {
+        try { return JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}')['Admin'] === true; } catch(e) { return false; }
+    })();
+
+    if (tipoEscolhido === 'jogo') {
+        // Modo Jogo: Mostra a seleção normal de Jogadores
+        if (linhaJogadores) linhaJogadores.style.setProperty('display', 'flex', 'important');
+        
+    } else if (tipoEscolhido === 'aula') {
+        // Modo Aula: Esconde jogadores, mostra a seleção do professor
+        if (linhaAula) linhaAula.style.setProperty('display', 'flex', 'important');
+        
+        const selProf = document.getElementById('saas-aula-professor');
+        if (selProf) {
+            if (isGestorOuAdmin) {
+                // Se for Admin/Gestor, povoa com a lista de todos os professores
+                selProf.disabled = false;
+                selProf.style.cursor = 'pointer';
+                selProf.style.opacity = '1';
+                selProf.innerHTML = '<option value="">Selecione o Professor...</option>';
+                
+                Object.keys(jogadoresGlobal || {}).forEach(id => {
+                    const j = jogadoresGlobal[id];
+                    if (j && j.ativo !== false && j.perfis && (j.perfis['Professor'] === true || j.perfis['Prof'] === true)) {
+                        const apelidoProf = j.apelido || j.nomeCompleto;
+                        selProf.innerHTML += `<option value="${apelidoProf}">${apelidoProf}</option>`;
+                    }
+                });
+            } else {
+                // Se for o próprio Professor logado, o nome dele trava na caixa
+                selProf.disabled = true;
+                selProf.style.cursor = 'not-allowed';
+                selProf.style.opacity = '0.8';
+                
+                const meuNome = localStorage.getItem('jogadorLogadoNome') || '';
+                const meuId = localStorage.getItem('jogadorLogadoId');
+                const meuApelido = (jogadoresGlobal && jogadoresGlobal[meuId] && jogadoresGlobal[meuId].apelido) ? jogadoresGlobal[meuId].apelido : meuNome;
+                
+                selProf.innerHTML = `<option value="${meuApelido}" selected>${meuApelido}</option>`;
+            }
+        }
+        
+    } else if (tipoEscolhido === 'manutencao') {
+        // Modo Manutenção: Exibe Responsável e Botão de Motivo
+        if (linhaManutencao) linhaManutencao.style.setProperty('display', 'flex', 'important');
+        
+        const selResp = document.getElementById('saas-manutencao-responsavel');
+        if (selResp) {
+            if (isGestorOuAdmin) {
+                // Se for Admin/Gestor, lista a equipe de manutenção
+                selResp.disabled = false;
+                selResp.style.cursor = 'pointer';
+                selResp.style.opacity = '1';
+                selResp.innerHTML = '<option value="">Selecione o Responsável...</option>';
+                
+                Object.keys(jogadoresGlobal || {}).forEach(id => {
+                    const j = jogadoresGlobal[id];
+                    if (j && j.ativo !== false && j.perfis && (j.perfis['Manutenção'] === true || j.perfis['Manut'] === true)) {
+                        const apelidoManu = j.apelido || j.nomeCompleto;
+                        selResp.innerHTML += `<option value="${apelidoManu}">${apelidoManu}</option>`;
+                    }
+                });
+            } else {
+                // Se for o próprio funcionário logado, o nome dele trava na caixa
+                selResp.disabled = true;
+                selResp.style.cursor = 'not-allowed';
+                selResp.style.opacity = '0.8';
+                
+                const meuNome = localStorage.getItem('jogadorLogadoNome') || '';
+                const meuId = localStorage.getItem('jogadorLogadoId');
+                const meuApelido = (jogadoresGlobal && jogadoresGlobal[meuId] && jogadoresGlobal[meuId].apelido) ? jogadoresGlobal[meuId].apelido : meuNome;
+                
+                selResp.innerHTML = `<option value="${meuApelido}" selected>${meuApelido}</option>`;
+                
+                // 🟢 LIBERA O BOTÃO DO MOTIVO AUTOMATICAMENTE AQUI:
+                alternarBotaoMotivoSaaS(meuApelido);
+            }
+        }
+    }
+}
+
+// ====================================================================
+// 🛠️ FUNÇÃO: ABRIR PROMPT DE MOTIVO DA MANUTENÇÃO
+// ====================================================================
+function abrirPromptMotivoManutencaoSaaS() {
+    const inputOculto = document.getElementById('saas-manutencao-motivo-hidden');
+    const valorAtual = inputOculto ? inputOculto.value : '';
+
+    const htmlPrompt = `
+        <div style="text-align: left; margin-top: 10px;">
+            <label style="font-size: 13px; font-weight: 700; color: #64748b;">Informe o motivo (Opcional):</label>
+            <input type="text" id="input-prompt-motivo" class="input-app" placeholder="Ex: Reparo de piso, Troca de rede..." value="${valorAtual}" style="margin-top: 6px; box-sizing: border-box;" autocomplete="off">
+        </div>
+    `;
+
+    showPrompt("Detalhes da Manutenção", htmlPrompt, () => {
+        const novoValor = document.getElementById('input-prompt-motivo').value.trim();
+        if (inputOculto) {
+            inputOculto.value = novoValor;
+        }
+        
+        // Dá um feedback visual no botão pintando ele de verde caso a pessoa tenha digitado algo
+        const btnMotivo = document.getElementById('btn-add-motivo-manutencao');
+        if (btnMotivo) {
+            if (novoValor !== '') {
+                btnMotivo.style.backgroundColor = '#dcfce7'; // Verde bem clarinho
+                btnMotivo.style.color = '#15803d';          // Verde escuro
+                btnMotivo.style.borderColor = '#86efac';
+            } else {
+                btnMotivo.style.backgroundColor = '#f1f5f9'; // Voltar ao original
+                btnMotivo.style.color = '#475569';
+                btnMotivo.style.borderColor = '#cbd5e1';
+            }
+        }
+    });
+}
+
+// ====================================================================
+// 🛠️ FUNÇÃO: LIBERA O BOTÃO DE MOTIVO APÓS SELECIONAR RESPONSÁVEL
+// ====================================================================
+function alternarBotaoMotivoSaaS(valorSelecionado) {
+    const btnMotivo = document.getElementById('btn-add-motivo-manutencao');
+    if (!btnMotivo) return;
+
+    if (valorSelecionado && valorSelecionado.trim() !== '') {
+        // Libera o botão
+        btnMotivo.style.opacity = '1';
+        btnMotivo.style.pointerEvents = 'auto';
+    } else {
+        // Bloqueia o botão e reseta a cor se a pessoa voltar para "Selecione..."
+        btnMotivo.style.opacity = '0.3';
+        btnMotivo.style.pointerEvents = 'none';
+        btnMotivo.style.backgroundColor = '#f1f5f9';
+        btnMotivo.style.color = '#475569';
+        btnMotivo.style.borderColor = '#cbd5e1';
+    }
+}
 
 /**
  * Formata o nome do Jogador 1 (Gestor) no padrão Title Case com iniciais no meio.
@@ -2219,8 +2582,18 @@ function validarConflitoHorarioAtletaSaaS(listaNomesCompletos, listaApelidos, pa
 // 🎼 MOTOR ORQUESTRADOR: O MAESTRO DE AGENDAMENTOS (Fase Refatorada)
 // ====================================================================
 
+// ====================================================================
+// 🎼 MOTOR ORQUESTRADOR: O MAESTRO DE AGENDAMENTOS (Fase Refatorada)
+// ====================================================================
+
 function validarEAgendarPartidaSaas() {
     if (navigator.vibrate) navigator.vibrate(40); 
+
+    // --- NOVO: Captura o Tipo de Agendamento ---
+    const elTipoContainer = document.getElementById('linha-tipo-reserva');
+    const elTipo = document.getElementById('saas-tipo-reserva');
+    const isTipoVisivel = elTipoContainer && elTipoContainer.style.display.includes('flex');
+    const tipoAgendamento = isTipoVisivel ? elTipo.value : 'jogo';
 
     // ----------------------------------------------------
     // 1. A COLETA (Montagem do Pacote de Dados da UI)
@@ -2230,9 +2603,8 @@ function validarEAgendarPartidaSaas() {
     const selectHora = document.getElementById('saas-hora') || document.getElementById('saas-hora-reserva');
     
     const valorDuracaoRaw = selectDuracao ? selectDuracao.value : "1";
-    const ehPartidaRanking = (valorDuracaoRaw === "ranking");
+    const ehPartidaRanking = (valorDuracaoRaw === "ranking" && tipoAgendamento === 'jogo');
     
-    // 🏆 Leitura dinâmica da duração do ranking
     const duracaoRankingConfig = (typeof configRegrasGlobal !== 'undefined' && 
                                   configRegrasGlobal && 
                                   configRegrasGlobal.ranking && 
@@ -2245,7 +2617,7 @@ function validarEAgendarPartidaSaas() {
     const pacote = {
         duracao: duracaoHoras,
         isRanking: ehPartidaRanking,
-        tipo: ehPartidaRanking ? "ranking" : "comum",
+        tipo: tipoAgendamento === 'jogo' ? (ehPartidaRanking ? "ranking" : "comum") : tipoAgendamento,
         dia: selectDia ? parseInt(selectDia.value) : 1,
         hora: selectHora ? parseInt(selectHora.value) : 6,
         quadraAlvo: "Quadra - 1",
@@ -2257,6 +2629,109 @@ function validarEAgendarPartidaSaas() {
         const match = quadraSelecionadaSaaS.match(/\d+/);
         pacote.quadraAlvo = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
     }
+
+    const linhaDatasTabela = document.getElementById('linha-datas-tabela');
+    if (linhaDatasTabela && linhaDatasTabela.children[pacote.dia - 1]) {
+        const dataTextoOriginal = linhaDatasTabela.children[pacote.dia - 1].textContent.trim();
+        const partesData = dataTextoOriginal.split('/');
+        if (partesData.length === 3) {
+            pacote.dataCompletaFormato = `${partesData[2]}-${partesData[1]}-${partesData[0]}`;
+        }
+    }
+
+    // ====================================================================
+    // 🚀 BIFURCAÇÃO EXPRESSA: AULA OU MANUTENÇÃO (Ignora quórum e monopólio)
+    // ====================================================================
+    if (tipoAgendamento === 'aula' || tipoAgendamento === 'manutencao') {
+        let organizadorEspecial = "";
+        let textoGrid = "";
+        let motivoOpcional = "";
+
+        if (tipoAgendamento === 'aula') {
+            const prof = document.getElementById('saas-aula-professor').value;
+            if (!prof || prof === "") { showToast("Selecione o Professor responsável.", "warning"); return; }
+            organizadorEspecial = prof;
+            textoGrid = "Aula";
+        } else {
+            const resp = document.getElementById('saas-manutencao-responsavel').value;
+            const mot = document.getElementById('saas-manutencao-motivo-hidden').value;
+            if (!resp || resp === "") { showToast("Selecione o Responsável pela manutenção.", "warning"); return; }
+            organizadorEspecial = resp;
+            textoGrid = "💦 Manutenção";
+            motivoOpcional = mot;
+        }
+
+        const btnSubmit = document.getElementById('btn-saas-confirmar-agendamento');
+        if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = "Agendando..."; }
+
+        const objetoEspecial = {
+            borda: `${pacote.duracao}h`,
+            status: "confirmada",
+            dataCompleta: pacote.dataCompletaFormato,
+            dia: pacote.dia,
+            hora: pacote.hora,
+            duracao: pacote.duracao,
+            isRanking: false,
+            tipo: pacote.tipo,
+            organizador: organizadorEspecial,
+            jogadores: textoGrid, 
+            jogadores_completo: textoGrid,
+            confirmacoes: { [organizadorEspecial]: true },
+            motivo: motivoOpcional 
+        };
+
+        const chaveLimpa = `${pacote.dia}_${pacote.hora}`;
+        const path1 = `${raizBanco}/reservas/${pacote.quadraAlvo}/${chaveLimpa}`;
+        const path2 = `${raizBanco}/reservas/${pacote.quadraAlvo}/${pacote.dia}_${pacote.hora + 1}`;
+        
+        let commitado1 = false;
+
+        database.ref(path1).transaction(curr => {
+            if (curr === null || curr.status === 'aula_cancelada') return objetoEspecial;
+            return;
+        })
+        .then(res1 => {
+            if (!res1.committed) throw new Error("COLISAO_1");
+            commitado1 = true;
+            if (pacote.duracao === 1) return true;
+
+            const obj2 = { ...objetoEspecial, hora: pacote.hora + 1 };
+            delete obj2.borda;
+            return database.ref(path2).transaction(curr2 => {
+                if (curr2 === null || curr2.status === 'aula_cancelada') return obj2;
+                return;
+            }).then(res2 => {
+                if (!res2.committed) throw new Error("COLISAO_2");
+                return true;
+            });
+        })
+        .then(() => {
+            showToast("Agendamento confirmado com sucesso!", "success");
+            if (typeof fecharModalConfig === 'function') fecharModalConfig('modal-agendamento');
+        })
+        .catch(async err => {
+            if (commitado1 && pacote.duracao === 2) {
+                await database.ref(path1).remove();
+            }
+            if (err.message && err.message.includes("COLISAO")) {
+                showToast("Ops! Este horário acabou de ser preenchido por outro utilizador.", "error");
+            } else {
+                showToast("Erro ao gravar no servidor. Tente novamente.", "error");
+            }
+        })
+        .finally(() => {
+            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = "Confirmar Agendamento"; }
+        });
+
+        return; // 🛑 ABORTA O FLUXO NORMAL (Para não exigir a validação do campo Jogadores)
+    }
+
+    // ====================================================================
+    // FLUXO PADRÃO (JOGOS E RANKING) - CONTINUA INTACTO
+    // ====================================================================
+    const celAlvo1 = document.getElementById(`cel-${pacote.hora}-${pacote.dia}`);
+    const celAlvo2 = (pacote.duracao === 2) ? document.getElementById(`cel-${pacote.hora + 1}-${pacote.dia}`) : null;
+    pacote.isDupla = (celAlvo1 && celAlvo1.classList.contains('celula-dupla')) || (celAlvo2 && celAlvo2.classList.contains('celula-dupla'));
 
     // ----------------------------------------------------
     // 🚨 TRAVA DE SEGURANÇA: VALIDAÇÃO DE CAMPOS ABERTOS / EMBRANCO
@@ -2288,19 +2763,6 @@ function validarEAgendarPartidaSaas() {
         }
         return;
     }
-
-    const linhaDatasTabela = document.getElementById('linha-datas-tabela');
-    if (linhaDatasTabela && linhaDatasTabela.children[pacote.dia - 1]) {
-        const dataTextoOriginal = linhaDatasTabela.children[pacote.dia - 1].textContent.trim();
-        const partesData = dataTextoOriginal.split('/');
-        if (partesData.length === 3) {
-            pacote.dataCompletaFormato = `${partesData[2]}-${partesData[1]}-${partesData[0]}`;
-        }
-    }
-
-    const celAlvo1 = document.getElementById(`cel-${pacote.hora}-${pacote.dia}`);
-    const celAlvo2 = (pacote.duracao === 2) ? document.getElementById(`cel-${pacote.hora + 1}-${pacote.dia}`) : null;
-    pacote.isDupla = (celAlvo1 && celAlvo1.classList.contains('celula-dupla')) || (celAlvo2 && celAlvo2.classList.contains('celula-dupla'));
 
     // ----------------------------------------------------
     // 1.5. ALFÂNDEGA DO QUÓRUM MÍNIMO (Barreira de Entrada)
@@ -2446,7 +2908,6 @@ function validarEAgendarPartidaSaas() {
             confirmacoes: objetoConfirmacoes            
         };
 
-        // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES, TAGS E CARIMBO MESTRE DE TEMPORADA
         // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES, TAGS E CARIMBO MESTRE DE TEMPORADA
         if (pacote.isRanking) {
             const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
@@ -3181,7 +3642,7 @@ function renderizarAgendaPessoalSaaS() {
             const listaParticipantes = (r.jogadores_completo || r.jogadores || '').split(',').map(s => s.trim()).filter(Boolean);
             const outrosParticipantes = listaParticipantes
                 .filter(nome => !norm(nome).includes(normNomeLogado))
-                .map(nome => capitalizarNome(buscarInfoJogador(nome).apelido));
+                .map(nome => capitalizarNome(buscarInfoJogador(nome).apelido)); 
 
             let textoParticipantes = "";
             if (ehRanking) {
@@ -3363,6 +3824,10 @@ function deslogarJogadorSaaS() {
 // 🎮 10. MOTOR CONTROLADOR: GAVETA HÍBRIDA DE AÇÕES E EXCLUSÃO (SaaS)
 // ====================================================================
 
+// ====================================================================
+// 🎮 10. MOTOR CONTROLADOR: GAVETA HÍBRIDA DE AÇÕES E EXCLUSÃO (SaaS)
+// ====================================================================
+
 function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
     const modal = document.getElementById('modal-acoes-reserva');
     const txtDetalhes = document.getElementById('txt-acoes-detalhes');
@@ -3372,16 +3837,61 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
 
     // 🛡️ PORTARIA DE SEGURANÇA: Avalia se o usuário ativo tem poder de alteração
     const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "";
+    const idLogado = localStorage.getItem('jogadorLogadoId') || "";
     let perfis = {};
     try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
     const ehAdmin = perfis['Admin'] === true;
 
     // SHIELD ANTI-SUTILEZAS: Normaliza as strings para evitar furos de espaços ou case-sensitive
     const organizadorReserva = (dadosReserva.organizador || "").trim().toUpperCase();
-    const usuarioAtivo = nomeLogado.trim().toUpperCase();
+    const usuarioAtivoNome = nomeLogado.trim().toUpperCase();
+    
+    // Busca o apelido do jogador logado para também comparar
+    let usuarioAtivoApelido = usuarioAtivoNome;
+    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) {
+        usuarioAtivoApelido = (jogadoresGlobal[idLogado].apelido || "").trim().toUpperCase();
+    }
 
-    // Só pode alterar se for estritamente o Gestor, Admin ou o próprio Organizador normalizado
-    const podeAlterar = (isGestorLogado === true) || (ehAdmin === true) || (organizadorReserva === usuarioAtivo);
+    // Só pode alterar se for Gestor, Admin ou o próprio Organizador (batendo por nome ou apelido)
+    const podeAlterar = (isGestorLogado === true) || (ehAdmin === true) || 
+                        (organizadorReserva === usuarioAtivoNome) || 
+                        (organizadorReserva === usuarioAtivoApelido);
+
+    // 🧠 MÓDULO INTELIGENTE: Detecta se é uma mesclagem de Aula/Manutenção para corrigir a duração
+    const ehAula = (dadosReserva.tipo === 'aula' || (dadosReserva.jogadores && dadosReserva.jogadores.toLowerCase() === 'aula'));
+    const ehManutencao = (dadosReserva.tipo === 'manutencao' || (dadosReserva.jogadores && dadosReserva.jogadores.includes('Manutenção')));
+    
+    let duracaoRealDaReserva = parseInt(dadosReserva.duracao) || 1;
+
+    // Se for Aula ou Manutenção, a "duração" não vem salva bonitinha como 1h ou 2h, então contamos quantos blocos iguais tem logo abaixo.
+    if (ehAula || ehManutencao) {
+        let quadraFoco = "Quadra - 1";
+        if (quadraSelecionadaSaaS) {
+            const match = quadraSelecionadaSaaS.match(/\d+/);
+            quadraFoco = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
+        }
+        const todasAsReservasDestaQuadra = reservasLocaisCache || {};
+        
+        let spansEncontrados = 1;
+        for (let proximaHora = hora + 1; proximaHora <= 23; proximaHora++) {
+            const rSeguinte = todasAsReservasDestaQuadra[`${dia}_${proximaHora}`];
+            if (!rSeguinte || rSeguinte.status === 'aula_cancelada') break;
+
+            const ehProximaAula = (rSeguinte.tipo === 'aula' || (rSeguinte.jogadores && rSeguinte.jogadores.toLowerCase() === 'aula'));
+            const ehProximaManut = (rSeguinte.tipo === 'manutencao' || (rSeguinte.jogadores && rSeguinte.jogadores.includes('Manutenção')));
+            
+            if (ehAula && ehProximaAula && rSeguinte.organizador === dadosReserva.organizador) {
+                spansEncontrados++;
+            } else if (ehManutencao && ehProximaManut && rSeguinte.organizador === dadosReserva.organizador) {
+                spansEncontrados++;
+            } else {
+                break;
+            }
+        }
+        duracaoRealDaReserva = spansEncontrados;
+        dadosReserva.duracao_calculada = duracaoRealDaReserva; // Injeta no objeto para a tela de detalhes poder usar depois!
+    }
+
 
     // 1. Vincula o botão "Ver Detalhes" (Liberado para TODOS)
     const btnVerDetalhes = document.getElementById('btn-saas-ver-detalhes');
@@ -3392,20 +3902,19 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
         };
     }
 
-    // 2. Vincula o botão "Editar Reserva" (Inteligente e Oculto no Ranking)
+    // 2. Vincula o botão "Editar Reserva" (Inteligente e Oculto no Ranking/Aulas/Manutenção)
     const btnEditar = document.getElementById('btn-saas-editar-reserva');
     const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
-    const duracaoReserva = parseInt(dadosReserva.duracao) || 1;
 
     if (btnEditar) {
-		if (ehRanking) {
-			// O setProperty com 'important' derruba o !important do .btn-universal
+		if (ehRanking || ehAula || ehManutencao) {
+			// Não se edita jogadores numa Aula, Manutenção ou partida de Ranking
 			btnEditar.style.setProperty('display', 'none', 'important');
 		} else {
 			btnEditar.style.setProperty('display', 'flex', 'important');
 			btnEditar.classList.remove('btn-edit-1h', 'btn-edit-2h');
 			
-			if (duracaoReserva === 2) {
+			if (duracaoRealDaReserva === 2) {
 				btnEditar.classList.add('btn-edit-2h');
 			} else {
 				btnEditar.classList.add('btn-edit-1h');
@@ -3421,6 +3930,16 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
         modal.classList.remove('saas-modo-leitura');
         if (btnExcluir) {
             btnExcluir.style.removeProperty('display');
+            
+            // Textos contextuais para o botão
+            if (ehAula) {
+                btnExcluir.textContent = "Cancelar Aula";
+            } else if (ehManutencao) {
+                btnExcluir.textContent = "Cancelar Manutenção";
+            } else {
+                btnExcluir.textContent = "Excluir Reserva";
+            }
+
             btnExcluir.onclick = () => {
                 fecharMenuAcoesReservaSaaS();
                 solicitarExclusaoReservaSaaS(dia, hora, dadosReserva); 
@@ -3437,9 +3956,11 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
     const diasSemana = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
     const nomeDia = diasSemana[dia] || "Dia";
     const horaFormatada = String(hora).padStart(2, '0') + ":00";
+    const horaFimFormatada = String(hora + duracaoRealDaReserva).padStart(2, '0') + ":00";
     
     if (txtDetalhes) {
-        txtDetalhes.textContent = `${quadraSelecionadaSaaS} • ${nomeDia} às ${horaFormatada}`;
+        // Exibe o intervalo exato (Ex: 15:00 - 18:00)
+        txtDetalhes.textContent = `${quadraSelecionadaSaaS} • ${nomeDia}, ${horaFormatada} - ${horaFimFormatada}`;
     }
 
     modal.style.display = 'flex';
@@ -3457,8 +3978,6 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
         configurarGatilhoSumulaRanking(dadosReserva);
     }
 }
-
-
 
 
 function fecharMenuAcoesReservaSaaS(event) {
@@ -3533,7 +4052,14 @@ function formatarNomeExibicaoDetalhes(nomeBruto) {
 function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
     if (!dadosReserva) return;
 
-    const duracao = parseInt(dadosReserva.duracao) || 1;
+    // 🧠 1. INTELIGÊNCIA DE MESCLAGEM E IDENTIDADE
+    const ehAula = (dadosReserva.tipo === 'aula' || (dadosReserva.jogadores && dadosReserva.jogadores.toLowerCase() === 'aula'));
+    const ehManutencao = (dadosReserva.tipo === 'manutencao' || (dadosReserva.jogadores && dadosReserva.jogadores.includes('Manutenção')));
+    const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
+
+    // Agora lê a duração calculada pelo motor de mesclagem (se existir) ou usa a padrão
+    const duracao = dadosReserva.duracao_calculada || parseInt(dadosReserva.duracao) || 1;
+    
     const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
     const nomeDia = diasSemana[dia] || "Dia";
 
@@ -3543,26 +4069,35 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         if (partes.length === 3) dataFormatada = `, ${partes[2]}/${partes[1]}`;
     }
 
+    // O cabeçalho agora respeita o fim real do bloco mesclado
     const hInicio = String(hora).padStart(2, '0') + ":00";
     const hFim = String(hora + duracao).padStart(2, '0') + ":00";
 
-    const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
-
-    // 1. Cabeçalho Reativo (1-hora vs 2-horas vs Ranking)
+    // 2. CABEÇALHO REATIVO (Cores e Ícones Específicos)
     const header = document.getElementById('detalhes-header');
     const icone = document.getElementById('detalhes-icone-horario');
     if (header) {
+        // Remove cores antigas e reseta os estilos inline para evitar conflitos
+        header.className = 'card-header-detalhes';
+        header.style.backgroundColor = ''; 
+
         if (ehRanking) {
-            header.className = 'card-header-detalhes header-ranking';
+            header.classList.add('header-ranking');
+        } else if (ehAula) {
+            // Injeta a cor salmão direto no cabeçalho para combinar com a tabela
+            header.style.backgroundColor = '#df7366'; 
+        } else if (ehManutencao) {
+            header.style.backgroundColor = '#64748b'; 
         } else {
-            header.className = `card-header-detalhes ${duracao === 2 ? 'header-2h' : 'header-1h'}`;
+            header.classList.add(duracao >= 2 ? 'header-2h' : 'header-1h');
         }
     }
+    
     if (icone) {
-        icone.textContent = ehRanking ? 'emoji_events' : (duracao === 2 ? 'schedule' : 'event');
+        icone.textContent = ehRanking ? 'emoji_events' : (ehAula ? 'school' : (ehManutencao ? 'build' : (duracao >= 2 ? 'schedule' : 'event')));
     }
 
-    // 2. Textos de Quadra e Horário
+    // Textos de Quadra e Horário
     document.getElementById('detalhes-txt-quadra').textContent = quadraSelecionadaSaaS || "Quadra";
     document.getElementById('detalhes-texto-data-hora').textContent = `${nomeDia}${dataFormatada} • ${hInicio} - ${hFim}`;
 
@@ -3574,11 +4109,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         // ================================================================
         // BIFURCAÇÃO MESTRE (RANKING): TABELA ATP DE RESULTADOS
         // ================================================================
-        
-        // 3. Bloco Organizador (Oculto no formato Ranking)
         if (orgBox) orgBox.style.display = 'none';
-
-        // 4. Lista de Jogadores (Substituída pela Tabela ATP)
         if (tituloJogadores) tituloJogadores.style.display = 'none';
         if (intervaloDetalhesSaaS) clearInterval(intervaloDetalhesSaaS);
 
@@ -3606,7 +4137,6 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const j1Exibicao = formatarNomeExibicaoDetalhes(j1Completo);
         const j2Exibicao = formatarNomeExibicaoDetalhes(j2Completo);
 
-        // 🏷️ CONFIGURAÇÕES DE RANKING
         const getPos = (nome, posCongelada) => {
             if (posCongelada) return posCongelada.replace('º', '').trim();
             return "";
@@ -3618,7 +4148,6 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const htmlPosJ1 = posJ1 ? `<span class="atp-pos">${posJ1}</span>` : '';
         const htmlPosJ2 = posJ2 ? `<span class="atp-pos">${posJ2}</span>` : '';
 
-        // 🏷️ LEITURA ESTRITA DO MODELO E FASE (SSOT PURA)
         const modeloReserva = (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo || "").toLowerCase();
         const mapaModelos = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
 
@@ -3651,7 +4180,6 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const isWO = !!dp && (dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O.")));
         const isRET = !!dp && (dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET")));
 
-        // 🚩 BIFURCAÇÃO W.O.
         if (isWO) {
             const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
             const vencedorOficial = norm(dp.vencedor || "");
@@ -3824,7 +4352,6 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                 `;
             }
         } else {
-            // Partida sem placar lançado (Aguardando Placar)
             htmlRanking += `
                 <table class="atp-table">
                     <thead>
@@ -3915,9 +4442,49 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
 
         containerJogadores.innerHTML = htmlRanking;
 
+    } else if (ehAula || ehManutencao) {
+        // ================================================================
+        // BIFURCAÇÃO ESPECIAL: AULA OU MANUTENÇÃO
+        // ================================================================
+        if (orgBox) orgBox.style.removeProperty('display');
+        if (tituloJogadores) tituloJogadores.style.removeProperty('display');
+        if (intervaloDetalhesSaaS) clearInterval(intervaloDetalhesSaaS);
+
+        const respNomeBruto = dadosReserva.organizador || "Responsável";
+        const respNomeFormatado = formatarNomeExibicaoDetalhes(respNomeBruto);
+
+        if (ehAula) {
+            document.getElementById('detalhes-txt-org-nome').textContent = respNomeFormatado;
+            document.getElementById('detalhes-txt-org-sub').textContent = "Professor Responsável";
+            
+            if (tituloJogadores) tituloJogadores.textContent = "FINALIDADE";
+            // ❌ REMOVIDO: O span class="txt-confirmed" que não fazia sentido para aulas
+            containerJogadores.innerHTML = `
+                <div class="player-row-detalhes">
+                    <span>🎓 Aula Excepcional / Avulsa</span>
+                </div>
+            `;
+        } else {
+            // Modo Manutenção
+            document.getElementById('detalhes-txt-org-nome').textContent = respNomeFormatado;
+            document.getElementById('detalhes-txt-org-sub').textContent = "Responsável pela Manutenção";
+
+            const motivoTexto = dadosReserva.motivo && dadosReserva.motivo.trim() !== '' 
+                ? dadosReserva.motivo 
+                : "Manutenção Geral e Reparos";
+
+            if (tituloJogadores) tituloJogadores.textContent = "MOTIVO DO BLOQUEIO";
+            containerJogadores.innerHTML = `
+                <div class="player-row-detalhes" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 0;">
+                    <span style="font-weight: 700; color: #1e293b;">💦 ${motivoTexto}</span>
+                    <span style="font-size: 12px; color: #64748b;">Quadra temporariamente indisponível para jogos</span>
+                </div>
+            `;
+        }
+
     } else {
         // ================================================================
-        // COMPORTAMENTO PADRÃO: RESERVAS COMUNS E AULAS
+        // COMPORTAMENTO PADRÃO: RESERVAS COMUNS
         // ================================================================
         
         if (orgBox) orgBox.style.removeProperty('display');
@@ -4048,37 +4615,84 @@ function iniciarRelogioDetalhesSaaS() {
 function solicitarExclusaoReservaSaaS(dia, hora, dadosReserva) {
     // 1. Recupera credenciais do atleta ativo na RAM e LocalStorage
     const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "";
+    const idLogado = localStorage.getItem('jogadorLogadoId') || "";
     let perfis = {};
     try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
     const ehAdmin = perfis['Admin'] === true;
 
+    // Busca o apelido do jogador logado
+    let apelidoLogado = nomeLogado.trim().toUpperCase();
+    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) {
+        apelidoLogado = (jogadoresGlobal[idLogado].apelido || "").trim().toUpperCase();
+    }
+
+    const organizadorReserva = (dadosReserva.organizador || "").trim().toUpperCase();
+    const usuarioAtivoNome = nomeLogado.trim().toUpperCase();
+
     // 2. Validação SSOT: Apenas gestores, administradores ou o próprio organizador podem excluir
-    const podeExcluir = isGestorLogado || ehAdmin || (dadosReserva.organizador === nomeLogado);
+    const podeExcluir = (isGestorLogado === true) || (ehAdmin === true) || 
+                        (organizadorReserva === usuarioAtivoNome) || 
+                        (organizadorReserva === apelidoLogado);
+
+    const ehAula = (dadosReserva.tipo === 'aula' || (dadosReserva.jogadores && dadosReserva.jogadores.toLowerCase() === 'aula'));
+    const ehManutencao = (dadosReserva.tipo === 'manutencao' || (dadosReserva.jogadores && dadosReserva.jogadores.includes('Manutenção')));
+
     if (!podeExcluir) {
-        showToast("Apenas o organizador da reserva ou um administrador pode excluir este agendamento.", "error");
+        if (ehAula) {
+            showToast("Apenas o Professor responsável ou um administrador pode cancelar esta aula.", "error");
+        } else if (ehManutencao) {
+            showToast("Apenas o responsável ou um administrador pode cancelar esta manutenção.", "error");
+        } else {
+            showToast("Apenas o organizador da reserva ou um administrador pode excluir este agendamento.", "error");
+        }
         return;
     }
 
-    // 3. Quebra a string de jogadores cadastrados em um array limpo[cite: 8]
+    // 3. Quebra a string de jogadores cadastrados em um array limpo
     const stringJogadores = dadosReserva.jogadores_completo || dadosReserva.jogadores || "";
-    const listaJogadores = stringJogadores.split(',').map(nome => nome.trim()).filter(nome => nome.length > 0);
+    let listaJogadores = stringJogadores.split(',').map(nome => nome.trim()).filter(nome => nome.length > 0);
+
+    // Ajuste semântico: Se for Aula ou Manutenção, a lista mostra apenas a finalidade
+    if (ehAula) {
+        listaJogadores = ["Aula Excepcional / Avulsa"];
+    } else if (ehManutencao) {
+        listaJogadores = ["Bloqueio de Manutenção"];
+    }
 
     // 4. Constrói as linhas contendo os nomes dos atletas em Title Case (Iniciais Maiúsculas)
     let listHtml = "";
     listaJogadores.forEach(jogador => {
-        // Converte o nome inteiro para minúsculas e capitaliza a primeira letra de cada palavra
-        const nomeFormatado = jogador.toLowerCase().split(/\s+/).map(palavra => {
-            // Mantém preposições comuns de nomes em letras minúsculas para um visual profissional
-            if (['da', 'de', 'do', 'dos', 'das'].includes(palavra)) {
-                return palavra;
-            }
-            return palavra.charAt(0).toUpperCase() + palavra.slice(1);
-        }).join(' ');
+        let nomeFormatado = jogador;
+        if (!ehAula && !ehManutencao) {
+            nomeFormatado = jogador.toLowerCase().split(/\s+/).map(palavra => {
+                if (['da', 'de', 'do', 'dos', 'das'].includes(palavra)) {
+                    return palavra;
+                }
+                return palavra.charAt(0).toUpperCase() + palavra.slice(1);
+            }).join(' ');
+        }
 
         listHtml += `<li class="prompt-saas-item"><span class="prompt-saas-bullet">•</span> ${nomeFormatado}</li>`;
     });
 
-    // 5. Montagem do esqueleto semântico reduzido ao essencial[cite: 8]
+    // 🧠 MÓDULO INTELIGENTE: Lê a duração exata gerada e adiciona a linha de horário
+    const duracao = dadosReserva.duracao_calculada || parseInt(dadosReserva.duracao) || 1;
+    const horaFormatada = String(hora).padStart(2, '0') + ":00";
+    const horaFimFormatada = String(hora + duracao).padStart(2, '0') + ":00";
+    
+    if (ehAula || ehManutencao) {
+        listHtml += `<li class="prompt-saas-item"><span class="prompt-saas-bullet">•</span> Horário: ${horaFormatada} às ${horaFimFormatada}</li>`;
+    }
+
+    let txtPergunta = "Você tem certeza que deseja excluir esta reserva?";
+    if (ehAula) {
+        txtPergunta = duracao > 1 ? "Você tem certeza que deseja cancelar esse range de aulas?" : "Você tem certeza que deseja cancelar esta aula?";
+    }
+    if (ehManutencao) {
+        txtPergunta = duracao > 1 ? "Você tem certeza que deseja cancelar essa manutenção estendida?" : "Você tem certeza que deseja cancelar esta manutenção?";
+    }
+
+    // 5. Montagem do esqueleto semântico reduzido ao essencial
     const promptBodyHTML = `
         <div class="prompt-saas-container">
             <fieldset class="prompt-saas-fieldset">
@@ -4088,7 +4702,7 @@ function solicitarExclusaoReservaSaaS(dia, hora, dadosReserva) {
                 </ul>
             </fieldset>
 
-            <p class="prompt-saas-warning">Você tem certeza que deseja excluir esta reserva?</p>
+            <p class="prompt-saas-warning">${txtPergunta}</p>
         </div>
     `;
 
@@ -4097,24 +4711,21 @@ function solicitarExclusaoReservaSaaS(dia, hora, dadosReserva) {
         "Confirmação",
         promptBodyHTML,
         () => {
-            const duracao = parseInt(dadosReserva.duracao) || 1;
+            const duracaoCalculada = dadosReserva.duracao_calculada || parseInt(dadosReserva.duracao) || 1;
             const listaDeSlots = [];
 
-            // Adiciona a primeira hora (mestre) no lote
-            listaDeSlots.push({ dia: dia, hora: hora });
-
-            // Se for um bloco unificado de 2 horas, injeta a segunda hora na esteira
-            if (duracao === 2) {
-                listaDeSlots.push({ dia: dia, hora: hora + 1 });
+            for (let i = 0; i < duracaoCalculada; i++) {
+                listaDeSlots.push({ dia: dia, hora: hora + i });
             }
 
-            // Despacha o lote completo para o novo pipeline de dados
-            executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, "Excluído via Painel pelo Usuário");
+            let motivoAcao = "Excluído via Painel pelo Usuário";
+            if (ehAula) motivoAcao = "Aula cancelada pelo Professor";
+            if (ehManutencao) motivoAcao = "Manutenção cancelada pela Equipe";
+
+            executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivoAcao);
         }
     );
 }
-
-
 
 
 /**
@@ -5171,4 +5782,4 @@ function avaliarGavetaVaziaSaaS() {
         const qtd = container.children.length;
         titulo.textContent = qtd === 1 ? '1 Convite Pendente' : `${qtd} Convites Pendentes`;
     }
-}
+} 

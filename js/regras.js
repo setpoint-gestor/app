@@ -1342,6 +1342,11 @@ function toggleGavetaFaseInicialRankingSaaS() {
  * Alterna abrir/fechar a gaveta do Critério de Desempate
  */
 function toggleGavetaDesempateSaaS() {
+    // 🟢 TRAVA DE SEGURANÇA: Bloqueia a abertura se houver torneio ativo
+    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+    if (faseAtual > 1) return;
+
     const cardBox = document.getElementById('box-criterio-desempate');
     if (cardBox) cardBox.classList.toggle('aberto');
 }
@@ -1535,7 +1540,7 @@ function salvarConfigRankingSaas() {
 	database.ref(`${raizBanco}/config/ranking`).update(payloadRanking)  
         .then(() => {
             showToast("Parâmetros do Ranking salvos com sucesso!", "success");
-            fecharModalConfig('modal-config-ranking');
+            //fecharModalConfig('modal-config-ranking');
         })
         .catch(err => {
             console.error("Erro ao salvar regras do ranking:", err);
@@ -1844,6 +1849,7 @@ function aplicarTravaParametrosCongeladosSaaS(confRanking) {
         'select-ranking-grupos-fase-inicial', 
         'select-ranking-grupos-tamanho',
         'select-ranking-grupos-classificados', 
+		'box-criterio-desempate',
         'sel-desempate-games',
         'sel-desempate-confronto',
         'sel-desempate-sorteio',
