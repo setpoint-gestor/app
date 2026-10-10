@@ -1590,31 +1590,41 @@
 	
 	
 	<div id="modal-agendamento" class="modal-form-overlay">
-        <div class="modal-form-content">
+		<div class="modal-form-content">
 
-            <div class="saas-header">
-                <h3>Novo Agendamento</h3>
-                <button class="btn-voltar-saas" onclick="fecharModalConfig('modal-agendamento')" title="Voltar">
-                    <span class="material-icons">arrow_back</span>
-                </button>
-            </div>
+			<div class="saas-header">
+				<h3>Novo Agendamento</h3>
+				<button class="btn-voltar-saas" onclick="fecharModalConfig('modal-agendamento')" title="Voltar">
+					<span class="material-icons">arrow_back</span>
+				</button>
+			</div>
 
-            <div class="saas-body">
-                <form id="form-SaaS-reserva" onsubmit="event.preventDefault();">
+			<div class="saas-body">
+				<form id="form-SaaS-reserva" onsubmit="event.preventDefault();">
 
-                    <div class="saas-row">
-                        <label for="saas-quadra">Quadra:</label>
-                        <select id="saas-quadra" class="saas-field" onchange="atualizarHorariosDisponiveisSaaS()">
-                        </select>
-                    </div>
+					<div class="saas-row">
+						<label for="saas-quadra">Quadra:</label>
+						<select id="saas-quadra" class="saas-field" onchange="atualizarHorariosDisponiveisSaaS()">
+						</select>
+					</div>
 
-                    <div class="saas-row">
-                        <label for="saas-dia">Dia:</label>
-                        <select id="saas-dia" class="saas-field" onchange="atualizarHorariosDisponiveisSaaS()">
-                        </select>
-                    </div>
+					<div class="saas-row">
+						<label for="saas-dia">Dia:</label>
+						<select id="saas-dia" class="saas-field" onchange="atualizarHorariosDisponiveisSaaS()">
+						</select>
+					</div>
+					
+					<!-- 🛠️ NOVO CAMPO: TIPO DE RESERVA (Escondido por padrão) -->
+					<div class="saas-row" id="linha-tipo-reserva" style="display: none !important;">
+						<label for="saas-tipo-reserva" class="label-tipo-destaque">
+                            <i class="material-icons">stars</i> Tipo:
+                        </label>
+						<select id="saas-tipo-reserva" class="saas-field campo-tipo-destaque" onchange="alternarVisaoFormularioAgendamentoSaaS()">
+							<!-- Opções Injetadas Dinamicamente via Javascript -->
+						</select>
+					</div>
 
-                    <div class="saas-row">
+					<div class="saas-row">
 						<label for="saas-duracao">Duração:</label>
 						<select id="saas-duracao" class="saas-field" onchange="atualizarHorariosDisponiveisSaaS()">
 							<option value="1">1 hora</option>
@@ -1623,36 +1633,62 @@
 						</select>
 					</div>
 
-                    <div class="saas-row">
-                        <label for="saas-hora">Horários:</label>
-                        <select id="saas-hora" class="saas-field">
-                        </select>
-                    </div>
+					<div class="saas-row"> 
+						<label for="saas-hora">Horários:</label>
+						<select id="saas-hora" class="saas-field">
+						</select>
+					</div>
 
-                    <hr style="border: 0; border-top: 1px dashed #cbd5e1; margin: 15px 0 10px 0; width: 100%;">
+					<hr style="border: 0; border-top: 1px dashed #cbd5e1; margin: 15px 0 10px 0; width: 100%;">
 
-                    <div class="saas-row">
-                        <label>Jogadores:</label>
-                        
-                        <div class="bloco-jogadores-saas" id="jogadoresContainerSaaS" style="border:none; background:transparent; padding:0; height:auto; flex:1;">
-
-                            <div class="saas-row" style="margin:0; width:100%;">
+					<!-- 👥 CAMPO JOGADORES (Padrão - Nasce Visível) -->
+					<div class="saas-row" id="linha-jogadores-reserva">
+						<label>Jogadores:</label>
+						
+						<div class="bloco-jogadores-saas" id="jogadoresContainerSaaS" style="border:none; background:transparent; padding:0; height:auto; flex:1;">
+							<div style="display: flex; align-items: center; width: 100%; gap: 10px;">
 								<select id="saas-jogador1" class="saas-field" disabled style="background-color: #e2e8f0 !important; cursor: not-allowed; opacity: 0.8;">
 								</select>
 								<span class="add-atleta" id="btn-add-atleta-SaaS" onclick="adicionarJogadorSaaS()">+</span>
 							</div>
+						</div>
+					</div> 
+					
+					<!-- 🎓 CAMPO AULA (Escondido por padrão) -->
+					<div class="saas-row" id="linha-aula-professor" style="display: none !important;">
+						<label for="saas-aula-professor">Professor:</label>
+						<div style="display: flex; align-items: center; width: 100%; gap: 10px;">
+							<select id="saas-aula-professor" class="saas-field" style="flex: 1; margin: 0;">
+								<option value="">Selecione o Professor...</option>
+							</select>
+						</div>
+					</div>
 
-                        </div>
-                    </div> 
+					<!-- 🛠️ CAMPO DE MANUTENÇÃO (Escondido por padrão) -->
+					<div class="saas-row" id="linha-manutencao-responsavel" style="display: none !important;">
+						<label for="saas-manutencao-responsavel">Responsável:</label>
+						<div style="display: flex; align-items: center; width: 100%; gap: 10px;">
+							<!-- O onchange avisa o JS para liberar o botão -->
+							<select id="saas-manutencao-responsavel" class="saas-field" style="flex: 1; margin: 0;" onchange="alternarBotaoMotivoSaaS(this.value)">
+								<option value="">Selecione o Responsável...</option>
+							</select>
+							<!-- Nasce com opacity 0.3 e pointer-events none -->
+							<span class="add-atleta" id="btn-add-motivo-manutencao" onclick="abrirPromptMotivoManutencaoSaaS()" title="Adicionar Motivo (Opcional)" style="margin: 0; display: flex; justify-content: center; align-items: center; opacity: 0.3; pointer-events: none; background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
+								<i class="material-icons" style="font-size: 20px;">edit_note</i>
+							</span>
+						</div>
+						<!-- 🧠 Variável fantasma para armazenar o texto digitado -->
+						<input type="hidden" id="saas-manutencao-motivo-hidden" value="">
+					</div>
 
-                    <button id="btn-saas-confirmar-agendamento" type="button" class="saas-btn-submit" onclick="validarEAgendarPartidaSaas()">
-                        Confirmar Agendamento 
-                    </button>
+					<button id="btn-saas-confirmar-agendamento" type="button" class="saas-btn-submit" onclick="validarEAgendarPartidaSaas()">
+						Confirmar Agendamento 
+					</button>
 
-                </form>
-            </div>
-        </div>
-    </div>
+				</form>
+			</div>
+		</div>
+	</div>
 	
 	<!-- ======================================================== -->
 	<!-- 🎯 NOVO COMPONENTE: GAVETA/MODAL DE AÇÕES DA RESERVA     -->
@@ -2843,7 +2879,7 @@
 											Regras de Acúmulo, Descarte & Validade
 										</div>
 										
-										<div class="config-grid-2" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+										<div class="config-grid-2" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;"> 
 											
 											<!-- DESCARTE -->
 											<div class="config-field" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
