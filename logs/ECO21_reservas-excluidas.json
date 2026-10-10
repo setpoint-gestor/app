@@ -4015,5 +4015,38 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": false,
+      "Alexandre Voj": true
+    },
+    "data": "11-10-2026",
+    "dataLocal": "10/10/2026, 09:34:27",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Alexandre Voj, Alex",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALEX SOUZA",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "sistema",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 6,
+        "quadra": "Quadra - 2"
+      },
+      {
+        "dia": 7,
+        "hora": 7,
+        "quadra": "Quadra - 2"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-10T12:34:27.900Z"
   }
 ]
