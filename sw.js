@@ -8,7 +8,9 @@ const urlsToCache = [
   './css/global.css?v=4',
   './css/cadastro.css?v=4',
   './css/quadras.css?v=4',
-  './css/planilha.css?v=4',
+  './js/planilha-core.js?v=4',
+  './js/planilha-agendamento.js?v=4',
+  './js/planilha-acoes.js?v=4',
   './css/config.css?v=4',
   './css/regras.css?v=4',
   './css/logs.css?v=4',
@@ -25,6 +27,7 @@ const urlsToCache = [
   './js/ranking-torneio.js?v=4',
   './js/ranking-ui-pdf.js?v=4',
   './js/piramide.js?v=4',
+  './js/grupos.js?v=4',
   './js/sorteio-potes.js?v=4'
 ];
 
