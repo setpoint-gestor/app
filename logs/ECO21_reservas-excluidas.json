@@ -4510,5 +4510,34 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-11T17:04:14.275Z",
+    "dataLocal": "11/10/2026, 14:04:14",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "confirmacoes": {
+      "ALEXANDRE VOJCIECHOVSKI": true,
+      "Adriano Feitosa": false,
+      "Alex": false
+    },
+    "jogadores": "ALEXANDRE VOJCIECHOVSKI, Adriano Feitosa, Alex",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ADRIANO GOMES FEITOSA, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 6
+      }
+    ]
   }
 ]
