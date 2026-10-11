@@ -4844,5 +4844,34 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-11T17:26:20.101Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-11T18:01:06.621Z",
+    "dataLocal": "11/10/2026, 15:01:06",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Alice Duck": false,
+      "Ana Julia": true
+    },
+    "jogadores": "Alexandre Voj, Alice Duck, Ana Julia",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALICE DUCK, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 2,
+        "hora": 6
+      }
+    ]
   }
 ]
