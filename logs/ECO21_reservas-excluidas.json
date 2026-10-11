@@ -5057,5 +5057,37 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Alexandre Voj": true,
+      "Alice Pereira": false
+    },
+    "data": "12-10-2026",
+    "dataLocal": "11/10/2026, 16:03:18",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Alexandre Voj, Alice Pereira, Alexandre Camargo",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALICE ALMEIDA PEREIRA, ALEXANDRE CAMARGO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 6
+      },
+      {
+        "dia": 1,
+        "hora": 7
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-11T19:03:18.120Z"
   }
 ]
