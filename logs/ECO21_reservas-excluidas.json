@@ -4997,5 +4997,36 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-11T19:01:17.776Z",
+    "dataLocal": "11/10/2026, 16:01:17",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Alexandre Voj, Alice Pereira",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 6
+      },
+      {
+        "dia": 2,
+        "hora": 7
+      }
+    ]
   }
 ]
