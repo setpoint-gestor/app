@@ -5028,5 +5028,34 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-11T19:02:28.221Z",
+    "dataLocal": "11/10/2026, 16:02:28",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "12-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Alice Pereira": false,
+      "Alexandre Camargo": true
+    },
+    "jogadores": "Alexandre Voj, Alice Pereira, Alexandre Camargo",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALICE ALMEIDA PEREIRA, ALEXANDRE CAMARGO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 1,
+        "hora": 6
+      }
+    ]
   }
 ]
