@@ -4726,5 +4726,64 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Alice Duck": false,
+      "Ana Julia": false
+    },
+    "data": "13-10-2026",
+    "dataLocal": "11/10/2026, 14:26:02",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Alexandre Voj, Alice Duck, Ana Julia",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALICE DUCK, ANA JULIA MARTINS",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 6,
+        "quadra": "Quadra - 2"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-11T17:26:02.397Z"
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": false,
+      "Alexandre Voj": true,
+      "Alice Duck": false,
+      "Ana Julia": false
+    },
+    "data": "13-10-2026",
+    "dataLocal": "11/10/2026, 14:26:20",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Alexandre Voj, Alice Duck, Ana Julia, Adriano Feitosa",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALICE DUCK, ANA JULIA MARTINS, ADRIANO GOMES FEITOSA",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 2 - Aberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 6,
+        "quadra": "Quadra - 2"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-11T17:26:20.101Z"
   }
 ]
