@@ -5678,5 +5678,32 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-12T17:52:25.827Z"
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Voj": true
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 14:54:51",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Alexandre Voj",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 6,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-12T17:54:51.568Z"
   }
 ]
