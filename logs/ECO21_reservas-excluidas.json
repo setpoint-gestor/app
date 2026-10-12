@@ -5395,5 +5395,38 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": false,
+      "Alexandre Voj": true
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 14:35:42",
+    "duracao": "2 Horas",
+    "horario": "07:00 - 09:00",
+    "jogadores": "Alexandre Voj, Alex",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALEX SOUZA",
+    "motivo": "A edição da reserva diminuiu os participantes e o total ficou inferior ao quórum exigido (2 jogadores).",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 7,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 2,
+        "hora": 8,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-12T17:35:42.290Z"
   }
 ]
