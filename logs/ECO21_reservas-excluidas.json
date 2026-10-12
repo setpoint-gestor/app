@@ -5527,5 +5527,33 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-12T17:50:18.487Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-12T17:52:13.733Z",
+    "dataLocal": "12/10/2026, 14:52:13",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Murray": false
+    },
+    "jogadores": "Alexandre Voj, Murray",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ANDY MURRAY",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 7
+      }
+    ]
   }
 ]
