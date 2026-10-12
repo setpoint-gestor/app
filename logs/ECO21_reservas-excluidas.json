@@ -6032,5 +6032,34 @@
     "jogadores": "Alexandre Voj",
     "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-12T22:19:44.466Z",
+    "dataLocal": "12/10/2026, 19:19:44",
+    "autor": "ALEX SOUZA",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "09:00 - 10:00",
+    "duracao": "1 Hora",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Ana Julia": false,
+      "An Alice": false
+    },
+    "jogadores": "Alex, Ana Julia, An Alice",
+    "jogadores_completo": "ALEX SOUZA, ANA JULIA MARTINS, ANA LICE DOURADO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 2,
+        "hora": 9
+      }
+    ]
   }
 ]
