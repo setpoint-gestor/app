@@ -5555,5 +5555,128 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Alice Duck": false,
+      "Ana Francisca": false,
+      "Murray": false
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 14:51:32",
+    "duracao": "2 Horas",
+    "horario": "07:00 - 09:00",
+    "jogadores": "Alexandre Voj, Alice Duck, Ana Francisca, Murray",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALICE DUCK, ANA FRANCISCA SANTOS, ANDY MURRAY",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 7,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-12T17:51:32.709Z"
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Alice Duck": false,
+      "Murray": false
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 14:51:58",
+    "duracao": "2 Horas",
+    "horario": "07:00 - 09:00",
+    "jogadores": "Alexandre Voj, Alice Duck, Murray",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALICE DUCK, ANDY MURRAY",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 7,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-12T17:51:58.707Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Murray": false
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 14:52:19",
+    "duracao": "2 Horas",
+    "horario": "07:00 - 09:00",
+    "jogadores": "Alexandre Voj, Murray",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ANDY MURRAY",
+    "motivo": "A edição da reserva diminuiu os participantes e o total ficou inferior ao quórum exigido (2 jogadores).",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 7,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 2,
+        "hora": 8,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-12T17:52:19.726Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": false,
+      "Alexandre Voj": true
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 14:52:25",
+    "duracao": "2 Horas",
+    "horario": "09:00 - 11:00",
+    "jogadores": "Alexandre Voj, Adriano Feitosa",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ADRIANO GOMES FEITOSA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 9
+      },
+      {
+        "dia": 2,
+        "hora": 10
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-12T17:52:25.827Z"
   }
 ]
