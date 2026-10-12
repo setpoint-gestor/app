@@ -5976,5 +5976,40 @@
         "hora": 18
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-12T18:41:23.693Z",
+    "dataLocal": "12/10/2026, 15:41:23",
+    "autor": "ALEX SOUZA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "A edição da reserva diminuiu os participantes e o total ficou inferior ao quórum exigido (4 jogadores).",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "17:00 - 19:00",
+    "duracao": "2 Horas",
+    "data": "12-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true,
+      "Ana Julia": true,
+      "Murray": true
+    },
+    "jogadores": "Alex, Alice Pereira, Ana Julia, Murray",
+    "jogadores_completo": "ALEX SOUZA, ALICE ALMEIDA PEREIRA, ANA JULIA MARTINS, ANDY MURRAY",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 1,
+        "hora": 17
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 1,
+        "hora": 18
+      }
+    ]
   }
 ]
