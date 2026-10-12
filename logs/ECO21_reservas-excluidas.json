@@ -5760,5 +5760,33 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alessandro Xavier": false
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 14:57:43",
+    "duracao": "1 Hora",
+    "horario": "09:00 - 10:00",
+    "jogadores": "Adriano Feitosa, Alessandro Xavier",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALESSANDRO ROMERO XAVIER",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 9,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-12T17:57:43.251Z"
   }
 ]
