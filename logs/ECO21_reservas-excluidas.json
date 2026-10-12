@@ -5733,5 +5733,32 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-12T17:55:56.198Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-12T17:58:05.500Z",
+    "dataLocal": "12/10/2026, 14:58:05",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "09:00 - 10:00",
+    "duracao": "1 Hora",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "jogadores": "Adriano Feitosa",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 9
+      }
+    ]
   }
 ]
