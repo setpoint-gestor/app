@@ -6061,5 +6061,34 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-12T22:21:03.580Z",
+    "dataLocal": "12/10/2026, 19:21:03",
+    "autor": "ALEX SOUZA",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Ana Julia": false,
+      "Adriano Feitosa": false
+    },
+    "jogadores": "Alex, Ana Julia, Adriano Feitosa",
+    "jogadores_completo": "ALEX SOUZA, ANA JULIA MARTINS, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 2,
+        "hora": 10
+      }
+    ]
   }
 ]
