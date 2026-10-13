@@ -6533,5 +6533,38 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-13T01:49:49.907Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-13T01:56:01.747Z",
+    "dataLocal": "12/10/2026, 22:56:01",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "21:00 - 23:00",
+    "duracao": "2 Horas",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "confirmacoes": {
+      "Alice Pereira": false,
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Ana Maria Marinho, Alice Pereira",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 21
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 22
+      }
+    ]
   }
 ]
