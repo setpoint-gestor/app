@@ -7024,5 +7024,34 @@
         "hora": 14
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "Administração (Gestor)",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alex": false,
+      "Alexandre Camargo": false,
+      "Alexandre Voj": false
+    },
+    "data": "14-10-2026",
+    "dataLocal": "13/10/2026, 14:32:53",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Adriano Feitosa, Alex, Alexandre Camargo, Alexandre Voj",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEX SOUZA, ALEXANDRE CAMARGO, ALEXANDRE VOJCIECHOVSKI",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 6
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-13T17:32:53.655Z"
   }
 ]
