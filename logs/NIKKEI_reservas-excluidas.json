@@ -233,5 +233,36 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-13T20:35:07.971Z",
+    "dataLocal": "13/10/2026, 17:35:07",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "15-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Rafa": false,
+      "Taborda": false
+    },
+    "jogadores": "Taborda, Rafa",
+    "jogadores_completo": "RONALDO TABORDA, RAFAEL MARTINS",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 7
+      },
+      {
+        "dia": 4,
+        "hora": 8
+      }
+    ]
   }
 ]
