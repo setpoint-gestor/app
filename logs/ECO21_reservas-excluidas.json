@@ -6301,5 +6301,35 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-13T01:01:29.314Z"
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ANA MARIA MARINHO GOMES",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": false,
+      "Alice Pereira": false,
+      "Ana Julia": false,
+      "Ana Maria Marinho": true
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 22:01:29",
+    "duracao": "2 Horas",
+    "horario": "21:00 - 23:00",
+    "jogadores": "Ana Maria Marinho, Alice Pereira, Alex, Ana Julia",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALICE ALMEIDA PEREIRA, ALEX SOUZA, ANA JULIA MARTINS",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 21,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-13T01:01:29.314Z"
   }
 ]
