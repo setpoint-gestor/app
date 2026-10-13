@@ -83,23 +83,48 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
         };
     }
 
-    // 2. Vincula o botão "Editar Reserva" (Inteligente e Oculto no Ranking/Aulas/Manutenção)
+    // 2. Vincula o botão "Editar Reserva" (Inteligente e Oculto no Passado/Ranking/Aulas/Manutenção/Sem Permissão)
     const btnEditar = document.getElementById('btn-saas-editar-reserva');
     const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
 
+    // MÁGICA TEMPORAL: Calcula se a partida já encerrou (Hora do Fim < Agora)
+    let isPassado = false;
+    if (dadosReserva.dataCompleta) {
+        const partesData = dadosReserva.dataCompleta.split('-');
+        if (partesData.length === 3) {
+            const dataFimPartida = new Date(parseInt(partesData[0]), parseInt(partesData[1]) - 1, parseInt(partesData[2]), hora + duracaoRealDaReserva, 0, 0, 0);
+            if (dataFimPartida.getTime() < Date.now()) {
+                isPassado = true;
+            }
+        }
+    }
+
+    // TRAVA DE REGRA DE NEGÓCIO: Avalia o "Edição pelo Organizador" das configurações
+    const permiteEdicaoOrg = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.OrganizadorEdicao !== false);
+    const isOProprioOrganizador = (organizadorReserva === usuarioAtivoNome) || (organizadorReserva === usuarioAtivoApelido);
+    
+    // Pode editar: Gestor, Admin, ou o próprio organizador (se a regra do clube permitir)
+    const temPermissaoDeEdicao = (isGestorLogado === true) || (ehAdmin === true) || (isOProprioOrganizador && permiteEdicaoOrg);
+
     if (btnEditar) {
-		if (ehRanking || ehAula || ehManutencao) {
-			// Não se edita jogadores numa Aula, Manutenção ou partida de Ranking
+		if (ehRanking || ehAula || ehManutencao || isPassado || !temPermissaoDeEdicao) {
+			// Não se edita no passado, sem permissão, numa Aula, Manutenção ou partida de Ranking
 			btnEditar.style.setProperty('display', 'none', 'important');
 		} else {
 			btnEditar.style.setProperty('display', 'flex', 'important');
 			btnEditar.classList.remove('btn-edit-1h', 'btn-edit-2h');
 			
-			if (duracaoRealDaReserva === 2) {
+			if (duracaoRealDaReserva >= 2) {
 				btnEditar.classList.add('btn-edit-2h');
 			} else {
 				btnEditar.classList.add('btn-edit-1h');
 			}
+            
+            // ATUALIZAÇÃO: Adiciona o evento de clique para abrir a edição
+            btnEditar.onclick = () => {
+                fecharMenuAcoesReservaSaaS();
+                abrirModalEdicaoSaaS(dia, hora, dadosReserva);
+            };
 		}
 	}
 
@@ -854,12 +879,61 @@ function solicitarExclusaoReservaSaaS(dia, hora, dadosReserva) {
             if (ehAula) motivoAcao = "Aula cancelada pelo Professor";
             if (ehManutencao) motivoAcao = "Manutenção cancelada pela Equipe";
 
+            // 🛑 GATILHO DE NOTIFICAÇÃO: Notifica apenas os convidados CONFIRMADOS no cancelamento total
+            if (!ehAula && !ehManutencao && typeof jogadoresGlobal !== 'undefined') {
+                const anoAtual = new Date().getFullYear();
+                const strMes = String(new Date().getMonth() + 1).padStart(2, '0');
+                const dataS = dadosReserva.dataCompleta || `${anoAtual}-${strMes}-${String(new Date().getDate()).padStart(2, '0')}`;
+                const formatData = dataS.split('-').reverse().join('/');
+                const strAvisoQuadra = (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) ? (quadraSelecionadaSaaS.toLowerCase().startsWith('quadra') ? quadraSelecionadaSaaS.toLowerCase() : `quadra ${quadraSelecionadaSaaS}`) : "quadra 1";
+                const horaFimFmt = String(hora + duracaoCalculada).padStart(2, '0') + ":00";
+                const horaFmt = String(hora).padStart(2, '0') + ":00";
+
+                const confirmacoes = dadosReserva.confirmacoes || {};
+                const velhosNomes = (dadosReserva.jogadores_completo || dadosReserva.jogadores || "").split(',').map(s => s.trim().toUpperCase());
+
+                // Não notifica quem executou a exclusão (usuário logado)
+                const nomesParaAvaliar = velhosNomes.filter(nome => nome !== usuarioAtivoNome && nome !== apelidoLogado);
+
+                nomesParaAvaliar.forEach(nomeAfetado => {
+                    const idJogadorAfetado = Object.keys(jogadoresGlobal).find(k => {
+                        const nj = jogadoresGlobal[k];
+                        return (nj.nomeCompleto || "").toUpperCase() === nomeAfetado || (nj.apelido || "").toUpperCase() === nomeAfetado;
+                    });
+
+                    if (idJogadorAfetado) {
+                        const atleta = jogadoresGlobal[idJogadorAfetado];
+                        const apelidoUpper = (atleta.apelido || "").trim().toUpperCase();
+                        const completoUpper = (atleta.nomeCompleto || "").trim().toUpperCase();
+
+                        // Só avisa quem estava explicitamente Confirmado (true)
+                        let estavaConfirmado = false;
+                        Object.keys(confirmacoes).forEach(k => {
+                            const chaveBancoUpper = k.trim().toUpperCase();
+                            if ((chaveBancoUpper === apelidoUpper || chaveBancoUpper === completoUpper) && confirmacoes[k] === true) {
+                                estavaConfirmado = true;
+                            }
+                        });
+
+                        if (estavaConfirmado) {
+                            const keyNotif = database.ref().push().key;
+                            const payloadNotif = {
+                                categoria: "remocao_jogador",
+                                detalhe: `A partida do dia ${formatData}, das ${horaFmt} às ${horaFimFmt} na ${strAvisoQuadra}, foi cancelada pelo organizador.`,
+                                timestamp: Date.now()
+                            };
+                            database.ref(`${raizBanco}/jogadores/${idJogadorAfetado}/notificacoes/${keyNotif}`).set(payloadNotif);
+                        }
+                    }
+                });
+            }
+
             executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivoAcao);
         }
     );
 }
 
-function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo) {
+function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo, msgPersonalizada = null, tipoToast = "success") {
     if (!listaDeSlots || listaDeSlots.length === 0) return;
 
     let quadraChaveFixa = "Quadra - 1";
@@ -924,7 +998,8 @@ function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo) {
 
     database.ref(raizBanco).update(updatePayload)
     .then(() => {
-        showToast("Reserva cancelada com sucesso!", "success");
+        const msgAlerta = msgPersonalizada ? msgPersonalizada : "Reserva cancelada com sucesso!";
+        showToast(msgAlerta, tipoToast); // Usando a cor flexível
         enviarFilaLogsAoGitHubSaaS([logReciboRich]);
     })
     .catch(err => {
@@ -1754,7 +1829,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
 
 function concluirEfeitoCardSaaS(cardElement) {
     if (cardElement) {
-        cardElement.classList.add('convite-saindo');
+        cardElement.classList.add('convite-saindo'); 
         setTimeout(() => {
             cardElement.remove();
             avaliarGavetaVaziaSaaS();
@@ -1775,4 +1850,688 @@ function avaliarGavetaVaziaSaaS() {
         const qtd = container.children.length;
         titulo.textContent = qtd === 1 ? '1 Convite Pendente' : `${qtd} Convites Pendentes`;
     }
+}
+
+// ====================================================================
+// 🎯 SUB-MÓDULO: EDIÇÃO DE RESERVAS (HÍBRIDO SAAS) - PARTE 1
+// ====================================================================
+
+let dadosReservaEmEdicao = null;
+let idOrganizadorEmEdicao = null;
+
+function fecharModalEdicaoSaaS() {
+    const modal = document.getElementById('modal-edicao-reserva');
+    if (modal) modal.style.display = 'none';
+    dadosReservaEmEdicao = null;
+    idOrganizadorEmEdicao = null;
+}
+
+function abrirModalEdicaoSaaS(dia, hora, dadosReserva) {
+    if (!dadosReserva) return;
+    
+    // 1. Armazena no escopo global para o botão "Salvar" usar no próximo passo
+    dadosReservaEmEdicao = { ...dadosReserva, dia, hora };
+    
+    // 2. ANATOMIA DO CABEÇALHO OFICIAL (Azul/Verde)
+    const duracao = dadosReserva.duracao_calculada || parseInt(dadosReserva.duracao) || 1;
+    const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+    const nomeDia = diasSemana[dia] || "Dia";
+
+    let dataFormatada = "";
+    if (dadosReserva.dataCompleta) {
+        const partes = dadosReserva.dataCompleta.split('-'); 
+        if (partes.length === 3) dataFormatada = `, ${partes[2]}/${partes[1]}`;
+    }
+
+    const hInicio = String(hora).padStart(2, '0') + ":00";
+    const hFim = String(hora + duracao).padStart(2, '0') + ":00";
+
+    const header = document.getElementById('edicao-header');
+    if (header) {
+        header.className = 'card-header-detalhes';
+        header.classList.add(duracao >= 2 ? 'header-2h' : 'header-1h');
+    }
+
+    document.getElementById('edicao-txt-quadra').textContent = quadraSelecionadaSaaS || "Quadra";
+    document.getElementById('edicao-texto-data-hora').textContent = `${nomeDia}${dataFormatada} • ${hInicio} - ${hFim}`;
+
+    // 3. CONSTRUÇÃO DO CARTÃO MESTRE (O ORGANIZADOR INTOCÁVEL)
+    const orgNomeBruto = dadosReserva.organizador || "Sócio";
+    let orgVinculo = "Sócio Titular";
+    idOrganizadorEmEdicao = null;
+
+    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) {
+        const idOrg = Object.keys(jogadoresGlobal).find(k => jogadoresGlobal[k].nomeCompleto === orgNomeBruto);
+        if (idOrg) {
+            idOrganizadorEmEdicao = idOrg;
+            if (jogadoresGlobal[idOrg].socio) {
+                const s = jogadoresGlobal[idOrg].socio.toLowerCase();
+                orgVinculo = s === 'dependente' ? 'Sócio Dependente' : (s === 'visitante' ? 'Staff' : 'Sócio Titular');
+            }
+        }
+    }
+
+    let orgNomeFormatado = orgNomeBruto;
+    if (typeof formatarNomeExibicaoDetalhes === 'function') {
+        orgNomeFormatado = formatarNomeExibicaoDetalhes(orgNomeBruto);
+    } else {
+        orgNomeFormatado = orgNomeBruto.replace(/\s*\(.*?\)\s*/g, "").trim();
+    }
+
+    document.getElementById('edicao-txt-org-nome').textContent = orgNomeFormatado;
+    document.getElementById('edicao-txt-org-sub').textContent = orgVinculo;
+
+    // 4. CONSTRUÇÃO DO ELENCO (JOGADORES EXTRAS E VAGAS LIVRES)
+    const containerJogadores = document.getElementById('edicao-lista-jogadores');
+    containerJogadores.innerHTML = '';
+    
+    const listaApelidos = (dadosReserva.jogadores || "").split(',').map(n => n.trim()).filter(n => n.length > 0);
+    const listaCompletos = (dadosReserva.jogadores_completo || "").split(',').map(n => n.trim()).filter(n => n.length > 0);
+    
+    // O teto máximo absoluto da reserva é de 4 pessoas (Organizador + 3).
+    // O Organizador fica fora dessa div, então o container comporta no máximo 3 cards.
+    const MAX_CARDS_PERMITIDOS = 3;
+
+    // Mapeia quem já estava na reserva e injeta na tela
+    let countInjetados = 0;
+    
+    listaApelidos.forEach((apelido, idx) => {
+        if (listaCompletos[idx] && listaCompletos[idx] === orgNomeBruto) return;
+        if (apelido === orgNomeBruto) return;
+        
+        if (countInjetados >= MAX_CARDS_PERMITIDOS) return; 
+
+        let statusTexto = "Pendente";
+        let statusClasse = "sub-pendente";
+
+        let isConfirmed = false;
+        if (dadosReserva.confirmacoes) {
+            Object.keys(dadosReserva.confirmacoes).forEach(chave => {
+                if (dadosReserva.confirmacoes[chave] === true && (chave.toUpperCase() === apelido.toUpperCase() || chave.toUpperCase() === (listaCompletos[idx] || "").toUpperCase())) {
+                    isConfirmed = true;
+                }
+            });
+        }
+        
+        if (isConfirmed) {
+            statusTexto = "Confirmado";
+            statusClasse = "sub-confirmado";
+        }
+
+        gerarCardAtletaEditavelSaaS(containerJogadores, apelido, statusTexto, statusClasse, false);
+        countInjetados++;
+    });
+
+    // SISTEMA ELÁSTICO: Injeta apenas UM ÚNICO slot vazio, caso ainda não tenha atingido o teto.
+    if (countInjetados < MAX_CARDS_PERMITIDOS) {
+        gerarCardAtletaEditavelSaaS(containerJogadores, null, "", "", true);
+    }
+
+    // 5. PREPARA O BOTÃO DE SALVAR E ACOMPANHA A COR DO CABEÇALHO
+    const btnSalvar = document.getElementById('btn-salvar-edicao-saas');
+    const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
+    const ehAulaEdicao = (dadosReserva.tipo === 'aula' || (dadosReserva.jogadores && dadosReserva.jogadores.toLowerCase() === 'aula'));
+    const ehManutencaoEdicao = (dadosReserva.tipo === 'manutencao' || (dadosReserva.jogadores && dadosReserva.jogadores.includes('Manutenção')));
+
+    if (btnSalvar) {
+        btnSalvar.textContent = "Salvar Alterações";
+        btnSalvar.disabled = false;
+        
+        // Limpa as classes de cor antigas
+        btnSalvar.className = 'btn-salvar-saas';
+        
+        // Injeta a cor correta acompanhando a lógica do cabeçalho
+        if (ehRanking) {
+            btnSalvar.classList.add('btn-salvar-ranking');
+        } else if (ehAulaEdicao) {
+            btnSalvar.classList.add('btn-salvar-aula');
+        } else if (ehManutencaoEdicao) {
+            btnSalvar.classList.add('btn-salvar-manut');
+        } else {
+            btnSalvar.classList.add(duracao >= 2 ? 'btn-salvar-2h' : 'btn-salvar-1h');
+        }
+    }
+
+    const modal = document.getElementById('modal-edicao-reserva');
+    if (modal) modal.style.display = 'flex';
+}
+
+function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, statusCss, isVazio) {
+    const card = document.createElement('div');
+    card.className = isVazio ? 'card-atleta vazio' : 'card-atleta';
+    
+    const divLeft = document.createElement('div');
+    divLeft.style.flex = '1';
+    divLeft.style.minWidth = '0';
+
+    const sel = document.createElement('select');
+    sel.className = 'saas-select';
+    if (isVazio) sel.classList.add('select-placeholder');
+    
+    // Alimenta o Select com os atletas ativos listados de A a Z
+    sel.innerHTML = '<option value="">+ Adicionar jogador...</option>';
+    
+    if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
+        const atletasOrdenadosSaaS = Object.keys(jogadoresGlobal)
+            .map(id => ({ id: id, ...jogadoresGlobal[id] }))
+            .sort((a, b) => {
+                const nomeA = (a.nomeCompleto || "").trim().toLowerCase();
+                const nomeB = (b.nomeCompleto || "").trim().toLowerCase();
+                return nomeA.localeCompare(nomeB, 'pt-BR'); 
+            });
+
+        atletasOrdenadosSaaS.forEach(atleta => {
+            if (atleta && atleta.ativo !== false && atleta.id !== idOrganizadorEmEdicao) {
+                
+                // NOME COMPLETO EM TITLE CASE: Usa a função do sistema para capitalizar todas as palavras sem abreviar
+                let nomeParaExibir = atleta.nomeCompleto;
+                if (typeof capitalizarNome === 'function') {
+                    nomeParaExibir = capitalizarNome(atleta.nomeCompleto);
+                } else {
+                    // Fallback de segurança 
+                    nomeParaExibir = atleta.nomeCompleto.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+                }
+                
+                let selected = false;
+                if (!isVazio && apelidoAtleta) {
+                    // Normaliza para comparação ignorando maiúsculas e minúsculas
+                    const alvo = apelidoAtleta.trim().toUpperCase();
+                    const compNome = (atleta.nomeCompleto || "").trim().toUpperCase();
+                    const compApel = (atleta.apelido || "").trim().toUpperCase();
+                    
+                    if (alvo === compApel || alvo === compNome) {
+                        selected = true;
+                    }
+                }
+                
+                sel.innerHTML += `<option value="${atleta.id}" ${selected ? 'selected' : ''}>${nomeParaExibir}</option>`;
+            }
+        });
+        
+        sel.innerHTML += `<option value="convidado" ${!isVazio && apelidoAtleta && apelidoAtleta.toLowerCase().includes('convidado') ? 'selected' : ''}>Convidado / Avulso</option>`;
+    }
+
+    divLeft.appendChild(sel);
+
+    // Etiqueta indicadora de estado
+    const divStatus = document.createElement('div');
+    divStatus.className = 'sub-status ' + statusCss;
+    divStatus.textContent = statusTxt;
+    divLeft.appendChild(divStatus);
+    
+    card.appendChild(divLeft);
+
+    // Comportamento do botão Apagar "X"
+    if (!isVazio) {
+        const btnDel = document.createElement('button');
+        btnDel.className = 'btn-lixeira';
+        btnDel.title = 'Remover';
+        btnDel.innerHTML = '<i class="material-icons" style="font-size: 20px;">close</i>';
+        btnDel.onclick = () => {
+            // Remove a div do jogador excluído do DOM em vez de mantê-la como vazia
+            card.remove();
+            
+            // Avalia o container e garante apenas um único slot "+ Adicionar jogador..." ao final
+            const maxPermitidos = 3;
+            const cardsAtuais = container.querySelectorAll('.card-atleta');
+            const oUltimoEhVazio = cardsAtuais.length > 0 && cardsAtuais[cardsAtuais.length - 1].classList.contains('vazio');
+            
+            if (cardsAtuais.length < maxPermitidos && !oUltimoEhVazio) {
+                gerarCardAtletaEditavelSaaS(container, null, "", "", true);
+            }
+        };
+        card.appendChild(btnDel);
+    }
+
+    // Interatividade da troca (Novo Jogador detectado) e Elasticidade
+    sel.onchange = () => {
+        const selectedVal = sel.value;
+        if (selectedVal !== "") {
+            // Preencheu um slot vazio
+            card.classList.remove('vazio');
+            sel.classList.remove('select-placeholder');
+            
+            divStatus.textContent = "Novo";
+            divStatus.className = 'sub-status sub-novo';
+            
+            // Adiciona a Lixeira se não tiver
+            if (!card.querySelector('.btn-lixeira')) {
+                const btnDel = document.createElement('button');
+                btnDel.className = 'btn-lixeira';
+                btnDel.title = 'Remover';
+                btnDel.innerHTML = '<i class="material-icons" style="font-size: 20px;">close</i>';
+                btnDel.onclick = () => {
+                    // Ao invés de esvaziar, no sistema elástico a lixeira DESTROI a div e cria um vazio lá no final
+                    card.remove();
+                    // Avalia se o último card do container é vazio. Se não for e couber mais um, desenha o "+ Adicionar".
+                    const maxPermitidos = 3;
+                    const cardsAtuais = container.querySelectorAll('.card-atleta');
+                    const oUltimoEhVazio = cardsAtuais.length > 0 && cardsAtuais[cardsAtuais.length - 1].classList.contains('vazio');
+                    
+                    if (cardsAtuais.length < maxPermitidos && !oUltimoEhVazio) {
+                        gerarCardAtletaEditavelSaaS(container, null, "", "", true);
+                    }
+                };
+                card.appendChild(btnDel);
+            }
+
+            // GATILHO ELÁSTICO: Se preencheu e ainda cabe gente (<3), adiciona um novo "+ Adicionar" embaixo
+            const maxPermitidos = 3;
+            const qtdCardsAtual = container.querySelectorAll('.card-atleta').length;
+            const oUltimoJaEhVazio = container.querySelectorAll('.card-atleta.vazio').length > 0;
+
+            if (qtdCardsAtual < maxPermitidos && !oUltimoJaEhVazio) {
+                gerarCardAtletaEditavelSaaS(container, null, "", "", true);
+            }
+
+        } else {
+            // O usuário voltou para a opção "Vazia" no select
+            card.classList.add('vazio');
+            sel.classList.add('select-placeholder');
+            divStatus.textContent = "";
+            divStatus.className = 'sub-status';
+            const oldDel = card.querySelector('.btn-lixeira');
+            if (oldDel) oldDel.remove();
+        }
+    };
+
+    container.appendChild(card); 
+}
+
+
+// ====================================================================
+// 🎯 SUB-MÓDULO: EDIÇÃO DE RESERVAS (HÍBRIDO SAAS) - PARTE 2 (SALVAR)
+// ====================================================================
+function salvarEdicaoReservaSaaS() {
+    if (navigator.vibrate) navigator.vibrate(40);
+    
+    if (!dadosReservaEmEdicao) return;
+
+    const btnSalvar = document.getElementById('btn-salvar-edicao-saas');
+    if (btnSalvar) {
+        btnSalvar.textContent = "Validando...";
+        btnSalvar.disabled = true;
+    }
+
+    const { dia, hora, duracao_calculada, duracao } = dadosReservaEmEdicao;
+    const duracaoReal = duracao_calculada || parseInt(duracao) || 1;
+    
+    // 1. COLETA DOS NOMES E TRATAMENTO DE EXIBIÇÃO
+    const orgBruto = dadosReservaEmEdicao.organizador || "";
+    let nomesParaValidacaoMonopolio = [];
+    
+    // Busca o apelido correto e o nome completo do Organizador
+    let orgCompleto = orgBruto;
+    let orgApelidoOuFormatado = orgBruto;
+    
+    if (idOrganizadorEmEdicao && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idOrganizadorEmEdicao]) {
+        const jOrg = jogadoresGlobal[idOrganizadorEmEdicao];
+        orgCompleto = jOrg.nomeCompleto || orgBruto;
+        
+        // Se tiver apelido cadastrado usa, senão aplica a mesma formatação do agendamento
+        if (jOrg.apelido && jOrg.apelido.trim() !== "") {
+            orgApelidoOuFormatado = jOrg.apelido;
+        } else if (typeof expurgarEAbreviarNomeSaaS === 'function') {
+            orgApelidoOuFormatado = expurgarEAbreviarNomeSaaS(orgCompleto, "");
+        }
+    }
+
+    let listaApelidosNova = [orgApelidoOuFormatado]; // Agora começa com o apelido/nome bonito
+    let listaCompletosNova = [orgCompleto];
+
+    const containerJogadores = document.getElementById('edicao-lista-jogadores');
+    const selects = containerJogadores.querySelectorAll('select.saas-select');
+    
+    let encontrouRepetido = false;
+    let controleDuplicatas = new Set();
+    controleDuplicatas.add(idOrganizadorEmEdicao); // Impede de se adicionar
+
+    selects.forEach(sel => {
+        const valId = sel.value;
+        if (valId && valId !== "") {
+            // Se for convidado genérico
+            if (valId === "convidado") {
+                listaApelidosNova.push("Convidado / Avulso");
+                listaCompletosNova.push("Convidado / Avulso");
+            } else if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[valId]) {
+                if (controleDuplicatas.has(valId)) {
+                    encontrouRepetido = true;
+                } else {
+                    controleDuplicatas.add(valId);
+                    const j = jogadoresGlobal[valId];
+                    listaApelidosNova.push(j.apelido || j.nomeCompleto);
+                    listaCompletosNova.push(j.nomeCompleto);
+                    
+                    // Se a label do status diz NOVO, precisa checar as regras restritivas
+                    const lblStatus = sel.parentElement.querySelector('.sub-status');
+                    if (lblStatus && lblStatus.textContent === "Novo") {
+                        nomesParaValidacaoMonopolio.push(j.nomeCompleto);
+                    }
+                }
+            }
+        }
+    });
+
+    if (encontrouRepetido) {
+        showToast("Você não pode adicionar o mesmo jogador mais de uma vez.", "warning");
+        if (btnSalvar) { btnSalvar.textContent = "Salvar Alterações"; btnSalvar.disabled = false; }
+        return;
+    }
+
+    // 2. A ALFÂNDEGA DO QUÓRUM MÍNIMO E AUTO-EXCLUSÃO INTELIGENTE
+    let quorumExigido = 1;
+    let quadraChaveFixa = "Quadra - 1";
+    if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+        const match = quadraSelecionadaSaaS.match(/\d+/);
+        quadraChaveFixa = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
+    }
+
+    // Normalização da chave da quadra para o banco de duplas (Ex: "Quadra 3 - Coberta" -> "Quadra3")
+    let quadraIndex = "Quadra1";
+    const matchQ = quadraSelecionadaSaaS.match(/\d+/);
+    if (matchQ) quadraIndex = `Quadra${matchQ[0]}`;
+
+    // Leitura precisa da Grade de Duplas na memória RAM
+    const isDuplaSlot = typeof configDuplasGlobal !== 'undefined' && 
+                        configDuplasGlobal && 
+                        configDuplasGlobal[quadraIndex] && 
+                        configDuplasGlobal[quadraIndex].Ativo === true && 
+                        configDuplasGlobal[quadraIndex].Grade && 
+                        configDuplasGlobal[quadraIndex].Grade[`${dia}_${hora}`] === true;
+
+    if (isDuplaSlot) {
+        quorumExigido = 4;
+    } else if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal) {
+        if (duracaoReal === 1) {
+            quorumExigido = configRegrasGlobal.Quorum1h !== undefined ? parseInt(configRegrasGlobal.Quorum1h) : 1;
+        } else {
+            quorumExigido = configRegrasGlobal.Quorum2h !== undefined ? parseInt(configRegrasGlobal.Quorum2h) : 2;
+        }
+    }
+
+    // 🚨 BIFURCAÇÃO INTELIGENTE DE QUÓRUM (Auto-exclusão usando o Pipeline)
+    if (listaApelidosNova.length < quorumExigido) {
+        const txtJogador = quorumExigido === 1 ? 'jogador' : 'jogadores';
+        
+        if (btnSalvar) btnSalvar.textContent = "Excluindo...";
+
+        let quadraChaveFixa = "Quadra - 1";
+        if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+            const match = quadraSelecionadaSaaS.match(/\d+/);
+            quadraChaveFixa = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
+        }
+
+        // Notifica apenas os convidados que foram removidos E QUE ESTAVAM CONFIRMADOS
+        const velhosNomes = (dadosReservaEmEdicao.jogadores_completo || dadosReservaEmEdicao.jogadores || "").split(',').map(s => s.trim().toUpperCase());
+        if (velhosNomes.length > 0 && typeof jogadoresGlobal !== 'undefined') {
+            const anoAtual = new Date().getFullYear();
+            const strMes = String(new Date().getMonth() + 1).padStart(2, '0');
+            const dataS = dadosReservaEmEdicao.dataCompleta || `${anoAtual}-${strMes}-${String(new Date().getDate()).padStart(2, '0')}`;
+            const formatData = dataS.split('-').reverse().join('/');
+            const strAvisoQuadra = (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) ? (quadraSelecionadaSaaS.toLowerCase().startsWith('quadra') ? quadraSelecionadaSaaS.toLowerCase() : `quadra ${quadraSelecionadaSaaS}`) : "quadra 1";
+            const horaFimFmt = String(hora + duracaoReal).padStart(2, '0') + ":00";
+            const horaFmt = String(hora).padStart(2, '0') + ":00";
+            
+            const antigasConfirmacoes = dadosReservaEmEdicao.confirmacoes || {};
+            const nomesNotificar = velhosNomes.filter(velho => velho !== orgCompleto.toUpperCase() && velho !== orgApelidoOuFormatado.toUpperCase());
+            
+            nomesNotificar.forEach(nomeAfetado => {
+                // 1. Identifica o jogador no cadastro global para obter Apelido e Nome Completo
+                const idJogadorAfetado = Object.keys(jogadoresGlobal).find(k => {
+                    const nj = jogadoresGlobal[k];
+                    return (nj.nomeCompleto || "").toUpperCase() === nomeAfetado || (nj.apelido || "").toUpperCase() === nomeAfetado;
+                });
+                
+                if (idJogadorAfetado) {
+                    const atleta = jogadoresGlobal[idJogadorAfetado];
+                    const apelidoUpper = (atleta.apelido || "").trim().toUpperCase();
+                    const completoUpper = (atleta.nomeCompleto || "").trim().toUpperCase();
+
+                    // 2. Trava de compromisso: checa se a chave do banco (apelido ou nome completo) tem valor true
+                    let estavaConfirmado = false;
+                    Object.keys(antigasConfirmacoes).forEach(k => {
+                        const chaveBancoUpper = k.trim().toUpperCase();
+                        if ((chaveBancoUpper === apelidoUpper || chaveBancoUpper === completoUpper) && antigasConfirmacoes[k] === true) {
+                            estavaConfirmado = true;
+                        }
+                    });
+
+                    // 3. Se confirmado, dispara a notificação limpa
+                    if (estavaConfirmado) {
+                        const keyNotif = database.ref().push().key;
+                        const payloadNotif = {
+                            categoria: "remocao_jogador",
+                            detalhe: `A partida do dia ${formatData}, das ${horaFmt} às ${horaFimFmt} na ${strAvisoQuadra}, foi cancelada por falta de quórum mínimo.`,
+                            timestamp: Date.now()
+                        };
+                        database.ref(`${raizBanco}/jogadores/${idJogadorAfetado}/notificacoes/${keyNotif}`).set(payloadNotif);
+                    }
+                }
+            });
+        }
+
+        // Monta os slots afetados e reutiliza o pipeline oficial de exclusão
+        const listaDeSlots = [];
+        for (let i = 0; i < duracaoReal; i++) {
+            listaDeSlots.push({ quadra: quadraChaveFixa, dia: dia, hora: hora + i });
+        }
+
+        const motivoAcao = `A edição da reserva diminuiu os participantes e o total ficou inferior ao quórum exigido (${quorumExigido} ${txtJogador}).`;
+        const fraseAlerta = `A reserva foi excluída por não ter o quórum mínimo de ${quorumExigido} ${txtJogador}.`;
+
+        // Passa os slots, a reserva, o motivo, a FRASE e a COR DO ALERTA
+        executarPipelineExclusaoSaaS(listaDeSlots, dadosReservaEmEdicao, motivoAcao, fraseAlerta, "warning");
+        
+        fecharModalEdicaoSaaS();
+        return; // Retorno crucial que impede a continuação da gravação da edição!
+    }
+    
+    
+    // 3. A ALFÂNDEGA DE REGRAS VIVAS (MONOPÓLIO E CONFLITO) - APENAS PARA OS ATLETAS NOVOS
+    if (nomesParaValidacaoMonopolio.length > 0) {
+        const limiteAtivo = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.LimiteReservas !== undefined) ? parseInt(configRegrasGlobal.LimiteReservas) : 3;
+        
+        if (typeof validarAntiMonopolioSaaS === 'function' && typeof reservasGeralGlobal !== 'undefined') {
+            const erroMonopolio = validarAntiMonopolioSaaS(nomesParaValidacaoMonopolio, nomesParaValidacaoMonopolio, reservasGeralGlobal, limiteAtivo);
+            if (erroMonopolio) {
+                showToast(erroMonopolio, "error", 4500);
+                if (btnSalvar) { btnSalvar.textContent = "Salvar Alterações"; btnSalvar.disabled = false; }
+                return;
+            }
+        }
+        
+        if (typeof validarConflitoHorarioAtletaSaaS === 'function' && typeof reservasGeralGlobal !== 'undefined') {
+            const pacoteFalso = { dia: dia, hora: hora, duracao: duracaoReal };
+            const erroConflito = validarConflitoHorarioAtletaSaaS(nomesParaValidacaoMonopolio, nomesParaValidacaoMonopolio, pacoteFalso, reservasGeralGlobal);
+            if (erroConflito) {
+                showToast(erroConflito, "error", 4500);
+                if (btnSalvar) { btnSalvar.textContent = "Salvar Alterações"; btnSalvar.disabled = false; }
+                return;
+            }
+        }
+    }
+
+    // 4. MONTAGEM DO PAYLOAD ATUALIZADO
+    if (btnSalvar) btnSalvar.textContent = "Agendando...";
+
+    const antigaReserva = { ...dadosReservaEmEdicao };
+    const antigasConfirmacoes = antigaReserva.confirmacoes || {};
+    
+    let novasConfirmacoes = {};
+    const exigenciaAtiva = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ReservasPorConfirmacao !== false);
+    const prazoHoras = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.horasParaExpirar !== undefined) ? parseInt(configRegrasGlobal.horasParaExpirar) : 2;
+    
+    let todasAsNovasSaoConfirmadas = true;
+    let novaExpiracao = antigaReserva.expiraEm || null;
+    let alguemNovoFicouPendente = false;
+
+    listaApelidosNova.forEach(apelido => {
+        if (apelido === orgBruto || apelido === "Convidado / Avulso") {
+            novasConfirmacoes[apelido] = true;
+        } else {
+            let stVelho = antigasConfirmacoes[apelido];
+            if (stVelho === undefined) {
+                Object.keys(antigasConfirmacoes).forEach(k => {
+                    if (k.toUpperCase() === apelido.toUpperCase()) stVelho = antigasConfirmacoes[k];
+                });
+            }
+            
+            if (stVelho !== undefined) {
+                novasConfirmacoes[apelido] = stVelho;
+                if (stVelho === false) todasAsNovasSaoConfirmadas = false;
+            } else {
+                if (exigenciaAtiva) {
+                    novasConfirmacoes[apelido] = false;
+                    todasAsNovasSaoConfirmadas = false;
+                    alguemNovoFicouPendente = true;
+                } else {
+                    novasConfirmacoes[apelido] = true;
+                }
+            }
+        }
+    });
+
+    let novoStatusDaReserva = todasAsNovasSaoConfirmadas ? "confirmada" : "pendente";
+    
+    if (alguemNovoFicouPendente && !novaExpiracao) {
+        novaExpiracao = Date.now() + (prazoHoras * 60 * 60 * 1000);
+    }
+    
+    if (novoStatusDaReserva === "confirmada") {
+        novaExpiracao = null;
+    }
+
+    const payloadAtualizacao = {
+        ...antigaReserva,
+        status: novoStatusDaReserva,
+        jogadores: listaApelidosNova.join(', '),
+        jogadores_completo: listaCompletosNova.join(', '),
+        confirmacoes: novasConfirmacoes
+    };
+    
+    if (novaExpiracao) payloadAtualizacao.expiraEm = novaExpiracao;
+    else delete payloadAtualizacao.expiraEm;
+
+    // 5. INICIA A GRAVAÇÃO NO FIREBASE VIA TRANSAÇÃO ATÔMICA (.transaction)
+    const chaveUnica1 = `${dia}_${hora}`;
+    const caminhoKey1 = `${raizBanco}/reservas/${quadraChaveFixa}/${chaveUnica1}`;
+    const caminhoKey2 = `${raizBanco}/reservas/${quadraChaveFixa}/${dia}_${hora + 1}`;
+
+    let key1Committed = false;
+
+    database.ref(caminhoKey1).transaction((currentData) => {
+        if (currentData === null || currentData.status === 'aula_cancelada') return payloadAtualizacao;
+        // Permite salvar se a reserva ainda existir na grade e não tiver sido deletada por concorrência
+        return payloadAtualizacao;
+    })
+    .then((result1) => {
+        if (!result1.committed) throw new Error("FALHA_TRANSACAO_EDICAO");
+        key1Committed = true;
+
+        if (duracaoReal === 1) return true;
+
+        const payloadAtualizacao2 = { ...payloadAtualizacao, hora: hora + 1 };
+        delete payloadAtualizacao2.borda;
+
+        return database.ref(caminhoKey2).transaction((currentData2) => {
+            return payloadAtualizacao2;
+        })
+        .then((result2) => {
+            if (!result2.committed) throw new Error("FALHA_TRANSACAO_EDICAO_SEQUENCIAL");
+            return true;
+        });
+    })
+    .then(() => {
+        // 6. GATILHO DE NOTIFICAÇÕES (AVISA APENAS QUEM FOI REMOVIDO EM EDIÇÕES NORMAIS)
+        const velhosNomes = (antigaReserva.jogadores_completo || antigaReserva.jogadores || "").split(',').map(s => s.trim().toUpperCase());
+        const novosNomes = listaCompletosNova.map(s => s.trim().toUpperCase());
+        
+        const nomesRemovidos = velhosNomes.filter(velho => !novosNomes.includes(velho));
+        
+        if (nomesRemovidos.length > 0 && typeof jogadoresGlobal !== 'undefined') {
+            const anoAtual = new Date().getFullYear();
+            const strMes = String(new Date().getMonth() + 1).padStart(2, '0');
+            const dataS = antigaReserva.dataCompleta || `${anoAtual}-${strMes}-${String(new Date().getDate()).padStart(2, '0')}`;
+            const formatData = dataS.split('-').reverse().join('/');
+            const strAvisoQuadra = (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) ? (quadraSelecionadaSaaS.toLowerCase().startsWith('quadra') ? quadraSelecionadaSaaS.toLowerCase() : `quadra ${quadraSelecionadaSaaS}`) : "quadra 1";
+            const horaFimFmt = String(hora + duracaoReal).padStart(2, '0') + ":00";
+            const horaFmt = String(hora).padStart(2, '0') + ":00";
+            
+            const antigasConfirmacoes = antigaReserva.confirmacoes || {};
+            
+            nomesRemovidos.forEach(nomeRem => {
+                // 1. Identifica o jogador no cadastro global para obter Apelido e Nome Completo
+                const idJogadorAfetado = Object.keys(jogadoresGlobal).find(k => {
+                    const nj = jogadoresGlobal[k];
+                    return (nj.nomeCompleto || "").toUpperCase() === nomeRem || (nj.apelido || "").toUpperCase() === nomeRem;
+                });
+
+                if (idJogadorAfetado) {
+                    const atleta = jogadoresGlobal[idJogadorAfetado];
+                    const apelidoUpper = (atleta.apelido || "").trim().toUpperCase();
+                    const completoUpper = (atleta.nomeCompleto || "").trim().toUpperCase();
+
+                    // 2. Trava de compromisso: checa se a chave do banco (apelido ou nome completo) tem valor true
+                    let estavaConfirmado = false;
+                    Object.keys(antigasConfirmacoes).forEach(k => {
+                        const chaveBancoUpper = k.trim().toUpperCase();
+                        if ((chaveBancoUpper === apelidoUpper || chaveBancoUpper === completoUpper) && antigasConfirmacoes[k] === true) {
+                            estavaConfirmado = true;
+                        }
+                    });
+
+                    // 3. Se confirmado, dispara a notificação
+                    if (estavaConfirmado) {
+                        const keyNotif = database.ref().push().key;
+                        const payloadNotif = {
+                            categoria: "remocao_jogador",
+                            detalhe: `A sua vaga no jogo do dia ${formatData}, das ${horaFmt} às ${horaFimFmt} na ${strAvisoQuadra}, foi cancelada pelo organizador.`,
+                            timestamp: Date.now()
+                        };
+                        database.ref(`${raizBanco}/jogadores/${idJogadorAfetado}/notificacoes/${keyNotif}`).set(payloadNotif);
+                    }
+                }
+            });
+        }
+        
+        // 7. GERAÇÃO DO RECIBO PARA A ESTEIRA DO GITHUB
+        const autorLogado = (typeof isGestorLogado !== 'undefined' && isGestorLogado) ? "Administração (Gestor)" : (localStorage.getItem('jogadorLogadoNome') || "Sócio");
+        const logDeEdicao = {
+            origem: "manual",
+            timestamp: new Date().toISOString(),
+            dataLocal: new Date().toLocaleString('pt-BR'),
+            autor: autorLogado,
+            acao: "EDICAO_AGENDAMENTO",
+            motivo: `Reserva editada. Atletas alterados com sucesso.`,
+            clube: typeof clubeAtivoId !== 'undefined' ? clubeAtivoId : "",
+            quadra: typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "Quadra 1",
+            horario: `${String(hora).padStart(2, '0')}:00 - ${String(hora + duracaoReal).padStart(2, '0')}:00`,
+            duracao: duracaoReal === 1 ? "1 Hora" : "2 Horas",
+            data: antigaReserva.dataCompleta ? antigaReserva.dataCompleta.split('-').reverse().join('-') : "",
+            statusNoMomentoDaExclusao: novoStatusDaReserva,
+            organizadorDaReserva: orgBruto,
+            confirmacoes: novasConfirmacoes,
+            jogadores: listaApelidosNova.join(', '),
+            jogadores_completo: listaCompletosNova.join(', '),
+            slotsExcluidos: [{ quadra: quadraChaveFixa, dia: dia, hora: hora }]
+        };
+        
+        if (typeof enviarFilaLogsAoGitHubSaaS === 'function') {
+            enviarFilaLogsAoGitHubSaaS([logDeEdicao]);
+        }
+
+        showToast("Edição salva e jogadores alterados com sucesso!", "success");
+        fecharModalEdicaoSaaS();
+        
+    }).catch(err => {
+        // Rollback Seguro: Se a 1ª hora salvou mas a 2ª hora falhou/colidiu, remove a 1ª hora
+        if (key1Committed && duracaoReal === 2) {
+            database.ref(caminhoKey1).transaction((currentData) => { return antigaReserva; });
+            console.log("🧹 [Rollback de Edição] Alterações desfeitas por falha na segunda hora.");
+        }
+
+        console.error("Erro ao gravar edição no Firebase:", err);
+        showToast("Conflito de horários: Alteração interrompida para evitar perda de dados.", "error");
+        if (btnSalvar) { btnSalvar.textContent = "Salvar Alterações"; btnSalvar.disabled = false; }
+    });
 }

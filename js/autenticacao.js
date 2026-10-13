@@ -909,6 +909,18 @@ function renderizarListaNotificacoesSocioSaaS() {
                         estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
                     });
                     break;
+					
+				case 'remocao_jogador':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'cancelado',
+                        tagTexto: '📅 AGENDAMENTO',
+                        tagClasse: '',
+                        tagEstiloCustom: 'background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;',
+                        titulo: 'Reserva Cancelada',
+                        detalhe: n.detalhe,
+                        estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
+                    });
+                    break;	
 
                 case 'partida_confirmada':
                     htmlCards += gerarCardNotificacaoHTML({
