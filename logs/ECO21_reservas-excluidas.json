@@ -6181,5 +6181,38 @@
         "hora": 11
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ANA MARIA MARINHO GOMES",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true,
+      "Ana Julia": true,
+      "Ana Maria Marinho": true
+    },
+    "data": "12-10-2026",
+    "dataLocal": "12/10/2026, 21:55:26",
+    "duracao": "2 Horas",
+    "horario": "21:00 - 23:00",
+    "jogadores": "Ana Maria Marinho, Alex, Alice Pereira, Ana Julia",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALEX SOUZA, ALICE ALMEIDA PEREIRA, ANA JULIA MARTINS",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 21
+      },
+      {
+        "dia": 1,
+        "hora": 22
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-13T00:55:26.516Z"
   }
 ]
