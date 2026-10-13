@@ -41,14 +41,78 @@ function limparAlarmesInvisiveisSaaS() {
 
 
 // ==========================================
+// 1.8. RECOMPOSIÇÃO DE CRACHÁS (SSOT)
+// ==========================================
+function atualizarCrachasCabecalhoSocioSaaS() {
+    const elNome = document.getElementById('header-nome');
+    if (!elNome || isGestorLogado) return;
+
+    const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "Sócio";
+    const nomePC = nomeLogado.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    let apelidoMobile = nomePC.split(' ')[0];
+    
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (idLogado && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado] && jogadoresGlobal[idLogado].apelido) {
+        apelidoMobile = jogadoresGlobal[idLogado].apelido;
+    } else {
+        try {
+            const cacheRaw = localStorage.getItem('jogadoresDataCache');
+            if (cacheRaw) {
+                const dadosJogadores = JSON.parse(cacheRaw);
+                if (dadosJogadores[nomeLogado] && dadosJogadores[nomeLogado].apelido) {
+                    apelidoMobile = dadosJogadores[nomeLogado].apelido;
+                }
+            }
+        } catch (e) {}
+    }
+
+    const socio = localStorage.getItem('jogadorLogadoSocio') || 'titular'; 
+    let perfis = {};
+    try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+
+    let badgesHtml = '';
+    const corVinculo = socio === 'visitante' ? '#f39c12' : '#3498db';
+    const txtVinculo = socio === 'visitante' ? 'Staff' : (socio ? socio.charAt(0).toUpperCase() + socio.slice(1).toLowerCase() : 'Sócio');
+    badgesHtml += `<span class="badge" style="background-color: ${corVinculo};">${txtVinculo}</span>`;
+
+    Object.keys(perfis).forEach(p => {
+        if (perfis[p] === true) {
+            let corPerfil = '#6c757d';
+            let abrevPerfil = p.substring(0, 5);
+            
+            if (p === 'Admin') { corPerfil = '#dc3545'; abrevPerfil = 'Admin'; }
+            else if (p === 'Professor') { corPerfil = '#198754'; abrevPerfil = 'Prof'; }
+            else if (p === 'Financeiro') { corPerfil = '#007bff'; abrevPerfil = 'Fin'; }
+            else if (p === 'Árbitro') { corPerfil = '#fd7e14'; abrevPerfil = 'Árbit'; }
+            else if (p === 'Manutenção') { corPerfil = '#6f42c1'; abrevPerfil = 'Manut'; }
+
+            badgesHtml += `<span class="badge" style="background-color: ${corPerfil};">${abrevPerfil}</span>`;
+        }
+    }); 
+    
+    badgesHtml += `<span class="badge badge-SaaS-off" style="background-color: #dc3545; display: none;">OFF</span>`;
+    
+    elNome.innerHTML = `
+        <div class="header-user-wrapper">
+            <span class="header-user-text">
+                Olá, <span class="nome-desktop">${nomePC}</span><span class="nome-mobile">${apelidoMobile}</span>
+            </span>
+            <div class="header-user-badges">${badgesHtml}</div>
+        </div>
+    `;
+}
+
+// ==========================================
 // 2. INICIALIZAÇÃO DA GRADE DE QUADRAS
 // ==========================================
+
 
 /**
  * Portaria de Sincronismo Visual: Avalia o estado das duas engrenagens do boot.
  * Só remove a tela de carregamento quando os dados chegarem E a faxina terminar.
  */
-function verificarLiberacaoTelaLoadingSaaS() {
+ 
+ function verificarLiberacaoTelaLoadingSaaS() {
     const telaLoading = document.getElementById('tela-loading');
     const isTelaAtiva = telaLoading ? telaLoading.classList.contains('ativa') : false;
 
@@ -110,54 +174,7 @@ function abrirVisaoQuadras() {
                 }
             });
         } else {
-            const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "Sócio";
-            const nomePC = nomeLogado.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-            apelidoMobile = nomePC.split(' ')[0];
-            
-            try {
-                const cacheRaw = localStorage.getItem('jogadoresDataCache');
-                if (cacheRaw) {
-                    const dadosJogadores = JSON.parse(cacheRaw);
-                    if (dadosJogadores[nomeLogado] && dadosJogadores[nomeLogado].apelido) {
-                        apelidoMobile = dadosJogadores[nomeLogado].apelido;
-                    }
-                }
-            } catch (e) {}
-
-            socio = localStorage.getItem('jogadorLogadoSocio') || 'titular'; 
-            let perfis = {};
-            try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
-
-            let badgesHtml = '';
-            const corVinculo = socio === 'visitante' ? '#f39c12' : '#3498db';
-            const txtVinculo = socio === 'visitante' ? 'Staff' : (socio ? socio.charAt(0).toUpperCase() + socio.slice(1).toLowerCase() : 'Sócio');
-            badgesHtml += `<span class="badge" style="background-color: ${corVinculo};">${txtVinculo}</span>`;
-
-            Object.keys(perfis).forEach(p => {
-                if (perfis[p] === true) {
-                    let corPerfil = '#6c757d';
-                    let abrevPerfil = p.substring(0, 5);
-                    
-                    if (p === 'Admin') { corPerfil = '#dc3545'; abrevPerfil = 'Admin'; }
-                    else if (p === 'Professor') { corPerfil = '#198754'; abrevPerfil = 'Prof'; }
-                    else if (p === 'Financeiro') { corPerfil = '#007bff'; abrevPerfil = 'Fin'; }
-                    else if (p === 'Árbitro') { corPerfil = '#fd7e14'; abrevPerfil = 'Árbit'; }
-                    else if (p === 'Manutenção') { corPerfil = '#6f42c1'; abrevPerfil = 'Manut'; }
-
-                    badgesHtml += `<span class="badge" style="background-color: ${corPerfil};">${abrevPerfil}</span>`;
-                }
-            }); 
-			
-            badgesHtml += `<span class="badge badge-SaaS-off" style="background-color: #dc3545; display: none;">OFF</span>`;
-			
-            elNome.innerHTML = `
-                <div class="header-user-wrapper">
-                    <span class="header-user-text">
-                        Olá, <span class="nome-desktop">${nomePC}</span><span class="nome-mobile">${apelidoMobile}</span>
-                    </span>
-                    <div class="header-user-badges">${badgesHtml}</div>
-                </div>
-            `;
+            atualizarCrachasCabecalhoSocioSaaS();
         }
     }
     
@@ -914,9 +931,11 @@ function aplicarValidacoesETempoReal() {
                 const cel = document.getElementById(`cel-${h}-${d}`);
                 if (!cel) continue;
 
-                // Removemos a exceção da 'celula-dupla' para que o Guardião também bloqueie as duplas no passado!
+                // 🚨 CORREÇÃO: Garante que as células ocupadas (Reservas, Aulas, Manutenções) 
+                // não sejam afetadas pela neutralização, permitindo "Ver Detalhes" no passado.
                 const ehCelulaLivreOuDupla = !cel.classList.contains('celula-ocupada') && 
                                              !cel.classList.contains('celula-aula') && 
+                                             !cel.classList.contains('celula-manutencao') && 
                                              !cel.classList.contains('celula-bloqueada');
 
                 if (ehCelulaLivreOuDupla) {
@@ -1753,7 +1772,7 @@ function renderizarListaUsuariosOnlineSaaS() {
         }
 
         if (atleta.isAdmin) {
-            tagsHtml += `<span class="SaaS-tag SaaS-tag-admin">Admin</span>`;
+            tagsHtml += `<span class="SaaS-tag SaaS-tag-admin">Admin</span>`; 
         }
 
         const divLinha = document.createElement('div');

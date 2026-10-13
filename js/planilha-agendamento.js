@@ -315,8 +315,8 @@ function abrirAgendamentoSaaS(dia, hora) {
     // --- Injeção Automática do Jogador Logado ---
     campoJogador1.innerHTML = '';
 
-    if (isGestorLogado) {
-        // 🟢 MODO GESTOR: Campo destravado, ativo e clicável
+    if (isGestorLogado || perfisLogadoEspeciais['Admin'] === true) {
+        // 🟢 MODO GESTOR E ADMIN: Campo destravado, ativo e clicável
         campoJogador1.disabled = false;
         campoJogador1.classList.add('saas-field-atleta');
         campoJogador1.style.backgroundColor = '#ffffff';
@@ -330,19 +330,37 @@ function abrirAgendamentoSaaS(dia, hora) {
         campoJogador1.appendChild(optDefault);
 
         if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
-            Object.keys(jogadoresGlobal).forEach(id => {
-                const j = jogadoresGlobal[id];
+            const atletasOrdenados = Object.keys(jogadoresGlobal)
+                .map(id => ({ id: id, ...jogadoresGlobal[id] }))
+                .sort((a, b) => {
+                    const nomeA = (a.nomeCompleto || "").trim().toLowerCase();
+                    const nomeB = (b.nomeCompleto || "").trim().toLowerCase();
+                    return nomeA.localeCompare(nomeB, 'pt-BR'); 
+                });
+
+            atletasOrdenados.forEach(j => {
                 if (j && j.ativo !== false) {
                     const opt = document.createElement('option');
-                    opt.value = id;
-                    opt.textContent = expurgarEAbreviarNomeSaaS(j.nomeCompleto, j.apelido); // Inclui o apelido desde a abertura
-					campoJogador1.appendChild(opt);
+                    opt.value = j.id; 
+                    opt.textContent = expurgarEAbreviarNomeSaaS(j.nomeCompleto, j.apelido); 
+                    campoJogador1.appendChild(opt);
                 }
             });
         }
-        campoJogador1.value = '';
+        
+        if (isGestorLogado) {
+            campoJogador1.value = ''; // O Gestor sempre começa com o seletor em branco
+        } else {
+            // O Admin começa com o próprio nome selecionado, mas com o campo destravado para editar
+            const meuId = localStorage.getItem('jogadorLogadoId');
+            if (meuId && campoJogador1.querySelector(`option[value="${meuId}"]`)) {
+                campoJogador1.value = meuId;
+            } else {
+                campoJogador1.value = '';
+            }
+        }
     } else {
-        // 🔒 MODO SÓCIO
+        // 🔒 MODO SÓCIO COMUM (Fica travado com o próprio nome e não clica)
         campoJogador1.disabled = true;
         campoJogador1.classList.remove('saas-field-atleta');
         campoJogador1.style.backgroundColor = '';
@@ -1615,7 +1633,7 @@ function validarConflitoHorarioAtletaSaaS(listaNomesCompletos, listaApelidos, pa
 // ====================================================================
 
 function validarEAgendarPartidaSaas() {
-    if (navigator.vibrate) navigator.vibrate(40); 
+    if (navigator.vibrate) navigator.vibrate(40);   
 
     // --- NOVO: Captura o Tipo de Agendamento ---
     const elTipoContainer = document.getElementById('linha-tipo-reserva');
@@ -1890,7 +1908,35 @@ function validarEAgendarPartidaSaas() {
 
         const stringApelidosExibicao = listaApelidos.join(', ');
         const stringCompletosExibicao = listaNomesCompletosReais.join(', ');
-        const organizadorPrincipal = listaNomesCompletosReais[0] || "Sócio";
+        
+        let organizadorPrincipal = listaNomesCompletosReais[0] || "Sócio";
+
+        // 🌟 LÓGICA DO ORGANIZADOR: IDENTIFICA SE FOI UMA OPERAÇÃO EXTERNA DA QUADRA
+        let isOperadorExterno = false;
+
+        if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+            organizadorPrincipal = "Administração (Gestor)";
+            isOperadorExterno = true;
+        } else {
+            const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim().toUpperCase();
+            const nomeJ1 = (listaNomesCompletosReais[0] || '').trim().toUpperCase();
+            
+            // O Sócio que está agendando é Admin, MAS NÃO colocou ele mesmo no Jogador 1. 
+            // Ele está agindo como a Secretaria.
+            if (nomeLogado !== "" && nomeLogado !== nomeJ1) {
+                let perfis = {};
+                try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+                
+                if (perfis['Admin'] === true) {
+                    const capitalizarNomeTemp = (str) => {
+                        if (!str) return '';
+                        return str.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+                    };
+                    organizadorPrincipal = capitalizarNomeTemp(nomeLogado) + " (Admin)";
+                    isOperadorExterno = true;
+                }
+            }
+        }
 
         const exigenciaAtiva = (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao !== false);
         const prazoHoras = (configRegrasGlobal && configRegrasGlobal.horasParaExpirar !== undefined) ? parseInt(configRegrasGlobal.horasParaExpirar) : 2;
@@ -1908,7 +1954,9 @@ function validarEAgendarPartidaSaas() {
             timestampExpiracao = Date.now() + (prazoHoras * 60 * 60 * 1000);
             
             for (let i = 0; i < listaApelidos.length; i++) {
-                if (i === 0) {
+                // Se a reserva foi criada por um Operador Externo (Gestor ou Admin para outros), 
+                // NINGUÉM entra confirmado na quadra. Todos ficam pendentes.
+                if (i === 0 && !isOperadorExterno) {
                     objetoConfirmacoes[listaApelidos[i]] = true; 
                 } else {
                     objetoConfirmacoes[listaApelidos[i]] = false; 

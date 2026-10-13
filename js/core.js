@@ -114,7 +114,7 @@ const acionarChecagemDeVersaoSaaS = () => {
 // 1. Escuta padrão para Web / PWA (Troca de abas no navegador)
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-        acionarChecagemDeVersaoSaaS();
+        acionarChecagemDeVersaoSaaS(); 
     }
 }); 
 
@@ -685,6 +685,19 @@ function iniciarOuvinteMestreSaaS() {
     database.ref(`${raizBanco}/jogadores`).on('value', (snapshot) => {
         jogadoresGlobal = snapshot.val() || {};
         jogadoresGlobalAlterado = true; // 🔥 Liga o alerta de alteração
+        
+        // 🛡️ SINCRONIZAÇÃO DE PERFIS EM TEMPO REAL E CACHE LOCAL
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+        if (idLogado && !isGestorLogado && jogadoresGlobal[idLogado]) {
+            const perfisAtualizados = jogadoresGlobal[idLogado].perfis || {};
+            localStorage.setItem('jogadorLogadoPerfis', JSON.stringify(perfisAtualizados));
+            
+            // Recompõe a interface em tempo real usando a função centralizada
+            if (typeof atualizarCrachasCabecalhoSocioSaaS === 'function') {
+                atualizarCrachasCabecalhoSocioSaaS();
+            }
+        }
+        
         console.log(`✓ [Core] ${Object.keys(jogadoresGlobal).length} jogadores sincronizados na memória RAM.`);
     });
 	

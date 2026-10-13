@@ -1822,7 +1822,7 @@ function solicitarResetRankingSaaS() {
 /* ========================================================
    FUNÇÃO AUXILIAR: TRAVA DE SEGURANÇA PARA TORNEIO ATIVO
    ======================================================== */
-function aplicarTravaParametrosCongeladosSaaS(confRanking) {
+function aplicarTravaParametrosCongeladosSaaS(confRanking) { 
     const conf = confRanking || {};
     const faseAtual = parseInt(conf.faseAtual, 10) || 1;
     const modelo = conf.calendario?.formatoTorneio || "grupos";
@@ -1831,8 +1831,8 @@ function aplicarTravaParametrosCongeladosSaaS(confRanking) {
     const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
     const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
 
-    // A trava só se aplica se o torneio estiver aberto (faseAtual > 1) E AINDA NÃO estiver concluído
-    const ehTorneioAtivo = (faseAtual > 1 && !torneioConcluido);
+    // A trava só se aplica a partir da Fase 3 (após encerrar as inscrições e montar as chaves)
+    const ehTorneioAtivo = (faseAtual >= 3 && !torneioConcluido);
 
     // Lista dos IDs dos campos sensíveis que devem ser congelados durante a competição
     const idsCamposSensiveis = [
