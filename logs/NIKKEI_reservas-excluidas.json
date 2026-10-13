@@ -207,5 +207,31 @@
         "hora": 11
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-13T20:24:38.892Z",
+    "dataLocal": "13/10/2026, 17:24:38",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "14-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Ana Francisca": true
+    },
+    "jogadores": "Ana Francisca",
+    "jogadores_completo": "ANA FRANCISCA SANTOS",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 6
+      }
+    ]
   }
 ]
