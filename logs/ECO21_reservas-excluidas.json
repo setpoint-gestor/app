@@ -6600,5 +6600,135 @@
         "hora": 22
       }
     ]
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alice Pereira": false,
+      "Ana Julia": false,
+      "Ana Maria Marinho": true
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 22:56:08",
+    "duracao": "2 Horas",
+    "horario": "22:00 - 24:00",
+    "jogadores": "Ana Maria Marinho, Alice Pereira, Ana Julia",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALICE ALMEIDA PEREIRA, ANA JULIA MARTINS",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 22,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 2,
+        "hora": 23,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-13T01:56:08.484Z"
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ANA MARIA MARINHO GOMES",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alice Pereira": false,
+      "Ana Julia": false,
+      "Ana Maria Marinho": true
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 22:56:08",
+    "duracao": "2 Horas",
+    "horario": "21:00 - 23:00",
+    "jogadores": "Ana Maria Marinho, Alice Pereira, Ana Julia",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALICE ALMEIDA PEREIRA, ANA JULIA MARTINS",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 21,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-13T01:56:08.640Z"
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alice Pereira": false,
+      "Ana Maria Marinho": true
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 22:56:01",
+    "duracao": "2 Horas",
+    "horario": "21:00 - 23:00",
+    "jogadores": "Ana Maria Marinho, Alice Pereira",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALICE ALMEIDA PEREIRA",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 21,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 2,
+        "hora": 22,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-13T01:56:01.723Z"
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alice Pereira": false,
+      "Ana Julia": false,
+      "Ana Maria Marinho": true
+    },
+    "data": "13-10-2026",
+    "dataLocal": "12/10/2026, 22:56:08",
+    "duracao": "2 Horas",
+    "horario": "21:00 - 23:00",
+    "jogadores": "Ana Maria Marinho, Alice Pereira, Ana Julia",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALICE ALMEIDA PEREIRA, ANA JULIA MARTINS",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 21,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 2,
+        "hora": 22,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-13T01:56:08.449Z"
   }
 ]
