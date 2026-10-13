@@ -6730,5 +6730,28 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-13T01:56:08.449Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-13T01:57:13.235Z",
+    "dataLocal": "12/10/2026, 22:57:13",
+    "autor": "ANA JULIA MARTINS",
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "motivo": "Convite recusado por Ana Julia. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "14-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "confirmacoes": {
+      "Alex": false,
+      "Alice Pereira": false,
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Ana Maria Marinho, Alex, Alice Pereira",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALEX SOUZA, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": []
   }
 ]
