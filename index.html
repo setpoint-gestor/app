@@ -3439,6 +3439,45 @@
 		</div>  
 	</div>
 	
+	<!-- ======================================================== -->
+	<!-- 🎯 NOVO COMPONENTE: MODAL EDITAR RESERVA (SAAS)          -->
+	<!-- ======================================================== -->
+	<div id="modal-edicao-reserva" class="modal-form-overlay">
+        <div class="modal-card-detalhes">
+            <!-- Cabeçalho Dinâmico (Verde 1h / Azul 2h) -->
+            <div id="edicao-header" class="card-header-detalhes header-1h">
+                <div>
+                    <h3 id="edicao-txt-quadra" class="court-title-detalhes">Quadra</h3>
+                    <div id="edicao-txt-horario" class="time-badge-detalhes">
+                        <i id="edicao-icone-horario" class="material-icons" style="font-size: 15px;">event</i>
+                        <span id="edicao-texto-data-hora">Carregando...</span>
+                    </div>
+                </div>
+                <!-- Botão Voltar Padrão -->
+                <button class="btn-back-detalhes" onclick="fecharModalEdicaoSaaS()" title="Voltar">
+                    <i class="material-icons" style="font-size: 24px;">arrow_back</i>
+                </button>
+            </div>
+
+            <div class="body-detalhes"> 
+                <!-- Organizador no painel cinza dedicado da lista -->
+                <div class="card-organizador">
+                    <div class="org-info">
+                        <span id="edicao-txt-org-nome" class="org-nome-txt">Carregando...</span>
+                        <span id="edicao-txt-org-sub" class="org-sub-txt">Sócio Titular</span>
+                    </div>
+                    <span class="badge-status badge-org">ORGANIZADOR</span>
+                </div>
+
+                <!-- Lista de Jogadores Editáveis (Injetada via JS) -->
+                <div id="edicao-lista-jogadores">
+                </div>
+
+                <button id="btn-salvar-edicao-saas" class="btn-salvar-saas" onclick="salvarEdicaoReservaSaaS()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+	
 	<script src="js/core.js?v=4"></script> 
     <script src="js/autenticacao.js?v=4"></script>   
     <script src="js/cadastro.js?v=4"></script>
@@ -3452,13 +3491,12 @@
     <script src="js/regras.js?v=4"></script>
     <script src="js/logs.js?v=4"></script>	
 	<!-- NOVO: Lógica isolada do Módulo de Ranking -->
-    <!-- Módulos do Ranking SaaS (Fatiamento em 3 Partes) -->
 	<script src="js/ranking-core.js?v=4"></script>
 	<script src="js/ranking-torneio.js?v=4"></script>
 	<script src="js/ranking-ui-pdf.js?v=4"></script>
 	<script src="js/piramide.js?v=4"></script>
 	<script src="js/grupos.js?v=4"></script>
-	<script src="js/sorteio-potes.js?v=4"></script> 
+	<script src="js/sorteio-potes.js?v=4"></script>  
 	
 	<!-- PWA: Registro do Motor Offline e Atualizador Automático -->
     <script>
