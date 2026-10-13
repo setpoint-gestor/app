@@ -7156,5 +7156,32 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-10-13T18:40:10.717Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-13T18:43:25.007Z",
+    "dataLocal": "13/10/2026, 15:43:25",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "15:00 - 16:00",
+    "duracao": "1 Hora",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Alex, Alice Pereira",
+    "jogadores_completo": "ALEX SOUZA, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 15
+      }
+    ]
   }
 ]
