@@ -149,5 +149,32 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-13T19:41:35.068Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-13T19:51:45.932Z",
+    "dataLocal": "13/10/2026, 16:51:45",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "14-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Federer": false,
+      "Murray": false
+    },
+    "jogadores": "Murray, Federer",
+    "jogadores_completo": "ANDY MURRAY, ROGER FEDERER",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 10
+      }
+    ]
   }
 ]
