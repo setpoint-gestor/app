@@ -7053,5 +7053,27 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-13T17:32:53.655Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-13T18:34:59.307Z",
+    "dataLocal": "13/10/2026, 15:34:59",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (2 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "14-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alex": true
+    },
+    "jogadores": "Adriano Feitosa, Alex",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEX SOUZA",
+    "slotsExcluidos": []
   }
 ]
