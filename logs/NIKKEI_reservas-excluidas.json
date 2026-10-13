@@ -79,5 +79,40 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-13T19:41:35.096Z",
+    "dataLocal": "13/10/2026, 16:41:35",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "14-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alessandro Xavier": false,
+      "Alex": false,
+      "Alexandre Camargo": false
+    },
+    "jogadores": "Adriano Feitosa, Alex, Alessandro Xavier, Alexandre Camargo",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEX SOUZA, ALESSANDRO ROMERO XAVIER, ALEXANDRE CAMARGO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 3,
+        "hora": 6
+      },
+      {
+        "quadra": "Rafael Martins",
+        "dia": 3,
+        "hora": 7
+      }
+    ]
   }
 ]
