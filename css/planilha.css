@@ -2360,3 +2360,247 @@ body.dark-mode .campo-tipo-destaque {
     color: #f8fafc !important;
 }
 
+
+/* ======================================================== */
+/* 27. COMPONENTE: MODAL "EDITAR RESERVA" (SOCIOS/GESTOR)   */
+/* ======================================================== */
+
+/* O Fundo Desfocado */
+#modal-edicao-reserva {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 13000 !important;
+}
+
+/* ⚠️ A ARMADURA BRANCA MESTRE (O que estava faltando) */
+#modal-edicao-reserva .modal-card-detalhes {
+    background: #ffffff;
+    width: 90%;
+    max-width: 380px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#modal-edicao-reserva .card-header-detalhes {
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #ffffff;
+}
+
+/* Cabeçalho Verde (1 Hora) e Azul (2 Horas) */
+#modal-edicao-reserva .card-header-detalhes.header-1h { background: var(--gradiente-1-hora-detalhes); }
+#modal-edicao-reserva .card-header-detalhes.header-2h { background: var(--gradiente-2-horas-detalhes); }
+
+#modal-edicao-reserva .court-title-detalhes {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 0;
+    color: #ffffff;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+#modal-edicao-reserva .time-badge-detalhes {
+    font-size: 12.5px;
+    color: #ffffff;
+    font-weight: 400;
+    opacity: 0.95;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+#modal-edicao-reserva .btn-back-detalhes {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    opacity: 0.92;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+/* Espaçamento Interno do Corpo */
+#modal-edicao-reserva .body-detalhes {
+    padding: 18px; 
+    text-align: left; 
+}
+
+/* O Painel do Organizador */
+#modal-edicao-reserva .card-organizador {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#modal-edicao-reserva .org-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+#modal-edicao-reserva .org-nome-txt {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+#modal-edicao-reserva .org-sub-txt {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Os Cartões dos Jogadores e Vagas */
+#modal-edicao-reserva .card-atleta {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 10px;
+    padding: 8px 10px 8px 12px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#modal-edicao-reserva .card-atleta.vazio {
+    background-color: #f8fafc;
+    border-style: dashed;
+}
+
+#modal-edicao-reserva .saas-select {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 13.5px;
+    font-weight: 500; /* Tipografia fina e elegante (igual à tela de Detalhes) */
+    color: #1e293b;
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+    width: 100%;
+    min-width: 0;
+}
+
+#modal-edicao-reserva .saas-select.select-placeholder {
+    color: #0284c7;
+}
+
+/* As Pílulas de Status */
+#modal-edicao-reserva .badge-status {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    letter-spacing: 0.3px;
+}
+
+#modal-edicao-reserva .badge-org {
+    background-color: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #86efac;
+}
+
+#modal-edicao-reserva .sub-status {
+    font-size: 11.5px;
+    font-weight: 600;
+    margin-top: 2px;
+    text-align: left;
+}
+#modal-edicao-reserva .sub-pendente { color: #d97706; }
+#modal-edicao-reserva .sub-novo { color: #0284c7; }
+#modal-edicao-reserva .sub-confirmado { color: #16a34a; }
+
+/* Botão Lixeira e Salvar */
+#modal-edicao-reserva .btn-lixeira {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Botão Salvar (Dinâmico e Elegante) */
+#modal-edicao-reserva .btn-salvar-saas {
+    width: 100%;
+    color: white;
+    padding: 12px; 
+    border: none;
+    border-radius: 10px;
+    font-size: 14.5px; 
+    font-weight: 700; 
+    cursor: pointer;
+    margin-top: 10px;
+    transition: transform 0.1s, opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; 
+}
+
+#modal-edicao-reserva .btn-salvar-saas:active {
+    transform: scale(0.97);
+}
+
+/* Classes Dinâmicas de Cor (Acompanham o Cabeçalho) */
+#modal-edicao-reserva .btn-salvar-1h { background: var(--gradiente-1-hora-detalhes, #10b981); }
+#modal-edicao-reserva .btn-salvar-2h { background: var(--gradiente-2-horas-detalhes, #0284c7); }
+#modal-edicao-reserva .btn-salvar-ranking { background: var(--gradiente-ranking-detalhes, #f59e0b); }
+#modal-edicao-reserva .btn-salvar-aula { background: #df7366; }
+#modal-edicao-reserva .btn-salvar-manut { background: #64748b; }
+
+/* ======================================================== */
+/* 🌓 MODO ESCURO (DARK MODE)                               */
+/* ======================================================== */
+body.dark-mode #modal-edicao-reserva .modal-card-detalhes {
+    background-color: #1e1e1e !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode #modal-edicao-reserva .card-organizador {
+    background-color: #252525 !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode #modal-edicao-reserva .org-nome-txt { color: #f8fafc !important; }
+body.dark-mode #modal-edicao-reserva .org-sub-txt { color: #94a3b8 !important; }
+
+body.dark-mode #modal-edicao-reserva .card-atleta {
+    background-color: #1e1e1e !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode #modal-edicao-reserva .card-atleta.vazio {
+    background-color: #252525 !important;
+    border-color: #444444 !important;
+}
+
+body.dark-mode #modal-edicao-reserva .saas-select { color: #f8fafc !important; }
+body.dark-mode #modal-edicao-reserva .sub-pendente { color: #f59e0b !important; }
+body.dark-mode #modal-edicao-reserva .sub-novo { color: #38bdf8 !important; }
