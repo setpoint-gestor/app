@@ -6884,5 +6884,37 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-13T02:19:24.862Z",
+    "dataLocal": "12/10/2026, 23:19:24",
+    "autor": "ANA MARIA MARINHO GOMES",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "14-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ANA MARIA MARINHO GOMES",
+    "confirmacoes": {
+      "Alex": true,
+      "Ana Julia": false,
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Ana Maria Marinho, Alex, Ana Julia",
+    "jogadores_completo": "ANA MARIA MARINHO GOMES, ALEX SOUZA, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 6
+      },
+      {
+        "dia": 3,
+        "hora": 7
+      }
+    ]
   }
 ]
