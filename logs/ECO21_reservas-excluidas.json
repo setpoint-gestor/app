@@ -7372,5 +7372,152 @@
         "hora": 20
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T11:29:20.537Z",
+    "dataLocal": "15/10/2026, 08:29:20",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "11-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Rildo",
+    "confirmacoes": {
+      "Rildo": true
+    },
+    "jogadores": "Aula",
+    "jogadores_completo": "Aula",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 6
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T11:29:20.552Z",
+    "dataLocal": "15/10/2026, 08:29:20",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "11-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Rildo",
+    "confirmacoes": {
+      "Rildo": true
+    },
+    "jogadores": "Aula",
+    "jogadores_completo": "Aula",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 7
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T11:29:20.552Z",
+    "dataLocal": "15/10/2026, 08:29:20",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 09:00",
+    "duracao": "1 Hora",
+    "data": "11-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Erick",
+    "confirmacoes": {
+      "Erick": true
+    },
+    "jogadores": "💦 Manutenção",
+    "jogadores_completo": "💦 Manutenção",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 8
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T11:29:20.552Z",
+    "dataLocal": "15/10/2026, 08:29:20",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "15:00 - 17:00",
+    "duracao": "2 Horas",
+    "data": "11-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Aline Sato": true
+    },
+    "jogadores": "Alexandre Voj, Aline Sato",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI, ALINE SATO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 7,
+        "hora": 15
+      },
+      {
+        "quadra": "Quadra - 2",
+        "dia": 7,
+        "hora": 16
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T11:29:20.552Z",
+    "dataLocal": "15/10/2026, 08:29:20",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "11-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE CAMARGO",
+    "confirmacoes": {
+      "Alexandre Camargo": true,
+      "Ana Maria Marinho": true
+    },
+    "jogadores": "Alexandre Camargo, Ana Maria Marinho",
+    "jogadores_completo": "ALEXANDRE CAMARGO, ANA MARIA MARINHO GOMES",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 7,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 3",
+        "dia": 7,
+        "hora": 7
+      }
+    ]
   }
 ]
