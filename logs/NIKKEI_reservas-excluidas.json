@@ -264,5 +264,114 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T18:15:22.216Z",
+    "dataLocal": "15/10/2026, 15:15:22",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Rildo",
+    "confirmacoes": {
+      "Rildo": true
+    },
+    "jogadores": "Aula",
+    "jogadores_completo": "Aula",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 10
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T18:15:22.217Z",
+    "dataLocal": "15/10/2026, 15:15:22",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "13:00 - 14:00",
+    "duracao": "1 Hora",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Erick",
+    "confirmacoes": {
+      "Erick": true
+    },
+    "jogadores": "💦 Manutenção",
+    "jogadores_completo": "💦 Manutenção",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 13
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T18:15:22.217Z",
+    "dataLocal": "15/10/2026, 15:15:22",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "RAFAEL MARTINS",
+    "confirmacoes": {
+      "Rafa": true,
+      "Taborda": true
+    },
+    "jogadores": "Rafa, Taborda",
+    "jogadores_completo": "RAFAEL MARTINS, RONALDO TABORDA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 7
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-15T18:15:22.217Z",
+    "dataLocal": "15/10/2026, 15:15:22",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "09:00 - 10:00",
+    "duracao": "1 Hora",
+    "data": "13-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Rildo",
+    "confirmacoes": {
+      "Rildo": true
+    },
+    "jogadores": "Aula",
+    "jogadores_completo": "Aula",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 9
+      }
+    ]
   }
 ]
