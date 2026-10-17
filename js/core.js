@@ -29,6 +29,10 @@ const auth = firebase.auth();
 // ==========================================
 let clubeAtivoId = "";          // Identificador único da arena para isolamento multi-inquilino (SaaS)
 let versaoWebGlobal = "1.105";  // Versão mestre lida do Firebase para Web/iOS
+
+// 🌟 INJEÇÃO IA: Variável mestre que receberá a chave do Gemini
+let geminiApiKeyGlobal = null;
+
 let raizBanco = "";             // Caminho mestre dinâmico no Firebase Realtime Database
 let carregamentoInicial = true; // Trava de segurança para rotinas que só devem rodar no primeiro boot
 let isGestorLogado = false;     // Flag de portaria: define se quem está navegando é o administrador
@@ -824,6 +828,14 @@ function iniciarOuvinteMestreSaaS() {
 			// 📜 ETAPA 1: Sincroniza a retenção de logs em dias na memória RAM
             DiasLimpezaLogs = configRegrasGlobal.DiasLimpezaLogs !== undefined ? parseInt(configRegrasGlobal.DiasLimpezaLogs) : 15;
             window.DiasLimpezaLogs = DiasLimpezaLogs; // Registra também na janela global
+
+            // 🤖 INJEÇÃO IA: Sincroniza a chave do Gemini do nó SaaS_Config
+            database.ref('Clubes/SaaS_Config/geminiApiKey').once('value').then((snapKey) => {
+                if (snapKey.exists()) {
+                    geminiApiKeyGlobal = snapKey.val();
+                    console.log("🔑 [Core] Chave da IA (Gemini) carregada com sucesso na memória RAM.");
+                }
+            });
         }
                   
         console.log("✓ [Core] Regras operacionais atualizadas na memória RAM.");

@@ -303,7 +303,14 @@ function cadastrarNovoClube() {
                         email_contato: email,
                         whatsapp: whatsapp || 'Não informado'
                     },
-                    sistemas: { config: { Abrir: true }, jogadores: {}, reservas: {} }
+                    sistemas: { 
+                        config: { 
+                            Abrir: true,
+                            limiteIaDiario: 5 // 🤖 Cota inicial automática injetada para novos clubes
+                        }, 
+                        jogadores: {}, 
+                        reservas: {} 
+                    }
                 };
                 
                 database.ref(`Clubes/${codigoClube}`).set(estruturaInicial).then(() => {

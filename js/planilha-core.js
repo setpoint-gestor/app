@@ -66,6 +66,12 @@ function atualizarCrachasCabecalhoSocioSaaS() {
         } catch (e) {}
     }
 
+    // 🎯 AQUI ENTRA A SUA NOVA REGRA PARA O CELULAR:
+    // Se o apelido tiver mais de uma palavra, corta e guarda só o primeiro nome.
+    if (apelidoMobile) {
+        apelidoMobile = apelidoMobile.trim().split(' ')[0];
+    }
+
     const socio = localStorage.getItem('jogadorLogadoSocio') || 'titular'; 
     let perfis = {};
     try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
@@ -142,6 +148,7 @@ function abrirVisaoQuadras() {
     let apelidoMobile = ""; 
     let socio = "";
     const elNome = document.getElementById('header-nome');
+    const elHeaderLeft = document.querySelector('.header-left');
     
     if (elNome) {
         if (isGestorLogado) {
@@ -150,9 +157,17 @@ function abrirVisaoQuadras() {
             const txtDesktop = isGodMode ? "Desenvolvedor" : "Gestor";
             const txtMobile = isGodMode ? "Dev" : "Gestor";
             const txtBadge = isGodMode ? "God Mode" : "Admin";
-            const corBadge = isGodMode ? "#8b5cf6" : "#dc3545"; // Roxo Premium pro Dev, Vermelho pro Admin
+            const corBadge = isGodMode ? "#8b5cf6" : "#dc3545";
 
-            // Renderiza o HTML Mestre
+            // 🛡️ Remove interatividade e o ícone para o painel de Gestor
+            if (elHeaderLeft) {
+                elHeaderLeft.style.cursor = 'default';
+                elHeaderLeft.onclick = null;
+                const iconeAvatar = elHeaderLeft.querySelector('.header-avatar');
+                if (iconeAvatar) iconeAvatar.style.display = 'none';
+            }
+
+            // Renderiza o HTML Mestre sem ícone
             elNome.innerHTML = `
                 <div class="header-user-wrapper">
                     <span class="header-user-text">
@@ -164,7 +179,7 @@ function abrirVisaoQuadras() {
                 </div>
             `;
 
-            // Consulta o status real da licença da arena e adiciona a Tag OFF se estiver suspensa
+            // Consulta o status real da licença da arena
             database.ref(`Clubes/${clubeAtivoId}/info_clube/ativo`).once('value').then((snapAtivo) => {
                 if (snapAtivo.val() === false) {
                     const elBadges = document.getElementById('container-badges-gestor');
@@ -174,9 +189,23 @@ function abrirVisaoQuadras() {
                 }
             });
         } else {
+            // 🎾 Garante interatividade e o ícone para o Sócio
+            if (elHeaderLeft) {
+                elHeaderLeft.style.cursor = 'pointer';
+                elHeaderLeft.onclick = abrirSheetPerfil;
+                const iconeAvatar = elHeaderLeft.querySelector('.header-avatar');
+                if (iconeAvatar) iconeAvatar.style.display = 'flex';
+            }
             atualizarCrachasCabecalhoSocioSaaS();
         }
     }
+	
+	// 🚪 Controle de Visibilidade: Ícone de saída visível apenas para Gestor ou God Mode
+        const btnSairHeader = document.getElementById('btn-fechar-planilha');
+        if (btnSairHeader) {
+            const isGodMode = !!localStorage.getItem('god_mode_clube');
+            btnSairHeader.style.display = (isGestorLogado || isGodMode) ? '' : 'none';
+        }
     
     const tabContainer = document.querySelector('.tab-container');
     if (!tabContainer) return;
@@ -1633,11 +1662,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 function abrirSheetPerfil() {
+	
+	// 🛡️ Bloqueio Mestre: Gestores e God Mode não acessam a Central do Jogador
+    if (typeof isGestorLogado !== 'undefined' && isGestorLogado) return;
+	
     const sheet = document.getElementById('sheet-perfil-jogador');
     if (!sheet) return;
 
     let nomeExibicao = "Jogador";
     let clubeExibicao = "Arena";
+    let classeExibicao = "Classe A";
 
     if (isGestorLogado) {
         const isGodMode = !!localStorage.getItem('god_mode_clube');
@@ -1647,38 +1681,57 @@ function abrirSheetPerfil() {
         clubeExibicao = (txtClubeDOM && txtClubeDOM.textContent !== "Carregando...") 
             ? txtClubeDOM.textContent 
             : (clubeAtivoId || "Painel Admin");
+        classeExibicao = isGodMode ? "God Mode" : "Admin";
     } else {
-        nomeExibicao = localStorage.getItem('jogadorLogadoNome') || "Jogador";
+        const nomeBruto = localStorage.getItem('jogadorLogadoNome') || "Jogador";
+        // Capitalização suave do nome (Primeiras letras maiúsculas, mantendo preposições minúsculas)
+        nomeExibicao = nomeBruto.toLowerCase().split(/\s+/).map(p => {
+            if (['da', 'de', 'do', 'dos', 'das', 'e'].includes(p)) return p;
+            return p.charAt(0).toUpperCase() + p.slice(1);
+        }).join(' ');
+
         clubeExibicao = localStorage.getItem('setpoint_jogador_clube_nome') || "Arena";
-    }
 
-    const elClube = document.getElementById('sheet-clube-jogador');
-    document.getElementById('sheet-nome-jogador').textContent = nomeExibicao;
-    
-    if (elClube) {
-        elClube.textContent = clubeExibicao;
-
-        let elVersao = document.getElementById('sheet-versao-app'); 
-        if (!elVersao) {
-            elVersao = document.createElement('div');
-            elVersao.id = 'sheet-versao-app'; 
-            
-            elClube.parentNode.insertBefore(elVersao, elClube.nextSibling);
-        }
-
-        if (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
-            elVersao.textContent = "Versão " + window.AndroidBridge.getAppVersion();
+        // Busca a classe oficial do atleta no cadastro global ou cache
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+        if (idLogado && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado] && jogadoresGlobal[idLogado].classe) {
+            classeExibicao = "Classe " + jogadoresGlobal[idLogado].classe;
         } else {
-            elVersao.textContent = "Versão " + versaoWebGlobal; 
+            const classeArmazenada = localStorage.getItem('jogadorLogadoClasse');
+            classeExibicao = classeArmazenada ? ("Classe " + classeArmazenada) : "Classe A";
         }
     }
+
+    // Injeção de Identidade
+    const elNome = document.getElementById('sheet-nome-jogador');
+    const elClube = document.getElementById('sheet-clube-jogador');
+    const elClasse = document.getElementById('sheet-classe-jogador');
+    const elDivisorClasse = document.getElementById('perfil-divisor-classe');
+
+    if (elNome) elNome.textContent = nomeExibicao;
+    if (elClube) elClube.textContent = clubeExibicao;
+    if (elClasse) {
+        elClasse.textContent = classeExibicao;
+        if (elDivisorClasse) elDivisorClasse.style.display = 'inline';
+    }
+
+    // Injeção da Versão exclusivamente no rodapé
+    const elVersao = document.getElementById('sheet-versao-app');
+    if (elVersao) {
+        const numVersao = (window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function')
+            ? window.AndroidBridge.getAppVersion()
+            : (typeof versaoWebGlobal !== 'undefined' ? versaoWebGlobal : '2.0.6.5');
+        elVersao.textContent = `SetPoint SaaS • Versão ${numVersao}`;
+    }
+
+    // Garante que o menu principal abra ativo e pronto
+    perfilVoltarHub();
 
     sheet.classList.add('visivel');
     setTimeout(() => {
         sheet.classList.add('ativa');
     }, 10);
 }
-
 
 function fecharSheetPerfil(event) {
     const sheet = document.getElementById('sheet-perfil-jogador');
@@ -1687,16 +1740,16 @@ function fecharSheetPerfil(event) {
     if (event && !event.target.classList.contains('bottom-sheet-overlay')) return;
 
     sheet.classList.remove('ativa');
-    
     setTimeout(() => {
         sheet.classList.remove('visivel');  
+        perfilVoltarHub();
     }, 300);
 }
  
 function deslogarJogadorSaaS() {
     fecharSheetPerfil();
     
-    showPrompt('Sair da Conta', 'Tem certeza que deseja deslogar?', () => {
+    showPrompt('Sair da Conta', 'Deseja trocar de usuário ou encerrar a sessão?', () => {
         if (typeof desligarTodosRadaresSaaS === 'function') {
             desligarTodosRadaresSaaS();
         }
@@ -1712,9 +1765,55 @@ function deslogarJogadorSaaS() {
     });
 }
 
+// ====================================================================
+// 9.1. NOVO MENU DE PERFIL — Seja PRO, navegação Guia Rápido, accordion
+// ====================================================================
+
+// Alterna entre Plano Básico <-> PRO de forma orgânica
+let perfilEhPro = false;
+function alternarPlanoPerfil() {
+    perfilEhPro = !perfilEhPro;
+    const card    = document.getElementById('perfil-card-upgrade');
+    const badge   = document.getElementById('perfil-badge-pro');
+    const divisor = document.getElementById('perfil-divisor-pro');
+    if (!card || !badge || !divisor) return;
+
+    if (perfilEhPro) {
+        card.style.display = 'none';
+        badge.style.display = 'inline-block';
+        divisor.style.display = 'inline';
+    } else {
+        card.style.display = 'flex';
+        badge.style.display = 'none';
+        divisor.style.display = 'none';
+    }
+}
+
+// Navega para a sub-tela de Guia Rápido
+function perfilAbrirGuia() {
+    const hub  = document.getElementById('perfil-view-hub');
+    const guia = document.getElementById('perfil-view-guia');
+    if (hub)  hub.classList.remove('ativo');
+    if (guia) guia.classList.add('ativo');
+}
+
+// Retorna ao menu principal da Central do Jogador
+function perfilVoltarHub() {
+    const hub  = document.getElementById('perfil-view-hub');
+    const guia = document.getElementById('perfil-view-guia');
+    if (guia) guia.classList.remove('ativo');
+    if (hub)  hub.classList.add('ativo');
+}
+
+// Comportamento da sanfona (accordion) do Guia Rápido
+function perfilToggleAcc(headerEl) {
+    const item = headerEl.parentElement;
+    if (item) item.classList.toggle('open');
+}
+
 
 // ====================================================================
-// 11. MOTOR DE PRESENÇA ONLINE GAVETA MATTE
+// 10. MOTOR DE PRESENÇA ONLINE GAVETA MATTE
 // ====================================================================
 function abrirJanelaOnlineSaaS() {
     document.getElementById('modal-online-SaaS').style.display = 'flex';
