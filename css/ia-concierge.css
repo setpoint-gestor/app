@@ -1,0 +1,260 @@
+/* ==================================================================== */
+/* 🧠 MÓDULO CONCIERGE (IA) - INTERFACE MINIMALISTA CARBONO (SaaS)      */
+/* ==================================================================== */
+
+:root {
+    --ia-primaria: #8b5cf6;   /* Violeta Mágico */
+    --ia-secundaria: #4f46e5; /* Índigo Cósmico */
+    --ia-bg-bar: #0f172a;     /* Carbono SetPoint */
+    --ia-border: #334155;
+    --ia-text: #ffffff;
+    --ia-muted: #94a3b8;
+}
+
+/* ---------------------------------------------------- */
+/* 1. GATILHO FLUTUANTE INICIAL (A Esfera Mágica)       */
+/* ---------------------------------------------------- */
+#fab-ia-concierge {
+    position: fixed;
+    bottom: 25px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--ia-primaria) 0%, var(--ia-secundaria) 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+    cursor: pointer;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#fab-ia-concierge .material-icons {
+    font-size: 28px;
+    transition: transform 0.2s;
+}
+
+#fab-ia-concierge:active {
+    transform: scale(0.92);
+}
+
+/* Oculta suavemente o botão redondo ao abrir a barra */
+#fab-ia-concierge.oculto {
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------- */
+/* 2. MÁSCARA DE FUNDO (FECHAMENTO AO TOCAR FORA)       */
+/* ---------------------------------------------------- */
+#ia-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 9500;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+#ia-backdrop.ativo {
+    display: block;
+    opacity: 1;
+}
+
+/* ---------------------------------------------------- */
+/* 3. A BARRA CÁPSULA (ESTILO GEMINI)                   */
+/* ---------------------------------------------------- */
+#ia-barra-mestra {
+    position: fixed;
+    bottom: -80px; /* Começa retraída fora da tela */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 92%;
+    max-width: 650px;
+    height: 56px;
+    border-radius: 30px;
+    background-color: var(--ia-bg-bar);
+    border: 1px solid var(--ia-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    box-sizing: border-box;
+    transition: bottom 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+}
+
+#ia-barra-mestra.aberta {
+    bottom: 25px;
+}
+
+/* Campo de Digitação */
+#ia-input-texto {
+    flex: 1;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 15.5px;
+    font-family: 'Roboto', sans-serif;
+    color: var(--ia-text);
+    margin: 0 8px;
+}
+
+#ia-input-texto::placeholder {
+    color: var(--ia-muted);
+    font-weight: 400;
+}
+
+/* Botões de Ação na Barra */
+.btn-acao-ia {
+    background: none;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    outline: none;
+    color: #cbd5e1;
+    transition: transform 0.15s, background-color 0.2s;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn-acao-ia:active {
+    transform: scale(0.9);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-acao-ia .material-icons {
+    font-size: 24px;
+}
+
+.btn-acao-ia.icon-mic {
+    color: #4ade80; /* Destaque verde no microfone */
+}
+
+.btn-acao-ia.icon-live {
+    color: #cbd5e1;
+    font-size: 20px !important;
+}
+
+/* Microfone em Gravação */
+.btn-acao-ia.icon-mic.gravando {
+    background: rgba(74, 222, 128, 0.2);
+    color: #10b981;
+    animation: micPulseIA 1s infinite alternate;
+}
+
+@keyframes micPulseIA {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.15); }
+}
+
+/* ---------------------------------------------------- */
+/* 4. CARROSSEL DE PÍLULAS DINÂMICAS (ADAPTATIVO)       */
+/* ---------------------------------------------------- */
+#ia-menu-sugestoes {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(15px);
+    width: 92%;
+    max-width: 650px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    z-index: 10001;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+#ia-menu-sugestoes.visivel {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+
+/* Base Comum da Pílula (sem white-space global) */
+.pilula-sugestao {
+    background: rgba(30, 41, 59, 0.96);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #ffffff;
+    border: 1px solid #334155;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    transition: background-color 0.2s, transform 0.15s, border-color 0.2s;
+    user-select: none;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pilula-sugestao:active {
+    background: #0f172a;
+    transform: scale(0.96);
+}
+
+/* Modo Duplo (Desktop ou duas opções curtas): 1 linha compacta */
+.pilula-formato-linha-unica {
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Modo Único (Mobile ou perguntas extensas): quebra suave em até 2 linhas */
+.pilula-formato-duas-linhas {
+    border-radius: 16px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+    width: 100%;
+    max-width: 100%;
+}
+
+.pilula-formato-duas-linhas i {
+    align-self: center;
+    flex-shrink: 0;
+}
+
+.pilula-formato-duas-linhas span {
+    display: block;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
+/* Classe utilitária para medição física invisível */
+.tester-medicao {
+    position: absolute !important;
+    visibility: hidden !important;
+    white-space: nowrap !important;
+    width: auto !important;
+    left: -9999px !important;
+    top: -9999px !important;
+}
