@@ -30,8 +30,8 @@
     <link rel="stylesheet" href="css/config.css?v=4"> 
     <link rel="stylesheet" href="css/regras.css?v=4"> 
     <link rel="stylesheet" href="css/logs.css?v=4">
-	<!-- NOVO: Estilo exclusivo do Módulo de Ranking -->
-    <link rel="stylesheet" href="css/ranking.css?v=4">    
+    <link rel="stylesheet" href="css/ranking.css?v=4"> 
+    <link rel="stylesheet" href="css/ia-concierge.css?v=4">	
 	
 </head>
 <body>
@@ -623,9 +623,7 @@
 		<button id="fab-nova-reserva" class="fab-btn fab-left" title="Nova Reserva">
             <i class="material-icons">add</i>
         </button>
-        <button id="fab-toggle-tema" class="fab-btn fab-right" title="Alternar Tema">
-            <i class="material-icons">dark_mode</i> 
-        </button>
+        
     </div>
 
     <div id="modal-regras" class="modal-overlay">
@@ -1511,22 +1509,211 @@
 		</div>
 	</div> 
 	
+	<!-- ========================================================
+	     MENU DE PERFIL DO JOGADOR (CENTRAL DO JOGADOR)
+	     Estrutura integrada: Topo claro minimalista, transição PRO,
+	     Sessão com Fechar Aplicativo e rodapé de troca de usuário.
+	     ======================================================== -->
 	<div id="sheet-perfil-jogador" class="bottom-sheet-overlay" onclick="fecharSheetPerfil(event)">
-        <div class="bottom-sheet-content">
-            <div class="sheet-drag-handle"></div>
-            <div class="sheet-perfil-header">
-                <div class="sheet-avatar-grande"><i class="material-icons">person</i></div>
-                <h3 id="sheet-nome-jogador">Carregando...</h3>
-                <p id="sheet-clube-jogador">Clube</p>
+        <div class="bottom-sheet-content perfil-card-novo">
+
+            <!-- VISTA 1: MENU PRINCIPAL (CENTRAL DO ATLETA) -->
+            <div class="perfil-view ativo" id="perfil-view-hub">
+
+                <!-- TOPO CLARO MINIMALISTA -->
+                <div class="perfil-topo-claro">
+                    <div class="perfil-avatar"><i class="material-icons">sports_tennis</i></div>
+                    <div class="perfil-topo-info">
+                        <h3 id="sheet-nome-jogador" class="perfil-nome">Carregando...</h3>
+                        <div class="perfil-sub">
+                            <span id="sheet-clube-jogador">Clube</span>
+                            <span id="perfil-divisor-classe">•</span>
+                            <span id="sheet-classe-jogador" style="color: #8b5cf6; font-weight: 700;">Classe</span>
+                            <span id="perfil-divisor-pro" style="display:none;">•</span>
+                            <span class="perfil-badge-pro" id="perfil-badge-pro" onclick="alternarPlanoPerfil()" title="Clique para voltar ao Plano Básico">PRO</span>
+                        </div>
+                    </div>
+                    <button class="perfil-btn-x" onclick="fecharSheetPerfil()" title="Fechar">
+                        <i class="material-icons" style="font-size:18px;">close</i>
+                    </button>
+                </div>
+
+                <!-- CARD PLANO BÁSICO (OCULTADO NO MODO PRO) -->
+                <div class="perfil-plano-basico" id="perfil-card-upgrade">
+                    <div class="perfil-plano-left">
+                        <div class="perfil-plano-icon"><i class="material-icons">workspace_premium</i></div>
+                        <div>
+                            <div class="perfil-plano-title">Plano Básico</div>
+                            <div class="perfil-plano-sub">Com anúncios • Agendamento padrão</div>
+                        </div>
+                    </div>
+                    <button class="perfil-btn-pro" onclick="alternarPlanoPerfil()">Seja PRO</button>
+                </div>
+
+                <!-- CORPO EM CARDS AGRUPADOS -->
+                <div class="perfil-corpo">
+
+                    <!-- AJUSTES DO APLICATIVO -->
+                    <div class="perfil-grupo">
+                        <span class="perfil-grupo-titulo">Ajustes do Aplicativo</span>
+                        <div class="perfil-caixa">
+                            <div class="perfil-linha" id="fab-toggle-tema">
+                                <div class="perfil-ic perfil-ic-dark"><i class="material-icons">dark_mode</i></div>
+                                <span class="perfil-linha-txt">Modo Escuro</span>
+                                <i class="material-icons perfil-seta">chevron_right</i>
+                            </div>
+
+                            <label class="perfil-linha">
+                                <div class="perfil-ic perfil-ic-notif"><i class="material-icons">notifications</i></div>
+                                <span class="perfil-linha-txt">Notificações</span>
+                                <div class="perfil-switch-wrap">
+                                    <input type="checkbox" class="perfil-switch-input" checked>
+                                    <div class="perfil-switch-track"></div>
+                                </div>
+                            </label>
+
+                            <label class="perfil-linha">
+                                <div class="perfil-ic perfil-ic-priv"><i class="material-icons">visibility_off</i></div>
+                                <span class="perfil-linha-txt">Ocultar meu telefone</span>
+                                <div class="perfil-switch-wrap">
+                                    <input type="checkbox" class="perfil-switch-input">
+                                    <div class="perfil-switch-track"></div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- CENTRAL DE AJUDA -->
+                    <div class="perfil-grupo">
+                        <span class="perfil-grupo-titulo">Central de Ajuda</span>
+                        <div class="perfil-caixa">
+                            <div class="perfil-linha" onclick="perfilAbrirGuia()">
+                                <div class="perfil-ic perfil-ic-rules"><i class="material-icons">menu_book</i></div>
+                                <span class="perfil-linha-txt">Guia Rápido</span>
+                                <i class="material-icons perfil-seta">chevron_right</i>
+                            </div>
+                            <div class="perfil-linha" onclick="solicitarCadastroWhats()">
+                                <div class="perfil-ic perfil-ic-whats"><i class="material-icons">chat</i></div>
+                                <span class="perfil-linha-txt">Falar com a Recepção</span>
+                                <i class="material-icons perfil-seta">chevron_right</i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SESSÃO -->
+                    <div class="perfil-grupo">
+                        <span class="perfil-grupo-titulo">Sessão</span>
+                        <div class="perfil-caixa">
+                            <div class="perfil-linha" onclick="fecharAplicativoSaaS()">
+                                <div class="perfil-ic perfil-ic-close"><i class="material-icons">power_settings_new</i></div>
+                                <span class="perfil-linha-txt" style="color:#ef4444; font-weight:700;">Fechar Aplicativo</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RODAPÉ REESTRUTURADO -->
+                <div class="perfil-rodape">
+                    <button class="btn-link" style="color: #0284c7; font-weight: 700; text-decoration: none; font-size: 13.5px; padding: 4px;" onclick="deslogarJogadorSaaS()">Trocar de Usuário</button>
+                    <div id="sheet-versao-app" style="font-size: 11px; color: #64748b; font-weight: 500; margin-top: 4px;">SetPoint SaaS • Versão 2.0.6.5</div>
+                </div>
+
             </div>
-            <div class="sheet-opcoes">
-                <button class="btn-app btn-link" style="color: #ef4444; border: 1px solid #fee2e2; background: #fef2f2; font-weight: 600;" onclick="deslogarJogadorSaaS()">
-                    <i class="material-icons" style="vertical-align: middle; margin-right: 5px;">logout</i> Sair da Conta
-                </button>
-                <button class="btn-app btn-link" style="color: #94a3b8; margin-top: 10px;" onclick="fecharSheetPerfil()">
-                    Cancelar
-                </button>
+
+            <!-- VISTA 2: GUIA RÁPIDO (MANTIDA INTEGRALMENTE) -->
+            <div class="perfil-view" id="perfil-view-guia">
+
+                <div class="perfil-guia-header">
+                    <div class="perfil-guia-left">
+                        <div class="perfil-guia-title-row">
+                            <i class="material-icons perfil-guia-icon">menu_book</i>
+                            <span>Guia Rápido</span>
+                        </div>
+                        <span class="perfil-guia-sub">Aprenda a usar o SetPoint em poucos passos</span>
+                    </div>
+                    <button class="perfil-btn-voltar" onclick="perfilVoltarHub()" title="Voltar">
+                        <i class="material-icons">arrow_back</i>
+                    </button>
+                </div>
+
+                <div class="perfil-guia-corpo">
+
+                    <div class="perfil-acc">
+                        <div class="perfil-acc-header" onclick="perfilToggleAcc(this)">
+                            <div class="perfil-acc-icon" style="background:#16a34a;"><i class="material-icons">sports_tennis</i></div>
+                            <span class="perfil-acc-title">Como reservar uma quadra</span>
+                            <i class="material-icons perfil-acc-chevron">expand_more</i>
+                        </div>
+                        <div class="perfil-acc-content">
+                            <ul class="perfil-lista">
+                                <li>Toque no botão <strong>+</strong> (verde) no canto inferior da tela.</li>
+                                <li>Escolha a <strong>quadra</strong>, o <strong>dia</strong> e o <strong>horário</strong> livre.</li>
+                                <li>Adicione os <strong>parceiros</strong> e confirme a reserva.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="perfil-acc">
+                        <div class="perfil-acc-header" onclick="perfilToggleAcc(this)">
+                            <div class="perfil-acc-icon" style="background:#0284c7;"><i class="material-icons">event</i></div>
+                            <span class="perfil-acc-title">Como ver minha agenda</span>
+                            <i class="material-icons perfil-acc-chevron">expand_more</i>
+                        </div>
+                        <div class="perfil-acc-content">
+                            <ul class="perfil-lista">
+                                <li>Abra a <strong>planilha</strong> e procure seus jogos destacados.</li>
+                                <li>Toque em uma <strong>reserva</strong> para ver os detalhes.</li>
+                                <li>Confira quadra, horário e quem vai jogar com você.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="perfil-acc">
+                        <div class="perfil-acc-header" onclick="perfilToggleAcc(this)">
+                            <div class="perfil-acc-icon" style="background:#ef4444;"><i class="material-icons">event_busy</i></div>
+                            <span class="perfil-acc-title">Como cancelar uma reserva</span>
+                            <i class="material-icons perfil-acc-chevron">expand_more</i>
+                        </div>
+                        <div class="perfil-acc-content">
+                            <ul class="perfil-lista">
+                                <li>Toque na sua <strong>reserva</strong> na planilha.</li>
+                                <li>Selecione a opção <strong>Cancelar</strong>.</li>
+                                <li>Confirme para liberar o horário para outros jogadores.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="perfil-acc">
+                        <div class="perfil-acc-header" onclick="perfilToggleAcc(this)">
+                            <div class="perfil-acc-icon" style="background:#7c3aed;"><i class="material-icons">auto_awesome</i></div>
+                            <span class="perfil-acc-title">Como usar a IA</span>
+                            <i class="material-icons perfil-acc-chevron">expand_more</i>
+                        </div>
+                        <div class="perfil-acc-content">
+                            <ul class="perfil-lista">
+                                <li>Toque no botão <strong>roxo</strong> (✨) no canto inferior direito.</li>
+                                <li>Escreva sua pergunta ou peça uma sugestão de horário.</li>
+                                <li>A IA responde e pode ajudar a montar sua reserva.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="perfil-pdf">
+                        <div class="perfil-pdf-left">
+                            <div class="perfil-pdf-square"><i class="material-icons">picture_as_pdf</i></div>
+                            <div>
+                                <div class="perfil-pdf-title">Manual Completo</div>
+                                <div class="perfil-pdf-sub">Guia detalhado do app • PDF</div>
+                            </div>
+                        </div>
+                        <button class="perfil-pdf-btn" onclick="alert('Download do manual acionado')">Baixar</button>
+                    </div>
+
+                </div>
+
             </div>
+
         </div>
     </div>
  
@@ -3482,21 +3669,19 @@
     <script src="js/autenticacao.js?v=4"></script>   
     <script src="js/cadastro.js?v=4"></script>
     <script src="js/quadras.js?v=4"></script>
-    <!-- Módulos Refatorados da Planilha -->
 	<script src="js/planilha-core.js?v=4"></script>
 	<script src="js/planilha-agendamento.js?v=4"></script>
 	<script src="js/planilha-acoes.js?v=4"></script>
-	
     <script src="js/config.js?v=4"></script>
     <script src="js/regras.js?v=4"></script>
     <script src="js/logs.js?v=4"></script>	
-	<!-- NOVO: Lógica isolada do Módulo de Ranking -->
 	<script src="js/ranking-core.js?v=4"></script>
 	<script src="js/ranking-torneio.js?v=4"></script>
 	<script src="js/ranking-ui-pdf.js?v=4"></script>
 	<script src="js/piramide.js?v=4"></script>
 	<script src="js/grupos.js?v=4"></script>
 	<script src="js/sorteio-potes.js?v=4"></script>  
+	<script src="js/ia-jogador.js?v=4"></script>
 	
 	<!-- PWA: Registro do Motor Offline e Atualizador Automático -->
     <script>
