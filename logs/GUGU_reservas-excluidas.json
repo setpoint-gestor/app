@@ -100,5 +100,45 @@
     "jogadores": "Gustavo",
     "jogadores_completo": "GUSTAVO",
     "slotsExcluidos": []
+  },
+  {
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "GUGU",
+    "confirmacoes": {
+      "Gustavo": true
+    },
+    "data": "18-10-2026",
+    "dataLocal": "18/10/2026, 00:42:40",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Gustavo",
+    "jogadores_completo": "GUSTAVO",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "organizadorDaReserva": "GUSTAVO",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Gugu",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-18T03:42:40.011Z"
+  },
+  {
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "GUGU",
+    "confirmacoes": {
+      "Gustavo": true
+    },
+    "data": "18-10-2026",
+    "dataLocal": "18/10/2026, 00:42:40",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Gustavo",
+    "jogadores_completo": "GUSTAVO",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "organizadorDaReserva": "GUSTAVO",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Gugu",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-18T03:42:40.026Z"
   }
 ]
