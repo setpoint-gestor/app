@@ -79,5 +79,26 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-18T03:42:40.017Z",
+    "dataLocal": "18/10/2026, 00:42:40",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "GUGU",
+    "quadra": "Quadra 1 - Gugu",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "18-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "GUSTAVO",
+    "confirmacoes": {
+      "Gustavo": true
+    },
+    "jogadores": "Gustavo",
+    "jogadores_completo": "GUSTAVO",
+    "slotsExcluidos": []
   }
 ]
