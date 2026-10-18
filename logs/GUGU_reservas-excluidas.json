@@ -52,5 +52,32 @@
         "hora": 22
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-18T01:42:30.087Z",
+    "dataLocal": "17/10/2026, 22:42:30",
+    "autor": "GUSTAVO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "GUGU",
+    "quadra": "Quadra 1 - Gugu",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "18-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "GUSTAVO",
+    "confirmacoes": {
+      "Gustavo": true,
+      "Taborda": true
+    },
+    "jogadores": "Gustavo, Taborda",
+    "jogadores_completo": "GUSTAVO, RONALDO TABORDA",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 6
+      }
+    ]
   }
 ]
