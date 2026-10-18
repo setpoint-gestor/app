@@ -180,5 +180,31 @@
     "quadra": "Quadra 1 - Gugu",
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-10-18T03:42:40.026Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-18T13:01:50.119Z",
+    "dataLocal": "18/10/2026, 10:01:50",
+    "autor": "GUSTAVO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "GUGU",
+    "quadra": "Quadra 1 - Gugu",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "18-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "GUSTAVO",
+    "confirmacoes": {
+      "Gustavo": true
+    },
+    "jogadores": "Gustavo",
+    "jogadores_completo": "GUSTAVO",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 6
+      }
+    ]
   }
 ]
