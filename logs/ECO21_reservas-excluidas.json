@@ -8807,5 +8807,71 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": false,
+      "Alex": true
+    },
+    "data": "21-10-2026",
+    "dataLocal": "19/10/2026, 16:20:50",
+    "duracao": "2 Horas",
+    "horario": "06:00 - 08:00",
+    "jogadores": "Alex, Adriano Feitosa",
+    "jogadores_completo": "ALEX SOUZA, ADRIANO GOMES FEITOSA",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 6,
+        "quadra": "Quadra - 1"
+      },
+      {
+        "dia": 3,
+        "hora": 7,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-10-19T19:20:50.735Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-19T19:21:03.486Z",
+    "dataLocal": "19/10/2026, 16:21:03",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "21-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Adriano Feitosa": false,
+      "Alex": true
+    },
+    "jogadores": "Alex, Adriano Feitosa",
+    "jogadores_completo": "ALEX SOUZA, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 7
+      }
+    ]
   }
 ]
