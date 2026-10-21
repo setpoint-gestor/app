@@ -9232,5 +9232,62 @@
         "hora": 21
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alex": true
+    },
+    "data": "21-10-2026",
+    "dataLocal": "21/10/2026, 17:52:52",
+    "duracao": "2 Horas",
+    "horario": "17:00 - 19:00",
+    "jogadores": "Adriano Feitosa, Alex",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEX SOUZA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 17
+      },
+      {
+        "dia": 3,
+        "hora": 18
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-21T20:52:52.748Z"
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "data": "21-10-2026",
+    "dataLocal": "21/10/2026, 17:52:49",
+    "duracao": "1 Hora",
+    "horario": "19:00 - 20:00",
+    "jogadores": "Adriano Feitosa",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 19
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-21T20:52:49.428Z"
   }
 ]
