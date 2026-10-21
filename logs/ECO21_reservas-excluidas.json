@@ -9537,5 +9537,36 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-10-21T21:36:28.725Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-21T21:45:44.892Z",
+    "dataLocal": "21/10/2026, 18:45:44",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "23-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alex": true
+    },
+    "jogadores": "Adriano Feitosa, Alex",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "dia": 5,
+        "hora": 6
+      },
+      {
+        "dia": 5,
+        "hora": 7
+      }
+    ]
   }
 ]
