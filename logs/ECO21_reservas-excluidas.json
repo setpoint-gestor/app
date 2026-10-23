@@ -2653,5 +2653,33 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-23T19:01:11.249Z",
+    "dataLocal": "23/10/2026, 16:01:11",
+    "autor": "ALEX SOUZA",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Alexandre Voj": false
+    },
+    "jogadores": "Alex, Alexandre Voj",
+    "jogadores_completo": "ALEX SOUZA, ALEXANDRE VOJCIECHOVSKI",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 6
+      }
+    ]
   }
 ]
