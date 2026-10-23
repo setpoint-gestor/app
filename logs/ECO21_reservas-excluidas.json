@@ -3270,5 +3270,25 @@
     "jogadores": "Alex",
     "jogadores_completo": "ALEX SOUZA",
     "slotsExcluidos": []
+  },
+  {
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true
+    },
+    "data": "25-10-2026",
+    "dataLocal": "23/10/2026, 18:15:34",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Alex",
+    "jogadores_completo": "ALEX SOUZA",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-10-23T21:15:34.345Z"
   }
 ]
