@@ -542,7 +542,7 @@
 					<span id="notificacao-badge" class="badge-vermelho" style="display: none;">0</span>
 				</div>
                 <button id="btn-fechar-planilha" class="header-logout" onclick="sairDaVisaoQuadras()" title="Voltar ao QG">
-					<i class="material-icons">logout</i>
+					<i class="material-icons" style="color: var(--cor-escura, #1e293b);">arrow_back</i>
 				</button>
             </div>
         </header>
@@ -1567,23 +1567,14 @@
                                 <div class="perfil-ic perfil-ic-notif"><i class="material-icons">notifications</i></div>
                                 <span class="perfil-linha-txt">Notificações</span>
                                 <div class="perfil-switch-wrap">
-                                    <input type="checkbox" class="perfil-switch-input" checked>
-                                    <div class="perfil-switch-track"></div>
-                                </div>
-                            </label>
-
-                            <label class="perfil-linha">
-                                <div class="perfil-ic perfil-ic-priv"><i class="material-icons">visibility_off</i></div>
-                                <span class="perfil-linha-txt">Ocultar meu telefone</span>
-                                <div class="perfil-switch-wrap">
-                                    <input type="checkbox" class="perfil-switch-input">
+                                    <input type="checkbox" class="perfil-switch-input" id="saas-switch-notificacoes" onchange="alternarNotificacoesSaaS(this.checked)" checked>
                                     <div class="perfil-switch-track"></div>
                                 </div>
                             </label>
                         </div>
                     </div>
 
-                    <!-- CENTRAL DE AJUDA -->
+                    <!-- CENTRAL DE AJUDA --> 
                     <div class="perfil-grupo">
                         <span class="perfil-grupo-titulo">Central de Ajuda</span>
                         <div class="perfil-caixa">
