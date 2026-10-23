@@ -3249,5 +3249,26 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-10-23T20:11:35.916Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-23T21:15:34.559Z",
+    "dataLocal": "23/10/2026, 18:15:34",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true
+    },
+    "jogadores": "Alex",
+    "jogadores_completo": "ALEX SOUZA",
+    "slotsExcluidos": []
   }
 ]
