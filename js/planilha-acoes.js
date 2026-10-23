@@ -13,7 +13,7 @@
 function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
     const modal = document.getElementById('modal-acoes-reserva');
     const txtDetalhes = document.getElementById('txt-acoes-detalhes');
-    const content = modal ? modal.querySelector('.modal-acoes-content') : null;
+    const content = modal ? modal.querySelector('.modal-acoes-content') : null; 
 
     if (!modal || !dadosReserva) return;
 
@@ -916,19 +916,25 @@ function solicitarExclusaoReservaSaaS(dia, hora, dadosReserva) {
                         });
 
                         if (estavaConfirmado) {
-                            const keyNotif = database.ref().push().key;
-                            const payloadNotif = {
-                                categoria: "remocao_jogador",
-                                detalhe: `A partida do dia ${formatData}, das ${horaFmt} às ${horaFimFmt} na ${strAvisoQuadra}, foi cancelada pelo organizador.`,
-                                timestamp: Date.now()
-                            };
-                            database.ref(`${raizBanco}/jogadores/${idJogadorAfetado}/notificacoes/${keyNotif}`).set(payloadNotif);
+                                const keyNotif = database.ref().push().key;
+                                const payloadNotif = {
+                                    categoria: "remocao_jogador",
+                                    detalhe: `A partida do dia ${formatData}, das ${horaFmt} às ${horaFimFmt} na ${strAvisoQuadra}, foi cancelada pelo organizador.`,
+                                    timestamp: Date.now()
+                                };
+                                database.ref(`${raizBanco}/jogadores/${idJogadorAfetado}/notificacoes/${keyNotif}`).set(payloadNotif);
+                            }
                         }
-                    }
-                });
-            }
+                    });
 
-            executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivoAcao);
+                    // 🔔 DISPARO PUSH SAAS (EVENTO 2: CANCELAMENTO PELO ORGANIZADOR)
+                    if (typeof processarGatilhoPushSaaS === 'function') {
+                        const nomeOrgPuro = (dadosReserva.organizador || nomeLogado || "Organizador").replace(/\s*\(.*?\)\s*/g, "").trim();
+                        processarGatilhoPushSaaS({ ...dadosReserva, dia, hora }, nomeOrgPuro, quadraSelecionadaSaaS, "RESERVA_CANCELADA_ORG");
+                    }
+                }
+
+                executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivoAcao);
         }
     );
 }
@@ -1009,6 +1015,10 @@ function executarPipelineExclusaoSaaS(listaDeSlots, dadosReserva, motivo, msgPer
 }
 
 function executarFaxinaAutomaticaSaaS() {
+    // 🛡️ TRAVA DE CONCORRÊNCIA: Se a faxina já estiver varrendo o banco, ignora chamadas duplicadas
+    if (window.isFaxinaEmAndamentoSaaS) return;
+    window.isFaxinaEmAndamentoSaaS = true;
+
     console.log("🤖 [SaaS Faxina] Iniciando varredura de histórico, convites expirados, súmulas vencidas e resgates...");
     
     const hoje = new Date();
@@ -1033,6 +1043,7 @@ function executarFaxinaAutomaticaSaaS() {
         const updatePayload = {};
         const filaLogsPremium = [];
         let totalPartidasLimpas = 0;
+		const filaPushesFaxina = []; // 🔔 FILA DE ESPERA DO PUSH
 
         const chavesPendentes = Object.keys(logsPendentesObj);
         if (chavesPendentes.length > 0) {
@@ -1362,19 +1373,28 @@ function executarFaxinaAutomaticaSaaS() {
                                 const hFim = String(horaReserva + duracaoReserva).padStart(2, '0') + ":00";
                                 const quadraTexto = nomeQuadraAmigavel.toLowerCase().startsWith('quadra') ? nomeQuadraAmigavel.toLowerCase() : `quadra ${nomeQuadraAmigavel}`;
 
-                                const keyNotif = database.ref().push().key;
+                                // 🎯 CHAVE E CATEGORIA OFICIAIS DO EVENTO 4 (EXPIRAÇÃO POR TEMPO)
+                                const keyNotif = `reserva_expirada_${diaReserva}_${horaReserva}`;
                                 const payloadNotif = {
-                                    categoria: "cancelado_quorum",
+                                    categoria: "reserva_expirada",
                                     detalhe: `${nomeDia}, das ${hInicio} às ${hFim} hs, na ${quadraTexto}`,
                                     timestamp: Date.now()
                                 };
                                 updatePayload[`jogadores/${idOrg}/notificacoes/${keyNotif}`] = payloadNotif;
+								
+								// 🔔 PREPARAÇÃO DO PUSH SAAS (EVENTO 4: Entra na fila de espera)
+                                const nomeOrgPuro = (r.organizador || "Organizador").replace(/\s*\(.*?\)\s*/g, "").trim();
+                                filaPushesFaxina.push({
+                                    reserva: { ...r, dia: diaReserva, hora: horaReserva },
+                                    organizador: nomeOrgPuro,
+                                    quadra: nomeQuadraAmigavel
+                                });
                             }
                         }
 
                         const motivoLog = conviteExpirou 
                             ? `Convite expirado (Cancelada por falta de quórum: Exigido ${quorumExigido}, Confirmado(s) ${qtdConfirmados})` 
-                            : `Limpeza automática por decurso do prazo de exibição (${DiasParaExibir}d)`;
+                            : `Limpeza automática por decurso do prazo de exibição (${DiasParaExibir}d)`; 
 
                         const logReciboAutomático = {
                             origem: "sistema", 
@@ -1412,21 +1432,33 @@ function executarFaxinaAutomaticaSaaS() {
                 if (typeof enviarFilaLogsAoGitHubSaaS === 'function') {
                     enviarFilaLogsAoGitHubSaaS(filaLogsPremium); 
                 }
+
+                // 🔔 DISPARO PUSH SAAS (EVENTO 4: Despacha com segurança após o banco confirmar a gravação)
+                if (filaPushesFaxina.length > 0 && typeof processarGatilhoPushSaaS === 'function') {
+                    filaPushesFaxina.forEach(item => {
+                        processarGatilhoPushSaaS(item.reserva, item.organizador, item.quadra, "RESERVA_EXPIRADA_QUORUM");
+                    });
+                }
+
                 window.saasFaxinaPronta = true;
+                window.isFaxinaEmAndamentoSaaS = false; // Destrava
                 if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') { verificarLiberacaoTelaLoadingSaaS(); }
             })
             .catch(err => {
                 console.error("❌ [SaaS Faxina] Falha ao aplicar descarte/atualização no Firebase:", err);
                 window.saasFaxinaPronta = true;
+                window.isFaxinaEmAndamentoSaaS = false; // Destrava em caso de erro
                 if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') { verificarLiberacaoTelaLoadingSaaS(); }
             });
         } else {
             console.log("🤖 [SaaS Faxina] Varredura encerrada. Nenhuma reserva expirada, súmula pendente vencida ou log encalhado.");
             window.saasFaxinaPronta = true;
+            window.isFaxinaEmAndamentoSaaS = false; // Destrava
             if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') { verificarLiberacaoTelaLoadingSaaS(); }
         }
     }).catch(err => {
         console.error("❌ [SaaS Faxina] Falha ao ler dados para triagem:", err);
+        window.isFaxinaEmAndamentoSaaS = false; // Destrava em caso de falha de rede
     });
 }
 
@@ -1721,6 +1753,12 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                     timestamp: Date.now()
                 };
                 database.ref(`${raizBanco}/jogadores/${idOrg}/notificacoes`).push(payloadNotif);
+
+                // 🔔 DISPARO PUSH SAAS (EVENTO 3: CANCELAMENTO IMEDIATO POR RECUSA DE CONVITE)
+                if (typeof processarGatilhoPushSaaS === 'function') {
+                    const nomeOrgPuro = (dadosReservaAntes.organizador || "Organizador").replace(/\s*\(.*?\)\s*/g, "").trim();
+                    processarGatilhoPushSaaS({ ...dadosReservaAntes, dia, hora }, nomeOrgPuro, nomeQuadraAmigavel, "RESERVA_RECUSADA_QUORUM", apelidoBusca);
+                }
             }
 
             if (dadosReservaAntes && !aceitou) {
@@ -2149,12 +2187,12 @@ function salvarEdicaoReservaSaaS() {
 
     const btnSalvar = document.getElementById('btn-salvar-edicao-saas');
     if (btnSalvar) {
-        btnSalvar.textContent = "Validando...";
+        btnSalvar.textContent = "Validando..."; 
         btnSalvar.disabled = true;
     }
 
     const { dia, hora, duracao_calculada, duracao } = dadosReservaEmEdicao;
-    const duracaoReal = duracao_calculada || parseInt(duracao) || 1;
+    const duracaoReal = duracao_calculada || parseInt(duracao) || 1; 
     
     // 1. COLETA DOS NOMES E TRATAMENTO DE EXIBIÇÃO
     const orgBruto = dadosReservaEmEdicao.organizador || "";

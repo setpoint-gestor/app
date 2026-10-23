@@ -122,6 +122,9 @@ function atualizarCrachasCabecalhoSocioSaaS() {
     const telaLoading = document.getElementById('tela-loading');
     const isTelaAtiva = telaLoading ? telaLoading.classList.contains('ativa') : false;
 
+    // 🛡️ Se o app estiver a acordar via push, mantém a cortina ativa até a Central abrir por cima
+    if (window.aberturaViaPushPendente) return;
+
     if (primeiraCargaQuadra && window.saasSnapshotInicialRecebido && window.saasFaxinaPronta && telaLoading && isTelaAtiva) {
         primeiraCargaQuadra = false; 
         navegarApp('tela-visao-quadras');
@@ -1662,10 +1665,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 function abrirSheetPerfil() {
-	
-	// 🛡️ Bloqueio Mestre: Gestores e God Mode não acessam a Central do Jogador
+    
+    // 🛡️ Bloqueio Mestre: Gestores e God Mode não acessam a Central do Jogador
     if (typeof isGestorLogado !== 'undefined' && isGestorLogado) return;
-	
+    
     const sheet = document.getElementById('sheet-perfil-jogador');
     if (!sheet) return;
 
@@ -1724,6 +1727,17 @@ function abrirSheetPerfil() {
         elVersao.textContent = `SetPoint SaaS • Versão ${numVersao}`;
     }
 
+    // 🧠 MEMÓRIA DAS NOTIFICAÇÕES: Lê o que foi salvo no aparelho
+    const switchNotif = document.getElementById('saas-switch-notificacoes');
+    if (switchNotif) {
+        const prefSalva = localStorage.getItem('setpoint_notificacoes_ativas');
+        if (prefSalva === 'false') {
+            switchNotif.checked = false;
+        } else {
+            switchNotif.checked = true; // O padrão de fábrica é ligado
+        }
+    }
+
     // Garante que o menu principal abra ativo e pronto
     perfilVoltarHub();
 
@@ -1732,6 +1746,8 @@ function abrirSheetPerfil() {
         sheet.classList.add('ativa');
     }, 10);
 }
+
+
 
 function fecharSheetPerfil(event) {
     const sheet = document.getElementById('sheet-perfil-jogador');
@@ -1757,6 +1773,14 @@ function deslogarJogadorSaaS() {
         if (isGestorLogado || localStorage.getItem('god_mode_clube')) {
             fazerLogout();
         } else {
+            // 🧹 HIGIENIZA O TOKEN DESTE APARELHO ANTES DE SAIR DA CONTA (Multi-Device)
+            const idLogadoParaLimpeza = localStorage.getItem('jogadorLogadoId');
+            const tokenDesteAparelho = localStorage.getItem('setpoint_aparelho_fcm_token');
+            if (idLogadoParaLimpeza && typeof raizBanco !== 'undefined' && raizBanco && tokenDesteAparelho) {
+                database.ref(`${raizBanco}/jogadores/${idLogadoParaLimpeza}/fcmTokens/${tokenDesteAparelho}`).remove().catch(() => {});
+                database.ref(`${raizBanco}/jogadores/${idLogadoParaLimpeza}/fcmToken`).remove().catch(() => {});
+            }
+            
             localStorage.removeItem('jogadorLogadoId');
             localStorage.removeItem('jogadorLogadoNome');
             showToast('Sessão encerrada.', 'success');
@@ -1809,6 +1833,34 @@ function perfilVoltarHub() {
 function perfilToggleAcc(headerEl) {
     const item = headerEl.parentElement;
     if (item) item.classList.toggle('open');
+}
+
+// ====================================================================
+// 9.2. PREFERÊNCIA DE NOTIFICAÇÕES (PERSISTÊNCIA LOCAL E NUVEM)
+// ====================================================================
+
+function alternarNotificacoesSaaS(isLigado) {
+    if (navigator.vibrate) navigator.vibrate(25);
+    
+    // 1. Salva imediatamente no aparelho (localStorage)
+    localStorage.setItem('setpoint_notificacoes_ativas', isLigado ? 'true' : 'false');
+    
+    // 2. Tenta salvar na Nuvem (Firebase) se o atleta estiver logado
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
+        database.ref(`${raizBanco}/jogadores/${idLogado}/receber_notificacoes`).set(isLigado)
+        .then(() => {
+            const statusTxt = isLigado ? "ativadas" : "silenciadas";
+            showToast(`Notificações ${statusTxt} com sucesso.`, "success");
+        })
+        .catch(err => {
+            console.error("Erro ao salvar preferência de notificação no banco:", err);
+            showToast("Ocorreu um erro ao salvar sua preferência.", "error");
+        });
+    } else {
+        const statusTxt = isLigado ? "ativadas" : "silenciadas";
+        showToast(`Notificações ${statusTxt} no dispositivo.`, "info");
+    }
 }
 
 
@@ -1882,4 +1934,340 @@ function renderizarListaUsuariosOnlineSaaS() {
         `;
         container.appendChild(divLinha);
     });
+}
+
+// ====================================================================
+// 11. MOTOR DE PUSH NOTIFICATIONS SERVERLESS (CLOUDFLARE)
+// ====================================================================
+
+/**
+ * Dispara uma notificação push via Cloudflare Workers
+ * @param {string} token - FCM Token do dispositivo de destino
+ * @param {string} titulo - Título da notificação (com emoji)
+ * @param {string} mensagem - Corpo da notificação
+ * @param {object} dadosExtras - (Opcional) Dados JSON para ações no app ao clicar
+ */
+async function dispararPushCloudflare(token, titulo, mensagem, dadosExtras = {}) {
+  // Ignora o disparo se o token for falso, vazio ou o placeholder "fcm_pendente"
+  if (!token || token === "fcm_pendente") {
+      console.warn("FCM Token inválido ou não definido. Disparo abortado.");
+      return;
+  }
+
+  const urlWorker = "https://setpoint-push.ronaldo-taborda.workers.dev/";
+
+  const payload = {
+      token: token,
+      titulo: titulo,
+      mensagem: mensagem,
+      dados: dadosExtras
+  };
+
+  try {
+      const response = await fetch(urlWorker, {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+          console.error("Erro na nuvem Cloudflare:", result);
+      } else {
+          console.log("Notificação Push despachada com sucesso!", result);
+      }
+      
+  } catch (error) {
+      console.error("Falha ao comunicar com o Worker da Cloudflare:", error);
+  }
+}
+
+/**
+ * Localiza o atleta no banco, valida suas preferências e dispara a notificação nativa
+ * @param {string} idJogador - ID único do atleta no Firebase
+ * @param {string} titulo - Título do push (com emoji)
+ * @param {string} mensagem - Texto da notificação
+ * @param {object} dadosExtras - (Opcional) Metadados para navegação interna
+ */
+async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras = {}) {
+    if (!idJogador || !titulo || !mensagem) {
+        console.warn("[Push SaaS] Parâmetros obrigatórios ausentes para o envio.");
+        return;
+    }
+
+    try {
+        // 1. Consulta os dados do atleta no Firebase
+        const snapshot = await database.ref(`${raizBanco}/jogadores/${idJogador}`).once('value');
+        const atleta = snapshot.val();
+
+        if (!atleta) {
+            console.warn(`[Push SaaS] Atleta com ID ${idJogador} não foi localizado no banco.`);
+            return;
+        }
+
+        // 2. Respeita a privacidade (se o atleta desativou nas preferências do perfil)
+        if (atleta.receber_notificacoes === false) {
+            console.log(`[Push SaaS] O atleta ${atleta.nome || atleta.nomeCompleto || idJogador} optou por silenciar notificações.`);
+            return;
+        }
+
+        // 3. Valida a existência de tokens na carteira Multi-Device do atleta
+        const carteiraTokens = atleta.fcmTokens || {};
+        const tokenRetrocompativel = atleta.fcmToken || atleta.fcm_token;
+        
+        if (tokenRetrocompativel && tokenRetrocompativel !== "fcm_pendente") {
+            carteiraTokens[tokenRetrocompativel] = true;
+        }
+        
+        const tokensArray = Object.keys(carteiraTokens);
+
+        if (tokensArray.length === 0) {
+            console.log(`[Push SaaS] Atleta ${atleta.nome || atleta.nomeCompleto || idJogador} ainda não possui token FCM ativo.`);
+            return;
+        }
+
+        // 4. Encaminha o envio individual para CADA aparelho ativo do atleta (Ex: Celular e Tablet)
+        // 🛡️ Filtro Global Injetado: A variável externa 'window.tokensPushProcessadosSaaS' protege contra repetição do mesmo celular na mesma chamada em lote
+        if (!window.tokensPushProcessadosSaaS) window.tokensPushProcessadosSaaS = new Set();
+        
+        for (const tokenDestino of tokensArray) {
+            if (!window.tokensPushProcessadosSaaS.has(tokenDestino)) {
+                window.tokensPushProcessadosSaaS.add(tokenDestino);
+                dispararPushCloudflare(tokenDestino, titulo, mensagem, dadosExtras);
+            }
+        }
+
+    } catch (erro) {
+        console.error(`[Push SaaS] Falha ao processar push para o atleta ${idJogador}:`, erro);
+    }
+}
+
+/**
+ * Carteiro Central: Processa eventos do ecossistema e despacha Push Notifications.
+ * @param {object} dadosReserva - O objeto oficial da reserva confirmada (com lista de jogadores e confirmacoes)
+ * @param {string} organizadorFormatado - O nome do organizador já filtrado e pronto para exibição
+ * @param {string} quadraAlvo - O nome da quadra (ex: "Quadra - 1" ou "Quadra 1 - Coberta")
+ * @param {string} tipoEvento - Qual é o gatilho da notificação (ex: "NOVO_CONVITE")
+ * @param {string} autorDaAcao - (Opcional) Nome de quem originou o evento (ex: O atleta que recusou o convite)
+ */
+function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo, tipoEvento, autorDaAcao = "") {
+    // Portaria Geral: exige apenas os dados da reserva e o cache de jogadores na memória
+    if (!dadosReserva || !jogadoresGlobal) return;
+
+    // 🛡️ Zera o filtro anti-repetição no início de cada novo bloco de eventos disparados no sistema
+    window.tokensPushProcessadosSaaS = new Set();
+
+    // Utilitários de formatação de exibição
+    const txtQuadraFmt = quadraAlvo.toLowerCase().startsWith('quadra') ? quadraAlvo.toLowerCase() : `quadra ${quadraAlvo}`;
+    const horaIniFmt = String(dadosReserva.hora).padStart(2, '0') + ":00";
+    const diaSemanaArray = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+    const diaNome = diaSemanaArray[dadosReserva.dia] || "Dia";
+
+    // ----------------------------------------------------
+    // EVENTO 1: NOVO CONVITE DE PARTIDA
+    // ----------------------------------------------------
+    if (tipoEvento === "NOVO_CONVITE") {
+        if (!dadosReserva.confirmacoes) return; // Trava de segurança específica
+        
+        const tituloPush = "🎾 Convite de Partida";
+        const msgPush = `${organizadorFormatado} convidou você para jogar na ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}). Toque para ver.`;
+
+        // Extrai a lista em array ("João, Maria" -> ["João", "Maria"])
+        const listaApelidos = (dadosReserva.jogadores || "").split(',').map(s => s.trim());
+
+        listaApelidos.forEach(apelidoConvidado => {
+            // Se a confirmação no banco for falsa, ele é um convidado que precisa ser avisado
+            if (dadosReserva.confirmacoes[apelidoConvidado] === false) {
+                const apelidoUp = apelidoConvidado.toUpperCase();
+                
+                // Localiza o ID desse jogador no banco de dados local da memória RAM
+                const idConvidadoTarget = Object.keys(jogadoresGlobal).find(id => {
+                    const j = jogadoresGlobal[id];
+                    return j && ((j.apelido || "").toUpperCase() === apelidoUp || (j.nomeCompleto || "").toUpperCase() === apelidoUp);
+                });
+                
+                // Despacha para a Cloudflare usando a função central
+                if (idConvidadoTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+                    enviarPushParaAtletaSaaS(idConvidadoTarget, tituloPush, msgPush, { tipo: "NOVO_CONVITE" });
+                }
+            }
+        });
+    }
+    
+    // ----------------------------------------------------
+    // EVENTO 2: RESERVA CANCELADA PELO ORGANIZADOR
+    // ----------------------------------------------------
+    if (tipoEvento === "RESERVA_CANCELADA_ORG") {
+        if (!dadosReserva.confirmacoes) return; // Trava de segurança específica
+        
+        const tituloPush = "🚫 Partida Cancelada";
+        const msgPush = `${organizadorFormatado} cancelou a partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}).`;
+
+        const listaApelidos = (dadosReserva.jogadores || "").split(',').map(s => s.trim());
+        const orgUp = (organizadorFormatado || "").toUpperCase();
+
+        listaApelidos.forEach(apelidoAtleta => {
+            const apelidoUp = apelidoAtleta.toUpperCase();
+
+            // Não envia notificação para o próprio organizador que executou o cancelamento
+            if (apelidoUp === orgUp) return;
+
+            // Identifica se o atleta estava confirmado na reserva
+            let estavaConfirmado = (dadosReserva.confirmacoes[apelidoAtleta] === true);
+            if (!estavaConfirmado) {
+                Object.keys(dadosReserva.confirmacoes).forEach(k => {
+                    if (k.toUpperCase() === apelidoUp && dadosReserva.confirmacoes[k] === true) {
+                        estavaConfirmado = true; 
+                    }
+                });
+            }
+
+            if (estavaConfirmado) {
+                const idTarget = Object.keys(jogadoresGlobal).find(id => {
+                    const j = jogadoresGlobal[id];
+                    return j && ((j.apelido || "").toUpperCase() === apelidoUp || (j.nomeCompleto || "").toUpperCase() === apelidoUp);
+                });
+
+                if (idTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+                    enviarPushParaAtletaSaaS(idTarget, tituloPush, msgPush, { tipo: "RESERVA_CANCELADA_ORG" });
+                }
+            }
+        });
+    }
+    
+    // ----------------------------------------------------
+    // EVENTO 3: CANCELAMENTO IMEDIATO POR RECUSA DE CONVITE
+    // ----------------------------------------------------
+    if (tipoEvento === "RESERVA_RECUSADA_QUORUM") {
+        const tituloPush = "❌ Reserva Cancelada";
+        const quemRecusouFmt = autorDaAcao || "Um jogador";
+        const msgPush = `${quemRecusouFmt} recusou o convite. Sua partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}) foi cancelada por falta de quórum.`;
+
+        const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+        const orgNorm = norm(organizadorFormatado || dadosReserva.organizador);
+
+        const idOrgTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+            const j = jogadoresGlobal[id];
+            return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
+        });
+
+        if (idOrgTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+            enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { tipo: "RESERVA_RECUSADA_QUORUM" });
+        }
+    }
+
+    // ----------------------------------------------------
+    // EVENTO 4: CANCELAMENTO AUTOMÁTICO POR TEMPO EXPIRADO (FAXINA)
+    // ----------------------------------------------------
+    if (tipoEvento === "RESERVA_EXPIRADA_QUORUM") {
+        const tituloPush = "❌ Reserva Cancelada";
+        const msgPush = `Sua partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}) expirou sem confirmações a tempo.`;
+
+        const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+        const orgNorm = norm(organizadorFormatado || dadosReserva.organizador);
+
+        const idOrgTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+            const j = jogadoresGlobal[id];
+            return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
+        });
+
+        // 🛡️ TRAVA ANTI-DUPLICIDADE: Se este aparelho pertence ao próprio organizador, não dispara push remoto para si mesmo
+        const meuIdLogado = localStorage.getItem('jogadorLogadoId');
+        if (meuIdLogado && idOrgTarget && meuIdLogado === idOrgTarget) {
+            return;
+        }
+
+        if (idOrgTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+            enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { tipo: "RESERVA_EXPIRADA_QUORUM" });
+        }
+    }
+	
+	// ----------------------------------------------------
+    // EVENTO 5: QUADRA INTERDITADA PARA MANUTENÇÃO
+    // ----------------------------------------------------
+    if (tipoEvento === "QUADRA_INTERDITADA") {
+        const tituloPush = "⚠️ Quadra Interditada";
+        const msgPush = `A ${quadraAlvo} foi interditada para manutenção. Seu horário de ${diaNome}, às ${horaIniFmt} foi cancelado.`;
+
+        const listaApelidos = (dadosReserva.jogadores || "").split(',').map(s => s.trim());
+
+        listaApelidos.forEach(apelidoAtleta => {
+            const apelidoUp = apelidoAtleta.toUpperCase();
+
+            // Na interdição, a quadra fechou para todos. Notificamos todos que estavam confirmados na reserva.
+            let estavaConfirmado = false;
+            if (dadosReserva.confirmacoes) {
+                if (dadosReserva.confirmacoes[apelidoAtleta] === true) estavaConfirmado = true;
+                Object.keys(dadosReserva.confirmacoes).forEach(k => {
+                    if (k.toUpperCase() === apelidoUp && dadosReserva.confirmacoes[k] === true) {
+                        estavaConfirmado = true;
+                    }
+                });
+            }
+
+            if (estavaConfirmado) {
+                const idTarget = Object.keys(jogadoresGlobal).find(id => {
+                    const j = jogadoresGlobal[id];
+                    return j && ((j.apelido || "").toUpperCase() === apelidoUp || (j.nomeCompleto || "").toUpperCase() === apelidoUp);
+                });
+
+                if (idTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+                    enviarPushParaAtletaSaaS(idTarget, tituloPush, msgPush, { tipo: "QUADRA_INTERDITADA" });
+                }
+            }
+        });
+    }
+	
+	// ----------------------------------------------------
+    // EVENTO 6: RESULTADO INFORMADO (SÚMULA PENDENTE)
+    // ----------------------------------------------------
+    if (tipoEvento === "RESULTADO_INFORMADO") {
+        const tituloPush = "🏆 Resultado Informado";
+        const autorNomeFmt = autorDaAcao || "Seu adversário";
+        const msgPush = `${autorNomeFmt} informou o resultado da partida de Ranking. Toque para validar a súmula.`;
+
+        const listaApelidos = (dadosReserva.jogadores || "").split(',').map(s => s.trim());
+        const normAutor = autorDaAcao.trim().toUpperCase();
+
+        listaApelidos.forEach(apelidoAtleta => {
+            const apelidoUp = apelidoAtleta.toUpperCase();
+
+            // Dispara para o adversário (ignora quem enviou a súmula)
+            if (apelidoUp !== normAutor) {
+                const idTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+                    const j = jogadoresGlobal[id];
+                    return j && ((j.apelido || "").toUpperCase() === apelidoUp || (j.nomeCompleto || "").toUpperCase() === apelidoUp);
+                });
+
+                if (idTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+                    enviarPushParaAtletaSaaS(idTarget, tituloPush, msgPush, { tipo: "RESULTADO_INFORMADO" });
+                }
+            }
+        });
+    }
+	
+	// ----------------------------------------------------
+    // EVENTO 7: CONVITE PARA TORNEIO (INSCRIÇÕES ABERTAS)
+    // ----------------------------------------------------
+    if (tipoEvento === "CONVITE_TORNEIO") {
+        const tituloPush = "🏅 Inscrições Abertas";
+        const nomeTorneio = autorDaAcao || "Torneio Oficial";
+        const idsPendentes = Array.isArray(dadosReserva) ? dadosReserva : Object.keys(dadosReserva || {});
+
+        idsPendentes.forEach(idAtleta => {
+            const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) ? jogadoresGlobal[idAtleta] : null;
+            if (!j) return;
+
+            const classeAtleta = j.classe ? `Classe ${j.classe.toUpperCase().replace('CLASSE_', '').trim()}` : "sua categoria";
+            const msgPush = `Você foi convidado para o ${nomeTorneio} na ${classeAtleta}. Toque para ver o convite.`;
+
+            if (typeof enviarPushParaAtletaSaaS === 'function') {
+                enviarPushParaAtletaSaaS(idAtleta, tituloPush, msgPush, { tipo: "CONVITE_TORNEIO" });
+            }
+        });
+    }
+	
 }

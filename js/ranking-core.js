@@ -11,7 +11,7 @@
 // --------------------------------------------------------
 // MEMÓRIA LOCAL E ESTADOS DA SÚMULA E ARBITRAGEM
 // --------------------------------------------------------
-let partidaRankingEmFoco = null;
+let partidaRankingEmFoco = null; 
 let regrasSessaoRanking = null; 
 
 let modoWOAtivoSaaS = false;
@@ -1186,21 +1186,6 @@ function salvarSumulaSaaS() {
         .toUpperCase();
 
     const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
-    let autorSumulaGravar = 'Atleta';
-
-    if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
-        autorSumulaGravar = 'Gestor';
-    } else {
-        let perfis = {};
-        try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
-        const nomeAtleta = (typeof capitalizarNome === 'function' && nomeLogado) ? capitalizarNome(nomeLogado) : nomeLogado;
-        if ((perfis['Árbitro'] === true || perfis['Arbitro'] === true) && nomeAtleta) {
-            autorSumulaGravar = `${nomeAtleta} (Árbitro)`;
-        } else {
-            autorSumulaGravar = nomeAtleta || 'Atleta';
-        }
-    }
-	
     const normNomeLogado = norm(nomeLogado);
     const jogadoresComp = norm(partidaRankingEmFoco.jogadores_completo || '');
     const jogadoresAp = norm(partidaRankingEmFoco.jogadores || '');
@@ -1208,6 +1193,25 @@ function salvarSumulaSaaS() {
     const souJogadorDaPartida = normNomeLogado !== "" && (jogadoresComp.includes(normNomeLogado) || jogadoresAp.includes(normNomeLogado));
     const ehContestado = (partidaRankingEmFoco.statusPlacar === 'contestado');
     const ehArbitragemNeutra = !souJogadorDaPartida && ((typeof isGestorLogado !== 'undefined' && isGestorLogado) || podeArbitrarRankingSaaS());
+
+    // 🎯 Se o utilizador estiver a jogar a partida, grava o seu nome limpo de atleta
+    let autorSumulaGravar = (typeof capitalizarNome === 'function' && nomeLogado) ? capitalizarNome(nomeLogado) : (nomeLogado || 'Atleta');
+
+    // ⚖️ Apenas se for uma intervenção neutra externa de terceiro aplica o sufixo (Árbitro) ou Gestor
+    if (ehArbitragemNeutra) {
+        if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+            autorSumulaGravar = 'Gestor';
+        } else {
+            let perfis = {};
+            try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+            const nomeAtleta = (typeof capitalizarNome === 'function' && nomeLogado) ? capitalizarNome(nomeLogado) : nomeLogado;
+            if ((perfis['Árbitro'] === true || perfis['Arbitro'] === true) && nomeAtleta) {
+                autorSumulaGravar = `${nomeAtleta} (Árbitro)`;
+            } else {
+                autorSumulaGravar = 'Árbitro';
+            }
+        }
+    }
 
     const executarGravacaoBanco = () => {
         if (navigator.vibrate) navigator.vibrate(40);
@@ -1347,6 +1351,12 @@ function salvarSumulaSaaS() {
             // 1. Preenche a memória primeiro para a notificação saber quem venceu
             partidaRankingEmFoco.statusPlacar = statusNovo;
             partidaRankingEmFoco.dadosPlacar = dadosPlacar;
+
+            // 🔔 GATILHO DE NOTIFICAÇÃO PUSH (EVENTO 6)
+            if (statusNovo === "pendente_validacao" && typeof processarGatilhoPushSaaS === 'function') {
+                const nomeQuadraPush = partidaRankingEmFoco.quadra || "Quadra";
+                processarGatilhoPushSaaS(partidaRankingEmFoco, autorSumulaGravar, nomeQuadraPush, "RESULTADO_INFORMADO", autorSumulaGravar);
+            }
 
             if (ehArbitragemNeutra) {
                 if (ehContestado) {

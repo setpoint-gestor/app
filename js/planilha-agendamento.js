@@ -22,7 +22,7 @@ function cliqueCelula(dia, hora) {
             const dataTexto = colHeader.textContent.trim();
             // Se o usuario clicou na coluna de hoje e a hora do slot já se encerrou, barra na hora!
             if (dataTexto === stringHoje && hora < horaAtual) {
-                showToast("Aviso: Não é permitido realizar agendamentos em horários passados.", "error");
+                showToast("Aviso: Não é permitido realizar agendamentos em horários passados.", "error"); 
                 return;
             }
         }
@@ -1082,7 +1082,8 @@ async function aplicarFiltroRankingModalSaaS() {
         let perfisLogado = {};
         try { perfisLogado = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
         const isArbitroLogado = perfisLogado['Árbitro'] === true || perfisLogado['Arbitro'] === true;
-        const podeSelecionarJ1Ranking = isGestorLogado || isArbitroLogado;
+        const ehAdminLogado = perfisLogado['Admin'] === true;
+        const podeSelecionarJ1Ranking = isGestorLogado || isArbitroLogado || ehAdminLogado;
 
         if (podeSelecionarJ1Ranking) {
             // 🟢 MODO GESTOR / ÁRBITRO NO RANKING: Ativa o estilo clicável e adiciona o evento de troca
@@ -1098,7 +1099,15 @@ async function aplicarFiltroRankingModalSaaS() {
             };
 
             const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-            const inscritos = confRanking.inscritosConfirmados || null;
+            
+            // 🎯 CONSOLIDAÇÃO DE ATLETAS VÁLIDOS NAS TABELAS: Cria uma lista de todos os IDs de quem está competindo ativamente
+            const atletasValidosNaTabela = new Set();
+            if (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
+                Object.values(rankingTabelasGlobal).forEach(categoriaTabela => {
+                    const idsCategoria = Array.isArray(categoriaTabela) ? categoriaTabela : Object.values(categoriaTabela);
+                    idsCategoria.forEach(id => { if (id) atletasValidosNaTabela.add(id); });
+                });
+            }
 
             const precisaPovoar = (selJ1.options.length <= 1) || 
                      (selJ1.options[0].textContent !== 'Selecionar Jogador 1...');
@@ -1110,9 +1119,9 @@ async function aplicarFiltroRankingModalSaaS() {
                 if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
                     Object.keys(jogadoresGlobal).forEach(id => {
                         const j = jogadoresGlobal[id];
-                        // 🎯 FILTRO EXCLUSIVO DE RANKING: Apenas atletas ativos e inscritos no Ranking
-                        const participaEInscrito = j && j.ativo !== false && j.participaRanking && (!inscritos || inscritos[id]);
-                        if (participaEInscrito) {
+                        // 🎯 FILTRO DE ALTA PRECISÃO: Exige que o atleta esteja ativo, apto ao ranking e presente nas tabelas de sorteio/chaves
+                        const participaETaNaTabela = j && j.ativo !== false && j.participaRanking && atletasValidosNaTabela.has(id);
+                        if (participaETaNaTabela) {
                             const opt = document.createElement('option');
                             opt.value = id;
                             opt.textContent = formatarNomeJogador1GestorSaaS(j.nomeCompleto);
@@ -1121,8 +1130,11 @@ async function aplicarFiltroRankingModalSaaS() {
                     });
                 }
 
+                const meuId = localStorage.getItem('jogadorLogadoId');
                 if (valSalvoJ1 && selJ1.querySelector(`option[value="${valSalvoJ1}"]`)) {
                     selJ1.value = valSalvoJ1;
+                } else if (meuId && !isGestorLogado && selJ1.querySelector(`option[value="${meuId}"]`)) {
+                    selJ1.value = meuId;
                 }
             }
 
@@ -1348,28 +1360,46 @@ async function aplicarFiltroRankingModalSaaS() {
         const selJ1 = document.getElementById('saas-jogador1');
         const selJ2 = document.getElementById('saas-jogador2');
 
-        if (isGestorLogado && selJ1) {
+        let perfisLogadoNormal = {};
+        try { perfisLogadoNormal = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+        const ehAdminLogadoNormal = perfisLogadoNormal['Admin'] === true;
+
+        if ((isGestorLogado || ehAdminLogadoNormal) && selJ1) {
+            // 🟢 MODO GESTOR E ADMIN: Mantém o campo destravado, ativo e clicável
             selJ1.disabled = false;
             selJ1.classList.add('saas-field-atleta');
+            selJ1.style.backgroundColor = '#ffffff';
+            selJ1.style.cursor = 'pointer';
+            selJ1.style.opacity = '1';
             selJ1.onchange = null;
 
             const prevVal = selJ1.value;
             selJ1.innerHTML = '<option value="">Selecionar Atleta 1...</option>';
 
             if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
-                Object.keys(jogadoresGlobal).forEach(id => {
-                    const j = jogadoresGlobal[id];
+                const atletasOrdenados = Object.keys(jogadoresGlobal)
+                    .map(id => ({ id: id, ...jogadoresGlobal[id] }))
+                    .sort((a, b) => {
+                        const nomeA = (a.nomeCompleto || "").trim().toLowerCase();
+                        const nomeB = (b.nomeCompleto || "").trim().toLowerCase();
+                        return nomeA.localeCompare(nomeB, 'pt-BR'); 
+                    });
+
+                atletasOrdenados.forEach(j => {
                     if (j && j.ativo !== false) {
                         const opt = document.createElement('option');
-                        opt.value = id;
+                        opt.value = j.id;
                         opt.textContent = expurgarEAbreviarNomeSaaS(j.nomeCompleto, j.apelido);
                         selJ1.appendChild(opt);
                     }
                 });
             }
 
+            const meuId = localStorage.getItem('jogadorLogadoId');
             if (prevVal && selJ1.querySelector(`option[value="${prevVal}"]`)) {
                 selJ1.value = prevVal;
+            } else if (!isGestorLogado && meuId && selJ1.querySelector(`option[value="${meuId}"]`)) {
+                selJ1.value = meuId;
             } else {
                 selJ1.value = '';
             }
@@ -2096,14 +2126,22 @@ function validarEAgendarPartidaSaas() {
                 }
                 return true;
             });
+        })
+        .then(() => {
+            showToast("Agendamento confirmado com sucesso!", "success");
+            if (typeof fecharModalConfig === 'function') fecharModalConfig('modal-agendamento'); 
+            
+            // 🔔 GATILHO DE NOTIFICAÇÃO PUSH (EVENTO 1)
+            if (!pacote.isRanking && statusFinal === "pendente") {
+                const nomeOrgPuro = organizadorPrincipal.replace(/\s*\(.*?\)\s*/g, "").trim();
+                if (typeof processarGatilhoPushSaaS === 'function') {
+                    processarGatilhoPushSaaS(objetoReservaReferencia, nomeOrgPuro, pacote.quadraAlvo, "NOVO_CONVITE");
+                }
+            }
         });
     })
-    .then(() => {
-        showToast("Agendamento confirmado com sucesso!", "success");
-        if (typeof fecharModalConfig === 'function') fecharModalConfig('modal-agendamento'); 
-    })
     .catch(async err => {
-        if (key1Committed && pacote.duracao === 2) {
+        if (typeof key1Committed !== 'undefined' && key1Committed && pacote.duracao === 2) {
             try {
                 await database.ref(caminhoKey1).remove();
                 console.log("🧹 [Rollback] 1ª hora removida com sucesso para evitar reserva pela metade.");

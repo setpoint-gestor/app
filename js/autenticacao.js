@@ -19,7 +19,7 @@ auth.onAuthStateChanged((user) => {
         isGestorLogado = true;
         
         // Acorda os ouvintes mestres instantaneamente
-        if (typeof iniciarOuvinteMestreSaaS === 'function') iniciarOuvinteMestreSaaS();
+        if (typeof iniciarOuvinteMestreSaaS === 'function') iniciarOuvinteMestreSaaS(); 
 
         // Busca apenas o nome do clube para colocar no cabeçalho
         database.ref(`Clubes/${godModeClube}/info_clube/nome`).once('value').then((snapNome) => {
@@ -152,8 +152,13 @@ auth.onAuthStateChanged((user) => {
             // 🛑 CHECAGEM DE LICENÇA NO AUTO-LOGIN DO F5
             database.ref(`Clubes/${clubeSalvoId}/info_clube/ativo`).once('value').then((snapAtivo) => {
                 if (snapAtivo.val() === false && !localStorage.getItem('god_mode_clube')) {
-                    navegarApp('tela-manutencao');
+                    navegarApp('tela-manutencao'); 
                     return;
+                }
+				
+				// 🔔 CHAMA O MOTOR DE NOTIFICAÇÕES NATIVAS DO CAPACITOR (AUTO-LOGIN)
+                if (typeof inicializarPushNotificationsSaaS === 'function') {
+                    inicializarPushNotificationsSaaS();
                 }
 
                 if (jogadorSalvoId) {
@@ -531,6 +536,16 @@ function fazerLoginJogador() {
                 localStorage.setItem('jogadorLogadoSocio', dados.socio || 'titular');
                 localStorage.setItem('jogadorLogadoClasse', dados.classe || '');
                 localStorage.setItem('jogadorLogadoPerfis', dados.perfis ? JSON.stringify(dados.perfis) : '{}');
+				
+				// 🔔 CHAMA O MOTOR DE NOTIFICAÇÕES NATIVAS DO CAPACITOR
+                if (typeof inicializarPushNotificationsSaaS === 'function') {
+                    inicializarPushNotificationsSaaS();
+                }
+                
+                // Sincroniza a preferência de notificações vinda da nuvem
+                if (dados.receber_notificacoes !== undefined) {
+                    localStorage.setItem('setpoint_notificacoes_ativas', dados.receber_notificacoes ? 'true' : 'false');
+                }
                 
                 if (typeof sincronizarPresencaOnlineSaaS === 'function') {
                     sincronizarPresencaOnlineSaaS();
@@ -570,6 +585,15 @@ function fazerLogout() {
     // 🌟 RASGA O INGRESSO VIP DO GOD MODE SE ELE EXISTIR
     if (localStorage.getItem('god_mode_clube')) {
         localStorage.removeItem('god_mode_clube'); 
+    }
+
+    // 🧹 HIGIENIZA O TOKEN DESTE APARELHO ANTES DE SAIR DA CONTA (Multi-Device)
+    const idLogadoParaLimpeza = localStorage.getItem('jogadorLogadoId');
+    const tokenDesteAparelho = localStorage.getItem('setpoint_aparelho_fcm_token');
+    
+    if (idLogadoParaLimpeza && typeof raizBanco !== 'undefined' && raizBanco && tokenDesteAparelho) {
+        database.ref(`${raizBanco}/jogadores/${idLogadoParaLimpeza}/fcmTokens/${tokenDesteAparelho}`).remove().catch(() => {});
+        database.ref(`${raizBanco}/jogadores/${idLogadoParaLimpeza}/fcmToken`).remove().catch(() => {});
     }
 
     auth.signOut().then(() => {
@@ -670,21 +694,16 @@ window.addEventListener('load', aplicarRegrasInterfacePWA);
 // 7. CENTRAL DE NOTIFICAÇÕES & RADAR DO SININHO (SÓCIO)
 // ==========================================
 
-// A. Abertura e Fechamento do Modal Central
+// A. Abertura e Fechamento do Modal Central (Blindado contra Ghost Click)
+window.travaCliqueNotificacoesSaaS = false;
+
 function abrirModalNotificacoes() {
     const modal = document.getElementById('modal-central-notificacoes');
     if (modal) {
         modal.style.display = 'flex';
-        
-        const idLogado = localStorage.getItem('jogadorLogadoId');
 
         // 1. Renderiza a lista na tela com os dados atuais
         renderizarListaNotificacoesSocioSaaS();
-
-        // 2. Consome e apaga as notificações passivas do Firebase (Súmulas e Arbitragem)
-        if (idLogado && raizBanco) {
-            database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).remove();
-        }
     }
 }
 
@@ -696,8 +715,13 @@ function fecharModalNotificacoes(e) {
     if (modal) {
         modal.style.display = 'none'; 
     }
-}
 
+    // 🧹 Consome e apaga as notificações passivas do Firebase ao fechar a central
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
+        database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).remove();
+    }
+}
 
 // B. Renderiza as Notificações dentro da Central
 /* ======================================================== */
@@ -905,7 +929,19 @@ function renderizarListaNotificacoesSocioSaaS() {
                     });
                     break;
 
-                case 'convite_recusado':
+                case 'reserva_expirada':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'cancelado',
+                        tagTexto: '⏱️ TEMPO ESGOTADO',
+                        tagClasse: '',
+                        tagEstiloCustom: 'background: #fee2e2; color: #991b1b; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;',
+                        titulo: 'Reserva Cancelada',
+                        detalhe: `Sua partida de <b>${n.detalhe || 'horário pendente'}</b> expirou sem confirmações a tempo.`,
+                        estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
+                    });
+                    break;
+					
+				case 'convite_recusado':
                     htmlCards += gerarCardNotificacaoHTML({
                         classeCard: 'recusado',
                         tagTexto: '📅 AGENDAMENTO',
@@ -916,6 +952,18 @@ function renderizarListaNotificacoesSocioSaaS() {
                         estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
                     });
                     break;
+					
+				case 'quadra_interditada':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'manutencao',
+                        tagTexto: '⚠️ MANUTENÇÃO',
+                        tagClasse: '',
+                        tagEstiloCustom: 'background: #fef08a; color: #92400e; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;',
+                        titulo: 'Quadra Interditada',
+                        detalhe: `Sua reserva de <b>${n.detalhe || 'horário pendente'}</b> foi cancelada devido à interdição da quadra.`,
+                        estiloCard: 'border-left: 4px solid #f59e0b; background: #fffbeb;'
+                    });
+                    break;	
 					
 				case 'remocao_jogador':
                     htmlCards += gerarCardNotificacaoHTML({

@@ -14,7 +14,7 @@ const dicNomesRegras = {
     DiasParaLimpar: "Antecedência Máxima", 
 	DiasParaExibir: "Dias para Exibir",
     DuracaoPermitida: "Duração Permitida",
-    OrganizadorEdicao: "Edição pelo Organizador",
+    OrganizadorEdicao: "Edição pelo Organizador", 
     Quorum1h: "Quórum Mínimo (1 Hora)",
 	Quorum2h: "Quórum Mínimo (2 Horas)",
     ReservasPorConfirmacao: "Confirmação Obrigatória", 
@@ -1753,6 +1753,12 @@ function processarRepescagemNovosAtletasSaaS(dadosConviteAtual) {
     database.ref(`${raizBanco}/convites_ranking/pendentes`).update(novosPendentesUpdate)
         .then(() => {
             showToast(`Repescagem concluída! ${totalNovos} novo(s) atleta(s) convidado(s).`, "success");
+            
+            // 🔔 GATILHO DE NOTIFICAÇÃO PUSH (EVENTO 7 - Repescagem)
+            if (typeof processarGatilhoPushSaaS === 'function') {
+                const nomeTorneioFmt = cal.nomeTorneio || "Torneio Oficial";
+                processarGatilhoPushSaaS(Object.keys(novosPendentesUpdate), "", "", "CONVITE_TORNEIO", nomeTorneioFmt);
+            }
         })
         .catch((err) => {
             console.error("❌ Erro na repescagem:", err);
@@ -1803,6 +1809,12 @@ function processarDisparoTemporadaFirebase(tipoOrdem) {
 
         database.ref(`${raizBanco}/convites_ranking`).set(temporadaData).then(() => {
             showToast(`Convites disparados com sucesso para ${totalInscritos} atleta(s) da categoria!`, "success");
+            
+            // 🔔 GATILHO DE NOTIFICAÇÃO PUSH (EVENTO 7 - Primeiro Disparo)
+            if (typeof processarGatilhoPushSaaS === 'function') {
+                const nomeTorneioFmt = cal.nomeTorneio || "Torneio Oficial";
+                processarGatilhoPushSaaS(Object.keys(pendentesMap), "", "", "CONVITE_TORNEIO", nomeTorneioFmt);
+            }
         }).catch((err) => {
             console.error("Erro ao gravar convites:", err);
             showToast("Erro ao gravar convites no banco de dados.", "error");

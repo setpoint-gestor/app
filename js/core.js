@@ -19,7 +19,7 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);    
 }
 
-const database = firebase.database();     
+const database = firebase.database();      
 const auth = firebase.auth();   
 
 
@@ -559,10 +559,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const sincronizarIconesTema = (isDark) => {
         if (btnTemaSocio) {
             const iconeSocio = btnTemaSocio.querySelector('.material-icons');
-            if (iconeSocio) iconeSocio.textContent = isDark ? 'light_mode' : 'dark_mode';
+            const txtSocio = btnTemaSocio.querySelector('.perfil-linha-txt');
+
+            if (iconeSocio) {
+                iconeSocio.textContent = isDark ? 'light_mode' : 'dark_mode';
+                // ☀️ Sol amarelo vivo no modo escuro, padrão no modo claro
+                iconeSocio.style.color = isDark ? '#f59e0b' : '';
+            }
+            if (txtSocio) {
+                // 🌓 Alterna o rótulo contextual: Modo Claro vs Modo Escuro
+                txtSocio.textContent = isDark ? 'Modo Claro' : 'Modo Escuro';
+            }
         }
         if (btnTemaGestor) {
             btnTemaGestor.textContent = isDark ? 'light_mode' : 'dark_mode'; 
+            btnTemaGestor.style.color = isDark ? '#f59e0b' : '';
         }
     };
 
@@ -1575,6 +1586,13 @@ function iniciarOuvinteNotificacoesJogadorSaaS() {
         if (!idAtual || isGestorLogado) return;
 
         const notifs = snap.exists() ? snap.val() : {};
+        
+        // 🎯 INJEÇÃO CIRÚRGICA: O Radar agora carimba a memória da Pintora em tempo real
+        if (typeof jogadoresGlobal !== 'undefined') {
+            if (!jogadoresGlobal[idAtual]) jogadoresGlobal[idAtual] = {};
+            jogadoresGlobal[idAtual].notificacoes = notifs;
+        }
+
         const qtdNotifs = Object.keys(notifs).length;
         const temRanking = window.temConviteRankingPendenteSocio === true ? 1 : 0;
 
@@ -1615,7 +1633,10 @@ function iniciarOuvinteNotificacoesJogadorSaaS() {
 
         const modal = document.getElementById('modal-central-notificacoes');
         if (modal && modal.style.display === 'flex') {
-            if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
+            // Se as pendências zeraram com o modal aberto (ex: aceitou/recusou convite), fecha de imediato sem repintar a tela vazia
+            if (total === 0) {
+                modal.style.display = 'none';
+            } else if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
                 renderizarListaNotificacoesSocioSaaS();
             }
         }
@@ -1662,4 +1683,119 @@ function iniciarRadarConviteRankingSilenciosoSaaS(forcar = false) {
     };
 
     database.ref(`${raizBanco}/convites_ranking`).on('value', listenerRankingCallback);
+}
+
+// ==========================================
+// 15. MOTOR DE PUSH NOTIFICATIONS NATIVAS (FCM)
+// ==========================================
+async function inicializarPushNotificationsSaaS() {
+    // 1. Blindagem de Plataforma: só executa se estiver rodando no app nativo (Android/iOS)
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+        console.log("[Push] Ambiente Web/PWA detectado. Notificações nativas ignoradas.");
+        return;
+    }
+
+    const { PushNotifications } = window.Capacitor.Plugins;
+    if (!PushNotifications) {
+        console.warn("[Push] Plugin PushNotifications não encontrado.");
+        return;
+    }
+
+    try {
+        // 2. Solicita permissão explícita ao usuário (janela do Android 13+)
+        let permStatus = await PushNotifications.checkPermissions();
+
+        if (permStatus.receive === 'prompt') {
+            permStatus = await PushNotifications.requestPermissions();
+        }
+
+        if (permStatus.receive !== 'granted') {
+            console.warn("[Push] Permissão de notificação negada pelo usuário.");
+            return;
+        }
+
+        // 3. Registra o aparelho no Google Cloud Messaging (FCM)
+        await PushNotifications.register();
+
+        // 4. Ouvinte: Captura o Token FCM exclusivo deste aparelho e grava no Firebase
+        PushNotifications.addListener('registration', (token) => {
+            console.log("[Push] Token FCM obtido com sucesso:", token.value);
+            
+            // 💾 GUARDA O TOKEN LOCALMENTE PARA LIMPEZA NO LOGOUT
+            localStorage.setItem('setpoint_aparelho_fcm_token', token.value);
+            
+            const idLogado = localStorage.getItem('jogadorLogadoId');
+            if (idLogado && raizBanco) {
+                // 💼 CARTEIRA DE DISPOSITIVOS: Mantém retrocompatibilidade, mas adiciona ao nó Multi-Device
+                const updates = {};
+                updates[`${raizBanco}/jogadores/${idLogado}/fcmToken`] = token.value; 
+                updates[`${raizBanco}/jogadores/${idLogado}/fcmTokens/${token.value}`] = true;
+                
+                database.ref().update(updates)
+                    .then(() => console.log("[Push] Carteira de Dispositivos sincronizada no Firebase."))
+                    .catch(err => console.error("[Push] Erro ao gravar Token FCM no Firebase:", err));
+            }
+        });
+
+        PushNotifications.addListener('registrationError', (error) => {
+            console.error("[Push] Erro ao registrar aparelho no FCM:", error);
+        });
+
+        // 5. Ouvinte: Usuário clicou na notificação nativa na barra do celular
+        if (!window.ouvintePushAcaoRegistrado) {
+            window.ouvintePushAcaoRegistrado = true;
+            
+            PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+                console.log("[Push] Usuário tocou na notificação externa:", notification);
+                
+                const dados = notification?.notification?.data || {};
+
+                // Se for convite de partida ou validação de súmula, não abre o Sininho (os radares assumem suas janelas nativas)
+                if (dados.tipo === 'NOVO_CONVITE' || dados.tipo === 'RESULTADO_INFORMADO') {
+                    return;
+                }
+
+                // 🌟 Sinaliza abertura direta via push para congelar a cortina de loading suavemente
+                window.aberturaViaPushPendente = true;
+                if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
+                    iniciarOuvinteNotificacoesJogadorSaaS();
+                }
+                
+                // Trava Reativa: Abre a central sobreposta de forma suave
+                if (typeof abrirModalNotificacoes === 'function') {
+                    const idLogado = localStorage.getItem('jogadorLogadoId');
+                    let tentativas = 0;
+                    
+                    const checarRAM = setInterval(() => {
+                        const atleta = (typeof jogadoresGlobal !== 'undefined' && idLogado) ? jogadoresGlobal[idLogado] : null;
+                        
+                        // Checa se o pacote de notificações já chegou e foi carimbado na memória
+                        const temNotificacoesNaRAM = (atleta && atleta.notificacoes && Object.keys(atleta.notificacoes).length > 0) || 
+                            window.temConviteRankingPendenteSocio === true;
+                        
+                        // 🛡️ Abre a central e liberta a transição
+                        if (temNotificacoesNaRAM) {
+                            clearInterval(checarRAM);
+                            window.aberturaViaPushPendente = false;
+                            abrirModalNotificacoes();
+                            if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') {
+                                verificarLiberacaoTelaLoadingSaaS();
+                            }
+                        } else if (tentativas >= 25) {
+                            // Liberação de segurança caso demore mais de 2.5s
+                            clearInterval(checarRAM);
+                            window.aberturaViaPushPendente = false;
+                            if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') {
+                                verificarLiberacaoTelaLoadingSaaS();
+                            }
+                        }
+                        tentativas++;
+                    }, 100);
+                }
+            });
+        }
+
+    } catch (err) {
+        console.error("[Push] Exceção na inicialização de Push:", err);
+    }
 }

@@ -22,11 +22,11 @@ function atualizarBotaoInversaoUI() {
 // 2. MOTOR DE ENTRADA E CARREGAMENTO PRINCIPAL (CARREGA INFRA + PREFERÊNCIAS)
 // ==========================================================================
 function abrirGerenciadorQuadras() {
-    navegarApp('tela-gerenciador-quadras');
+    navegarApp('tela-gerenciador-quadras'); 
     
     database.ref(`${raizBanco}/config/Quadras`).once('value').then((snapshot) => {
         const configQuadras = snapshot.val() || {};
-        const qtdSalva = parseInt(configQuadras.quantidade) || 0;
+        const qtdSalva = parseInt(configQuadras.quantidade) || 0; 
         const nomesSalvos = configQuadras.nomes || {};
 
         // Configuração de Engenharia: Puxa o painel de filtros globais salvos do clube
@@ -394,12 +394,170 @@ function abrirMenuOpcoesQuadraSaaS(event, index) {
 }
 
 function mudarStatusDiretoSaaS(index, novoStatus) {
+    // ⚠️ Se o Gestor for interditar, solicita confirmação e executa a limpeza das reservas
+    if (novoStatus === 'interditada') {
+        const dadosQ = (configQuadrasGlobal && configQuadrasGlobal.nomes) ? configQuadrasGlobal.nomes[index] : null;
+        const nomeQuadra = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${index}`) : (dadosQ || `Quadra ${index}`);
+
+        showPrompt(
+            "Interditar Quadra",
+            `Deseja mesmo interditar a <b>${nomeQuadra}</b> para manutenção?<br><br><span style="color:#dc3545; font-size:13px;">⚠️ Todos os agendamentos futuros desta quadra serão cancelados e os sócios confirmados receberão notificação no celular.</span>`,
+            () => {
+                executarInterdicaoQuadraSaaS(index, nomeQuadra);
+            }
+        );
+        return;
+    }
+
+    // Fluxo normal para "liberada" ou "bloqueada"
     database.ref(`${raizBanco}/config/Quadras/nomes/status_${index}`).set(novoStatus).then(() => {
         showToast("Status da quadra atualizado com sucesso!", 'success');
         abrirGerenciadorQuadras();
     });
 }
 
+/**
+ * Cancela em lote os agendamentos futuros da quadra interditada e despacha os Pushes
+ */
+function executarInterdicaoQuadraSaaS(index, nomeQuadraAmigavel) {
+    showToast("Interditando quadra e cancelando horários...", "info");
+
+    database.ref(`${raizBanco}/reservas`).once('value').then((snapshot) => {
+        const resData = snapshot.val() || {};
+        const updatePayload = {};
+        const filaPushesInterdicao = [];
+        const filaLogsAuditoria = []; // 📝 FILA DE AUDITORIA DO GITHUB
+        const agora = new Date();
+        const hojeStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+        const horaAtual = agora.getHours();
+        const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+
+        let totalCancelados = 0;
+
+        Object.entries(resData).forEach(([quadraKey, slots]) => {
+            if (!slots || typeof slots !== 'object') return;
+
+            const digitosChave = quadraKey.replace(/\D/g, '');
+            const numeroQuadraChave = digitosChave ? parseInt(digitosChave) : null;
+
+            const pertenceAEstaQuadra = 
+                (quadraKey.toLowerCase() === nomeQuadraAmigavel.toLowerCase()) || 
+                (numeroQuadraChave === index);
+
+            if (!pertenceAEstaQuadra) return;
+
+            Object.entries(slots).forEach(([slotKey, r]) => {
+                if (!r || r.status === 'aula_cancelada' || !r.dataCompleta) return;
+
+                const dur = parseInt(r.duracao) || 1;
+                const isFuturo = (r.dataCompleta > hojeStr) || (r.dataCompleta === hojeStr && (r.hora + dur > horaAtual));
+                if (!isFuturo) return;
+
+                // Remove o slot do banco
+                updatePayload[`reservas/${quadraKey}/${slotKey}`] = null;
+
+                // Se for a segunda hora de 2h, não duplica notificações
+                if (dur === 2 && r.borda === undefined) return;
+
+                if (dur === 2) {
+                    updatePayload[`reservas/${quadraKey}/${r.dia}_${r.hora + 1}`] = null;
+                }
+
+                totalCancelados++;
+
+                // 📝 MONTAGEM DO RECIBO DE AUDITORIA PARA O GITHUB
+                const slotsExcluidos = [{ quadra: quadraKey, dia: r.dia, hora: r.hora }];
+                if (dur === 2) slotsExcluidos.push({ quadra: quadraKey, dia: r.dia, hora: r.hora + 1 });
+
+                const logCancelamento = {
+                    origem: "manual",
+                    timestamp: new Date().toISOString(),
+                    dataLocal: new Date().toLocaleString('pt-BR'),
+                    autor: "Administração (Gestor)",
+                    acao: "EXCLUSÃO_AGENDAMENTO",
+                    motivo: `Quadra interditada. Reserva cancelada compulsoriamente para manutenção.`,
+                    clube: typeof clubeAtivoId !== 'undefined' ? clubeAtivoId : "",
+                    quadra: nomeQuadraAmigavel,
+                    horario: `${String(r.hora).padStart(2, '0')}:00 - ${String(r.hora + dur).padStart(2, '0')}:00`,
+                    duracao: dur === 1 ? "1 Hora" : "2 Horas",
+                    data: r.dataCompleta ? r.dataCompleta.split('-').reverse().join('-') : "",
+                    statusNoMomentoDaExclusao: r.status || "confirmada",
+                    organizadorDaReserva: r.organizador || "Não Informado",
+                    confirmacoes: r.confirmacoes || {},
+                    jogadores: r.jogadores || "",
+                    jogadores_completo: r.jogadores_completo || "",
+                    slotsExcluidos: slotsExcluidos
+                };
+                filaLogsAuditoria.push(logCancelamento);
+
+                const nomeDia = diasSemana[r.dia] || "Dia";
+                const hInicio = String(r.hora).padStart(2, '0') + ":00";
+                const hFim = String(r.hora + dur).padStart(2, '0') + ":00";
+                const quadraTexto = nomeQuadraAmigavel.toLowerCase().startsWith('quadra') ? nomeQuadraAmigavel.toLowerCase() : `quadra ${nomeQuadraAmigavel}`;
+
+                // Notifica todos os atletas confirmados nesta reserva
+                const listaApelidos = (r.jogadores || "").split(',').map(s => s.trim());
+                listaApelidos.forEach(apelidoAtleta => {
+                    const apelidoUp = apelidoAtleta.toUpperCase();
+                    let estavaConfirmado = false;
+                    if (r.confirmacoes) {
+                        if (r.confirmacoes[apelidoAtleta] === true) estavaConfirmado = true;
+                        Object.keys(r.confirmacoes).forEach(k => {
+                            if (k.toUpperCase() === apelidoUp && r.confirmacoes[k] === true) estavaConfirmado = true;
+                        });
+                    }
+
+                    if (estavaConfirmado) {
+                        const idTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+                            const j = jogadoresGlobal[id];
+                            return j && ((j.apelido || "").toUpperCase() === apelidoUp || (j.nomeCompleto || "").toUpperCase() === apelidoUp);
+                        });
+
+                        if (idTarget) {
+                            const keyNotif = `interdicao_${index}_${r.dia}_${r.hora}`;
+                            updatePayload[`jogadores/${idTarget}/notificacoes/${keyNotif}`] = {
+                                categoria: "quadra_interditada",
+                                detalhe: `${nomeDia}, das ${hInicio} às ${hFim} hs, na ${quadraTexto}`,
+                                timestamp: Date.now()
+                            };
+                        }
+                    }
+                });
+
+                filaPushesInterdicao.push({
+                    reserva: r,
+                    quadra: nomeQuadraAmigavel
+                });
+            });
+        });
+
+        // Atualiza o status da quadra no mesmo lote atômico
+        updatePayload[`config/Quadras/nomes/status_${index}`] = 'interditada';
+
+        database.ref(raizBanco).update(updatePayload).then(() => {
+            // 📝 DESPACHA OS RECIBOS PARA O GITHUB API
+            if (filaLogsAuditoria.length > 0 && typeof enviarFilaLogsAoGitHubSaaS === 'function') {
+                enviarFilaLogsAoGitHubSaaS(filaLogsAuditoria);
+            }
+
+            // Despacha os pushes via Cloudflare Worker
+            if (filaPushesInterdicao.length > 0 && typeof processarGatilhoPushSaaS === 'function') {
+                filaPushesInterdicao.forEach(item => {
+                    processarGatilhoPushSaaS(item.reserva, "Gestor", item.quadra, "QUADRA_INTERDITADA");
+                });
+            }
+
+            showToast(`Quadra interditada! ${totalCancelados > 0 ? `${totalCancelados} agendamento(s) cancelado(s).` : ''}`, "success");
+            abrirGerenciadorQuadras();
+        }).catch(err => {
+            console.error("Erro ao interditar quadra:", err);
+            showToast("Erro ao processar interdição da quadra.", "error");
+        });
+    }).catch(err => {
+        console.error("Erro ao buscar reservas da quadra:", err);
+        showToast("Erro ao consultar reservas no servidor.", "error");
+    });
+}
 
 function solicitarExclusaoQuadraSaaS(index) {
     if (navigator.vibrate) {
@@ -553,7 +711,7 @@ function verificarSensoresAtivosNoBanco(num) {
             
             if (dadosDuplas.Ativo === true || temDupla) {
                 const el = document.getElementById(`pilula-dupla-${num}`);
-                if (el) el.style.display = 'inline-flex';
+                if (el) el.style.display = 'inline-flex'; 
             }
         }
     });
