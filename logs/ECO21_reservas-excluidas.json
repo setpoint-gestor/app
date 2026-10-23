@@ -2681,5 +2681,26 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-23T19:01:33.319Z",
+    "dataLocal": "23/10/2026, 16:01:33",
+    "autor": "ALEXANDRE VOJCIECHOVSKI",
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "motivo": "Convite recusado por Alexandre Voj. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true
+    },
+    "jogadores": "Alex",
+    "jogadores_completo": "ALEX SOUZA",
+    "slotsExcluidos": []
   }
 ]
