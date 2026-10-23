@@ -19,7 +19,7 @@
     justify-content: space-between;
     padding: 0 15px;
     box-sizing: border-box;
-    border-bottom: 1px solid #cbd5e1;     
+    border-bottom: 1px solid #cbd5e1;      
 }
 
 /* ======================================================== */
@@ -29,53 +29,16 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    max-width: 75%; /* Impede que o bloco do usuário esmague os botões da direita */
+    flex: 1;               /* Ocupa todo o vão livre até a taça */
+    min-width: 0;          /* Impede transbordamento horizontal que quebre a barra */
     overflow: hidden;
-}
-
-.header-user-wrapper {
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-    width: 100%;
-}
-
-.header-user-text {
-    font-family: 'Roboto', sans-serif; 
-    font-size: 15px;
-    font-weight: 700;
-    color: #333;
-    text-shadow: 0 1px 0 #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* A mágica das reticências (...) acontecendo aqui */
-    flex-shrink: 1; 
-}
-
-.header-user-badges {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0; /* Impede que as pílulas sejam esmagadas */
-}
-
-/* ======================================================== */
-/* 💊 A CURA DEFINITIVA DAS PÍLULAS (VÍNCULO E PERFIS)       */
-/* ======================================================== */
-#app-header .badge {
-    text-shadow: none !important;        /* 1. Remove a sombra branca que borrava as letras */
-    border-radius: 12px !important;     /* 2. Força o formato oval de cápsula do cadastro */
-    padding: 2px 6px !important;        /* 3. Cura o esmagamento e dá fôlego ao bloco */
-    font-size: 10px !important;         /* 4. Devolve o tamanho nítido de leitura */
-    font-weight: bold !important;       /* 5. Garante o destaque correto do crachá */
-    display: inline-flex !important;
-    align-items: center !important;
-    margin-left: 5px !important;        /* 6. Espaçamento unificado no CSS */
 }
 
 .header-avatar {
     display: flex;
     align-items: center;
     color: #475569;
+    flex-shrink: 0;        /* Garante que o avatar nunca seja achatado */
 }
 
 .header-avatar .material-icons {
@@ -89,12 +52,74 @@
     color: #333;
     text-shadow: 0 1px 0 #fff;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
 }
 
+.header-user-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+}
+
+.header-user-text {
+    font-family: 'Roboto', sans-serif; 
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+    text-shadow: 0 1px 0 #fff;
+    white-space: nowrap;
+    flex-shrink: 0;        /* "Olá, Adriano" fica sempre 100% legível e fixo */
+}
+
+/* 🌊 FITA DESLIZANTE COM NÉVOA SUAVE */
+.header-user-badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;      /* Habilita o scroll com o polegar */
+    white-space: nowrap;
+    scrollbar-width: none; /* Oculta a barra cinza no Firefox */
+    -ms-overflow-style: none; /* Oculta no IE/Edge antigo */
+    flex: 1;
+    min-width: 0;
+    -webkit-overflow-scrolling: touch; /* Suavidade nativa de toque no iPhone/Android */
+    padding-right: 4px;
+    /* Névoa transparente suave nos últimos 20px antes da taça */
+    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+}
+
+.header-user-badges::-webkit-scrollbar {
+    display: none;         /* Oculta a barra de rolagem no Chrome/Safari */
+}
+
+/* ======================================================== */
+/* 💊 PÍLULAS DE VÍNCULO E PERFIS (BLINDAGEM CONTRA APERTO) */
+/* ======================================================== */
+#app-header .badge {
+    text-shadow: none !important;        
+    border-radius: 12px !important;     
+    padding: 2px 6px !important;        
+    font-size: 10px !important;         
+    font-weight: bold !important;       
+    display: inline-flex !important;
+    align-items: center !important;
+    margin: 0 !important;                /* O espaçamento agora é regido pelo gap do container */
+    flex-shrink: 0 !important;          /* Impede que os crachás encolham; eles rolam com elegância */
+}
+
+/* 🛡️ RESERVA SAGRADA DA DIREITA (NUNCA ESMAGA) */
 .header-right {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-shrink: 0;                     /* Taça, sino e retorno sempre com área de clique preservada */
+    margin-left: 8px;
 }
 
 .notificacao-container {
