@@ -19,7 +19,7 @@
     justify-content: space-between;
     padding: 0 15px;
     box-sizing: border-box;
-    border-bottom: 1px solid #cbd5e1;      
+    border-bottom: 1px solid #cbd5e1;       
 }
 
 /* ======================================================== */
@@ -1153,6 +1153,8 @@ body.dark-mode .saas-row label {
 /* COMPONENTES DOS CAMPOS DROPDOWN */
 .saas-field { 
     flex: 1 !important; 
+    width: 0px !important;
+    max-width: 100% !important;
     padding: 0 12px !important; /* Desobstrui o eixo vertical */
     border: 1px solid #cbd5e1 !important; 
     border-radius: 8px !important; 
@@ -1196,6 +1198,11 @@ body.dark-mode .saas-field:disabled {
     flex-direction: column !important; 
     gap: 10px !important; 
     width: 100% !important; 
+    min-width: 0 !important;
+}
+
+.bloco-jogadores-saas > div {
+    min-width: 0 !important;
 }
 
 .add-atleta { 
