@@ -4288,5 +4288,38 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-24T09:45:40.423Z",
+    "dataLocal": "24/10/2026, 06:45:40",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Adriano Feitosa": false,
+      "Alex": true
+    },
+    "jogadores": "Alex, Adriano Feitosa",
+    "jogadores_completo": "ALEX SOUZA, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 7
+      }
+    ]
   }
 ]
