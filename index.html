@@ -212,14 +212,98 @@
         </div>
 
         <div id="conteudo-consulta" class="area-conteudo-jogadores ativa">
-            <input type="text" id="busca-jogador" class="input-app" placeholder="Pesquisar por nome ou apelido..." oninput="filtrarCardsJogadores()" style="margin-top: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: none;">
             
-            <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <select id="filtro-status" class="input-app" style="padding: 10px; font-size: 14px;" onchange="filtrarCardsJogadores()">
-                    <option value="todos">Status: Todos</option>
-                    <option value="ativos" selected>Status: Ativos</option>
-                    <option value="inativos">Status: Inativos</option>
-                </select>
+            <!-- BARRA DE BUSCA + BOTÃO DE FILTRO -->
+            <div class="search-bar-row">
+                <div class="search-input-wrapper">
+                    <i class="material-icons">search</i>
+                    <input type="text" id="busca-jogador" class="input-app search-input" placeholder="Pesquisar por nome ou apelido..." oninput="filtrarCardsJogadores()">
+                </div>
+                <button type="button" class="btn-filter-icon" id="btn-toggle-filtros-jogadores" onclick="toggleGavetaFiltrosCadastroSaaS(this)" title="Filtros Avançados">
+                    <i class="material-icons">filter_list</i>
+                </button>
+            </div>
+            
+            <!-- GAVETA DE FILTROS AVANÇADOS (REATIVA E DINÂMICA) -->
+            <div id="drawer-filtros-cadastro" class="filter-drawer">
+                <div class="grid-selects">
+                    
+                    <!-- 1. Status -->
+                    <div>
+                        <span class="filter-section-title">Status da Conta</span>
+                        <select class="modern-select" id="filtro-status" onchange="filtrarCardsJogadores()">
+                            <option value="ativos" selected>Status: Ativos</option>
+                            <option value="inativos">Status: Inativos</option>
+                            <option value="todos">Status: Todos</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. Vínculo -->
+                    <div>
+                        <span class="filter-section-title">Vínculo no Clube</span>
+                        <select class="modern-select" id="filtro-vinculo" onchange="filtrarCardsJogadores()">
+                            <option value="todos" selected>Vínculo: Todos</option>
+                            <option value="titular">Apenas Titulares</option>
+                            <option value="dependente">Apenas Dependentes</option>
+                            <option value="visitante">Staff / Visitantes</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. Gênero -->
+                    <div>
+                        <span class="filter-section-title">Gênero</span>
+                        <select class="modern-select" id="filtro-genero" onchange="filtrarCardsJogadores()">
+                            <option value="todos" selected>Gênero: Todos</option>
+                            <option value="MASCULINO">Masculino</option>
+                            <option value="FEMININO">Feminino</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. Perfis & Permissões Especiais -->
+                    <div>
+                        <span class="filter-section-title">Perfis & Permissões</span>
+                        <div class="multiselect-container" id="container-multiselect-perfis">
+                            <div class="multiselect-header" onclick="toggleDropdownPerfisCadastroSaaS(event)">
+                                <span id="txt-resumo-perfis">Cargos: Qualquer um</span>
+                                <i class="material-icons seta">expand_more</i>
+                            </div>
+
+                            <div class="multiselect-menu" onclick="event.stopPropagation()">
+                                <div class="multiselect-options-list" id="lista-perfis-dinamicos-filtro">
+                                    <!-- Checkboxes populados dinamicamente via cadastro.js -->
+                                </div>
+                                <div class="multiselect-actions-bar">
+                                    <button type="button" class="multiselect-btn-action" onclick="selecionarTodosPerfisFiltroSaaS(true)">Marcar Todos</button>
+                                    <button type="button" class="multiselect-btn-action" style="color: #ef4444;" onclick="selecionarTodosPerfisFiltroSaaS(false)">Limpar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5 e 6. Módulo Ranking em 2 Colunas -->
+                    <div class="bloco-ranking-filtro">
+                        <div class="ranking-campos-linha">
+                            <div class="ranking-coluna">
+                                <span class="ranking-sublabel">Participa do Ranking?</span>
+                                <select class="modern-select" id="filtro-ranking-ativo" onchange="tratarTrocaFiltroRankingSaaS(this.value)">
+                                    <option value="todos" selected>Todos (Inscritos e Não)</option>
+                                    <option value="sim">Sim (Inscritos)</option>
+                                    <option value="nao">Não (Fora do Ranking)</option>
+                                </select>
+                            </div>
+                            <div class="ranking-coluna">
+                                <span class="ranking-sublabel">Classe / Categoria</span>
+                                <select class="modern-select" id="filtro-ranking-classe" onchange="filtrarCardsJogadores()">
+                                    <option value="todas" selected>Todas as Classes</option>
+                                    <option value="A">Classe A</option>
+                                    <option value="B">Classe B</option>
+                                    <option value="C">Classe C</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
             <div id="cards-jogadores" class="cards-grid">
