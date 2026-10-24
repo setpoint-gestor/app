@@ -342,7 +342,7 @@ function abrirAgendamentoSaaS(dia, hora) {
                 if (j && j.ativo !== false) {
                     const opt = document.createElement('option');
                     opt.value = j.id; 
-                    opt.textContent = expurgarEAbreviarNomeSaaS(j.nomeCompleto, j.apelido); 
+                    opt.textContent = formatarNomeJogador1GestorSaaS(j.nomeCompleto); 
                     campoJogador1.appendChild(opt);
                 }
             });
