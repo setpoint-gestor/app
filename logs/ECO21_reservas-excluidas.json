@@ -4548,5 +4548,26 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-24T10:53:34.488Z",
+    "dataLocal": "24/10/2026, 07:53:34",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "motivo": "Convite recusado por Adriano Feitosa. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true
+    },
+    "jogadores": "Alex",
+    "jogadores_completo": "ALEX SOUZA",
+    "slotsExcluidos": []
   }
 ]
