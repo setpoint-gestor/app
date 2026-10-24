@@ -373,5 +373,65 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-24T17:49:07.718Z",
+    "dataLocal": "24/10/2026, 14:49:07",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "20:00 - 21:00",
+    "duracao": "1 Hora",
+    "data": "14-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "jogadores": "Adriano Feitosa",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 3,
+        "hora": 20
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-24T17:49:07.735Z",
+    "dataLocal": "24/10/2026, 14:49:07",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "15-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "RONALDO TABORDA",
+    "confirmacoes": {
+      "Rafa": true,
+      "Taborda": true
+    },
+    "jogadores": "Taborda, Rafa",
+    "jogadores_completo": "RONALDO TABORDA, RAFAEL MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 4,
+        "hora": 7
+      },
+      {
+        "quadra": "Rafael Martins",
+        "dia": 4,
+        "hora": 8
+      }
+    ]
   }
 ]
