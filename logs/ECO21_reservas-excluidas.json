@@ -4569,5 +4569,31 @@
     "jogadores": "Alex",
     "jogadores_completo": "ALEX SOUZA",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-24T10:53:48.120Z",
+    "dataLocal": "24/10/2026, 07:53:48",
+    "autor": "ALEX SOUZA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true
+    },
+    "jogadores": "Alex",
+    "jogadores_completo": "ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 6
+      }
+    ]
   }
 ]
