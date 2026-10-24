@@ -12,7 +12,7 @@ function cliqueCelula(dia, hora) {
     if (linhaDatasTabela) {
         const agora = new Date();
         const diaMes = String(agora.getDate()).padStart(2, '0');
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const mes = String(agora.getMonth() + 1).padStart(2, '0'); 
         const ano = agora.getFullYear();
         const stringHoje = `${diaMes}/${mes}/${ano}`;
         const horaAtual = agora.getHours();
@@ -927,6 +927,52 @@ function alternarTextoOpcoesSaaS(sel, exibirCompleto) {
 /**
  * MOTOR ELÁSTICO DE ATLETAS: Constrói as linhas, ordena de A a Z e amarra os gatilhos
  */
+function alternarTextoOpcoesSaaS(sel, exibirCompleto) {
+    if (!jogadoresGlobal || Object.keys(jogadoresGlobal).length === 0) return;
+
+    // 🛡️ TRAVA DO RANKING: Se for o modo de duelo, aborta a formatação camaleão para preservar a numeração ("1º - ")
+    const campoDuracao = document.getElementById('saas-duracao') || document.getElementById('saas-duracao-reserva');
+    if (campoDuracao && campoDuracao.value === 'ranking') {
+        return; 
+    }
+    
+    const proibidos = obterListaProibidosSaaS(sel);
+    const isMobile = window.innerWidth <= 767;
+    
+    Array.from(sel.options).forEach(opt => {
+        const id = opt.value;
+        if (!id || id === "") return;
+        
+        if (proibidos.includes(id) && id !== sel.value) {
+            opt.disabled = true;
+            opt.style.display = 'none';
+            return;
+        } else {
+            opt.disabled = false;
+            opt.style.display = 'block';
+        }
+        
+        const atleta = jogadoresGlobal[id];
+        if (atleta) {
+            if (isMobile) {
+                // 📱 NO CELULAR: Mantém rigorosamente a mesma formatação Title Case do Jogador 1
+                opt.textContent = formatarNomeJogador1GestorSaaS(atleta.nomeCompleto);
+            } else {
+                // 💻 NO COMPUTADOR: Mantém 100% o comportamento original
+                if (exibirCompleto) {
+                    const apelidoTxt = atleta.apelido ? ' (' + atleta.apelido + ')' : '';
+                    opt.textContent = atleta.nomeCompleto + apelidoTxt;
+                } else {
+                    opt.textContent = expurgarEAbreviarNomeSaaS(atleta.nomeCompleto, atleta.apelido);
+                }
+            }
+        }
+    });
+}
+
+/**
+ * MOTOR ELÁSTICO DE ATLETAS: Constrói as linhas, ordena de A a Z e amarra os gatilhos
+ */
 function adicionarJogadorSaaS() {
     const container = document.getElementById('jogadoresContainerSaaS');
     if (!container) return;
@@ -954,6 +1000,7 @@ function adicionarJogadorSaaS() {
         sel.innerHTML = '<option value="">Selecionar Atleta ' + contAtletas + '...</option>';
         
         const proibidos = obterListaProibidosSaaS(sel);
+        const isMobile = window.innerWidth <= 767;
         
         if (Object.keys(jogadoresGlobal).length > 0) {
             // 🔥 LAPIDAÇÃO DE ALTA PERFORMANCE: Transforma o objeto do Firebase em array e ordena alfabeticamente
@@ -969,12 +1016,14 @@ function adicionarJogadorSaaS() {
             atletasOrdenadosSaaS.forEach(atleta => {
                 const id = atleta.id;
                 if (atleta && atleta.ativo !== false) {
-                    const textoAbreviado = expurgarEAbreviarNomeSaaS(atleta.nomeCompleto, atleta.apelido);
+                    const textoExibicao = isMobile 
+                        ? formatarNomeJogador1GestorSaaS(atleta.nomeCompleto)
+                        : expurgarEAbreviarNomeSaaS(atleta.nomeCompleto, atleta.apelido);
                     
                     if (proibidos.includes(id)) {
-                        sel.innerHTML += '<option value="' + id + '" disabled style="display:none;">' + textoAbreviado + '</option>';
+                        sel.innerHTML += '<option value="' + id + '" disabled style="display:none;">' + textoExibicao + '</option>';
                     } else {
-                        sel.innerHTML += '<option value="' + id + '">' + textoAbreviado + '</option>';
+                        sel.innerHTML += '<option value="' + id + '">' + textoExibicao + '</option>';
                     }
                 }
             });

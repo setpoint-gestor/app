@@ -1633,11 +1633,16 @@ function iniciarOuvinteNotificacoesJogadorSaaS() {
 
         const modal = document.getElementById('modal-central-notificacoes');
         if (modal && modal.style.display === 'flex') {
-            // Se as pendências zeraram com o modal aberto (ex: aceitou/recusou convite), fecha de imediato sem repintar a tela vazia
             if (total === 0) {
-                modal.style.display = 'none';
-            } else if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
-                renderizarListaNotificacoesSocioSaaS();
+                // Se estiver aguardando a chegada da notificação via push, NÃO fecha o modal
+                if (!window.aberturaViaPushPendente) {
+                    modal.style.display = 'none';
+                }
+            } else {
+                window.aberturaViaPushPendente = false;
+                if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
+                    renderizarListaNotificacoesSocioSaaS();
+                }
             }
         }
     };
@@ -1674,7 +1679,10 @@ function iniciarRadarConviteRankingSilenciosoSaaS(forcar = false) {
             window.temConviteRankingPendenteSocio = true;
             window.dadosTemporadaRankingAtiva = dadosConvite;
         } else {
-            window.temConviteRankingPendenteSocio = false;
+            // 🛡️ Se estiver aguardando abertura via push, NÃO derruba a flag para false
+            if (!window.aberturaViaPushPendente) {
+                window.temConviteRankingPendenteSocio = false;
+            }
         }
 
         if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
@@ -1750,47 +1758,81 @@ async function inicializarPushNotificationsSaaS() {
                 
                 const dados = notification?.notification?.data || {};
 
-                // Se for convite de partida ou validação de súmula, não abre o Sininho (os radares assumem suas janelas nativas)
+                // Se for convite de partida ou validação de súmula, os radares assumem suas janelas nativas
                 if (dados.tipo === 'NOVO_CONVITE' || dados.tipo === 'RESULTADO_INFORMADO') {
                     return;
                 }
 
-                // 🌟 Sinaliza abertura direta via push para congelar a cortina de loading suavemente
-                window.aberturaViaPushPendente = true;
+                // 🛡️ COBERTURA IMEDIATA (0MS): Pré-carrega os dados do push na RAM e abre o card pronto
+                window.aberturaViaPushPendente = true; 
+                setTimeout(() => { window.aberturaViaPushPendente = false; }, 4000);
+				
+                // 🏅 TRATAMENTO DO EVENTO 7 (CONVITE DE TORNEIO): Injeta dados na RAM no milissegundo 0
+                if (dados.tipo === 'CONVITE_TORNEIO') {
+                    window.temConviteRankingPendenteSocio = true;
+
+                    if (typeof configRegrasGlobal === 'undefined' || !configRegrasGlobal) {
+                        window.configRegrasGlobal = {};
+                    }
+                    if (!configRegrasGlobal.ranking) {
+                        configRegrasGlobal.ranking = {};
+                    }
+                    if (!configRegrasGlobal.ranking.calendario) {
+                        configRegrasGlobal.ranking.calendario = {};
+                    }
+
+                    if (dados.nomeTorneio) {
+                        configRegrasGlobal.ranking.nomeTorneio = dados.nomeTorneio;
+                        configRegrasGlobal.ranking.calendario.nomeTorneio = dados.nomeTorneio;
+                    }
+                    if (dados.formatoTorneio) {
+                        configRegrasGlobal.ranking.modeloAtivo = dados.formatoTorneio;
+                        configRegrasGlobal.ranking.calendario.formatoTorneio = dados.formatoTorneio;
+                    }
+                    if (dados.fimInscricoes) configRegrasGlobal.ranking.calendario.fimInscricoes = dados.fimInscricoes;
+                    if (dados.inicioJogos) configRegrasGlobal.ranking.calendario.inicioJogos = dados.inicioJogos;
+                    if (dados.fimTorneio) configRegrasGlobal.ranking.calendario.fimTorneio = dados.fimTorneio;
+                }
+
+                const idLogado = localStorage.getItem('jogadorLogadoId');
+                if (idLogado) {
+                    if (typeof jogadoresGlobal === 'undefined' || !jogadoresGlobal) {
+                        window.jogadoresGlobal = {};
+                    }
+                    if (!jogadoresGlobal[idLogado]) {
+                        jogadoresGlobal[idLogado] = {
+                            nomeCompleto: localStorage.getItem('jogadorLogadoNome') || "",
+                            classe: localStorage.getItem('jogadorLogadoClasse') || "A",
+                            socio: localStorage.getItem('jogadorLogadoSocio') || "titular"
+                        };
+                    }
+                    if (!jogadoresGlobal[idLogado].notificacoes) {
+                        jogadoresGlobal[idLogado].notificacoes = {};
+                    }
+                    
+                    if (dados.keyNotif && dados.detalhe) {
+                        jogadoresGlobal[idLogado].notificacoes[dados.keyNotif] = {
+                            categoria: dados.categoria || "reserva_expirada",
+                            detalhe: dados.detalhe,
+                            timestamp: Number(dados.timestamp) || Date.now()
+                        };
+                    }
+                }
+
+                // Abre a Central já com o card oficial desenhado
+                if (typeof abrirModalNotificacoes === 'function') {
+                    abrirModalNotificacoes();
+                } else {
+                    const modal = document.getElementById('modal-central-notificacoes');
+                    if (modal) modal.style.display = 'flex';
+                    if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
+                        renderizarListaNotificacoesSocioSaaS();
+                    }
+                }
+
+                // Sincroniza em segundo plano com o Firebase para carregar outras pendências (se houver)
                 if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
                     iniciarOuvinteNotificacoesJogadorSaaS();
-                }
-                
-                // Trava Reativa: Abre a central sobreposta de forma suave
-                if (typeof abrirModalNotificacoes === 'function') {
-                    const idLogado = localStorage.getItem('jogadorLogadoId');
-                    let tentativas = 0;
-                    
-                    const checarRAM = setInterval(() => {
-                        const atleta = (typeof jogadoresGlobal !== 'undefined' && idLogado) ? jogadoresGlobal[idLogado] : null;
-                        
-                        // Checa se o pacote de notificações já chegou e foi carimbado na memória
-                        const temNotificacoesNaRAM = (atleta && atleta.notificacoes && Object.keys(atleta.notificacoes).length > 0) || 
-                            window.temConviteRankingPendenteSocio === true;
-                        
-                        // 🛡️ Abre a central e liberta a transição
-                        if (temNotificacoesNaRAM) {
-                            clearInterval(checarRAM);
-                            window.aberturaViaPushPendente = false;
-                            abrirModalNotificacoes();
-                            if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') {
-                                verificarLiberacaoTelaLoadingSaaS();
-                            }
-                        } else if (tentativas >= 25) {
-                            // Liberação de segurança caso demore mais de 2.5s
-                            clearInterval(checarRAM);
-                            window.aberturaViaPushPendente = false;
-                            if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') {
-                                verificarLiberacaoTelaLoadingSaaS();
-                            }
-                        }
-                        tentativas++;
-                    }, 100);
                 }
             });
         }

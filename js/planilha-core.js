@@ -443,8 +443,31 @@ function forcarRepinturaPlanilha() {
         }
     });
 
+    // 🚨 DESTAQUE EM VERMELHO PARA O TÍTULO CENTRAL DA QUADRA ATIVA
+    const lblTitulo = document.getElementById('lbl-quadra-titulo');
+    if (lblTitulo) {
+        const containerTitulo = lblTitulo.closest('.container-titulo-central') || lblTitulo.parentElement;
+        if (containerTitulo) {
+            let statusAtiva = 'liberada';
+            if (configQuadrasGlobal && configQuadrasGlobal.nomes) {
+                const qtd = parseInt(configQuadrasGlobal.quantidade) || 0;
+                for (let i = 1; i <= qtd; i++) {
+                    const dadosQ = configQuadrasGlobal.nomes[i];
+                    const nomeF = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${i}`) : (dadosQ || `Quadra ${i}`);
+                    if (nomeF === quadraSelecionadaSaaS) {
+                        statusAtiva = configQuadrasGlobal.nomes['status_' + i] || 'liberada';
+                        break;
+                    }
+                }
+            }
+            const ehInterditadaAtiva = (statusAtiva === 'interditada' || statusAtiva === 'interdita');
+            containerTitulo.classList.toggle('header-quadra-interditada', ehInterditadaAtiva);
+        }
+    }
+
     renderizarDadosPlanilha(reservasLocaisCache);
 }
+
 
 // ====================================================================
 // 🧠 MOTOR ORQUESTRADOR DE RENDERIZAÇÃO DA GRADE (SaaS)
@@ -628,6 +651,11 @@ function plotarReservasAtivas(reservas) {
     Object.keys(reservas).forEach(key => {
         const r = reservas[key];
         if (!r || r.hora === undefined || r.dia === undefined) {
+            return;
+        }
+
+        // 🛡️ TRAVA ANTI-DUPLICIDADE 2H: Ignora a 2ª célula de um bloco de 2h para alarmes e plotagem
+        if (r.borda === undefined && r.status !== 'aula_cancelada') {
             return;
         }
 
@@ -1999,7 +2027,6 @@ async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras
     }
 
     try {
-        // 1. Consulta os dados do atleta no Firebase
         const snapshot = await database.ref(`${raizBanco}/jogadores/${idJogador}`).once('value');
         const atleta = snapshot.val();
 
@@ -2008,13 +2035,11 @@ async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras
             return;
         }
 
-        // 2. Respeita a privacidade (se o atleta desativou nas preferências do perfil)
         if (atleta.receber_notificacoes === false) {
             console.log(`[Push SaaS] O atleta ${atleta.nome || atleta.nomeCompleto || idJogador} optou por silenciar notificações.`);
             return;
         }
 
-        // 3. Valida a existência de tokens na carteira Multi-Device do atleta
         const carteiraTokens = atleta.fcmTokens || {};
         const tokenRetrocompativel = atleta.fcmToken || atleta.fcm_token;
         
@@ -2024,19 +2049,24 @@ async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras
         
         const tokensArray = Object.keys(carteiraTokens);
 
+        // 🔍 DEBUG 1: Quantos tokens o atleta tem?
+        console.log(`🔍 [DEBUG PUSH] Destinatário: ${atleta.apelido || atleta.nomeCompleto} | Total de Tokens encontrados: ${tokensArray.length}`, tokensArray);
+
         if (tokensArray.length === 0) {
             console.log(`[Push SaaS] Atleta ${atleta.nome || atleta.nomeCompleto || idJogador} ainda não possui token FCM ativo.`);
             return;
         }
 
-        // 4. Encaminha o envio individual para CADA aparelho ativo do atleta (Ex: Celular e Tablet)
-        // 🛡️ Filtro Global Injetado: A variável externa 'window.tokensPushProcessadosSaaS' protege contra repetição do mesmo celular na mesma chamada em lote
         if (!window.tokensPushProcessadosSaaS) window.tokensPushProcessadosSaaS = new Set();
         
         for (const tokenDestino of tokensArray) {
             if (!window.tokensPushProcessadosSaaS.has(tokenDestino)) {
                 window.tokensPushProcessadosSaaS.add(tokenDestino);
+                // 🔍 DEBUG 2: Cada disparo real para a Cloudflare
+                console.log(`🚀 [DEBUG PUSH] Despachando para Cloudflare -> Token: ${tokenDestino.substring(0, 15)}... | Título: ${titulo}`);
                 dispararPushCloudflare(tokenDestino, titulo, mensagem, dadosExtras);
+            } else {
+                console.warn(`⚠️ [DEBUG PUSH] Token repetido bloqueado no lote: ${tokenDestino.substring(0, 15)}...`);
             }
         }
 
@@ -2174,15 +2204,42 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
             return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
         });
 
-        // 🛡️ TRAVA ANTI-DUPLICIDADE: Se este aparelho pertence ao próprio organizador, não dispara push remoto para si mesmo
-        const meuIdLogado = localStorage.getItem('jogadorLogadoId');
-        if (meuIdLogado && idOrgTarget && meuIdLogado === idOrgTarget) {
-            return;
-        }
+        if (!idOrgTarget) return;
 
-        if (idOrgTarget && typeof enviarPushParaAtletaSaaS === 'function') {
-            enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { tipo: "RESERVA_EXPIRADA_QUORUM" });
-        }
+        // 🔒 TRAVA ATÔMICA COMPARTILHADA (FIREBASE) COM TTL DE 60 SEGUNDOS:
+        const dataRefStr = (dadosReserva.dataCompleta || "").replace(/[^a-zA-Z0-9]/g, "");
+        const quadraRefStr = (quadraAlvo || "quadra").replace(/[^a-zA-Z0-9]/g, "");
+        const chaveTrava = `expira_${quadraRefStr}_${dadosReserva.dia}_${dadosReserva.hora}${dataRefStr ? '_' + dataRefStr : ''}`;
+        const agoraTrava = Date.now();
+
+        // 📦 DADOS ESTRUTURADOS DO CARD (OPÇÃO 1: CARGA INSTANTÂNEA 0MS)
+        const hFimCalc = dadosReserva.hora + (dadosReserva.duracao || 1);
+        const horaFimFmt = String(hFimCalc).padStart(2, '0') + ":00";
+        const keyNotifExpira = `reserva_expirada_${dadosReserva.dia}_${dadosReserva.hora}`;
+        const detalhePushFmt = `${diaNome}, das ${horaIniFmt} às ${horaFimFmt} hs, na ${txtQuadraFmt}`;
+
+        database.ref(`${raizBanco}/controle_push/${chaveTrava}`).transaction((atual) => {
+            if (atual && atual.timestamp && (agoraTrava - atual.timestamp < 60000)) {
+                return; // Já despachado recentemente: aborta concorrência
+            }
+            return { despachado: true, timestamp: agoraTrava };
+        }).then((result) => {
+            if (result && result.committed) {
+                if (typeof enviarPushParaAtletaSaaS === 'function') {
+                    enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { 
+                        tipo: "RESERVA_EXPIRADA_QUORUM",
+                        keyNotif: keyNotifExpira,
+                        categoria: "reserva_expirada",
+                        detalhe: detalhePushFmt,
+                        timestamp: String(agoraTrava)
+                    });
+                }
+            } else {
+                console.log("🛑 [Push SaaS] Push de expiração barrado: outro dispositivo já realizou o envio.");
+            }
+        }).catch((err) => {
+            console.error("Erro na trava atômica de push:", err);
+        });
     }
 	
 	// ----------------------------------------------------
@@ -2191,6 +2248,10 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
     if (tipoEvento === "QUADRA_INTERDITADA") {
         const tituloPush = "⚠️ Quadra Interditada";
         const msgPush = `A ${quadraAlvo} foi interditada para manutenção. Seu horário de ${diaNome}, às ${horaIniFmt} foi cancelado.`;
+
+        // 📦 DADOS ESTRUTURADOS DO CARD (OPÇÃO 1: CARGA INSTANTÂNEA 0MS)
+        const keyNotifInterdita = `quadra_interditada_${dadosReserva.dia}_${dadosReserva.hora}`;
+        const agoraDisparo = Date.now();
 
         const listaApelidos = (dadosReserva.jogadores || "").split(',').map(s => s.trim());
 
@@ -2215,7 +2276,13 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
                 });
 
                 if (idTarget && typeof enviarPushParaAtletaSaaS === 'function') {
-                    enviarPushParaAtletaSaaS(idTarget, tituloPush, msgPush, { tipo: "QUADRA_INTERDITADA" });
+                    enviarPushParaAtletaSaaS(idTarget, tituloPush, msgPush, { 
+                        tipo: "QUADRA_INTERDITADA",
+                        keyNotif: keyNotifInterdita,
+                        categoria: "quadra_interditada",
+                        detalhe: msgPush,
+                        timestamp: String(agoraDisparo)
+                    });
                 }
             }
         });
@@ -2257,6 +2324,19 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
         const nomeTorneio = autorDaAcao || "Torneio Oficial";
         const idsPendentes = Array.isArray(dadosReserva) ? dadosReserva : Object.keys(dadosReserva || {});
 
+        // 📦 DADOS ESTRUTURADOS DO TORNEIO (CARGA INSTANTÂNEA 0MS NO APP)
+        const confRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const cal = confRanking.calendario || {};
+
+        const payloadDadosTorneio = {
+            tipo: "CONVITE_TORNEIO",
+            nomeTorneio: String(cal.nomeTorneio || nomeTorneio),
+            formatoTorneio: String(cal.formatoTorneio || confRanking.modeloAtivo || "grupos"),
+            fimInscricoes: String(cal.fimInscricoes || cal.fimInscricao || ""),
+            inicioJogos: String(cal.inicioJogos || cal.inicioTorneio || cal.inicio || ""),
+            fimTorneio: String(cal.fimTorneio || cal.fimPartidas || cal.fim || "")
+        };
+
         idsPendentes.forEach(idAtleta => {
             const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) ? jogadoresGlobal[idAtleta] : null;
             if (!j) return;
@@ -2265,7 +2345,7 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
             const msgPush = `Você foi convidado para o ${nomeTorneio} na ${classeAtleta}. Toque para ver o convite.`;
 
             if (typeof enviarPushParaAtletaSaaS === 'function') {
-                enviarPushParaAtletaSaaS(idAtleta, tituloPush, msgPush, { tipo: "CONVITE_TORNEIO" });
+                enviarPushParaAtletaSaaS(idAtleta, tituloPush, msgPush, payloadDadosTorneio);
             }
         });
     }

@@ -14,7 +14,7 @@ let confeteJaDisparado = false;
 // 2. INICIALIZAÇÃO DO MÓDULO AND ABAS
 // ==========================================
 function abrirModuloJogadores() {
-    navegarApp('tela-sub-jogadores');    
+    navegarApp('tela-sub-jogadores');     
     mudarAbaJogadores('consulta'); 
     ajustarTextosBotoesResponsivos(); // Ajusta os rótulos de acordo com o tamanho da tela
 
@@ -98,20 +98,42 @@ function extrairIniciais(nome) {
     const partes = nome.trim().split(' ');
     if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
     return (partes[0].charAt(0) + partes[partes.length - 1].charAt(0)).toUpperCase();
-}
+} 
+
 
 // ==========================================
-// 4. RENDERIZAÇÃO DOS SÓCIOS
+// 4. RENDERIZAÇÃO DOS SÓCIOS & FILTROS AVANÇADOS
 // ==========================================
+
 function renderizarCardsJogadores() {
     const container = document.getElementById('cards-jogadores');
     if (!container) return;
     container.innerHTML = '';
     
-    const busca = document.getElementById('busca-jogador').value.toLowerCase().trim();
-    const filtroStatus = document.getElementById('filtro-status').value;
-    const totalGeral = Object.keys(jogadoresGlobal).length;
+    // Assegura que o menu de perfis esteja alimentado com as opções do clube
+    popularDropdownPerfisFiltroSaaS();
 
+    const elBusca = document.getElementById('busca-jogador');
+    const busca = elBusca ? elBusca.value.toLowerCase().trim() : "";
+    
+    const elStatus = document.getElementById('filtro-status');
+    const filtroStatus = elStatus ? elStatus.value : 'todos';
+
+    const elVinculo = document.getElementById('filtro-vinculo');
+    const filtroVinculo = elVinculo ? elVinculo.value : 'todos';
+
+    const elGenero = document.getElementById('filtro-genero');
+    const filtroGenero = elGenero ? elGenero.value : 'todos';
+
+    const elRankAtivo = document.getElementById('filtro-ranking-ativo');
+    const filtroRankAtivo = elRankAtivo ? elRankAtivo.value : 'todos';
+
+    const elRankClasse = document.getElementById('filtro-ranking-classe');
+    const filtroRankClasse = elRankClasse ? elRankClasse.value : 'todas';
+
+    const perfisMarcados = Array.from(document.querySelectorAll('#lista-perfis-dinamicos-filtro input[type="checkbox"]:checked')).map(c => c.value);
+
+    const totalGeral = Object.keys(jogadoresGlobal).length;
     let arrJogadores = Object.keys(jogadoresGlobal).map(id => ({ id, dados: jogadoresGlobal[id] }));
     arrJogadores.sort((a, b) => (a.dados.nomeCompleto || "").localeCompare(b.dados.nomeCompleto || ""));
 
@@ -122,9 +144,39 @@ function renderizarCardsJogadores() {
         const apelido = dados.apelido ? dados.apelido.toLowerCase() : "";
         const isAtivo = dados.ativo !== false; 
 
+        // 1. Filtro de Status da Conta
         if (filtroStatus === 'ativos' && !isAtivo) return;
         if (filtroStatus === 'inativos' && isAtivo) return;
-        
+
+        // 2. Filtro de Vínculo no Clube
+        if (filtroVinculo !== 'todos') {
+            const vinculoAtleta = (dados.socio || 'titular').toLowerCase();
+            if (vinculoAtleta !== filtroVinculo.toLowerCase()) return;
+        }
+
+        // 3. Filtro de Gênero
+        if (filtroGenero !== 'todos') {
+            const generoAtleta = (dados.genero || 'NAO_INFORMAR').toUpperCase();
+            if (generoAtleta !== filtroGenero.toUpperCase()) return;
+        }
+
+        // 4. Filtro de Ranking (Chave de Inscrição e Classe)
+        if (filtroRankAtivo === 'sim' && dados.participaRanking === false) return;
+        if (filtroRankAtivo === 'nao' && dados.participaRanking !== false) return;
+
+        if (filtroRankClasse !== 'todas') {
+            if (dados.participaRanking === false) return;
+            const classeAtleta = (dados.classe || '').toUpperCase();
+            if (classeAtleta !== filtroRankClasse.toUpperCase()) return;
+        }
+
+        // 5. Filtro de Perfis Especiais (Exige todos os cargos selecionados)
+        if (perfisMarcados.length > 0) {
+            const temTodos = perfisMarcados.every(p => dados.perfis && dados.perfis[p] === true);
+            if (!temTodos) return;
+        }
+
+        // 6. Filtro Textual (Nome Completo ou Apelido)
         if (busca !== "" && !nomeReal.toLowerCase().includes(busca) && !apelido.toLowerCase().includes(busca)) return;
 
         exibidos++;
@@ -163,13 +215,134 @@ function renderizarCardsJogadores() {
 
     const txtContador = document.getElementById('txt-qtd-jogadores');
     if (txtContador) {
-        txtContador.textContent = (busca !== "" || filtroStatus !== 'todos') ? `Mostrando ${exibidos} de ${totalGeral} sócios` : `${totalGeral} sócio(s) cadastrado(s)`;
+        const temFiltroAtivo = (busca !== "" || filtroStatus !== 'todos' || filtroVinculo !== 'todos' || filtroGenero !== 'todos' || filtroRankAtivo !== 'todos' || filtroRankClasse !== 'todas' || perfisMarcados.length > 0);
+        txtContador.textContent = temFiltroAtivo ? `Mostrando ${exibidos} de ${totalGeral} sócios` : `${totalGeral} sócio(s) cadastrado(s)`;
     }
 }
 
 function filtrarCardsJogadores() { 
     renderizarCardsJogadores(); 
 }
+
+// Alterna abertura da gaveta de filtros e limpa automaticamente todos os critérios de busca
+function toggleGavetaFiltrosCadastroSaaS(btn) {
+    const drawer = document.getElementById('drawer-filtros-cadastro');
+    if (!drawer) return;
+    const isOpen = drawer.style.display === 'block';
+    drawer.style.display = isOpen ? 'none' : 'block';
+    if (btn) btn.classList.toggle('active', !isOpen);
+    if (!isOpen) popularDropdownPerfisFiltroSaaS();
+
+    limparTodosFiltrosPesquisaSaaS();
+}
+
+// Reseta todos os seletores, caixas de texto e checkboxes para o estado limpo original
+function limparTodosFiltrosPesquisaSaaS() {
+    const elBusca = document.getElementById('busca-jogador');
+    const elStatus = document.getElementById('filtro-status');
+    const elVinculo = document.getElementById('filtro-vinculo');
+    const elGenero = document.getElementById('filtro-genero');
+    const elRankAtivo = document.getElementById('filtro-ranking-ativo');
+    const elRankClasse = document.getElementById('filtro-ranking-classe');
+
+    if (elBusca) elBusca.value = '';
+    if (elStatus) elStatus.value = 'ativos';
+    if (elVinculo) elVinculo.value = 'todos';
+    if (elGenero) elGenero.value = 'todos';
+    if (elRankAtivo) elRankAtivo.value = 'todos';
+    if (elRankClasse) {
+        elRankClasse.value = 'todas';
+        elRankClasse.disabled = false;
+    }
+
+    const containerPerfis = document.getElementById('container-multiselect-perfis');
+    if (containerPerfis) containerPerfis.classList.remove('open');
+
+    selecionarTodosPerfisFiltroSaaS(false);
+}
+
+// Abre/fecha a bandeja suspensa de perfis múltiplos
+function toggleDropdownPerfisCadastroSaaS(event) {
+    if (event) event.stopPropagation();
+    const container = document.getElementById('container-multiselect-perfis');
+    if (container) container.classList.toggle('open');
+}
+
+// Popula os checkboxes de perfis dinamicamente com base nas configurações da arena
+function popularDropdownPerfisFiltroSaaS() {
+    const containerFiltro = document.getElementById('lista-perfis-dinamicos-filtro');
+    if (!containerFiltro || !perfisConfigGlobal) return;
+    
+    const chavesPerfis = Object.keys(perfisConfigGlobal);
+    if (chavesPerfis.length === 0) return;
+    
+    const marcadosAntes = Array.from(containerFiltro.querySelectorAll('input:checked')).map(c => c.value);
+    containerFiltro.innerHTML = '';
+    chavesPerfis.forEach(nomePerfil => {
+        const label = document.createElement('label');
+        label.className = 'multiselect-item';
+        const estaMarcado = marcadosAntes.includes(nomePerfil) ? 'checked' : '';
+        label.innerHTML = `<input type="checkbox" value="${nomePerfil}" ${estaMarcado} onchange="atualizarResumoPerfisFiltroSaaS(); filtrarCardsJogadores();"> ${nomePerfil}`;
+        containerFiltro.appendChild(label);
+    });
+    atualizarResumoPerfisFiltroSaaS();
+}
+
+// Atualiza o texto resumo no cabeçalho do dropdown de perfis
+function atualizarResumoPerfisFiltroSaaS() {
+    const container = document.getElementById('container-multiselect-perfis');
+    if (!container) return;
+    const checks = container.querySelectorAll('.multiselect-options-list input[type="checkbox"]:checked');
+    const txtResumo = document.getElementById('txt-resumo-perfis');
+    if (!txtResumo) return;
+
+    if (checks.length === 0) {
+        txtResumo.textContent = "Cargos: Qualquer um";
+        txtResumo.style.fontWeight = "500";
+        txtResumo.style.color = "";
+    } else if (checks.length === 1) {
+        txtResumo.textContent = `Cargo: ${checks[0].value}`;
+        txtResumo.style.fontWeight = "700";
+        txtResumo.style.color = "var(--cor-primaria, #28a745)";
+    } else {
+        const nomes = Array.from(checks).map(c => c.value);
+        txtResumo.textContent = `Cargos: ${nomes.join(', ')}`;
+        txtResumo.style.fontWeight = "700";
+        txtResumo.style.color = "var(--cor-primaria, #28a745)";
+    }
+}
+
+// Ações rápidas de Marcar Todos ou Limpar Perfis
+function selecionarTodosPerfisFiltroSaaS(marcar) {
+    const container = document.getElementById('container-multiselect-perfis');
+    if (!container) return;
+    const checks = container.querySelectorAll('.multiselect-options-list input[type="checkbox"]');
+    checks.forEach(c => c.checked = marcar);
+    atualizarResumoPerfisFiltroSaaS();
+    filtrarCardsJogadores();
+}
+
+// Alternância inteligente do ranking (desativa a classe se a chave for 'não')
+function tratarTrocaFiltroRankingSaaS(valor) {
+    const selClasse = document.getElementById('filtro-ranking-classe');
+    if (selClasse) {
+        if (valor === 'nao') {
+            selClasse.value = 'todas';
+            selClasse.disabled = true;
+        } else {
+            selClasse.disabled = false;
+        }
+    }
+    filtrarCardsJogadores();
+}
+
+// Fecha o dropdown múltiplo ao clicar fora dele
+window.addEventListener('click', (e) => {
+    const container = document.getElementById('container-multiselect-perfis');
+    if (container && !container.contains(e.target)) {
+        container.classList.remove('open');
+    }
+});
 
 // ==========================================
 // 5. INTERAÇÕES DO MENU 3 PONTINHOS (KEBAB)
