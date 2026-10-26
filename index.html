@@ -2863,7 +2863,7 @@
 												</div>
 
 												<div class="field-group" style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
-													<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Limite de Vagas *</label>
+													<label style="font-size: 11.5px; font-weight: 700; color: #475569;">Limite de Vagas por Categoria *</label>
 													<input type="number" id="inp-torneio-vagas" class="input-app" placeholder="Ex: 32 (0 para ilimitado)" value="" min="0" max="256" style="margin: 0; padding: 8px 10px; font-size: 13px;">
 												</div>
 											</div>
@@ -3222,32 +3222,20 @@
 				</button>
 			</div>
 
-			<!-- SELECTS DUPLOS INLINE DE FILTRO -->
-			<div style="display: flex; gap: 8px; margin-bottom: 12px;">
-				<select id="select-filtro-inscritos-classe" class="input-app" onchange="renderizarListaInscritosPixSaaS()" style="flex: 1; font-size: 13px; padding: 8px 10px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;">
-					<option value="TODAS">Todas as Classes</option>
+			<!-- SELETOR ÚNICO DE CATEGORIA + BOTÃO COMPACTO (+) -->
+			<div style="display: flex; gap: 8px; margin-bottom: 14px; align-items: center;">
+				<select id="select-filtro-inscritos-categoria" class="input-app" onchange="renderizarListaInscritosPixSaaS()" style="flex: 1; min-width: 0; font-size: 13px; padding: 0 10px; height: 38px; margin: 0; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;">
+					<option value="TODAS">Todas as Categorias</option>
 				</select>
 
-				<select id="select-filtro-inscritos-genero" class="input-app" onchange="renderizarListaInscritosPixSaaS()" style="flex: 1; font-size: 13px; padding: 8px 10px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;">
-					<option value="TODOS">Todos os Gêneros</option>
-					<option value="MASCULINO">Masculino</option>
-					<option value="FEMININO">Feminino</option>
-				</select>
+				<button type="button" onclick="inscreverAtletaManualmenteSaaS()" title="Inscrever Atleta Manualmente" style="width: 38px; min-width: 38px; max-width: 38px; height: 38px; flex: 0 0 38px; margin: 0; padding: 0; background: #3b82f6; color: #ffffff; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+					<i class="material-icons" style="font-size: 20px; line-height: 1;">person_add</i>
+				</button>
 			</div>
 
-			<!-- LISTA ROLÁVEL DOS INSCRITOS -->
-			<div id="container-lista-inscritos-pix" style="max-height: 280px; overflow-y: auto; margin-bottom: 16px; border: 1px solid #f1f5f9; border-radius: 10px; padding: 6px;">
+			<!-- LISTA ROLÁVEL DOS INSCRITOS (ALTURA MÁXIMA DE TELA) -->
+			<div id="container-lista-inscritos-pix" style="max-height: 400px; overflow-y: auto; margin-bottom: 0; border: 1px solid #f1f5f9; border-radius: 10px; padding: 6px;">
 				<p style="text-align: center; color: #94a3b8; margin: 20px 0; font-size: 13px;">Buscando confirmações...</p>
-			</div>
-
-			<!-- AÇÕES DA SECRETARIA -->
-			<div style="display: flex; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
-				<button type="button" class="btn-app" style="margin: 0; flex: 1; padding: 10px; background: #3b82f6; color: white; font-size: 13px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="inscreverAtletaManualmenteSaaS()">
-					<i class="material-icons" style="font-size: 18px;">person_add</i> Inscrever Atleta Manualmente
-				</button>
-				<button type="button" class="btn-app" style="margin: 0; width: 100px; padding: 10px; background: #64748b; color: white; font-size: 13px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;" onclick="fecharModalConfig('modal-gerenciar-inscritos')">
-					Concluir
-				</button>
 			</div>
 
 		</div>
