@@ -792,17 +792,56 @@ td.col-edicao .pdf-link-inline {
     transition: all 0.2s ease; 
 }
 
+/* 🟢 Pílulas de Classes Ativas (A, B, C): Verde Oficial SetPoint */
 .classes-pills-container .pilula-check.ativa {
     background: #dcfce7 !important;
     color: #15803d !important;
     border-color: #86efac !important;
 }
 
+/* 🔵 Pílulas de Gênero Ativas (Masculino e Feminino): Azul Corporativo */
+.classes-pills-container .pilula-check.ativa[data-cat="MASCULINO"],
+.classes-pills-container .pilula-check.ativa[data-cat="FEMININO"],
+.classes-pills-container .pilula-check.ativa[data-cat="masculino"],
+.classes-pills-container .pilula-check.ativa[data-cat="feminino"] {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+    border-color: #93c5fd !important;
+}
+
+
 /* Destaque Azul para a 5ª Aba (Gestão da Temporada) quando ativa */
 #modal-config-ranking .accordion-item:nth-of-type(5).active .accordion-header {
     background: #3b82f6 !important;
     border-color: #3b82f6 !important;
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* 🔒 ESTADO TRAVADO DE CAMPOS NO FORMULÁRIO DO TORNEIO (FASE 1 - EDIÇÃO) */
+#modal-config-ranking input.input-app:disabled,
+#modal-config-ranking select.input-app:disabled {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed !important;
+}
+
+.classes-pills-container.travado {
+    cursor: not-allowed !important;
+    opacity: 0.65 !important;
+}
+
+.classes-pills-container.travado .pilula-check {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+/* Compatibilidade com o Modo Escuro */
+body.dark-mode #modal-config-ranking input.input-app:disabled,
+body.dark-mode #modal-config-ranking select.input-app:disabled {
+    background-color: #262626 !important;
+    border-color: #333333 !important;
+    color: #64748b !important;
 }
 
 /* ======================================================== */
