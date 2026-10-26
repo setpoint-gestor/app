@@ -529,6 +529,22 @@ function abrirModalConfig(idModal) {
         if (idModal === 'modal-regras' && typeof resetarModalRegras === 'function') {
             resetarModalRegras();
         }
+
+        // 3. 🏆 PRÉ-CARREGAMENTO SOB DEMANDA: Aquece o Acervo Histórico em background na RAM ao abrir o módulo de Ranking
+        if (idModal === 'modal-config-ranking' && !acervoHistoricoGlobalSaaS && raizBanco) {
+            database.ref(`${raizBanco}/historico_torneios`).once('value').then(snapHist => {
+                if (snapHist.exists()) {
+                    const dataHist = snapHist.val() || {};
+                    acervoHistoricoGlobalSaaS = Object.keys(dataHist).map(key => ({ id: key, ...dataHist[key] }));
+                    acervoHistoricoGlobalSaaS.sort((a, b) => (b.dataHomologacao || 0) - (a.dataHomologacao || 0));
+                    console.log(`🏆 [Core] Acervo Histórico pré-carregado em RAM para o Gestor (${acervoHistoricoGlobalSaaS.length} edições).`);
+                } else {
+                    acervoHistoricoGlobalSaaS = [];
+                }
+            }).catch(errHist => {
+                console.warn("⚠️ [Core] Erro ao pré-carregar acervo histórico na RAM:", errHist);
+            });
+        }
     }
 }
 

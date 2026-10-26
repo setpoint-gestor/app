@@ -19,19 +19,72 @@ async function aceitarConviteRankingSocioSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
 
     try {
-        const atleta = jogadoresGlobal[idLogado] || {};
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) ? jogadoresGlobal[idLogado] : {};
         const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
         const configRanking = snapConfig.val() || {};
 
         const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
         if (faseAtual > 2) {
             showToast("As inscrições para este torneio já foram encerradas.", "warning");
+            window.temConviteRankingPendenteSocio = false;
             await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
-            fecharModalNotificacoes();
+            if (typeof fecharModalNotificacoes === 'function') fecharModalNotificacoes();
             return;
         }
 
-        showToast("Processando sua inscrição no ranking...", "info");
+        // 🛡️ VALIDAÇÃO DE LIMITE DE VAGAS POR CATEGORIA (ABORDAGEM A)
+        const cal = configRanking.calendario || {};
+        const limiteVagasPorCat = parseInt(cal.limiteVagas, 10) || 0;
+
+        if (limiteVagasPorCat > 0) {
+            const classeAtleta = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+            let generoAtleta = (atleta.genero || 'MASCULINO').toUpperCase().trim();
+            if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+
+            const modoGenero = configRanking.divisaoGenero || 'separado';
+            const chaveCatAtleta = (modoGenero === 'unificado') ? `${classeAtleta}_UNIFICADO` : `${classeAtleta}_${generoAtleta}`;
+
+            const inscritos = configRanking.inscritosConfirmados || {};
+            let confirmadosNaCat = 0;
+
+            Object.keys(inscritos).forEach(id => {
+                const at = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
+                const cl = (at.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+                let gen = (at.genero || 'MASCULINO').toUpperCase().trim();
+                if (gen === 'NAO_INFORMAR') gen = 'MASCULINO';
+                const catInscrito = (modoGenero === 'unificado') ? `${cl}_UNIFICADO` : `${cl}_${gen}`;
+
+                if (catInscrito === chaveCatAtleta) {
+                    confirmadosNaCat++;
+                }
+            });
+
+            // 🛡️ BLINDAGEM DA FILA: Se o limite foi atingido OU se há suplentes na fila de espera,
+            // impede qualquer convite comum de assumir a vaga titular aberta por desistência.
+            const filaCat = (configRanking.filaEspera && configRanking.filaEspera[chaveCatAtleta]) ? configRanking.filaEspera[chaveCatAtleta] : {};
+            const qtdFila = Object.keys(filaCat).length;
+
+            if (confirmadosNaCat >= limiteVagasPorCat || qtdFila > 0) {
+                const rotuloCat = `Classe ${classeAtleta}` + (modoGenero !== 'unificado' ? ` (${generoAtleta === 'FEMININO' ? 'Feminino' : 'Masculino'})` : '');
+                const motivoMsg = (confirmadosNaCat >= limiteVagasPorCat)
+                    ? `Vagas esgotadas para a ${rotuloCat} (limite de ${limiteVagasPorCat} atletas atingido).`
+                    : `As vagas titulares da ${rotuloCat} já foram preenchidas e há suplentes na fila de espera.`;
+                showToast(motivoMsg, "warning", 5000);
+
+                // Atualiza a tela para transformar o botão em "Entrar na Fila" imediatamente
+                if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
+                    renderizarListaNotificacoesSocioSaaS();
+                } else if (typeof fecharModalNotificacoes === 'function') {
+                    fecharModalNotificacoes();
+                }
+                return;
+            }
+        }
+
+        // 🛡️ PROTEÇÃO ANTI-PISCADA: Trava a flag na RAM imediatamente
+        window.temConviteRankingPendenteSocio = false;
+
+        showToast("Confirmando sua inscrição...", "info");
 
         const cobrarTaxa = configRanking.financeiro?.cobrarTaxa === true;
         const payloadInscrito = {
@@ -39,15 +92,20 @@ async function aceitarConviteRankingSocioSaaS() {
             pixPago: !cobrarTaxa,
             dataAceite: Date.now()
         };
-        await database.ref(`${raizBanco}/config/ranking/inscritosConfirmados/${idLogado}`).set(payloadInscrito);
-        await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
+
+        // 🚀 DISPARO ATÔMICO SIMULTÂNEO: Grava a vaga titular e remove o convite pendente no mesmo milissegundo
+        const updates = {};
+        updates[`config/ranking/inscritosConfirmados/${idLogado}`] = payloadInscrito;
+        updates[`convites_ranking/pendentes/${idLogado}`] = null;
+
+        await database.ref(raizBanco).update(updates);
 
         showToast("Inscrição confirmada com sucesso! Bem-vindo ao Ranking.", "success");
-        fecharModalNotificacoes();
+        if (typeof fecharModalNotificacoes === 'function') fecharModalNotificacoes();
 
     } catch (err) {
         console.error("Erro ao aceitar convite do ranking:", err);
-        showToast("Erro ao confirmar inscrição no banco de dados.", "error");
+        showToast("Erro ao processar sua inscrição. Tente novamente.", "error");
     }
 }
 
@@ -90,6 +148,237 @@ async function recusarConviteRankingSocioSaaS() {
     }
 }
 
+/**
+ * Registra o atleta na Fila de Espera inteligente da respectiva Categoria
+ */
+async function entrarFilaEsperaRankingSocioSaaS() {
+    const idLogado = localStorage.getItem('jogadorLogadoId'); 
+    if (!idLogado || !raizBanco) return;
+
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    try {
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) ? jogadoresGlobal[idLogado] : {};
+        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+        const configRanking = snapConfig.val() || {};
+
+        const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
+        if (faseAtual > 2) {
+            showToast("As inscrições para este torneio já foram encerradas.", "warning");
+            await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
+            if (typeof fecharModalNotificacoes === 'function') fecharModalNotificacoes();
+            return;
+        }
+
+        // 1. Identificar a categoria técnica do atleta
+        const classeAtleta = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+        let generoAtleta = (atleta.genero || 'MASCULINO').toUpperCase().trim();
+        if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+
+        const modoGenero = configRanking.divisaoGenero || 'separado';
+        const chaveCatAtleta = (modoGenero === 'unificado') ? `${classeAtleta}_UNIFICADO` : `${classeAtleta}_${generoAtleta}`;
+        const rotuloCat = `Classe ${classeAtleta}` + (modoGenero !== 'unificado' ? ` (${generoAtleta === 'FEMININO' ? 'Feminino' : 'Masculino'})` : '');
+
+        // 2. Apurar a posição por ordem de chegada na respectiva categoria
+        const snapFila = await database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCatAtleta}`).once('value');
+        const filaCat = snapFila.val() || {};
+        const posicaoFila = Object.keys(filaCat).length + 1;
+
+        const payloadEspera = {
+            nome: atleta.nomeCompleto || atleta.apelido || "Atleta",
+            posicao: posicaoFila,
+            dataEntrada: Date.now(),
+            pixPago: false
+        };
+
+        // 3. Gravar na fila e limpar a pendência da caixa de entrada
+        await database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCatAtleta}/${idLogado}`).set(payloadEspera);
+        await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
+
+        showToast(`Confirmado na Fila de Espera da ${rotuloCat} (Suplente #${posicaoFila}).`, "success", 5000);
+        if (typeof fecharModalNotificacoes === 'function') fecharModalNotificacoes();
+
+    } catch (err) {
+        console.error("Erro ao entrar na fila de espera do ranking:", err);
+        showToast("Erro ao processar a entrada na fila de espera. Tente novamente.", "error");
+    }
+}
+
+
+/**
+ * Confirma a aceitação da vaga de titular pelo suplente convocado (Regra: Quem chegar primeiro leva)
+ */
+async function aceitarVagaSuplenteRankingSocioSaaS() {
+    const idLogado = localStorage.getItem('jogadorLogadoId'); 
+    if (!idLogado || !raizBanco) return;
+
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    try {
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) ? jogadoresGlobal[idLogado] : {};
+        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+        const configRanking = snapConfig.val() || {};
+
+        const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
+        if (faseAtual > 2) {
+            showToast("As inscrições para este torneio já foram encerradas.", "warning");
+            await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
+            if (typeof fecharModalNotificacoes === 'function') fecharModalNotificacoes();
+            return;
+        }
+
+        // 1. Identificar a categoria técnica do atleta
+        const classeAtleta = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+        let generoAtleta = (atleta.genero || 'MASCULINO').toUpperCase().trim();
+        if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+
+        const modoGenero = configRanking.divisaoGenero || 'separado';
+        const chaveCat = (modoGenero === 'unificado') ? `${classeAtleta}_UNIFICADO` : `${classeAtleta}_${generoAtleta}`;
+
+        // 🛡️ VALIDAÇÃO DE LIMITE DE VAGAS: SE O OUTRO CONCORRENTE JÁ PREENCHEU
+        const cal = configRanking.calendario || {};
+        const limiteVagasPorCat = parseInt(cal.limiteVagas, 10) || 0;
+
+        if (limiteVagasPorCat > 0) {
+            const inscritos = configRanking.inscritosConfirmados || {};
+            let confirmadosNaCat = 0;
+
+            Object.keys(inscritos).forEach(id => {
+                const at = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
+                const cl = (at.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+                let gen = (at.genero || 'MASCULINO').toUpperCase().trim();
+                if (gen === 'NAO_INFORMAR') gen = 'MASCULINO';
+                const catInscrito = (modoGenero === 'unificado') ? `${cl}_UNIFICADO` : `${cl}_${gen}`;
+
+                if (catInscrito === chaveCat) {
+                    confirmadosNaCat++;
+                }
+            });
+
+            if (confirmadosNaCat >= limiteVagasPorCat) {
+                // A vaga foi preenchida pelo concorrente mais rápido!
+                await database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove();
+                await database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idLogado}`).update({
+                    status: "aguardando",
+                    expiraEm: null,
+                    convocadoEm: null,
+                    janelaAberta: null
+                });
+
+                showToast("Que pena! A vaga aberta acabou de ser preenchida por outro atleta. Seu nome continua seguro na fila como #1 para a próxima oportunidade.", "warning", 6500);
+                if (typeof fecharModalNotificacoes === 'function') fecharModalNotificacoes();
+                return;
+            }
+        }
+
+        showToast("Garantindo sua vaga de titular...", "info");
+
+        const cobrarTaxa = configRanking.financeiro?.cobrarTaxa === true;
+        const payloadInscrito = {
+            nome: atleta.nomeCompleto || atleta.apelido || "Atleta",
+            pixPago: !cobrarTaxa,
+            dataAceite: Date.now()
+        };
+
+        // 2. Promover o ganhador a titular oficial e limpar sua pendência e fila
+        await Promise.all([
+            database.ref(`${raizBanco}/config/ranking/inscritosConfirmados/${idLogado}`).set(payloadInscrito),
+            database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idLogado}`).remove(),
+            database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove()
+        ]);
+
+        // 3. Encerrar a convocação dos outros concorrentes da categoria e reorganizar a fila restante
+        const snapFila = await database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}`).once('value');
+        const filaRestante = snapFila.val() || {};
+        const idsRestantes = Object.keys(filaRestante);
+
+        if (idsRestantes.length > 0) {
+            idsRestantes.sort((a, b) => (filaRestante[a].posicao || 0) - (filaRestante[b].posicao || 0));
+            const updatesPos = {};
+            for (let idx = 0; idx < idsRestantes.length; idx++) {
+                const idOutro = idsRestantes[idx];
+                updatesPos[`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idOutro}/posicao`] = idx + 1;
+
+                // Se outro atleta estava em concorrência, fecha a janela dele pois a vaga foi preenchida
+                if (filaRestante[idOutro].status === 'convocado') {
+                    updatesPos[`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idOutro}/status`] = "aguardando";
+                    updatesPos[`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idOutro}/expiraEm`] = null;
+                    updatesPos[`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idOutro}/convocadoEm`] = null;
+                    updatesPos[`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idOutro}/janelaAberta`] = null;
+                    await database.ref(`${raizBanco}/convites_ranking/pendentes/${idOutro}`).remove();
+                }
+            }
+            await database.ref().update(updatesPos);
+        }
+
+        showToast("Parabéns! Sua vaga titular foi confirmada com sucesso.", "success", 5000);
+        if (typeof fecharModalNotificacoes === 'function') fecharModalNotificacoes();
+
+    } catch (err) {
+        console.error("Erro ao aceitar vaga de suplente:", err);
+        showToast("Erro ao confirmar vaga titular. Tente novamente.", "error");
+    }
+}
+
+
+/**
+ * Suplente convocado abre mão da vaga, passando a vez ao próximo da fila
+ */
+async function passarVezSuplenteRankingSocioSaaS() {
+    const idLogado = localStorage.getItem('jogadorLogadoId'); 
+    if (!idLogado || !raizBanco) return;
+
+    if (navigator.vibrate) navigator.vibrate(20);
+
+    try {
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) ? jogadoresGlobal[idLogado] : {};
+        const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+        const configRanking = snapConfig.val() || {};
+
+        // 1. Identificar a categoria técnica do atleta
+        const classeAtleta = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+        let generoAtleta = (atleta.genero || 'MASCULINO').toUpperCase().trim();
+        if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+
+        const modoGenero = configRanking.divisaoGenero || 'separado';
+        const chaveCat = (modoGenero === 'unificado') ? `${classeAtleta}_UNIFICADO` : `${classeAtleta}_${generoAtleta}`;
+
+        showToast("Processando passagem de vaga...", "info");
+
+        // 2. Remover da fila de espera e desativar a pendência do sininho
+        await Promise.all([
+            database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idLogado}`).remove(),
+            database.ref(`${raizBanco}/convites_ranking/pendentes/${idLogado}`).remove()
+        ]);
+
+        // 3. Reorganizar posições da fila restante e convocar o próximo da fila
+        const snapFila = await database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}`).once('value');
+        const filaRestante = snapFila.val() || {};
+        const idsRestantes = Object.keys(filaRestante);
+
+        if (idsRestantes.length > 0) {
+            idsRestantes.sort((a, b) => (filaRestante[a].posicao || 0) - (filaRestante[b].posicao || 0));
+            const updatesPos = {};
+            idsRestantes.forEach((id, idx) => {
+                updatesPos[`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${id}/posicao`] = idx + 1;
+            });
+            await database.ref().update(updatesPos);
+
+            // Convoca autonomamente o novo #1 (ex: Rafael Nadal)
+            if (typeof convocarProximoSuplenteFilaEsperaRankingSaaS === 'function') {
+                await convocarProximoSuplenteFilaEsperaRankingSaaS(chaveCat);
+            }
+        }
+
+        showToast("Vaga dispensada. O próximo suplente da fila foi convocado.", "info", 5000);
+        if (typeof fecharModalNotificacoes === 'function') fecharModalNotificacoes();
+
+    } catch (err) {
+        console.error("Erro ao passar a vez do suplente:", err);
+        showToast("Erro ao processar a passagem de vaga.", "error");
+    }
+}
+
 /* ======================================================== */
 /* 2. ZERAR / REINICIAR RANKING                              */
 /* ======================================================== */
@@ -103,14 +392,16 @@ function limparFormularioFase1SaaS() {
     const elDtJogIni = document.getElementById('inp-torneio-dt-jog-ini');
     const elDtJogFim = document.getElementById('inp-torneio-dt-jog-fim');
     const lblPdf = document.getElementById('pdf-file-name');
+    const containerPills = document.getElementById('container-pills-categorias');
 
-    if (elNome) elNome.value = '';
-    if (elModelo) elModelo.selectedIndex = 0;
-    if (elVagas) elVagas.value = '';
-    if (elDtIncIni) elDtIncIni.value = '';
-    if (elDtIncFim) elDtIncFim.value = '';
-    if (elDtJogIni) elDtJogIni.value = '';
-    if (elDtJogFim) elDtJogFim.value = '';
+    // 1. Zera os valores e destrava todos os campos (limpa os status de edição)
+    if (elNome) { elNome.value = ''; elNome.disabled = false; elNome.title = ''; }
+    if (elModelo) { elModelo.selectedIndex = 0; elModelo.disabled = false; elModelo.title = ''; }
+    if (elVagas) { elVagas.value = ''; elVagas.disabled = false; elVagas.title = ''; }
+    if (elDtIncIni) { elDtIncIni.value = ''; elDtIncIni.disabled = false; elDtIncIni.title = ''; }
+    if (elDtIncFim) { elDtIncFim.value = ''; elDtIncFim.disabled = false; elDtIncFim.title = ''; }
+    if (elDtJogIni) { elDtJogIni.value = ''; elDtJogIni.disabled = false; elDtJogIni.title = ''; }
+    if (elDtJogFim) { elDtJogFim.value = ''; elDtJogFim.disabled = false; elDtJogFim.title = ''; }
 
     if (lblPdf) {
         lblPdf.innerText = 'Nenhum arquivo anexado (Opcional)';
@@ -118,12 +409,22 @@ function limparFormularioFase1SaaS() {
         lblPdf.style.fontWeight = '400';
     }
 
+    // 2. Destrava e zera as pílulas de categorias
+    if (containerPills) {
+        containerPills.classList.remove('travado');
+        containerPills.title = '';
+    }
+
     document.querySelectorAll('#container-pills-categorias .pilula-check').forEach(p => {
         p.classList.remove('ativa');
         const ico = p.querySelector('.material-icons');
         if (ico) ico.textContent = 'add_circle_outline';
     });
+	
+	// 3. Reseta a flag de segurança de edição (Garante modo Criação limpo)
+    window.emModoEdicaoCalendarioSaaS = false;
 }
+
 
 async function zerarRankingSaaS() {
     if (!isGestorLogado || !raizBanco) {
@@ -159,7 +460,7 @@ async function zerarRankingSaaS() {
         // 1. Contagem das partidas ativas na temporada atual
         const totalPartidas = Object.keys(partidas).length;
 
-        // 2. Unificação precisa de inscritos (Fase 2 e Fase 3+) sem duplicidades
+        // 2. Unificação precisa de titulares inscritos (Fase 2 e Fase 3+) sem duplicidades
         const setInscritos = new Set(Object.keys(configRanking.inscritosConfirmados || {}));
         Object.values(tabelas).forEach(arr => {
             if (Array.isArray(arr)) {
@@ -168,7 +469,15 @@ async function zerarRankingSaaS() {
         });
         const totalInscritos = setInscritos.size;
 
-        // 3. Filtragem EXCLUSIVA de reservas vinculadas ao temporadaId ativo
+        // 3. Contagem de suplentes na fila de espera
+        const filaEspera = configRanking.filaEspera || {};
+        let totalSuplentes = 0;
+        Object.keys(filaEspera).forEach(cat => {
+            const suplentes = filaEspera[cat] || {};
+            totalSuplentes += Object.keys(suplentes).length;
+        });
+
+        // 4. Filtragem EXCLUSIVA de reservas vinculadas ao temporadaId ativo
         const temporadaIdAtiva = convites.temporadaId || null;
         let totalReservasRanking = 0;
         const caminhosReservasExcluir = [];
@@ -192,7 +501,7 @@ async function zerarRankingSaaS() {
             });
         });
 
-        // 4. Mapeamento de notificações ativas da temporada
+        // 5. Mapeamento de notificações ativas da temporada
         let totalNotificacoes = 0;
         const caminhosNotificacoesExcluir = [];
         Object.keys(jogadores).forEach(idJog => {
@@ -203,12 +512,16 @@ async function zerarRankingSaaS() {
             }
         });
 
-        const totalGeral = totalPartidas + totalInscritos + totalReservasRanking;
+        const totalGeral = totalPartidas + totalInscritos + totalSuplentes + totalReservasRanking;
 
         if (totalGeral === 0 && !snapConvites.exists() && faseAtual === 1 && !temCalendario) {
             showToast("O ranking já se encontra completamente zerado.", "info");
             return;
         }
+
+        const linhaSuplentesHTML = totalSuplentes > 0 
+            ? `<li><b>${totalSuplentes}</b> suplente(s) na <b>fila de espera</b>;</li>` 
+            : '';
 
         const promptHTML = `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
@@ -227,10 +540,11 @@ async function zerarRankingSaaS() {
                     </strong>
                     <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #1e293b;">
                         <li><b>${totalPartidas}</b> partida(s) registradas na <b>temporada ativa</b>;</li>
-                        <li><b>${totalInscritos}</b> inscrição(ões) nas tabelas ativas do torneio;</li>
+                        <li><b>${totalInscritos}</b> inscrição(ões) de titulares confirmados;</li>
+                        ${linhaSuplentesHTML}
                         <li><b>${totalReservasRanking}</b> agendamento(s) da edição atual nas quadras;</li>
                         <li><b>${totalNotificacoes}</b> notificação(ões) nas caixas dos atletas;</li>
-                        <li>Contrato de calendário e inscrições ativas da edição atual.</li>
+                        <li>Contrato de calendário, inscrições e fila de espera da edição atual.</li>
                     </ul>
                 </div>
 
@@ -253,20 +567,31 @@ async function zerarRankingSaaS() {
                     database.ref(`${raizBanco}/convites_ranking`).remove()
                 ]);
 
-                if (typeof rankingPartidasGlobal !== 'undefined') {
-                    rankingPartidasGlobal = {};
-                }
-
-                // 2. Atualiza os parâmetros de configuração e limpa reservas/notificações vinculadas
+                // 2. Atualiza os parâmetros de configuração e limpa reservas/notificações/fila vinculadas
                 const updates = {};
                 updates['config/ranking/faseAtual'] = 1;
                 updates['config/ranking/calendario'] = null;
                 updates['config/ranking/inscritosConfirmados'] = null;
+                updates['config/ranking/filaEspera'] = null;
 
                 caminhosReservasExcluir.forEach(path => { updates[path] = null; });
                 caminhosNotificacoesExcluir.forEach(path => { updates[path] = null; }); 
 
                 await database.ref(raizBanco).update(updates); 
+
+                // 3. Sincroniza a memória RAM imediatamente para evitar cache fantasma
+                if (typeof rankingPartidasGlobal !== 'undefined') {
+                    rankingPartidasGlobal = {};
+                }
+                if (typeof convitesRankingGlobal !== 'undefined') {
+                    convitesRankingGlobal = null;
+                }
+                if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
+                    configRegrasGlobal.ranking.faseAtual = 1;
+                    configRegrasGlobal.ranking.calendario = null;
+                    configRegrasGlobal.ranking.inscritosConfirmados = null;
+                    configRegrasGlobal.ranking.filaEspera = null;
+                }
 
                 limparFormularioFase1SaaS();
                 showToast("Ranking zerado com sucesso! Módulo retornado à Fase 1.", "success");
@@ -289,7 +614,6 @@ async function zerarRankingSaaS() {
         showToast("Erro ao auditar dados do ranking no banco.", "error");
     }
 }
-
 
 /* ======================================================== */
 /* 3. ESTEIRA DINÂMICA DA TEMPORADA (MÁQUINA DE ESTADOS)   */
@@ -488,8 +812,8 @@ function renderizarGestaoTemporadaSaaS() {
 
             const btnEditarResumo = cardResumo.querySelector('button[onclick*="editarCalendarioAtivoSaaS"]') || cardResumo.querySelector('.btn-editar');
             if (btnEditarResumo) {
-                const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && faseAtual >= 5);
-                btnEditarResumo.style.setProperty('display', torneioConcluido ? 'none' : 'inline-flex', 'important');
+                const podeEditar = (faseAtual === 2);
+                btnEditarResumo.style.setProperty('display', podeEditar ? 'inline-flex' : 'none', 'important');
             }
 
             cardResumo.style.display = 'flex';
@@ -1252,10 +1576,9 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
     const confGlobalCheck = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const divGenero = confGlobalCheck.divisaoGenero || 'separado';
-    const gruposConfig = confGlobalCheck.grupos || {}; // 👈 LINHA ADICIONADA
+    const gruposConfig = confGlobalCheck.grupos || {};
 
     const temClasse = categoriasHabilitadas.some(cat => cat.startsWith('CLASSE_'));
-	
     const temGenero = categoriasHabilitadas.includes('MASCULINO') || categoriasHabilitadas.includes('FEMININO');
 
     if (!temClasse) {
@@ -1275,6 +1598,61 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
     if (navigator.vibrate) navigator.vibrate(30);
 
+    // Função interna auxiliar para envio de PDF opcional
+    const uploadPdfOpcional = () => {
+        const inputPdf = document.getElementById('inp-pdf-file');
+        if (inputPdf && inputPdf.files && inputPdf.files[0]) {
+            const file = inputPdf.files[0];
+            const pathStorage = `Clubes/${clubeAtivoId || 'SaaS'}/torneios/regulamento_${Date.now()}.pdf`;
+
+            firebase.storage().ref(pathStorage).put(file)
+                .then(snapshot => snapshot.ref.getDownloadURL())
+                .then(downloadURL => {
+                    database.ref(`${raizBanco}/config/ranking/calendario/regulamentoUrl`).set(downloadURL);
+                    showToast("Regulamento em PDF anexado com sucesso!", "info");
+                })
+                .catch(err => {
+                    console.warn("⚠️ Upload do PDF barrado por CORS em localhost. O contrato do torneio foi mantido no banco:", err);
+                });
+        }
+    };
+
+    // 🔒 1. CENÁRIO: MODO DE EDIÇÃO (TORNEIO EM ANDAMENTO - PRESERVAÇÃO TOTAL)
+    if (window.emModoEdicaoCalendarioSaaS === true) {
+        showToast("Salvando alterações do torneio...", "info");
+
+        const payloadEdicao = {
+            nomeTorneio: nome,
+            fimInscricoes: dtIncFim,
+            inicioJogos: dtJogIni,
+            fimTorneio: dtJogFim
+        };
+
+        database.ref(`${raizBanco}/config/ranking/calendario`).update(payloadEdicao)
+        .then(() => {
+            // Sincroniza a memória RAM imediatamente
+            if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario) {
+                Object.assign(configRegrasGlobal.ranking.calendario, payloadEdicao);
+            }
+
+            window.emModoEdicaoCalendarioSaaS = false;
+            showToast("Alterações do calendário salvas com sucesso!", "success");
+
+            uploadPdfOpcional();
+
+            if (typeof renderizarGestaoTemporadaSaaS === 'function') {
+                renderizarGestaoTemporadaSaaS();
+            }
+        })
+        .catch(err => {
+            console.error("❌ [Torneios] Erro ao atualizar calendário:", err);
+            showToast("Erro ao salvar alterações no Firebase.", "error");
+        });
+
+        return; // Interrompe para NÃO executar o reset de criação abaixo
+    }
+
+    // 🚀 2. CENÁRIO: CRIAÇÃO DO ZERO (ABERTURA INICIAL DA TEMPORADA)
     const payloadCalendario = {
         nomeTorneio: nome,
         formatoTorneio: formatoTorneioEscolhido,
@@ -1293,7 +1671,7 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
     console.log("🧹 [Torneios] Limpando área interna do ranking (mantendo /reservas intocado)...");
 
-    // 🛡️ LIMPEZA FÍSICA APENAS DA ÁREA DE TRABALHO INTERNA DO RANKING
+    // 🛡️ LIMPEZA FÍSICA APENAS NA CRIAÇÃO INICIAL
     Promise.all([
         database.ref(`${raizBanco}/ranking/partidas`).remove(),
         database.ref(`${raizBanco}/ranking/tabelas`).remove(),
@@ -1309,34 +1687,21 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
         });
     })
     .then(() => {
-        // 🚀 Sincroniza a memória RAM imediatamente para aplicar as travas "online" sem precisar de F5
+        // Sincroniza a memória RAM imediatamente
         if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
             configRegrasGlobal.ranking.faseAtual = 2;
             configRegrasGlobal.ranking.calendario = payloadCalendario;
             configRegrasGlobal.ranking.inscritosConfirmados = null;
         }
 
+        window.emModoEdicaoCalendarioSaaS = false;
         showToast("Contrato da edição gravado com sucesso! Inscrições abertas.", "success");
 
         if (typeof renderizarGestaoTemporadaSaaS === 'function') {
             renderizarGestaoTemporadaSaaS();
         }
 
-        const inputPdf = document.getElementById('inp-pdf-file');
-        if (inputPdf && inputPdf.files && inputPdf.files[0]) {
-            const file = inputPdf.files[0];
-            const pathStorage = `Clubes/${clubeAtivoId || 'SaaS'}/torneios/regulamento_${Date.now()}.pdf`;
-
-            firebase.storage().ref(pathStorage).put(file)
-                .then(snapshot => snapshot.ref.getDownloadURL())
-                .then(downloadURL => {
-                    database.ref(`${raizBanco}/config/ranking/calendario/regulamentoUrl`).set(downloadURL);
-                    showToast("Regulamento em PDF anexado com sucesso!", "info");
-                })
-                .catch(err => {
-                    console.warn("⚠️ Upload do PDF barrado por CORS em localhost. O contrato do torneio foi mantido no banco:", err);
-                });
-        }
+        uploadPdfOpcional();
     })
     .catch(err => {
         console.error("❌ [Torneios] Erro ao salvar calendário:", err);
@@ -1346,16 +1711,17 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
 
 function editarCalendarioAtivoSaaS() {
-	// 🧹 Limpa todos os campos e pílulas antes de abrir, garantindo formulário virgem
+    // 🧹 Limpa todos os campos e pílulas antes de abrir, garantindo formulário virgem
     if (typeof limparFormularioFase1SaaS === 'function') {
         limparFormularioFase1SaaS();
     }
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const cal = conf.calendario || {};
 
+    // 1. Preenchimento dos dados existentes (se houver)
     if (cal.nomeTorneio) document.getElementById('inp-torneio-nome').value = cal.nomeTorneio;
     if (cal.formatoTorneio) document.getElementById('inp-torneio-modelo').value = cal.formatoTorneio;
-    if (cal.limiteVagas) document.getElementById('inp-torneio-vagas').value = cal.limiteVagas;
+    if (cal.limiteVagas !== undefined && cal.limiteVagas !== null) document.getElementById('inp-torneio-vagas').value = cal.limiteVagas;
 
     if (Array.isArray(cal.categoriasHabilitadas)) {
         document.querySelectorAll('#container-pills-categorias .pilula-check').forEach(p => {
@@ -1390,6 +1756,47 @@ function editarCalendarioAtivoSaaS() {
         }
     }
 
+    // 🔒 2. CONDICIONAMENTO INTELIGENTE: TRAVA APENAS SE FOR EDIÇÃO DE TORNEIO ATIVO (FASE >= 2)
+    const elVagas = document.getElementById('inp-torneio-vagas');
+    const elModelo = document.getElementById('inp-torneio-modelo');
+    const elDtIncIni = document.getElementById('inp-torneio-dt-inc-ini');
+    const containerPills = document.getElementById('container-pills-categorias');
+
+    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+    const emEdicaoDeTorneioAtivo = (faseAtual >= 2 && !!cal.nomeTorneio);
+
+    if (emEdicaoDeTorneioAtivo) {
+        // Modo Edição: trava os parâmetros estruturais
+        if (elVagas) {
+            elVagas.disabled = true;
+            elVagas.title = "O limite de vagas não pode ser alterado com as inscrições em andamento.";
+        }
+        if (elModelo) {
+            elModelo.disabled = true;
+            elModelo.title = "O modelo de disputa não pode ser alterado após o início do torneio.";
+        }
+        if (elDtIncIni) {
+            elDtIncIni.disabled = true;
+            elDtIncIni.title = "A data de início das inscrições já foi consumada.";
+        }
+        if (containerPills) {
+            containerPills.classList.add('travado');
+            containerPills.title = "As categorias habilitadas não podem ser alteradas com o torneio em andamento.";
+        }
+        window.emModoEdicaoCalendarioSaaS = true;
+    } else {
+        // Modo Criação do Zero: garante tudo destravado e habilitado
+        if (elVagas) { elVagas.disabled = false; elVagas.title = ''; }
+        if (elModelo) { elModelo.disabled = false; elModelo.title = ''; }
+        if (elDtIncIni) { elDtIncIni.disabled = false; elDtIncIni.title = ''; }
+        if (containerPills) {
+            containerPills.classList.remove('travado');
+            containerPills.title = '';
+        }
+        window.emModoEdicaoCalendarioSaaS = false;
+    }
+
+    // Exibe o painel do formulário
     document.querySelectorAll('#container-fases-gestor .fase-panel').forEach((panel, idx) => {
         if (idx === 0) panel.classList.add('ativa');
         else panel.classList.remove('ativa');
@@ -1405,56 +1812,66 @@ function editarCalendarioAtivoSaaS() {
 /* ======================================================== */
 
 function popularFiltrosInscritosSaaS() {
-    const selectClasse = document.getElementById('select-filtro-inscritos-classe');
-    const selectGenero = document.getElementById('select-filtro-inscritos-genero');
+    const selectCat = document.getElementById('select-filtro-inscritos-categoria');
+    if (!selectCat) return;
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    const catsHabilitadas = cal.categoriasHabilitadas || ['CLASSE_A', 'CLASSE_B', 'CLASSE_C'];
     const inscritos = conf.inscritosConfirmados || {};
+    const filaEspera = conf.filaEspera || {};
     const ids = Object.keys(inscritos);
+    const modoGenero = conf.divisaoGenero || 'separado';
 
-    const contagemClasse = { A: 0, B: 0, C: 0 };
-    const contagemGenero = { MASCULINO: 0, FEMININO: 0 };
+    const contagemPorCat = {};
+    const catsComDados = new Set();
 
+    // 1. Contabiliza apenas os atletas confirmados
     ids.forEach(idAtleta => {
         const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-        const classeAtleta = (atleta.classe || '').toUpperCase().replace('CLASSE_', '').trim();
-        const generoAtleta = (atleta.genero || '').toUpperCase().trim();
+        const classeAtleta = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+        let generoAtleta = (atleta.genero || 'MASCULINO').toUpperCase().trim();
+        if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+        const chaveCat = (modoGenero === 'unificado') ? `${classeAtleta}_UNIFICADO` : `${classeAtleta}_${generoAtleta}`;
 
-        if (contagemClasse[classeAtleta] !== undefined) contagemClasse[classeAtleta]++;
-        if (contagemGenero[generoAtleta] !== undefined) contagemGenero[generoAtleta]++;
+        contagemPorCat[chaveCat] = (contagemPorCat[chaveCat] || 0) + 1;
+        catsComDados.add(chaveCat);
     });
 
-    if (selectClasse) {
-        const valAnterior = selectClasse.value || 'TODAS';
-        selectClasse.innerHTML = `<option value="TODAS">Todas as Classes (${ids.length})</option>`;
-        const classesUnicas = new Set();
-
-        catsHabilitadas.forEach(c => {
-            const cls = c.replace('CLASSE_', '').trim();
-            if (['A', 'B', 'C'].includes(cls)) classesUnicas.add(cls);
-        });
-
-        if (classesUnicas.size === 0) {
-            ['A', 'B', 'C'].forEach(cls => classesUnicas.add(cls));
+    // 2. Inclui categorias que possuem suplentes na fila de espera
+    Object.keys(filaEspera).forEach(chaveCat => {
+        const suplentes = filaEspera[chaveCat] || {};
+        if (Object.keys(suplentes).length > 0) {
+            catsComDados.add(chaveCat);
+            if (!contagemPorCat[chaveCat]) {
+                contagemPorCat[chaveCat] = 0;
+            }
         }
+    });
 
-        classesUnicas.forEach(cls => {
-            const qtd = contagemClasse[cls] || 0;
-            selectClasse.innerHTML += `<option value="${cls}">Classe ${cls} (${qtd})</option>`;
-        });
-        selectClasse.value = valAnterior;
-    }
+    const valAnterior = selectCat.value || 'TODAS';
+    let htmlOptions = `<option value="TODAS">Todas as Categorias (${ids.length})</option>`;
 
-    if (selectGenero) {
-        const valAnteriorG = selectGenero.value || 'TODOS';
-        selectGenero.innerHTML = `
-            <option value="TODOS">Todos os Gêneros (${ids.length})</option>
-            <option value="MASCULINO">Masculino (${contagemGenero.MASCULINO || 0})</option>
-            <option value="FEMININO">Feminino (${contagemGenero.FEMININO || 0})</option>
-        `;
-        selectGenero.value = valAnteriorG;
+    // 3. Ordenação alfabética por Classe (A, B, C...) e Gênero
+    const listaOrdenada = Array.from(catsComDados).sort((a, b) => {
+        const pA = a.split('_');
+        const pB = b.split('_');
+        if (pA[0] !== pB[0]) return pA[0].localeCompare(pB[0]);
+        return pA[1].localeCompare(pB[1]);
+    });
+
+    listaOrdenada.forEach(chaveCat => {
+        const partes = chaveCat.split('_');
+        const cl = partes[0] || 'B';
+        const gen = partes[1] || 'MASCULINO';
+        const labelGen = (gen === 'UNIFICADO') ? '' : (gen === 'FEMININO' ? ' - Feminino' : ' - Masculino');
+        const qtd = contagemPorCat[chaveCat] || 0;
+        htmlOptions += `<option value="${chaveCat}">Classe ${cl}${labelGen} (${qtd})</option>`;
+    });
+
+    selectCat.innerHTML = htmlOptions;
+    if (valAnterior && Array.from(selectCat.options).some(o => o.value === valAnterior)) {
+        selectCat.value = valAnterior;
+    } else {
+        selectCat.value = 'TODAS';
     }
 }
 
@@ -1466,80 +1883,260 @@ function abrirModalGerenciarInscritosSaaS() {
     }
 }
 
+
+let timerFilaEsperaGestorInterval = null;
+
+function formatarContagemRegressivaFilaSaaS(expiraTimestamp) {
+    const diff = Math.max(0, Math.floor(((expiraTimestamp || 0) - Date.now()) / 1000));
+    const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+    const s = String(diff % 60).padStart(2, '0');
+    return `${h}h ${m}m ${s}s`;
+}
+
+function iniciarTimersFilaEsperaGestorSaaS() {
+    if (timerFilaEsperaGestorInterval) {
+        clearInterval(timerFilaEsperaGestorInterval);
+        timerFilaEsperaGestorInterval = null;
+    }
+
+    const elementosTimer = document.querySelectorAll('.badge-timer-suplente-vivo');
+    if (!elementosTimer || elementosTimer.length === 0) return;
+
+    timerFilaEsperaGestorInterval = setInterval(() => {
+        const ativos = document.querySelectorAll('.badge-timer-suplente-vivo');
+        if (!ativos || ativos.length === 0) {
+            clearInterval(timerFilaEsperaGestorInterval);
+            timerFilaEsperaGestorInterval = null;
+            return;
+        }
+
+        ativos.forEach(el => {
+            const expiraEm = parseInt(el.getAttribute('data-expira'), 10) || 0;
+            const diff = expiraEm - Date.now();
+
+            if (diff > 0) {
+                el.textContent = formatarContagemRegressivaFilaSaaS(expiraEm);
+            } else {
+                el.textContent = "00h 00m 00s";
+                const cat = el.getAttribute('data-cat');
+                const idAtleta = el.getAttribute('data-id');
+                if (cat && idAtleta && !el.dataset.expirando) {
+                    el.dataset.expirando = "true";
+                    tratarExpiracaoSuplenteFilaSaaS(cat, idAtleta);
+                }
+            }
+        });
+    }, 1000);
+}
+
+async function tratarExpiracaoSuplenteFilaSaaS(chaveCat, idAtleta) {
+    if (!raizBanco || !chaveCat || !idAtleta) return;
+    try {
+        console.log(`⏱️ [Fila de Espera] Prazo exclusivo de 2h expirou para o atleta ${idAtleta}. Abrindo concorrência...`);
+
+        // 1. NÃO REMOVE o atleta da fila nem do sininho! Marca apenas a janela aberta
+        await database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idAtleta}`).update({
+            janelaAberta: true
+        });
+
+        // 2. Convoca cumulativamente o próximo da fila (Suplente #2) com Push e novo cronômetro
+        if (typeof convocarProximoSuplenteFilaEsperaRankingSaaS === 'function') {
+            await convocarProximoSuplenteFilaEsperaRankingSaaS(chaveCat);
+        }
+
+        showToast("Prazo exclusivo expirado! A vaga agora está aberta para disputa com o próximo da fila.", "info", 5000);
+        renderizarListaInscritosPixSaaS();
+
+    } catch (err) {
+        console.error("Erro ao tratar expiração do suplente:", err);
+    }
+}
+
 function renderizarListaInscritosPixSaaS() {
     const container = document.getElementById('container-lista-inscritos-pix');
     const lblBadge = document.getElementById('lbl-qtd-inscritos-badge');
     const btnEncerrar = document.getElementById('btn-saas-fase2-encerrar');
     const btnInscritos = document.getElementById('btn-saas-fase2-inscritos');
 
-    const selClasse = document.getElementById('select-filtro-inscritos-classe');
-    const selGenero = document.getElementById('select-filtro-inscritos-genero');
+    popularFiltrosInscritosSaaS();
 
-    const filtroClasse = selClasse ? selClasse.value : 'TODAS';
-    const filtroGenero = selGenero ? selGenero.value : 'TODOS';
+    const selCat = document.getElementById('select-filtro-inscritos-categoria');
+    const filtroCat = selCat ? selCat.value : 'TODAS';
 
     if (!container) return;
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const inscritos = conf.inscritosConfirmados || {};
+    const filaEspera = conf.filaEspera || {};
     const ids = Object.keys(inscritos);
 
-    // ORDENAÇÃO CRONOLÓGICA (Garante a ordem exata de aceite do convite)
     ids.sort((a, b) => (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0));
 
     if (lblBadge) lblBadge.textContent = ids.length;
     if (btnInscritos) btnInscritos.disabled = (ids.length === 0);
     if (btnEncerrar) btnEncerrar.disabled = (ids.length === 0);
 
-    if (ids.length === 0) {
+    const temInscritos = ids.length > 0;
+    const temFilaEspera = Object.keys(filaEspera).some(cat => Object.keys(filaEspera[cat] || {}).length > 0);
+
+    if (!temInscritos && !temFilaEspera) {
         container.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 20px 0; font-size: 13px;">Nenhum inscrito confirmado até o momento.</p>';
         return;
     }
 
     const idsFiltrados = ids.filter(idAtleta => {
+        if (filtroCat === 'TODAS') return true;
         const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-        const classeAtleta = (atleta.classe || '').toUpperCase().replace('CLASSE_', '').trim();
-        const generoAtleta = (atleta.genero || '').toUpperCase().trim();
+        const classeAtleta = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+        let generoAtleta = (atleta.genero || 'MASCULINO').toUpperCase().trim();
+        if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+        const modoGenero = conf.divisaoGenero || 'separado';
+        const catAtleta = (modoGenero === 'unificado') ? `${classeAtleta}_UNIFICADO` : `${classeAtleta}_${generoAtleta}`;
 
-        if (filtroClasse !== 'TODAS' && classeAtleta !== filtroClasse) return false;
-        if (filtroGenero !== 'TODOS' && generoAtleta !== filtroGenero) return false;
-
-        return true;
+        return catAtleta === filtroCat;
     });
 
-    if (idsFiltrados.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 20px 0; font-size: 13px;">Nenhum inscrito encontrado com os filtros selecionados.</p>';
+    let html = '';
+
+    // 1. LISTA DE TITULARES CONFIRMADOS
+    if (idsFiltrados.length > 0) {
+        idsFiltrados.forEach((idAtleta, idx) => {
+            const item = inscritos[idAtleta];
+            const pago = item.pixPago === true;
+            const nomeAtleta = item.nome || "Atleta";
+            const dataAceiteStr = item.dataAceite ? new Date(item.dataAceite).toLocaleDateString('pt-BR') : '';
+
+            html += `
+                <div class="item-atleta-pix">
+                    <div>
+                        <span style="font-size: 13.5px; font-weight: 700; color: #1e293b;">${idx + 1}. ${nomeAtleta}</span>
+                        <span style="display: block; font-size: 11px; color: #64748b;">Inscrito em ${dataAceiteStr || 'Data N/D'}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="badge-pix ${pago ? 'pago' : 'pendente'}" onclick="togglePixStatusSaaS('${idAtleta}')">
+                            ${pago ? '🟢 Pago' : '🟡 Pendente'}
+                        </span>
+                        <button type="button" style="background:none; border:none; color:#94a3b8; cursor:pointer;" onclick="removerInscritoTorneioSaaS('${idAtleta}')" title="Remover">
+                            <i class="material-icons" style="font-size: 16px;">close</i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    } else if (temInscritos) {
+        html += '<p style="text-align: center; color: #94a3b8; margin: 12px 0; font-size: 12.5px;">Nenhum titular encontrado para este filtro.</p>';
+    }
+
+    // 2. BLOCO DE FILA DE ESPERA (SUPLENTES POR CATEGORIA)
+    let htmlFila = '';
+    Object.keys(filaEspera).sort().forEach(chaveCat => {
+        if (filtroCat !== 'TODAS' && chaveCat !== filtroCat) return;
+
+        const partes = chaveCat.split('_');
+        const classeCat = partes[0] || 'B';
+        const generoCat = partes[1] || 'MASCULINO';
+
+        const suplentesMap = filaEspera[chaveCat] || {};
+        const suplentesIds = Object.keys(suplentesMap);
+
+        if (suplentesIds.length === 0) return;
+
+        suplentesIds.sort((a, b) => (suplentesMap[a].posicao || 0) - (suplentesMap[b].posicao || 0));
+
+        // Rótulo compacto da Fila de Espera (ex: Classe B (Masc))
+        const rotuloGenAbrev = (generoCat === 'FEMININO') ? 'Fem' : (generoCat === 'MASCULINO' ? 'Masc' : 'Unif');
+        const rotuloCat = (generoCat === 'UNIFICADO') 
+            ? `Classe ${classeCat}` 
+            : `Classe ${classeCat} (${rotuloGenAbrev})`;
+
+        htmlFila += `
+            <div style="margin-top: 18px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #fde68a; padding-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #b45309; display: flex; align-items: center; gap: 5px;">
+                    ⏳ Fila de Espera • ${rotuloCat}
+                </span>
+                <span style="font-size: 11px; font-weight: 700; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 12px;">
+                    ${suplentesIds.length} ${suplentesIds.length === 1 ? 'suplente' : 'suplentes'}
+                </span>
+            </div>
+        `;
+
+        suplentesIds.forEach(idSup => {
+            const item = suplentesMap[idSup];
+            const nomeSup = item.nome || "Atleta";
+            const posSup = item.posicao || 1;
+            const dataEntradaStr = item.dataEntrada ? new Date(item.dataEntrada).toLocaleDateString('pt-BR') : '';
+            const ehConvocado = item.status === 'convocado';
+            const expiraTimestamp = item.expiraEm || 0;
+            const prazoEsgotado = ehConvocado && expiraTimestamp > 0 && (Date.now() >= expiraTimestamp);
+            const tempoVivoInicial = (ehConvocado && !prazoEsgotado) ? formatarContagemRegressivaFilaSaaS(expiraTimestamp) : '';
+
+            let badgeStatusHtml = '';
+            if (ehConvocado) {
+                if (prazoEsgotado) {
+                    badgeStatusHtml = `
+                        <span style="font-size: 11px; font-weight: 700; color: #854d0e; background: #fef08a; border: 1px solid #facc15; padding: 4px 8px; border-radius: 6px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">
+                            🟡 Aguardando...
+                        </span>
+                    `;
+                } else {
+                    badgeStatusHtml = `
+                        <span style="font-size: 11px; font-weight: 700; color: #854d0e; background: #fef08a; border: 1px solid #facc15; padding: 4px 8px; border-radius: 6px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="material-icons" style="font-size: 13px;">timer</i> <span class="badge-timer-suplente-vivo" data-cat="${chaveCat}" data-id="${idSup}" data-expira="${expiraTimestamp}">${tempoVivoInicial}</span>
+                        </span>
+                    `;
+                }
+            } else {
+                badgeStatusHtml = `
+                    <span style="font-size: 11px; font-weight: 700; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; padding: 4px 8px; border-radius: 6px;">
+                        Na Fila
+                    </span>
+                `;
+            }
+
+            htmlFila += `
+                <div class="item-atleta-pix" style="background: ${ehConvocado ? '#fefce8' : '#fffdf5'}; border-left: 3px solid ${ehConvocado ? '#eab308' : '#f59e0b'};">
+                    <div>
+                        <span style="font-size: 13.5px; font-weight: 700; color: #1e293b;">
+                            <span style="background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-right: 4px; font-weight: 800;">#${posSup}</span>
+                            ${nomeSup}
+                        </span>
+                        <span style="display: block; font-size: 11px; color: #92400e;">
+                            ${ehConvocado ? `⚡ Convocado em ${new Date(item.convocadoEm || Date.now()).toLocaleDateString('pt-BR')}` : `Na fila desde ${dataEntradaStr || 'Data N/D'}`}
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        ${badgeStatusHtml}
+                        <button type="button" style="background:none; border:none; color:#94a3b8; cursor:pointer;" onclick="removerSuplenteFilaEsperaRankingSaaS('${chaveCat}', '${idSup}')" title="Remover da Fila">
+                            <i class="material-icons" style="font-size: 16px;">close</i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    });
+
+    if (htmlFila) {
+        html += htmlFila;
+    } else if (idsFiltrados.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #94a3b8; margin: 20px 0; font-size: 13px;">Nenhum inscrito ou suplente encontrado com os filtros selecionados.</p>';
         return;
     }
 
-    let html = '';
-    idsFiltrados.forEach((idAtleta, idx) => {
-        const item = inscritos[idAtleta];
-        const pago = item.pixPago === true;
-        const nomeAtleta = item.nome || "Atleta";
-        const dataAceiteStr = item.dataAceite ? new Date(item.dataAceite).toLocaleDateString('pt-BR') : '';
-
-        html += `
-            <div class="item-atleta-pix">
-                <div>
-                    <span style="font-size: 13.5px; font-weight: 700; color: #1e293b;">${idx + 1}. ${nomeAtleta}</span>
-                    <span style="display: block; font-size: 11px; color: #64748b;">Inscrito em ${dataAceiteStr || 'Data N/D'}</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="badge-pix ${pago ? 'pago' : 'pendente'}" onclick="togglePixStatusSaaS('${idAtleta}')">
-                        ${pago ? '🟢 PIX Confirmado' : '🟡 PIX Pendente'}
-                    </span>
-                    <button type="button" style="background:none; border:none; color:#94a3b8; cursor:pointer;" onclick="removerInscritoTorneioSaaS('${idAtleta}')" title="Remover">
-                        <i class="material-icons" style="font-size: 16px;">close</i>
-                    </button>
-                </div>
-            </div>
-        `;
-    });
-
     container.innerHTML = html;
+    iniciarTimersFilaEsperaGestorSaaS();
 }
 
+function removerSuplenteFilaEsperaRankingSaaS(chaveCat, idAtleta) {
+    if (!isGestorLogado || !raizBanco) return;
+
+    showPrompt("Remover da Fila", "Deseja remover este atleta da fila de espera?", () => {
+        database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${idAtleta}`).remove().then(() => {
+            showToast("Atleta removido da fila de espera.", "success");
+            renderizarListaInscritosPixSaaS();
+        });
+    });
+}
 
 function togglePixStatusSaaS(idAtleta) {
     if (!isGestorLogado || !raizBanco) return;
@@ -1554,14 +2151,91 @@ function togglePixStatusSaaS(idAtleta) {
     });
 }
 
+async function convocarProximoSuplenteFilaEsperaRankingSaaS(chaveCat) {
+    if (!raizBanco || !chaveCat) return;
+
+    try {
+        const [snapFila, snapConfig] = await Promise.all([
+            database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}`).once('value'),
+            database.ref(`${raizBanco}/config/ranking`).once('value')
+        ]);
+
+        const filaCat = snapFila.val() || {};
+        const configRanking = snapConfig.val() || {};
+        const idsSuplentes = Object.keys(filaCat);
+
+        if (idsSuplentes.length === 0) return;
+
+        idsSuplentes.sort((a, b) => (filaCat[a].posicao || 0) - (filaCat[b].posicao || 0));
+
+        const proximoId = idsSuplentes.find(id => filaCat[id].status !== 'convocado') || idsSuplentes[0];
+        const suplenteAlvo = filaCat[proximoId] || {};
+
+        const prazoHorasMs = 2 * 60 * 60 * 1000;
+        const timestampAgora = Date.now();
+        const timestampExpira = timestampAgora + prazoHorasMs;
+
+        const cal = configRanking.calendario || {};
+        const nomeTorneio = cal.nomeTorneio || "Torneio de Ranking";
+
+        // 1. Atualiza o status do suplente no Firebase
+        await database.ref(`${raizBanco}/config/ranking/filaEspera/${chaveCat}/${proximoId}`).update({
+            status: "convocado",
+            convocadoEm: timestampAgora,
+            expiraEm: timestampExpira
+        });
+
+        // 2. Reinsere a pendência para ativar exclusivamente o Card Interativo Oficial no Sininho
+        await database.ref(`${raizBanco}/convites_ranking/pendentes/${proximoId}`).set(true);
+
+        // 3. Barramento Oficial de Push Notification Serverless do SetPoint
+        if (typeof enviarPushParaAtletaSaaS === 'function') {
+            window.tokensPushProcessadosSaaS = new Set();
+            const tituloPush = "🎾 Vaga Disponível!";
+            const msgPush = `Abriu uma vaga para sua categoria no ${nomeTorneio}. Confirme em até 2 horas!`;
+            const payloadDadosTorneio = {
+                tipo: "CONVITE_TORNEIO",
+                nomeTorneio: String(cal.nomeTorneio || nomeTorneio),
+                formatoTorneio: String(cal.formatoTorneio || configRanking.modeloAtivo || "grupos"),
+                fimInscricoes: String(cal.fimInscricoes || cal.fimInscricao || ""),
+                inicioJogos: String(cal.inicioJogos || cal.inicioTorneio || cal.inicio || ""),
+                fimTorneio: String(cal.fimTorneio || cal.fimPartidas || cal.fim || "")
+            };
+            enviarPushParaAtletaSaaS(proximoId, tituloPush, msgPush, payloadDadosTorneio);
+        }
+
+        showToast(`Vaga liberada! Suplente #${suplenteAlvo.posicao || 1} (${suplenteAlvo.nome || 'Atleta'}) foi convocado (prazo de 2h).`, "info", 5000);
+
+    } catch (err) {
+        console.error("Erro ao convocar próximo suplente:", err);
+    }
+}
+
 function removerInscritoTorneioSaaS(idAtleta) {
     if (!isGestorLogado || !raizBanco) return;
 
-    showPrompt("Remover Inscrito", "Deseja remover este atleta da lista de inscritos?", () => {
-        database.ref(`${raizBanco}/config/ranking/inscritosConfirmados/${idAtleta}`).remove().then(() => {
-            showToast("Atleta removido da lista.", "success");
+    showPrompt("Remover Titular", "Deseja remover este atleta da lista oficial de titulares? Se houver suplentes na fila, o primeiro será convocado automaticamente por 2 horas.", async () => {
+        try {
+            const atletaRemovido = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+            const classeAtleta = (atletaRemovido.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+            let generoAtleta = (atletaRemovido.genero || 'MASCULINO').toUpperCase().trim();
+            if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+
+            const snapConfig = await database.ref(`${raizBanco}/config/ranking`).once('value');
+            const configRanking = snapConfig.val() || {};
+            const modoGenero = configRanking.divisaoGenero || 'separado';
+            const chaveCat = (modoGenero === 'unificado') ? `${classeAtleta}_UNIFICADO` : `${classeAtleta}_${generoAtleta}`;
+
+            await database.ref(`${raizBanco}/config/ranking/inscritosConfirmados/${idAtleta}`).remove();
+
+            showToast("Atleta titular removido.", "success");
+            await convocarProximoSuplenteFilaEsperaRankingSaaS(chaveCat);
             renderizarListaInscritosPixSaaS();
-        });
+
+        } catch (err) {
+            console.error("Erro ao remover titular:", err);
+            showToast("Erro ao processar remoção do atleta.", "error");
+        }
     });
 }
 
@@ -1578,13 +2252,89 @@ function encerrarInscricoesECriarChavesSaaS() {
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
     const cal = conf.calendario || {};
     const modelo = conf.calendario?.formatoTorneio || "grupos";
+    const modoGenero = conf.divisaoGenero || 'separado';
     
     const inscritos = conf.inscritosConfirmados || {};
     const qtdInscritos = Object.keys(inscritos).length;
 
-    // 🛡️ TRAVA MÍNIMA DE SEGURANÇA: Exige no mínimo 2 atletas confirmados
-    if (qtdInscritos < 2) {
-        showToast("É necessário ter no mínimo 2 atletas confirmados para iniciar a competição.", "warning");
+    // 1. Agrupa os inscritos confirmados isolando rigorosamente Classe e Gênero
+    const inscritosPorCategoria = {};
+    Object.keys(inscritos).forEach(idAtleta => {
+        const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+        const classe = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+        let generoKey = (atleta.genero || 'MASCULINO').toUpperCase().trim();
+        if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+
+        const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+
+        if (!inscritosPorCategoria[chaveTabela]) {
+            inscritosPorCategoria[chaveTabela] = [];
+        }
+        inscritosPorCategoria[chaveTabela].push(idAtleta);
+    });
+
+    // 2. Mapeia todas as categorias que foram habilitadas no calendário
+    const classesHabilitadas = (cal.categoriasHabilitadas || [])
+        .filter(c => c.startsWith("CLASSE_") || ["A", "B", "C"].includes(c))
+        .map(c => c.replace("CLASSE_", "").trim());
+
+    const generosHabilitados = (cal.categoriasHabilitadas || [])
+        .filter(c => ["MASCULINO", "FEMININO"].includes(c.toUpperCase()));
+
+    let todasCategoriasEsperadas = [];
+    if (classesHabilitadas.length > 0) {
+        if (modoGenero === 'unificado') {
+            classesHabilitadas.forEach(c => todasCategoriasEsperadas.push(`${c}_UNIFICADO`));
+        } else {
+            const gens = generosHabilitados.length > 0 ? generosHabilitados : ['MASCULINO'];
+            classesHabilitadas.forEach(c => {
+                gens.forEach(g => todasCategoriasEsperadas.push(`${c}_${g}`));
+            });
+        }
+    } else {
+        todasCategoriasEsperadas = Object.keys(inscritosPorCategoria);
+    }
+
+    // Garante que qualquer categoria que possua atletas confirmados também seja avaliada
+    Object.keys(inscritosPorCategoria).forEach(cat => {
+        if (!todasCategoriasEsperadas.includes(cat)) {
+            todasCategoriasEsperadas.push(cat);
+        }
+    });
+
+    // 3. Triagem de quórum por categoria (mínimo de 2 atletas)
+    const categoriasConfirmadas = [];
+    const categoriasCanceladas = [];
+
+    todasCategoriasEsperadas.sort().forEach(chaveCat => {
+        const idsCat = inscritosPorCategoria[chaveCat] || [];
+        const total = idsCat.length;
+
+        const partes = chaveCat.split('_');
+        const rotuloClasse = `Classe ${partes[0]}`;
+        const rotuloGenero = partes[1] === 'UNIFICADO' ? 'Unificado' : (partes[1] === 'FEMININO' ? 'Feminino' : 'Masculino');
+        const rotuloAmigavel = `${rotuloClasse} (${rotuloGenero})`;
+
+        if (total >= 2) {
+            categoriasConfirmadas.push({
+                chave: chaveCat,
+                rotulo: rotuloAmigavel,
+                total: total,
+                ids: idsCat
+            });
+        } else {
+            categoriasCanceladas.push({
+                chave: chaveCat,
+                rotulo: rotuloAmigavel,
+                total: total,
+                ids: idsCat
+            });
+        }
+    });
+
+    // CENÁRIO 1: Nenhuma categoria atingiu quórum (todas com 0 ou 1 atleta)
+    if (categoriasConfirmadas.length === 0) {
+        showToast("Quórum insuficiente: Nenhuma categoria atingiu o mínimo de 2 atletas para iniciar a competição.", "warning", 4500);
         return;
     }
 
@@ -1592,39 +2342,26 @@ function encerrarInscricoesECriarChavesSaaS() {
     const fimInscricoesStr = cal.fimInscricoes || "";
     const dataFimFormatada = fimInscricoesStr ? fimInscricoesStr.split('-').reverse().join('/') : '--/--';
 
+    // 4. Monta o mapa de categorias aptas para a Fase 3
+    const inscritosAptosPorCategoria = {};
+    categoriasConfirmadas.forEach(c => {
+        inscritosAptosPorCategoria[c.chave] = c.ids;
+    });
+
     const processarMontagemEGerarFase3 = async () => {
         if (navigator.vibrate) navigator.vibrate(40);
 
-        // Lê a regra de ordenação definida no disparo de convites
         const snapConvites = await database.ref(`${raizBanco}/convites_ranking`).once('value');
         const dadosConvites = snapConvites.exists() ? snapConvites.val() : {};
         const tipoOrdenacao = conf.tipoOrdenacao || dadosConvites.tipoOrdenacao || 'livre';
 
         const nomeTorneio = cal.nomeTorneio || "Torneio";
-        const modoGenero = conf.divisaoGenero || 'separado';
-        const inscritosPorCategoria = {};
-
-        // Agrupa inscritos por Categoria/Gênero
-        Object.keys(inscritos).forEach(idAtleta => {
-            const atleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
-            const classe = (atleta.classe || 'B').toUpperCase();
-            let generoKey = (atleta.genero || 'MASCULINO').toUpperCase();
-            if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
-
-            const chaveTabela = (modoGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
-
-            if (!inscritosPorCategoria[chaveTabela]) {
-                inscritosPorCategoria[chaveTabela] = [];
-            }
-            inscritosPorCategoria[chaveTabela].push(idAtleta);
-        });
-
-        // 🎯 ORDENAÇÃO OFICIAL DA LISTA DE SEMENTES (#1 a #N) CONFORME A REGRA DO DISPARO
         const snapRankingGeral = await database.ref(`${raizBanco}/ranking/ranking_geral`).once('value');
         const rankingGeralMap = snapRankingGeral.exists() ? snapRankingGeral.val() : {};
 
-        Object.keys(inscritosPorCategoria).forEach(chaveTab => {
-            const idsList = inscritosPorCategoria[chaveTab];
+        // Ordenação das sementes de cada categoria apta
+        Object.keys(inscritosAptosPorCategoria).forEach(chaveTab => {
+            const idsList = inscritosAptosPorCategoria[chaveTab];
             if (tipoOrdenacao === 'herdada') {
                 const listaGeral = rankingGeralMap[chaveTab] || [];
                 idsList.sort((a, b) => {
@@ -1641,176 +2378,180 @@ function encerrarInscricoesECriarChavesSaaS() {
                     [idsList[i], idsList[j]] = [idsList[j], idsList[i]];
                 }
             } else {
-                // Inscrição Livre: Ordena por data/hora de aceite no app
                 idsList.sort((a, b) => (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0));
             }
         });
 
-        // CENÁRIO A: Torneio de GRUPOS ou Pirâmide/Barragem com SORTEIO -> Abre o Globo
         const faseInicialGrupos = conf.grupos?.faseInicial || "grupos";
         const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
+        const precisaSorteio = (modelo === 'grupos' && !emMataMataDireto) || tipoOrdenacao === 'sorteio' || emMataMataDireto;
 
-        // CENÁRIO A: Torneio de GRUPOS (tradicional), Pirâmide/Barragem com SORTEIO, ou Mata-Mata Direto -> Abre o Globo de Potes
-        if ((modelo === 'grupos' && !emMataMataDireto) || tipoOrdenacao === 'sorteio' || emMataMataDireto) {
-            // No Mata-Mata Direto, o tamanho passa a ser a quantidade total de inscritos (sem fatiar em grupos de 3 ou 4)
-            const tamanhoGrupoConfig = emMataMataDireto
-                ? qtdInscritos
-                : ((modelo === 'grupos') ? (parseInt(conf.grupos?.tamanhoGrupo, 10) || 4) : qtdInscritos);
+        // CENÁRIO A: Sorteio Interativo em Fila Sequencial por Categoria
+        if (precisaSorteio) {
+            const categoriasFila = Object.keys(inscritosAptosPorCategoria).sort();
+            const updatesGerais = {};
+            updatesGerais[`${raizBanco}/config/ranking/faseAtual`] = 3;
 
-            // Achata os IDs ordenados/sorteados de todas as categorias e monta o mapa de inscritos
-            const listaInscritosParaPotes = {};
-            Object.values(inscritosPorCategoria).flat().forEach(idAtleta => {
-                if (inscritos[idAtleta]) {
-                    listaInscritosParaPotes[idAtleta] = inscritos[idAtleta];
-                }
-            });
+            const executarSorteioCategoriaFila = (idxFila) => {
+                const catChaveAtual = categoriasFila[idxFila];
+                const idsCatAtual = inscritosAptosPorCategoria[catChaveAtual];
+                
+                const partesCat = catChaveAtual.split('_');
+                const rotuloCatAmigavel = `Classe ${partesCat[0]}` + (partesCat[1] !== 'UNIFICADO' ? ` (${partesCat[1] === 'FEMININO' ? 'Feminino' : 'Masculino'})` : '');
+                const tituloModalCategoria = `${nomeTorneio} • ${rotuloCatAmigavel}`;
 
-            SorteioPotes.abrirModalSorteioSaaS(nomeTorneio, listaInscritosParaPotes, tamanhoGrupoConfig, async (gruposResultado) => {
-                try {
-                    showToast("Gravando chaveamento no banco...", "info"); 
-                    const updates = {};
-                    updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
+                const mapaInscritosDestaCat = {};
+                idsCatAtual.forEach(id => {
+                    if (inscritos[id]) mapaInscritosDestaCat[id] = inscritos[id];
+                });
 
-                    // 🚀 Sincroniza a memória RAM local para evitar atraso de renderização
-                    if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
-                        configRegrasGlobal.ranking.faseAtual = 3;
+                const tamanhoGrupoConfig = emMataMataDireto
+                    ? idsCatAtual.length
+                    : ((modelo === 'grupos') ? (parseInt(conf.grupos?.tamanhoGrupo, 10) || 4) : idsCatAtual.length);
+
+                SorteioPotes.abrirModalSorteioSaaS(tituloModalCategoria, mapaInscritosDestaCat, tamanhoGrupoConfig, async (gruposResultado) => {
+                    if (gruposResultado && Object.keys(gruposResultado).length > 0) {
+                        const listaIDsSemeada = [];
+                        Object.values(gruposResultado).forEach(grupoArray => {
+                            const grupoCompletado = [...grupoArray];
+                            if (modelo === 'grupos' && !emMataMataDireto) {
+                                while (grupoCompletado.length < tamanhoGrupoConfig) {
+                                    grupoCompletado.push(null);
+                                }
+                            }
+                            listaIDsSemeada.push(...grupoCompletado);
+                        });
+
+                        const listaFinal = (modelo === 'grupos' && !emMataMataDireto) ? listaIDsSemeada : listaIDsSemeada.filter(Boolean);
+                        updatesGerais[`${raizBanco}/ranking/tabelas/${catChaveAtual}`] = listaFinal;
+                        updatesGerais[`${raizBanco}/ranking/semeadura/${catChaveAtual}`] = idsCatAtual.filter(Boolean);
+
+                        if (emMataMataDireto) {
+                            const resultadoMM = gerarCruzamentosMataMataDiretoSaaS(idsCatAtual, catChaveAtual);
+                            updatesGerais[`${raizBanco}/ranking/chaves/${catChaveAtual}`] = {
+                                totalClassificados: resultadoMM.totalClassificados,
+                                faseAtual: resultadoMM.faseAtual,
+                                rodada1: resultadoMM.rodada1
+                            };
+                        }
+                    } else {
+                        updatesGerais[`${raizBanco}/ranking/tabelas/${catChaveAtual}`] = idsCatAtual;
+                        updatesGerais[`${raizBanco}/ranking/semeadura/${catChaveAtual}`] = idsCatAtual.filter(Boolean);
+
+                        if (emMataMataDireto) {
+                            const resultadoMM = gerarCruzamentosMataMataDiretoSaaS(idsCatAtual, catChaveAtual);
+                            updatesGerais[`${raizBanco}/ranking/chaves/${catChaveAtual}`] = {
+                                totalClassificados: resultadoMM.totalClassificados,
+                                faseAtual: resultadoMM.faseAtual,
+                                rodada1: resultadoMM.rodada1
+                            };
+                        }
                     }
 
-                    Object.keys(inscritosPorCategoria).forEach(chaveTab => {
-                        const idsInscritosCat = inscritosPorCategoria[chaveTab];
+                    const btnFinish = document.getElementById('btnFinishGoPotes');
+                    const proximoIndice = idxFila + 1;
 
-                        if (gruposResultado && Object.keys(gruposResultado).length > 0) {
-                            const listaIDsSemeada = [];
+                    if (proximoIndice < categoriasFila.length) {
+                        const proxCatChave = categoriasFila[proximoIndice];
+                        const partesProx = proxCatChave.split('_');
+                        const proxNomeCurto = `Classe ${partesProx[0]}` + (partesProx[1] !== 'UNIFICADO' ? ` (${partesProx[1] === 'FEMININO' ? 'Fem' : 'Masc'})` : '');
 
-                            Object.values(gruposResultado).forEach(grupoArray => {
-                                const grupoCompletado = [...grupoArray];
-                                if (modelo === 'grupos' && !emMataMataDireto) {
-                                    while (grupoCompletado.length < tamanhoGrupoConfig) {
-                                        grupoCompletado.push(null);
-                                    }
-                                }
-                                listaIDsSemeada.push(...grupoCompletado);
+                        if (btnFinish) {
+                            btnFinish.innerHTML = `Sorteio da Próxima Categoria (${proxNomeCurto}) <i class="material-icons">arrow_forward</i>`;
+                            btnFinish.onclick = () => {
+                                btnFinish.onclick = null;
+                                executarSorteioCategoriaFila(proximoIndice);
+                            };
+                        }
+                    } else {
+                        try {
+                            const payloadNotificacao = {
+                                categoria: "inicio_temporada",
+                                titulo: "A temporada começou!",
+                                detalhe: `Tabelas do ${nomeTorneio} liberadas.\nAgende sua partida no app.`,
+                                timestamp: Date.now()
+                            };
+
+                            const idsParaNotificar = Object.values(inscritosAptosPorCategoria).flat();
+                            idsParaNotificar.forEach(idAtleta => {
+                                const keyNotif = database.ref().push().key;
+                                updatesGerais[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
                             });
 
-                            const listaFinal = (modelo === 'grupos' && !emMataMataDireto) ? listaIDsSemeada : listaIDsSemeada.filter(Boolean);
-                            updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = listaFinal;
-                            
-                            // 🌱 Cofre da Semeadura: Preserva a hierarquia oficial de Sementes (#1, #2, #3...)
-                            updates[`${raizBanco}/ranking/semeadura/${chaveTab}`] = idsInscritosCat.filter(Boolean);
+                            await database.ref().update(updatesGerais);
 
-                            // 🎯 Mata-Mata Direto: Garante a ordem oficial de sementes (1 no topo, 2 na base)
-                            if (emMataMataDireto) {
-                                const resultadoMM = gerarCruzamentosMataMataDiretoSaaS(idsInscritosCat, chaveTab);
-                                updates[`${raizBanco}/ranking/chaves/${chaveTab}`] = {
-                                    totalClassificados: resultadoMM.totalClassificados,
-                                    faseAtual: resultadoMM.faseAtual,
-                                    rodada1: resultadoMM.rodada1
+                            if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
+                                configRegrasGlobal.ranking.faseAtual = 3;
+                            }
+
+                            if (btnFinish) {
+                                btnFinish.innerHTML = `🏆 Concluir e Ver Tabelas`;
+                                btnFinish.onclick = () => {
+                                    SorteioPotes.fecharModalSorteioSaaS();
+                                    if (typeof abrirLeaderboardSaaS === 'function') {
+                                        abrirLeaderboardSaaS();
+                                    }
                                 };
                             }
-                        } else {
-                            // Fallback direto caso a modal não devolva mapa
-                            updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
-                            updates[`${raizBanco}/ranking/semeadura/${chaveTab}`] = idsInscritosCat.filter(Boolean);
 
-                            if (emMataMataDireto) {
-                                const resultadoMM = gerarCruzamentosMataMataDiretoSaaS(idsInscritosCat, chaveTab);
-                                updates[`${raizBanco}/ranking/chaves/${chaveTab}`] = {
-                                    totalClassificados: resultadoMM.totalClassificados,
-                                    faseAtual: resultadoMM.faseAtual,
-                                    rodada1: resultadoMM.rodada1
-                                };
+                            showToast("Sorteio de todas as categorias concluído! Temporada iniciada.", "success");
+
+                            if (typeof renderizarGestaoTemporadaSaaS === "function") {
+                                renderizarGestaoTemporadaSaaS();
                             }
+                        } catch (err) {
+                            console.error("❌ Erro ao salvar chaves multi-classes:", err);
+                            showToast("Erro ao gravar tabelas no Firebase.", "error");
                         }
-                    });
-
-                    // Notificações aos inscritos
-                    const payloadNotificacao = {
-                        categoria: "inicio_temporada",
-                        titulo: "A temporada começou!",
-                        detalhe: `Tabela do ${nomeTorneio} liberada.\nAgende sua partida no app.`,
-                        timestamp: Date.now()
-                    };
-
-                    Object.keys(inscritos).forEach(idAtleta => {
-                        const keyNotif = database.ref().push().key;
-                        updates[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
-                    });
-
-                    await database.ref().update(updates);
-                    showToast("Sorteio concluído! Temporada iniciada.", "success");
-
-                    if (typeof renderizarGestaoTemporadaSaaS === "function") {
-                        renderizarGestaoTemporadaSaaS();
                     }
+                });
+            };
 
-                } catch (err) {
-                    console.error("❌ Erro ao persistir tabela sorteada:", err);
-                    showToast("Erro ao gravar tabela no Firebase.", "error");
-                }
-            });
-			
+            executarSorteioCategoriaFila(0);
             return;
         }
 
-        // CENÁRIO B: Pirâmide / Barragem SEM sorteio (Inscrição Livre ou Herança) -> Monta silenciosamente
+        // CENÁRIO B: Pirâmide ou Barragem sem sorteio (Montagem atômica imediata)
         try {
-            showToast("Montando tabela da temporada...", "info");
+            showToast("Montando tabelas das categorias...", "info");
             const updates = {};
             updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
 
-            // Lê o Ranking Geral para os casos de herança de classificação
-            const snapRankingGeral = await database.ref(`${raizBanco}/ranking/ranking_geral`).once('value');
-            const rankingGeralMap = snapRankingGeral.exists() ? snapRankingGeral.val() : {};
-
-            Object.keys(inscritosPorCategoria).forEach(chaveTab => {
-                const idsInscritosCat = inscritosPorCategoria[chaveTab];
-
-                if (tipoOrdenacao === 'herdada') {
-                    // Ordena pela posição acumulada no Ranking Geral
-                    const listaGeral = rankingGeralMap[chaveTab] || [];
-                    idsInscritosCat.sort((a, b) => {
-                        const posA = listaGeral.indexOf(a);
-                        const posB = listaGeral.indexOf(b);
-                        if (posA !== -1 && posB !== -1) return posA - posB;
-                        if (posA !== -1) return -1;
-                        if (posB !== -1) return 1;
-                        return (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0);
-                    });
-                } else {
-                    // Inscrição Livre: Ordena por data/hora de aceite no app
-                    idsInscritosCat.sort((a, b) => (inscritos[a]?.dataAceite || 0) - (inscritos[b]?.dataAceite || 0));
-                }
-
-                updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = idsInscritosCat;
+            Object.keys(inscritosAptosPorCategoria).forEach(chaveTab => {
+                updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = inscritosAptosPorCategoria[chaveTab];
             });
 
-            // Notificações aos inscritos
             const payloadNotificacao = {
                 categoria: "inicio_temporada",
                 titulo: "A temporada começou!",
-                detalhe: `Tabela do ${nomeTorneio} liberada.\nAgende sua partida no app.`,
+                detalhe: `Tabelas do ${nomeTorneio} liberadas.\nAgende sua partida no app.`,
                 timestamp: Date.now()
             };
 
-            Object.keys(inscritos).forEach(idAtleta => {
+            const idsParaNotificar = Object.values(inscritosAptosPorCategoria).flat();
+            idsParaNotificar.forEach(idAtleta => {
                 const keyNotif = database.ref().push().key;
                 updates[`${raizBanco}/jogadores/${idAtleta}/notificacoes/${keyNotif}`] = payloadNotificacao;
             });
 
             await database.ref().update(updates);
-            showToast("Tabela congelada e temporada iniciada com sucesso!", "success");
+
+            if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
+                configRegrasGlobal.ranking.faseAtual = 3;
+            }
+
+            showToast("Tabelas congeladas e temporada iniciada com sucesso!", "success");
 
             if (typeof renderizarGestaoTemporadaSaaS === "function") {
                 renderizarGestaoTemporadaSaaS();
             }
 
         } catch (err) {
-            console.error("❌ Erro ao congelar tabela:", err);
-            showToast("Erro ao gravar tabela no Firebase.", "error");
+            console.error("❌ Erro ao congelar tabelas multi-classes:", err);
+            showToast("Erro ao gravar tabelas no Firebase.", "error");
         }
     };
 
-    // TEXTOS DINÂMICOS CONFORME O MODELO DO TORNEIO (AJUSTADOS NO PLURAL)
     const titulosModal = {
         piramide: "Encerrar Inscrições e Iniciar Pirâmide",
         barragem: "Encerrar Inscrições e Iniciar Barragem",
@@ -1826,32 +2567,67 @@ function encerrarInscricoesECriarChavesSaaS() {
     const tituloPrompt = titulosModal[modelo] || "Encerrar Inscrições";
     const acaoPrompt = acoesModal[modelo] || "iniciar a disputa";
 
-    if (fimInscricoesStr && hojeStr < fimInscricoesStr) {
-        const htmlPrompt = `
-            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
-                <p style="margin: 0 0 10px 0;">
-                    ⚠️ <b>Atenção:</b> O prazo oficial de inscrições vai até <b>${dataFimFormatada}</b>.
-                </p>
-                <p style="margin: 0; font-size: 13px; color: #64748b;">
-                    Tem certeza que deseja encerrar antecipadamente com <b>${qtdInscritos} inscritos</b> e ${acaoPrompt} agora?
-                </p>
-            </div>
+    // 5. Construção dinâmica do corpo do modal (Cenário 2 vs Cenário 3)
+    const listaConfirmadasHTML = categoriasConfirmadas
+        .map(c => `<li><b>${c.rotulo}:</b> ${c.total} atletas</li>`)
+        .join('');
+
+    const totalAtletasConfirmados = categoriasConfirmadas.reduce((acc, c) => acc + c.total, 0);
+
+    let promptConteudoHTML = '';
+
+    // CENÁRIO 2: Todas as categorias habilitadas alcançaram quórum
+    if (categoriasCanceladas.length === 0) {
+        promptConteudoHTML = `
+            <p style="margin: 0 0 8px 0;">Categorias confirmadas para ${acaoPrompt}:</p>
+            <ul style="margin: 0 0 12px 18px; padding: 0; font-size: 13px; color: #1e293b;">
+                ${listaConfirmadasHTML}
+            </ul>
+            <p style="margin: 0; font-size: 12.5px; color: #64748b;">
+                Total geral: <b>${totalAtletasConfirmados} atletas</b>. Deseja prosseguir?
+            </p>
         `;
-        showPrompt(tituloPrompt, htmlPrompt, () => {
-            processarMontagemEGerarFase3();
-        });
-    } else {
-        const htmlPrompt = `
-            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
-                <p style="margin: 0;">
-                    Deseja encerrar as inscrições com <b>${qtdInscritos} atletas confirmados</b> e ${acaoPrompt}?
-                </p>
-            </div>
+    } 
+    // CENÁRIO 3: Quórum parcial (ao menos uma categoria atingiu quórum e outra ficou com 0 ou 1 atleta)
+    else {
+        const listaCanceladasHTML = categoriasCanceladas
+            .map(c => `<li><b>${c.rotulo}:</b> ${c.total} ${c.total === 1 ? 'atleta' : 'inscritos'}</li>`)
+            .join('');
+
+        promptConteudoHTML = `
+            <p style="margin: 0 0 6px 0; font-weight: 600; color: #1e293b;">Categorias confirmadas para ${acaoPrompt}:</p>
+            <ul style="margin: 0 0 12px 18px; padding: 0; font-size: 13px; color: #1e293b;">
+                ${listaConfirmadasHTML}
+            </ul>
+            <p style="margin: 0 0 6px 0; font-weight: 700; color: #b45309;">⚠️ Categorias canceladas por falta de inscritos:</p>
+            <ul style="margin: 0 0 12px 18px; padding: 0; font-size: 13px; color: #991b1b;">
+                ${listaCanceladasHTML}
+            </ul>
+            <p style="margin: 8px 0 0 0; font-size: 13px; color: #334155; font-weight: 600;">
+                Deseja prosseguir apenas com as categorias confirmadas?
+            </p>
         `;
-        showPrompt(tituloPrompt, htmlPrompt, () => {
-            processarMontagemEGerarFase3();
-        });
     }
+
+    let avisoPrazoHTML = '';
+    if (fimInscricoesStr && hojeStr < fimInscricoesStr) {
+        avisoPrazoHTML = `
+            <p style="margin: 0 0 10px 0; color: #b45309;">
+                ⚠️ <b>Atenção:</b> O prazo oficial de inscrições vai até <b>${dataFimFormatada}</b>.
+            </p>
+        `;
+    }
+
+    const htmlPrompt = `
+        <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.5;">
+            ${avisoPrazoHTML}
+            ${promptConteudoHTML}
+        </div>
+    `;
+
+    showPrompt(tituloPrompt, htmlPrompt, () => {
+        processarMontagemEGerarFase3();
+    });
 }
 
 /* ======================================================== */
@@ -1951,9 +2727,14 @@ async function encerrarFase3EAvancarSaaS() {
         if (totalPendencias > 0) {
             const verbo = (totalPendencias === 1) ? "Existe" : "Existem";
             const substantivo = (totalPendencias === 1) ? "partida pendente" : "partidas pendentes";
-            const complementoFase = (modelo === 'grupos' && !emMataMataDireto && faseAtual === 3) 
-                ? " na Fase de Grupos." 
-                : " no Mata-Mata.";
+            let complementoFase = ".";
+            if (modelo === 'piramide') {
+                complementoFase = " na Pirâmide.";
+            } else if (modelo === 'barragem') {
+                complementoFase = " na Barragem.";
+            } else if (modelo === 'grupos') {
+                complementoFase = (!emMataMataDireto && faseAtual === 3) ? " na Fase de Grupos." : " no Mata-Mata.";
+            }
 
             showToast(`${verbo} ${totalPendencias} ${substantivo}${complementoFase}`, "warning");
             return; // ⛔ INTERROMPE A EXECUÇÃO: NÃO ABRE O MODAL

@@ -30,7 +30,7 @@ let modoVisaoMataMataSaaS = 'lista'; // 'lista' ou 'arvore'
 /* ======================================================== */
 
 function abrirLeaderboardSaaS() {
-    if (navigator.vibrate) navigator.vibrate(30);
+    if (navigator.vibrate) navigator.vibrate(30); 
 
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     if (!sheet) return;
@@ -2875,15 +2875,18 @@ async function carregarHistoricoTorneiosSaaS(forcarRecarga = false) {
     const tbody = document.getElementById('tbody-historico-torneios');
     if (!tbody || !raizBanco) return;
 
-    // 💡 LEITURA DIRETA DA RAM (LAZY CACHE): Se os dados já foram pré-carregados no Passo 2, renderiza instantaneamente
-    if (!forcarRecarga && Array.isArray(acervoHistoricoGlobalSaaS) && acervoHistoricoGlobalSaaS.length > 0) {
+    // 💡 LEITURA DIRETA DA RAM (ZERO LATÊNCIA): Renderiza instantaneamente os dados pré-aquecidos no login do Gestor
+    if (!forcarRecarga && Array.isArray(acervoHistoricoGlobalSaaS)) {
         popularFiltrosHistoricoSaaS();
         renderizarTabelaHistoricoSaaS();
         return;
     }
 
     try {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">Buscando acervo no banco de dados...</td></tr>';
+        // Só exibe mensagem de busca se a tabela estiver estritamente vazia (elimina piscada visual)
+        if (!tbody.hasChildNodes() || tbody.innerHTML.trim() === '') {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">Buscando acervo no banco de dados...</td></tr>';
+        }
 
         const snapHistorico = await database.ref(`${raizBanco}/historico_torneios`).once('value');
         const historicoData = snapHistorico.exists() ? snapHistorico.val() : {};
@@ -2905,6 +2908,7 @@ async function carregarHistoricoTorneiosSaaS(forcarRecarga = false) {
 
 function popularFiltrosHistoricoSaaS() {
     const selAno = document.getElementById('filtro-historico-ano');
+    const selModelo = document.getElementById('filtro-historico-modelo');
     const selCategoria = document.getElementById('filtro-historico-categoria');
     
     if (!selAno || !selCategoria) return;
@@ -2912,33 +2916,62 @@ function popularFiltrosHistoricoSaaS() {
     const anos = new Set();
     const categorias = new Set();
 
-    acervoHistoricoGlobalSaaS.forEach(edicao => {
-        if (edicao.dataHomologacao) {
-            anos.add(new Date(edicao.dataHomologacao).getFullYear());
+    const extrairAno = (e) => {
+        if (e.dataHomologacao) {
+            const y = new Date(e.dataHomologacao).getFullYear();
+            if (!isNaN(y)) return String(y);
         }
+        const cal = e.contrato || {};
+        if (cal.inicioJogos) {
+            const p = cal.inicioJogos.split('-');
+            if (p.length >= 1 && p[0].length === 4) return p[0];
+        }
+        if (cal.fimTorneio) {
+            const p = cal.fimTorneio.split('-');
+            if (p.length >= 1 && p[0].length === 4) return p[0];
+        }
+        return '';
+    };
+
+    acervoHistoricoGlobalSaaS.forEach(edicao => {
+        const a = extrairAno(edicao);
+        if (a) anos.add(a);
+
         if (edicao.classificacaoFinal) {
             Object.keys(edicao.classificacaoFinal).forEach(cat => categorias.add(cat));
         }
+        const partidas = edicao.partidas || {};
+        Object.values(partidas).forEach(p => {
+            if (p.categoria) categorias.add(p.categoria);
+        });
     });
 
+    const valorAnoAtual = selAno.value || 'todos';
     let htmlAno = '<option value="todos">Ano: Todos</option>';
     Array.from(anos).sort((a, b) => b - a).forEach(ano => {
-        htmlAno += `<option value="${ano}">${ano}</option>`;
+        htmlAno += `<option value="${ano}" ${ano === valorAnoAtual ? 'selected' : ''}>${ano}</option>`;
     });
     selAno.innerHTML = htmlAno;
 
+    const valorCatAtual = selCategoria.value || 'todas';
     let htmlCat = '<option value="todas">Categoria: Todas</option>';
     Array.from(categorias).sort().forEach(cat => {
         let labelVisivel = cat.replace('CLASSE_', 'Classe ').replace('_', ' ');
         labelVisivel = labelVisivel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-        htmlCat += `<option value="${cat}">${labelVisivel}</option>`;
+        htmlCat += `<option value="${cat}" ${cat === valorCatAtual ? 'selected' : ''}>${labelVisivel}</option>`;
     });
     selCategoria.innerHTML = htmlCat;
+
+    // Vincula a escuta de eventos nativa a todos os dropdowns
+    selAno.onchange = () => filtrarHistoricoSaaS();
+    if (selModelo) selModelo.onchange = () => filtrarHistoricoSaaS();
+    selCategoria.onchange = () => filtrarHistoricoSaaS();
 }
 
 function filtrarHistoricoSaaS() {
     renderizarTabelaHistoricoSaaS();
 }
+window.filtrarHistoricoSaaS = filtrarHistoricoSaaS;
 
 function renderizarTabelaHistoricoSaaS() {
     const tbody = document.getElementById('tbody-historico-torneios');
@@ -2952,18 +2985,41 @@ function renderizarTabelaHistoricoSaaS() {
     const filtroModelo = selModelo ? selModelo.value : 'todos';
     const filtroCategoria = selCategoria ? selCategoria.value : 'todas';
 
+    const norm = (s) => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+    const extrairAno = (e) => {
+        if (e.dataHomologacao) {
+            const y = new Date(e.dataHomologacao).getFullYear();
+            if (!isNaN(y)) return String(y);
+        }
+        const cal = e.contrato || {};
+        if (cal.inicioJogos) {
+            const p = cal.inicioJogos.split('-');
+            if (p.length >= 1 && p[0].length === 4) return p[0];
+        }
+        if (cal.fimTorneio) {
+            const p = cal.fimTorneio.split('-');
+            if (p.length >= 1 && p[0].length === 4) return p[0];
+        }
+        return '';
+    };
+
     const listaFiltrada = acervoHistoricoGlobalSaaS.filter(edicao => {
         if (filtroAno !== 'todos') {
-            const anoEdicao = edicao.dataHomologacao ? new Date(edicao.dataHomologacao).getFullYear().toString() : '';
+            const anoEdicao = extrairAno(edicao);
             if (anoEdicao !== filtroAno) return false;
         }
 
-        if (filtroModelo !== 'todos' && edicao.modelo !== filtroModelo) {
-            return false;
+        if (filtroModelo !== 'todos' && norm(filtroModelo) !== 'todos' && filtroModelo !== '') {
+            if (norm(edicao.modelo) !== norm(filtroModelo)) {
+                return false;
+            }
         }
 
-        if (filtroCategoria !== 'todas') {
-            if (!edicao.classificacaoFinal || !edicao.classificacaoFinal[filtroCategoria]) {
+        if (filtroCategoria !== 'todas' && filtroCategoria !== '') {
+            const temNaClassif = edicao.classificacaoFinal && (edicao.classificacaoFinal[filtroCategoria] !== undefined);
+            const temNasPartidas = edicao.partidas && Object.values(edicao.partidas).some(p => p.categoria === filtroCategoria);
+            if (!temNaClassif && !temNasPartidas) {
                 return false;
             }
         }
@@ -3243,6 +3299,15 @@ function renderizarHTMLPodioAcervoSaaS() {
 
 // Variável de controle de ordem (Padrão: true = Grande Final no topo)
 let ordemSumulasDescSaaS = true;
+let categoriaSumulasAcervoAtivaSaaS = 'TODAS';
+
+function mudarCategoriaSumulasAcervoSaaS(novaCat) {
+    if (navigator.vibrate) navigator.vibrate(15);
+    categoriaSumulasAcervoAtivaSaaS = novaCat;
+    if (edicaoHistoricaFocoSaaS) {
+        abrirSumulasAcervoSaaS(edicaoHistoricaFocoSaaS.id);
+    }
+}
 
 function obterPesoFaseSaaS(partida) {
     const dp = partida.dadosPlacar || {};
@@ -3278,31 +3343,72 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         return; 
     }
 
+    window.categoriaSumulasAcervoAtivaSaaS = window.categoriaSumulasAcervoAtivaSaaS || 'TODAS';
+    if (edicaoHistoricaFocoSaaS?.id !== idEdicao) {
+        window.categoriaSumulasAcervoAtivaSaaS = 'TODAS';
+    }
     edicaoHistoricaFocoSaaS = edicao;
 
-    const partidasObj = edicao.partidas || {};
-    let listaPartidas = Object.values(partidasObj);
+    window.mudarCategoriaSumulasAcervoSaaS = function(novaCat) {
+        if (navigator.vibrate) navigator.vibrate(15);
+        window.categoriaSumulasAcervoAtivaSaaS = novaCat;
+        if (edicaoHistoricaFocoSaaS) {
+            abrirSumulasAcervoSaaS(edicaoHistoricaFocoSaaS.id);
+        }
+    };
 
-    if (listaPartidas.length === 0) {
+    const partidasObj = edicao.partidas || {};
+    const todasPartidasLista = Object.keys(partidasObj).map(key => ({ id: key, ...partidasObj[key] }));
+
+    if (todasPartidasLista.length === 0) {
         showToast("Nenhuma súmula cadastrada para esta edição.", "info");
         return;
     }
 
-    // Ordenação Inteligente por Fase (Grande Final -> Semis -> Grupos)
+    // Identifica e mapeia as categorias presentes na edição
+    const categoriasSet = new Set(Object.keys(edicao.classificacaoFinal || {}));
+    todasPartidasLista.forEach(p => { if (p.categoria) categoriasSet.add(p.categoria); });
+    const categorias = Array.from(categoriasSet).sort();
+
+    // Filtra por categoria de acordo com a pílula ativa
+    let listaPartidas = todasPartidasLista;
+    if (window.categoriaSumulasAcervoAtivaSaaS !== 'TODAS') {
+        listaPartidas = listaPartidas.filter(p => p.categoria === window.categoriaSumulasAcervoAtivaSaaS);
+    }
+
+    // Ordenação Híbrida Inteligente (Fase -> Cronológica)
+    const obterMs = (p) => {
+        if (!p) return 0;
+        const dp = p.dadosPlacar || {};
+        const ms = p.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
+        if (ms) return Number(ms);
+        if (p.dataCompleta) {
+            const pt = p.dataCompleta.split('-');
+            if (pt.length === 3) return new Date(Number(pt[0]), Number(pt[1]) - 1, Number(pt[2]), 12, 0, 0).getTime() || 0;
+        }
+        return 0;
+    };
+
     listaPartidas.sort((a, b) => {
         const pesoA = obterPesoFaseSaaS(a);
         const pesoB = obterPesoFaseSaaS(b);
         if (pesoA !== pesoB) {
             return ordemSumulasDescSaaS ? (pesoB - pesoA) : (pesoA - pesoB);
         }
-        return (b.dataHora || 0) - (a.dataHora || 0);
+        const tsA = obterMs(a);
+        const tsB = obterMs(b);
+        if (tsA !== tsB) {
+            return ordemSumulasDescSaaS ? (tsB - tsA) : (tsA - tsB);
+        }
+        return ordemSumulasDescSaaS ? (b.id || '').localeCompare(a.id || '') : (a.id || '').localeCompare(b.id || '');
     });
 
     const sheet = document.getElementById('sheet-leaderboard-ranking');
     const bodyList = document.getElementById('body-leaderboard-scroll');
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
     
-    const containerAbas = document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null;
+    // Oculta abas, selects e dropdowns do Leaderboard ativo para isolar o Acervo
+    const containerAbas = document.querySelector('#sheet-leaderboard-ranking .opt1-segmented') || (document.getElementById('btn-tab-torneio-saas') ? document.getElementById('btn-tab-torneio-saas').parentElement : null);
     const selectClasse = document.getElementById('select-leaderboard-classe');
     const selectGenero = document.getElementById('select-leaderboard-genero');
     const containerDropdowns = document.querySelector('#sheet-leaderboard-ranking .dropdowns-leaderboard-container');
@@ -3372,7 +3478,6 @@ function abrirSumulasAcervoSaaS(idEdicao) {
         return pts;
     };
 
-    // Calculador oficial de vencedor do set individual
     const calcSetWinner = (p1, p2, tb1, tb2) => {
         const n1 = parseInt(p1), n2 = parseInt(p2);
         if (isNaN(n1) || isNaN(n2)) return 0;
@@ -3393,282 +3498,285 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     };
 
     let htmlCardsMain = '';
-    let htmlCardsExtra = '';
 
-    listaPartidas.forEach((partida, idx) => {
-        // 💡 1. 'dp' inicializado no topo para evitar ReferenceError
-        const dp = partida.dadosPlacar || {};
+    if (listaPartidas.length === 0) {
+        htmlCardsMain = `<p style="text-align: center; color: #94a3b8; margin: 30px 0; font-size: 13px;">Nenhuma súmula cadastrada para esta categoria.</p>`;
+    } else {
+        listaPartidas.forEach((partida) => {
+            const dp = partida.dadosPlacar || {};
 
-        const j1NomeLongo = buscarNome(partida.jogador1Id);
-        const j2NomeLongo = buscarNome(partida.jogador2Id);
+            const j1NomeLongo = buscarNome(partida.jogador1Id);
+            const j2NomeLongo = buscarNome(partida.jogador2Id);
 
-        // 🎯 2. Captura segura da semente/ranking
-        const pos1 = partida.posicaoP1 || dp.posicaoP1 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(j1NomeLongo) : '');
-        const pos2 = partida.posicaoP2 || dp.posicaoP2 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(j2NomeLongo) : '');
+            const pos1 = partida.posicaoP1 || dp.posicaoP1 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(j1NomeLongo) : '');
+            const pos2 = partida.posicaoP2 || dp.posicaoP2 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(j2NomeLongo) : '');
 
-        const pos1Clean = pos1 ? String(pos1).replace('º', '').trim() : '';
-        const pos2Clean = pos2 ? String(pos2).replace('º', '').trim() : '';
+            const pos1Clean = pos1 ? String(pos1).replace('º', '').trim() : '';
+            const pos2Clean = pos2 ? String(pos2).replace('º', '').trim() : '';
 
-        const tagPos1 = pos1Clean ? `<span class="atp-pos">${pos1Clean}</span>` : '';
-        const tagPos2 = pos2Clean ? `<span class="atp-pos">${pos2Clean}</span>` : '';
+            const tagPos1 = pos1Clean ? `<span class="atp-pos">${pos1Clean}</span>` : '';
+            const tagPos2 = pos2Clean ? `<span class="atp-pos">${pos2Clean}</span>` : '';
 
-        const j1Exibicao = `${tagPos1}${formatarNomeCurto(j1NomeLongo)}`;
-        const j2Exibicao = `${tagPos2}${formatarNomeCurto(j2NomeLongo)}`;
+            const j1Exibicao = `${tagPos1}${formatarNomeCurto(j1NomeLongo)}`;
+            const j2Exibicao = `${tagPos2}${formatarNomeCurto(j2NomeLongo)}`;
 
-        const catKey = partida.categoria || '';
-        let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
-        catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            const catKey = partida.categoria || '';
+            let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
+            catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
-        const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
-        let dataPartidaStr = '--/--/----';
-        if (dataMs) {
-            const d = new Date(dataMs);
-            if (!isNaN(d.getTime())) {
-                dataPartidaStr = d.toLocaleDateString('pt-BR');
+            const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
+            let dataPartidaStr = '--/--/----';
+            if (dataMs) {
+                const d = new Date(dataMs);
+                if (!isNaN(d.getTime())) {
+                    dataPartidaStr = d.toLocaleDateString('pt-BR');
+                }
+            } else if (partida.dataCompleta) {
+                const p = partida.dataCompleta.split('-');
+                if (p.length === 3) dataPartidaStr = `${p[2]}/${p[1]}/${p[0]}`;
             }
-        } else if (partida.dataCompleta) {
-            const p = partida.dataCompleta.split('-');
-            if (p.length === 3) dataPartidaStr = `${p[2]}/${p[1]}/${p[0]}`;
-        }
 
-        const stPlacar = dp.statusPlacar || partida.status || 'consolidado';
-        const decisaoArb = dp.decisaoArbitro || '';
-        const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
-        const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
+            const stPlacar = dp.statusPlacar || partida.status || 'consolidado';
+            const decisaoArb = dp.decisaoArbitro || '';
+            const isWO = !!dp.isWO || (dp.placarFormatado && dp.placarFormatado.includes("W.O."));
+            const isRET = !!dp.isRET || (dp.placarFormatado && dp.placarFormatado.includes("RET"));
 
-        let labelFasePartida = partida.tagFaseRanking || dp.tagFaseRanking;
-        if (!labelFasePartida) {
-            const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
-            if (tagG) {
-                labelFasePartida = `Grupos - ${tagG}`;
+            let labelFasePartida = partida.tagFaseRanking || dp.tagFaseRanking;
+            if (!labelFasePartida) {
+                const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
+                if (tagG) {
+                    labelFasePartida = `Grupos - ${tagG}`;
+                } else {
+                    const nomesModelos = { barragem: 'Barragem', piramide: 'Pirâmide', grupos: 'Mata-Mata' };
+                    labelFasePartida = nomesModelos[edicao.modelo] || 'Ranking';
+                }
+            }
+
+            let badgeHtml = '';
+            let footerArbHtml = '';
+
+            if (stPlacar === 'anulado' || decisaoArb === 'anulado_pelo_arbitro') {
+                badgeHtml = `<span style="font-size: 10px; color: #dc2626; font-weight: 700;"><span style="margin-right: 2px;">🔴</span> Arbitrado</span>`;
+                const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+                const motivoAnul = dp.motivoAnulacao || 'partida inválida.';
+                footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
+            } else if (decisaoArb === 'editado_pelo_arbitro') {
+                badgeHtml = `<span style="font-size: 10px; color: #d97706; font-weight: 700;"><span style="margin-right: 2px;">🟠</span> Arbitrado</span>`;
+                const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+                footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Editado pela arbitragem: ${juizNome}</div>`;
+            } else if (decisaoArb === 'mantido_pelo_arbitro') {
+                badgeHtml = `<span style="font-size: 10px; color: #16a34a; font-weight: 700;"><span style="margin-right: 2px;">🟢</span> Arbitrado</span>`;
+                const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
+                footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Homologado pela arbitragem: ${juizNome}</div>`;
             } else {
-                const nomesModelos = { barragem: 'Barragem', piramide: 'Pirâmide', grupos: 'Mata-Mata' };
-                labelFasePartida = nomesModelos[edicao.modelo] || 'Ranking';
+                badgeHtml = `<span style="font-size: 10px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
             }
-        }
 
-        let badgeHtml = '';
-        let footerArbHtml = '';
+            const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+            const vencedorOficial = norm(dp.vencedor || "");
+            const ehAnulado = (stPlacar === 'anulado' || decisaoArb === 'anulado_pelo_arbitro');
+            
+            const j1EhVencedor = !ehAnulado && ((partida.vencedorId === partida.jogador1Id) || (dp.vencedorCodigo === 'J1') || (vencedorOficial === norm(j1NomeLongo)));
 
-        if (stPlacar === 'anulado' || decisaoArb === 'anulado_pelo_arbitro') {
-            badgeHtml = `<span style="font-size: 10px; color: #dc2626; font-weight: 700;"><span style="margin-right: 2px;">🔴</span> Arbitrado</span>`;
-            const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-            const motivoAnul = dp.motivoAnulacao || 'partida inválida.';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #dc2626; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Anulada por ${juizNome}: "${motivoAnul}"</div>`;
-        } else if (decisaoArb === 'editado_pelo_arbitro') {
-            badgeHtml = `<span style="font-size: 10px; color: #d97706; font-weight: 700;"><span style="margin-right: 2px;">🟠</span> Arbitrado</span>`;
-            const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #d97706; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Editado pela arbitragem: ${juizNome}</div>`;
-        } else if (decisaoArb === 'mantido_pelo_arbitro') {
-            badgeHtml = `<span style="font-size: 10px; color: #16a34a; font-weight: 700;"><span style="margin-right: 2px;">🟢</span> Arbitrado</span>`;
-            const juizNome = dp.arbitroResponsavel ? formatarNomeCurto(dp.arbitroResponsavel) : 'Árbitro';
-            footerArbHtml = `<div style="text-align: center; font-style: italic; color: #16a34a; font-size: 11px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">Homologado pela arbitragem: ${juizNome}</div>`;
-        } else {
-            badgeHtml = `<span style="font-size: 10px; color: #16a34a; font-weight: 700;">✓ Homologado</span>`;
-        }
+            let classNomeJ1 = (j1EhVencedor && !ehAnulado) ? 'match-winner' : '';
+            let classNomeJ2 = (!j1EhVencedor && !ehAnulado) ? 'match-winner' : '';
+            let setaJ1 = (j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : '';
+            let setaJ2 = (!j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : ''; 
 
-        const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-        const vencedorOficial = norm(dp.vencedor || "");
-        const ehAnulado = (stPlacar === 'anulado' || decisaoArb === 'anulado_pelo_arbitro');
-        
-        const j1EhVencedor = !ehAnulado && ((partida.vencedorId === partida.jogador1Id) || (dp.vencedorCodigo === 'J1') || (vencedorOficial === norm(j1NomeLongo)));
-
-        let classNomeJ1 = (j1EhVencedor && !ehAnulado) ? 'match-winner' : '';
-        let classNomeJ2 = (!j1EhVencedor && !ehAnulado) ? 'match-winner' : '';
-        let setaJ1 = (j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : '';
-        let setaJ2 = (!j1EhVencedor && !ehAnulado) ? '<div class="winner-arrow">◀</div>' : ''; 
-
-        let cardSingle = `
-            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 6px 10px 4px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px;">
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <span style="font-size: 10px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 6px; border-radius: 6px; border: 1px solid #ddd6fe;">
-                            ${catLabel || 'Oficial'}
-                        </span>
-                        <span style="font-size: 10px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;">
-                            <i class="material-icons" style="font-size: 11px;">event</i> ${dataPartidaStr}
-                        </span>
+            let cardSingle = `
+                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 6px 10px 4px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 10px; font-weight: 700; color: #8b5cf6; background: #f5f3ff; padding: 2px 6px; border-radius: 6px; border: 1px solid #ddd6fe;">
+                                ${catLabel || 'Oficial'}
+                            </span>
+                            <span style="font-size: 10px; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;">
+                                <i class="material-icons" style="font-size: 11px;">event</i> ${dataPartidaStr}
+                            </span>
+                        </div>
+                        ${badgeHtml}
                     </div>
-                    ${badgeHtml}
-                </div>
-        `;
-
-        if (isWO) {
-            cardSingle += `
-                <table class="atp-table" style="margin-bottom: 0px;">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td>
-                            <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${j1EhVencedor ? 'W.O.' : ''}</td>
-                        </tr>
-                        <tr>
-                            <td><span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span></td>
-                            <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${!j1EhVencedor ? 'W.O.' : ''}</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div style="text-align: center; font-style: italic; color: #64748b; font-size: 11.5px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">
-                    Motivo: ${dp.motivoWO || 'Não informado'}
-                </div>
-            `;
-        } else if (dp.parciais) {
-            const tagRetJ1 = (isRET && dp.desistenteCodigo === 'J1') ? '<span class="badge-ret" style="margin-left: 6px;">RET</span>' : '';
-            const tagRetJ2 = (isRET && dp.desistenteCodigo === 'J2') ? '<span class="badge-ret" style="margin-left: 6px;">RET</span>' : '';
-
-            const p = dp.parciais || {};
-            const temSet1 = (p.set1 && p.set1.j1 !== undefined && p.set1.j1 !== null && p.set1.j1 !== "");
-            const temSet2 = (p.set2 && p.set2.j1 !== undefined && p.set2.j1 !== null && p.set2.j1 !== "");
-            const temSet3 = (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "");
-
-            let thSetsHtml = '';
-            if (temSet1) thSetsHtml += `<th class="col-score"></th>`;
-            if (temSet2) thSetsHtml += `<th class="col-score"></th>`;
-            if (temSet3) thSetsHtml += `<th class="col-score"></th>`;
-
-            let tdSetsJ1Html = '';
-            let tdSetsJ2Html = '';
-
-            if (temSet1) {
-                const w1 = calcSetWinner(p.set1.j1, p.set1.j2, p.set1.tbJ1, p.set1.tbJ2);
-                const classS1J1 = (!ehAnulado && w1 === 1) ? 'set-winner' : '';
-                const classS1J2 = (!ehAnulado && w1 === 2) ? 'set-winner' : '';
-                tdSetsJ1Html += `<td class="col-score atp-score ${classS1J1}">${fmtSet(p.set1.j1, p.set1.tbJ1)}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classS1J2}">${fmtSet(p.set1.j2, p.set1.tbJ2)}</td>`;
-            }
-            if (temSet2) {
-                const w2 = calcSetWinner(p.set2.j1, p.set2.j2, p.set2.tbJ1, p.set2.tbJ2);
-                const classS2J1 = (!ehAnulado && w2 === 1) ? 'set-winner' : '';
-                const classS2J2 = (!ehAnulado && w2 === 2) ? 'set-winner' : '';
-                tdSetsJ1Html += `<td class="col-score atp-score ${classS2J1}">${fmtSet(p.set2.j1, p.set2.tbJ1)}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classS2J2}">${fmtSet(p.set2.j2, p.set2.tbJ2)}</td>`;
-            }
-            if (temSet3) {
-                const w3 = calcSetWinner(p.set3.j1, p.set3.j2, p.set3.tbJ1, p.set3.tbJ2);
-                const classS3J1 = (!ehAnulado && w3 === 1) ? 'set-winner' : '';
-                const classS3J2 = (!ehAnulado && w3 === 2) ? 'set-winner' : '';
-                tdSetsJ1Html += `<td class="col-score atp-score ${classS3J1}">${fmtSet(p.set3.j1, p.set3.tbJ1)}</td>`;
-                tdSetsJ2Html += `<td class="col-score atp-score ${classS3J2}">${fmtSet(p.set3.j2, p.set3.tbJ2)}</td>`;
-            }
-
-            cardSingle += `
-                <table class="atp-table" style="margin-bottom: 0px;">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
-                            ${thSetsHtml}
-                            <th class="col-arrow"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td><span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>${tagRetJ1}</td>${tdSetsJ1Html}<td class="col-arrow">${setaJ1}</td></tr>
-                        <tr><td><span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>${tagRetJ2}</td>${tdSetsJ2Html}<td class="col-arrow">${setaJ2}</td></tr>
-                    </tbody>
-                </table>
             `;
 
-            if (isRET && dp.motivoRET) {
+            if (isWO) {
                 cardSingle += `
+                    <table class="atp-table" style="margin-bottom: 0px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td>
+                                <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${j1EhVencedor ? 'W.O.' : ''}</td>
+                            </tr>
+                            <tr>
+                                <td><span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span></td>
+                                <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; padding-right: 12px;">${!j1EhVencedor ? 'W.O.' : ''}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                     <div style="text-align: center; font-style: italic; color: #64748b; font-size: 11.5px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">
-                        Motivo: ${dp.motivoRET}
+                        Motivo: ${dp.motivoWO || 'Não informado'}
                     </div>
                 `;
+            } else if (dp.parciais) {
+                const tagRetJ1 = (isRET && dp.desistenteCodigo === 'J1') ? '<span class="badge-ret" style="margin-left: 6px;">RET</span>' : '';
+                const tagRetJ2 = (isRET && dp.desistenteCodigo === 'J2') ? '<span class="badge-ret" style="margin-left: 6px;">RET</span>' : '';
+
+                const p = dp.parciais || {};
+                const temSet1 = (p.set1 && p.set1.j1 !== undefined && p.set1.j1 !== null && p.set1.j1 !== "");
+                const temSet2 = (p.set2 && p.set2.j1 !== undefined && p.set2.j1 !== null && p.set2.j1 !== "");
+                const temSet3 = (p.set3 && p.set3.j1 !== undefined && p.set3.j1 !== null && p.set3.j1 !== "");
+
+                let thSetsHtml = '';
+                if (temSet1) thSetsHtml += `<th class="col-score"></th>`;
+                if (temSet2) thSetsHtml += `<th class="col-score"></th>`;
+                if (temSet3) thSetsHtml += `<th class="col-score"></th>`;
+
+                let tdSetsJ1Html = '';
+                let tdSetsJ2Html = '';
+
+                if (temSet1) {
+                    const w1 = calcSetWinner(p.set1.j1, p.set1.j2, p.set1.tbJ1, p.set1.tbJ2);
+                    const classS1J1 = (!ehAnulado && w1 === 1) ? 'set-winner' : '';
+                    const classS1J2 = (!ehAnulado && w1 === 2) ? 'set-winner' : '';
+                    tdSetsJ1Html += `<td class="col-score atp-score ${classS1J1}">${fmtSet(p.set1.j1, p.set1.tbJ1)}</td>`;
+                    tdSetsJ2Html += `<td class="col-score atp-score ${classS1J2}">${fmtSet(p.set1.j2, p.set1.tbJ2)}</td>`;
+                }
+                if (temSet2) {
+                    const w2 = calcSetWinner(p.set2.j1, p.set2.tbJ1, p.set2.tbJ2);
+                    const classS2J1 = (!ehAnulado && w2 === 1) ? 'set-winner' : '';
+                    const classS2J2 = (!ehAnulado && w2 === 2) ? 'set-winner' : '';
+                    tdSetsJ1Html += `<td class="col-score atp-score ${classS2J1}">${fmtSet(p.set2.j1, p.set2.tbJ1)}</td>`;
+                    tdSetsJ2Html += `<td class="col-score atp-score ${classS2J2}">${fmtSet(p.set2.j2, p.set2.tbJ2)}</td>`;
+                }
+                if (temSet3) {
+                    const w3 = calcSetWinner(p.set3.j1, p.set3.tbJ1, p.set3.tbJ2);
+                    const classS3J1 = (!ehAnulado && w3 === 1) ? 'set-winner' : '';
+                    const classS3J2 = (!ehAnulado && w3 === 2) ? 'set-winner' : '';
+                    tdSetsJ1Html += `<td class="col-score atp-score ${classS3J1}">${fmtSet(p.set3.j1, p.set3.tbJ1)}</td>`;
+                    tdSetsJ2Html += `<td class="col-score atp-score ${classS3J2}">${fmtSet(p.set3.j2, p.set3.tbJ2)}</td>`;
+                }
+
+                cardSingle += `
+                    <table class="atp-table" style="margin-bottom: 0px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                                ${thSetsHtml}
+                                <th class="col-arrow"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><span class="atp-name ${classNomeJ1}">${j1Exibicao}</span>${tagRetJ1}</td>${tdSetsJ1Html}<td class="col-arrow">${setaJ1}</td></tr>
+                            <tr><td><span class="atp-name ${classNomeJ2}">${j2Exibicao}</span>${tagRetJ2}</td>${tdSetsJ2Html}<td class="col-arrow">${setaJ2}</td></tr>
+                        </tbody>
+                    </table>
+                `;
+
+                if (isRET && dp.motivoRET) {
+                    cardSingle += `
+                        <div style="text-align: center; font-style: italic; color: #64748b; font-size: 11.5px; margin-top: 1px; margin-bottom: 0px; line-height: 1.1;">
+                            Motivo: ${dp.motivoRET}
+                        </div>
+                    `;
+                }
+            } else {
+                cardSingle += `
+                    <table class="atp-table" style="margin-bottom: 0px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
+                                <th class="col-score"></th>
+                                <th class="col-arrow"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td><td class="col-score atp-score ${j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP1 || 0}</td><td class="col-arrow">${setaJ1}</td></tr>
+                            <tr><td><span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span></td><td class="col-score atp-score ${!j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP2 || 0}</td><td class="col-arrow">${setaJ2}</td></tr>
+                        </tbody>
+                    </table>
+                `;
             }
-        } else {
-            cardSingle += `
-                <table class="atp-table" style="margin-bottom: 0px;">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left; font-size: 11px; font-weight: 700; color: #64748b; padding-left: 2px;">${labelFasePartida}</th>
-                            <th class="col-score"></th>
-                            <th class="col-arrow"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td><span class="atp-name ${j1EhVencedor ? 'match-winner' : ''}">${j1Exibicao}</span></td><td class="col-score atp-score ${j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP1 || 0}</td><td class="col-arrow">${setaJ1}</td></tr>
-                        <tr><td><span class="atp-name ${!j1EhVencedor ? 'match-winner' : ''}">${j2Exibicao}</span></td><td class="col-score atp-score ${!j1EhVencedor ? 'set-winner' : ''}">${partida.gamesP2 || 0}</td><td class="col-arrow">${setaJ2}</td></tr>
-                    </tbody>
-                </table>
-            `;
-        }
 
-        if (footerArbHtml) cardSingle += footerArbHtml; 
+            if (footerArbHtml) cardSingle += footerArbHtml; 
 
-        cardSingle += `</div>`;
-
-        if (idx < 2) {
+            cardSingle += `</div>`;
             htmlCardsMain += cardSingle;
-        } else {
-            htmlCardsExtra += cardSingle;
-        }
-    });
+        });
+    }
+
+    let htmlPills = '';
+    if (categorias.length > 1) {
+        htmlPills += `<div style="flex-shrink: 0; margin-top: 2px; margin-bottom: 12px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
+
+        const ehAtivaTodas = (window.categoriaSumulasAcervoAtivaSaaS === 'TODAS');
+        htmlPills += `
+            <button type="button" onclick="window.mudarCategoriaSumulasAcervoSaaS('TODAS')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ehAtivaTodas ? '#8b5cf6' : '#cbd5e1'}; background: ${ehAtivaTodas ? '#8b5cf6' : '#f8fafc'}; color: ${ehAtivaTodas ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                Todas (${todasPartidasLista.length})
+            </button>
+        `;
+
+        categorias.forEach(cat => {
+            const ehAtiva = (cat === window.categoriaSumulasAcervoAtivaSaaS);
+            const qtdCat = todasPartidasLista.filter(p => p.categoria === cat).length;
+            let label = cat.replace('CLASSE_', '').replace('_', ' ');
+            label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+            htmlPills += `
+                <button type="button" onclick="window.mudarCategoriaSumulasAcervoSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ehAtiva ? '#8b5cf6' : '#cbd5e1'}; background: ${ehAtiva ? '#8b5cf6' : '#f8fafc'}; color: ${ehAtiva ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                    ${label} (${qtdCat})
+                </button>
+            `;
+        });
+        htmlPills += `</div>`;
+    }
 
     let html = `
         <style>
             #sheet-leaderboard-ranking .bottom-sheet-header { padding-top: 12px !important; padding-bottom: 6px !important; }
+            #sheet-leaderboard-ranking #body-leaderboard-scroll { padding-top: 0px !important; }
         </style>
         
-        <!-- Header do Contador + Botão Quadrado de Ordenação -->
-        <div style="display: flex; gap: 8px; align-items: center; margin-top: 0px; margin-bottom: 8px;">
-            <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; font-size: 11.5px; color: #64748b; text-align: center;">
-                📋 Total de <b>${listaPartidas.length} partida(s)</b> homologada(s).
+        <!-- Painel Superior Fixo: Pílulas + Controles -->
+        <div style="position: sticky; top: 0; z-index: 30; background: #ffffff; padding-top: 4px; padding-bottom: 8px; margin-bottom: 8px; flex-shrink: 0;">
+            ${htmlPills}
+
+            <!-- Header de Controle: Informação Original, Inverter e PDF -->
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 0px; margin-bottom: 0px; flex-shrink: 0;">
+                <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; font-size: 11.5px; color: #64748b; font-weight: 700; text-align: center;">
+                    📋 Total de <b>${listaPartidas.length} partida(s)</b> homologada(s).
+                </div>
+                <button type="button" onclick="inverterOrdemSumulasAcervoSaaS()" title="Inverter Ordem das Súmulas" style="width: 42px; height: 40px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 10px; color: #0284c7; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="material-icons" style="font-size: 20px;">swap_vert</i>
+                </button>
+                <button type="button" onclick="exportarSumulasPDFSaaS()" title="Exportar PDF" style="width: 42px; height: 40px; background: #0284c7; border: none; border-radius: 10px; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25); flex-shrink: 0; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="material-icons" style="font-size: 18px;">picture_as_pdf</i>
+                </button>
             </div>
-            <button type="button" onclick="inverterOrdemSumulasAcervoSaaS()" title="Inverter Ordem das Súmulas" style="width: 32px; height: 31px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; color: #0284c7; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="material-icons" style="font-size: 18px;">swap_vert</i>
-            </button>
         </div>
         
+        <!-- Lista Contínua de Cartões (Scroll Livre) -->
         <div style="display: flex; flex-direction: column; gap: 8px;">
             ${htmlCardsMain}
         </div>
     `;
 
-    if (htmlCardsExtra) {
-        html += `
-            <div id="box-restante-sumulas-acervo" style="display: none; flex-direction: column; gap: 8px; margin-top: 8px;">
-                ${htmlCardsExtra}
-            </div>
-        `;
-    }
-
-    const txtSumi = listaPartidas.length === 1 ? 'súmula' : 'súmulas';
-    const temMaisDeDuas = listaPartidas.length > 2;
-
-    html += `
-        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
-    `;
-
-    if (temMaisDeDuas) {
-        html += `
-            <button type="button" id="btn-sanfona-sumulas-acervo" onclick="toggleSanfonaSumulasAcervoSaaS(${listaPartidas.length})" style="flex: 1; background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 10px; color: #0284c7; font-weight: 700; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                <span>Ver todas as súmulas (${listaPartidas.length} ${txtSumi}) 🔽</span>
-            </button>
-        `;
-    } else {
-        html += `
-            <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 10px; color: #64748b; font-weight: 700; font-size: 12px; text-align: center;">
-                📋 Exibindo ${listaPartidas.length} ${txtSumi}
-            </div>
-        `;
-    }
-
-    html += `
-            <button type="button" onclick="exportarSumulasPDFSaaS()" title="Exportar PDF" style="width: 42px; height: 40px; background: #0284c7; border: none; border-radius: 10px; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25); flex-shrink: 0;">
-                <i class="material-icons" style="font-size: 18px;">picture_as_pdf</i>
-            </button>
-        </div>
-    `;
-
     bodyList.innerHTML = html;
+    bodyList.style.overflowAnchor = 'none';
 
     if (sheet) {
         sheet.style.display = 'flex';
-        setTimeout(() => sheet.classList.add('ativa'), 10);
+        requestAnimationFrame(() => {
+            sheet.classList.add('ativa');
+            if (bodyList) bodyList.scrollTop = 0;
+        });
+        setTimeout(() => {
+            if (bodyList) bodyList.scrollTop = 0;
+        }, 50);
     }
 }
 
@@ -5539,7 +5647,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderizarGestaoTemporadaSaaS();
                 }
                 if (idx === 5) {
-                    carregarHistoricoTorneiosSaaS(true); 
+                    carregarHistoricoTorneiosSaaS(); 
                 }
                 if (idx === 6) {
                     if (typeof renderizarTabelaRankingGeralSaaS === 'function') {

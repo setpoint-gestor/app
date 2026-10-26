@@ -18,7 +18,7 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
     if (!modal || !dadosReserva) return;
 
     // 🛡️ PORTARIA DE SEGURANÇA: Avalia se o usuário ativo tem poder de alteração
-    const nomeLogado = localStorage.getItem('jogadorLogadoNome') || "";
+    const nomeLogado = localStorage.getItem('jogadorLogadoNome') || ""; 
     const idLogado = localStorage.getItem('jogadorLogadoId') || "";
     let perfis = {};
     try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
@@ -334,24 +334,53 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const htmlPosJ1 = posJ1 ? `<span class="atp-pos">${posJ1}</span>` : '';
         const htmlPosJ2 = posJ2 ? `<span class="atp-pos">${posJ2}</span>` : '';
 
+        // 🏷️ Identificação da Classe do confronto na memória RAM
+        let classeAtleta = '';
+        if (dadosReserva.categoria) {
+            classeAtleta = dadosReserva.categoria.replace('CLASSE_', '').split('_')[0];
+        } else if (dadosReserva.dadosPlacar?.categoria) {
+            classeAtleta = dadosReserva.dadosPlacar.categoria.replace('CLASSE_', '').split('_')[0];
+        } else {
+            // Localiza o ID do atleta para ler a categoria da tabela ou do cadastro
+            const idAtleta1 = (typeof obterIdJogadorPorTextoSaaS === 'function')
+                ? (obterIdJogadorPorTextoSaaS(j1Completo) || obterIdJogadorPorTextoSaaS(nomesApelidos[0]))
+                : null;
+
+            if (idAtleta1 && typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
+                Object.keys(rankingTabelasGlobal).forEach(catKey => {
+                    const ids = Array.isArray(rankingTabelasGlobal[catKey]) ? rankingTabelasGlobal[catKey] : Object.values(rankingTabelasGlobal[catKey]);
+                    if (ids.includes(idAtleta1)) {
+                        classeAtleta = catKey.replace('CLASSE_', '').split('_')[0];
+                    }
+                });
+            }
+
+            if (!classeAtleta && idAtleta1 && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta1]) {
+                classeAtleta = (jogadoresGlobal[idAtleta1].classe || '').toUpperCase().replace('CLASSE_', '').trim();
+            }
+        }
+
         const modeloReserva = (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo || "").toLowerCase();
         const mapaModelos = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
 
-        let labelModelo = 'Ranking';
+        let faseDesc = 'Ranking';
 
         if (dadosReserva.tagFaseRanking) {
-            labelModelo = dadosReserva.tagFaseRanking;
+            faseDesc = dadosReserva.tagFaseRanking;
         } else if (dadosReserva.dadosPlacar?.tagFaseRanking) {
-            labelModelo = dadosReserva.dadosPlacar.tagFaseRanking;
+            faseDesc = dadosReserva.dadosPlacar.tagFaseRanking;
         } else if (dadosReserva.tagGrupoRanking) {
-            labelModelo = `Grupos - ${dadosReserva.tagGrupoRanking}`;
+            faseDesc = `Grupos ${dadosReserva.tagGrupoRanking}`;
         } else if (dadosReserva.dadosPlacar?.tagGrupoRanking) {
-            labelModelo = `Grupos - ${dadosReserva.dadosPlacar.tagGrupoRanking}`;
+            faseDesc = `Grupos ${dadosReserva.dadosPlacar.tagGrupoRanking}`;
         } else if (mapaModelos[modeloReserva]) {
-            labelModelo = mapaModelos[modeloReserva];
-        } else {
-            labelModelo = "Modelo Inválido";
+            faseDesc = mapaModelos[modeloReserva];
         }
+
+        // Limpeza dos prefixos para atender à regra visual
+        faseDesc = faseDesc.replace('Grupos - G', 'Grupos G').replace('Grupos - ', '');
+
+        const labelModelo = classeAtleta ? `Classe ${classeAtleta} • ${faseDesc}` : faseDesc;
 
         let classNomeJ1 = '', classNomeJ2 = '';
         let setaJ1 = '', setaJ2 = '';
@@ -1291,7 +1320,7 @@ function executarFaxinaAutomaticaSaaS() {
                         }
                     });
 
-                    const sobreviveuAoQuorum = conviteExpirou && !passouDoPrazoDeExibicao && (qtdConfirmados >= quorumExigido);
+                    const sobreviveuAoQuorum = conviteExpirou && !passouDoPrazoDeExibicao && (qtdConfirmados >= quorumExigido); 
 
                     const pathNode1 = `reservas/${quadraChave}/${slotKey}`;
                     const temAula1 = aulaAtiva && configAula.Grade[slotKey] && configAula.Grade[slotKey] !== "";

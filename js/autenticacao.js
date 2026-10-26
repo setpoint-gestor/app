@@ -19,7 +19,7 @@ auth.onAuthStateChanged((user) => {
         isGestorLogado = true;
         
         // Acorda os ouvintes mestres instantaneamente
-        if (typeof iniciarOuvinteMestreSaaS === 'function') iniciarOuvinteMestreSaaS(); 
+        if (typeof iniciarOuvinteMestreSaaS === 'function') iniciarOuvinteMestreSaaS();  
 
         // Busca apenas o nome do clube para colocar no cabeçalho
         database.ref(`Clubes/${godModeClube}/info_clube/nome`).once('value').then((snapNome) => {
@@ -813,20 +813,110 @@ function renderizarListaNotificacoesSocioSaaS() {
             ? `${inicioJ} à ${fimJ}` 
             : (inicioJ !== '--/--' ? inicioJ : '--/--');
 
-        // HTML em linha única incluindo a pergunta final centralizada
-        const gridInfoHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #fff8e1; padding: 10px 12px; border-radius: 10px; border: 1px solid #fef08a; text-align: left; margin-top: 4px;"><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">SUA CATEGORIA</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${minhaClasseStr}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">MODELO</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${modeloFormatado}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">INSCRIÇÕES ATÉ</span><span style="font-size: 12px; color: #000000; font-weight: 800;">${dataFimInscricao}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">PERÍODO JOGOS</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${periodoJogos}</span></div></div><div style="text-align: center; margin-top: 12px; font-size: 13px; color: #475569; font-weight: 500;">Deseja confirmar sua participação?</div>`;
+        // 🛡️ AFERIÇÃO EM TEMPO REAL: Status do atleta e vagas da categoria
+        const clAferir = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+        let genAferir = (atleta.genero || 'MASCULINO').toUpperCase().trim();
+        if (genAferir === 'NAO_INFORMAR') genAferir = 'MASCULINO';
 
-        htmlCards += gerarCardNotificacaoHTML({
-            classeCard: 'ranking',
-            tagTexto: '🏆 RANKING OFICIAL',
-            tagClasse: 'tag-gold',
-            tempoTexto: 'Novo Lote',
-            titulo: nomeTorneio,
-            detalhe: gridInfoHTML,
-            botoesHTML: `
+        const modoDiv = configRanking.divisaoGenero || 'separado';
+        const chaveCatAtleta = (modoDiv === 'unificado') ? `${clAferir}_UNIFICADO` : `${clAferir}_${genAferir}`;
+
+        const suplenteMap = (configRanking.filaEspera && configRanking.filaEspera[chaveCatAtleta]) ? configRanking.filaEspera[chaveCatAtleta] : {};
+        const suplenteObj = suplenteMap[idLogado] || null;
+        const ehSuplenteConvocado = !!(suplenteObj && suplenteObj.status === 'convocado');
+
+        const limiteVagasCat = parseInt(cal.limiteVagas, 10) || 0;
+        let categoriaLotada = false;
+        let totalConfirmadosCat = 0;
+        const qtdFilaCat = Object.keys(suplenteMap).length;
+
+        if (limiteVagasCat > 0) {
+            const inscritosMap = configRanking.inscritosConfirmados || {};
+            Object.keys(inscritosMap).forEach(id => {
+                const at = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id]) ? jogadoresGlobal[id] : {};
+                const cl = (at.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+                let gen = (at.genero || 'MASCULINO').toUpperCase().trim();
+                if (gen === 'NAO_INFORMAR') gen = 'MASCULINO';
+                const catIns = (modoDiv === 'unificado') ? `${cl}_UNIFICADO` : `${cl}_${gen}`;
+
+                if (catIns === chaveCatAtleta) {
+                    totalConfirmadosCat++;
+                }
+            });
+
+            // 🛡️ BLINDAGEM DA FILA: Se o teto foi atingido OU se há fila de espera ativa,
+            // qualquer convite comum é barrado de entrar direto como titular.
+            const temFilaEsperaAtiva = qtdFilaCat > 0;
+            if ((totalConfirmadosCat >= limiteVagasCat || temFilaEsperaAtiva) && !ehSuplenteConvocado) {
+                categoriaLotada = true;
+            }
+        }
+
+        // HTML base dos dados da categoria e datas
+        const gridBaseHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #fff8e1; padding: 10px 12px; border-radius: 10px; border: 1px solid #fef08a; text-align: left; margin-top: 4px;"><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">SUA CATEGORIA</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${minhaClasseStr}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">MODELO</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${modeloFormatado}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">INSCRIÇÕES ATÉ</span><span style="font-size: 12px; color: #000000; font-weight: 800;">${dataFimInscricao}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">PERÍODO JOGOS</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${periodoJogos}</span></div></div>`;
+
+        let detalheCompletoHTML = '';
+        let botoesCardHTML = '';
+        let prazoEsgotado = false;
+
+        if (ehSuplenteConvocado) {
+            const expiraTimestamp = suplenteObj.expiraEm || 0;
+            const diffSegundos = Math.max(0, Math.floor((expiraTimestamp - Date.now()) / 1000));
+            prazoEsgotado = (diffSegundos <= 0) || (suplenteObj.janelaAberta === true);
+
+            if (prazoEsgotado) {
+                // 4. CONCORRÊNCIA ABERTA (POOL ACUMULATIVO) - COMPACTO
+                detalheCompletoHTML = gridBaseHTML + `<div style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.35;">⚡ Prazo exclusivo de 2h encerrado!<span style="display: block; font-size: 11px; font-weight: 500; color: #78350f; margin-top: 2px;">A vaga agora está aberta para concorrência com o próximo da fila:</span><span style="display: inline-flex; align-items: center; justify-content: center; gap: 4px; margin-top: 4px; font-weight: 700; font-size: 11px; color: #854d0e; background: #fef08a; padding: 3px 8px; border-radius: 6px; border: 1px solid #facc15;">🟡 Quem aceitar primeiro garante!</span></div>`;
+            } else {
+                // 3. CONVOCAÇÃO COM EXCLUSIVIDADE (2 HORAS) - COMPACTO
+                const h = String(Math.floor(diffSegundos / 3600)).padStart(2, '0');
+                const m = String(Math.floor((diffSegundos % 3600) / 60)).padStart(2, '0');
+                const s = String(diffSegundos % 60).padStart(2, '0');
+                const tempoStrInicial = `${h}h ${m}m ${s}s`;
+
+                detalheCompletoHTML = gridBaseHTML + `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.35;">🎉 Abriu uma vaga para a sua categoria!<span style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 4px; font-weight: 700; font-size: 11px; color: #854d0e; background: #fef08a; padding: 3px 8px; border-radius: 6px; border: 1px solid #facc15;"><i class="material-icons" style="font-size: 13px;">timer</i> expira em <span id="timer-notif-convocado-vivo" data-expira="${expiraTimestamp}">${tempoStrInicial}</span></span></div>`;
+            }
+
+            botoesCardHTML = `
+                <button class="btn-sub-action btn-ok" onclick="if(typeof aceitarVagaSuplenteRankingSocioSaaS === 'function') { aceitarVagaSuplenteRankingSocioSaaS(); } else { aceitarConviteRankingSocioSaaS(); }" style="background: #15803d !important; color: #ffffff !important; font-weight: 700;">Garantir Minha Vaga</button>
+                <button class="btn-sub-action btn-no" onclick="if(typeof passarVezSuplenteRankingSocioSaaS === 'function') { passarVezSuplenteRankingSocioSaaS(); } else { recusarConviteRankingSocioSaaS(); }">Passar a Vez</button>
+            `;
+        } else if (categoriaLotada) {
+            // 2. CONVITE PARA FILA DE ESPERA (VAGAS ESGOTADAS OU FILA ATIVA) - COMPACTO
+            const txtAvisoVagas = (totalConfirmadosCat >= limiteVagasCat)
+                ? `⚠️ Vagas esgotadas para sua categoria (${totalConfirmadosCat}/${limiteVagasCat})`
+                : `⚠️ Todas as vagas preenchidas • (${qtdFilaCat} ${qtdFilaCat === 1 ? 'suplente' : 'suplentes'})`;
+
+            detalheCompletoHTML = gridBaseHTML + `<div style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.3;">${txtAvisoVagas}<span style="display: block; margin-top: 3px; font-weight: 500; font-size: 11.5px; color: #78350f;">Deseja aguardar na fila de espera?</span></div>`;
+            botoesCardHTML = `
+                <button class="btn-sub-action" onclick="if(typeof entrarFilaEsperaRankingSocioSaaS === 'function') { entrarFilaEsperaRankingSocioSaaS(); } else { showToast('Fila de espera em homologação...', 'info'); }" style="background: #f59e0b !important; color: #ffffff !important; font-weight: 700;">Entrar na Fila</button>
+                <button class="btn-sub-action btn-no" onclick="recusarConviteRankingSocioSaaS()">Recusar</button>
+            `;
+        } else {
+            // 1. CONVITE REGULAR COM VAGAS DISPONÍVEIS - COMPACTO
+            detalheCompletoHTML = gridBaseHTML + `<div style="text-align: center; margin-top: 8px; font-size: 13px; color: #475569; font-weight: 500;">Deseja confirmar sua participação?</div>`;
+            botoesCardHTML = `
                 <button class="btn-sub-action btn-ok" onclick="aceitarConviteRankingSocioSaaS()">Aceitar e Entrar</button>
                 <button class="btn-sub-action btn-no" onclick="recusarConviteRankingSocioSaaS()">Recusar</button>
-            `
+            `;
+        }
+
+        // Definição contextual do rótulo da direita na Tag Superior
+        let textoStatusDireita = 'Novo Lote';
+        if (ehSuplenteConvocado) {
+            textoStatusDireita = 'Vaga Aberta';
+        } else if (categoriaLotada) {
+            textoStatusDireita = 'Lotado';
+        }
+
+        htmlCards += gerarCardNotificacaoHTML({
+            classeCard: ehSuplenteConvocado ? 'ranking vaga-convocada' : 'ranking',
+            tagTexto: '🏆 RANKING OFICIAL',
+            tagClasse: 'tag-gold',
+            tempoTexto: textoStatusDireita,
+            titulo: nomeTorneio,
+            detalhe: detalheCompletoHTML,
+            botoesHTML: botoesCardHTML
         });
     }
 
@@ -1014,6 +1104,29 @@ function renderizarListaNotificacoesSocioSaaS() {
     }
 
     container.innerHTML = htmlCards;
+
+    // ⏱️ Temporizador vivo para atleta convocado na Central de Notificações
+    if (window.timerNotifConvocadoInterval) {
+        clearInterval(window.timerNotifConvocadoInterval);
+        window.timerNotifConvocadoInterval = null;
+    }
+    const elTimerSininho = document.getElementById('timer-notif-convocado-vivo');
+    if (elTimerSininho) {
+        window.timerNotifConvocadoInterval = setInterval(() => {
+            const expiraEm = parseInt(elTimerSininho.getAttribute('data-expira'), 10) || 0;
+            const diff = Math.max(0, Math.floor((expiraEm - Date.now()) / 1000));
+            const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+            const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+            const s = String(diff % 60).padStart(2, '0');
+            elTimerSininho.textContent = `${h}h ${m}m ${s}s`;
+            if (diff <= 0) {
+                clearInterval(window.timerNotifConvocadoInterval);
+                window.timerNotifConvocadoInterval = null;
+                renderizarListaNotificacoesSocioSaaS();
+            }
+        }, 1000);
+    }
+	
 }
 
 // C. Dispara o Toast Informativo ao abrir o App quando houver pendências
