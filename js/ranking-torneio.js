@@ -831,7 +831,10 @@ function renderizarGestaoTemporadaSaaS() {
     const btnConvites = document.getElementById('btn-saas-fase2-convites');
 
     if (lblBadge) lblBadge.textContent = qtdInscritos;
-    if (btnInscritos) btnInscritos.disabled = (qtdInscritos === 0);
+	
+    const temFilaEsperaAtiva = Object.keys(conf.filaEspera || {}).some(cat => Object.keys(conf.filaEspera[cat] || {}).length > 0);
+    if (btnInscritos) btnInscritos.disabled = (qtdInscritos === 0 && !temFilaEsperaAtiva);
+	
     if (btnEncerrar) btnEncerrar.disabled = (qtdInscritos === 0); 
 
     if (btnConvites) {
@@ -2977,6 +2980,10 @@ async function encerrarFase3EAvancarSaaS() {
                 }
 
                 updates[`${raizBanco}/historico_torneios/${edicaoId}`] = objetoHistorico;
+				
+				// 🧹 LIMPEZA DE CICLO: Extingue a fila de espera e inscrições ao homologar o torneio
+                updates[`${raizBanco}/config/ranking/filaEspera`] = null;
+                updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
             }
 
             await database.ref().update(updates);
@@ -3085,6 +3092,7 @@ function reiniciarEsteiraNovoTorneioSaaS() {
             updates[`${raizBanco}/config/ranking/faseAtual`] = 1;
             updates[`${raizBanco}/config/ranking/calendario`] = null;
             updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
+			updates[`${raizBanco}/config/ranking/filaEspera`] = null;
 
             await database.ref().update(updates);
 

@@ -796,12 +796,13 @@ function renderizarListaNotificacoesSocioSaaS() {
         const generoAtleta = (atleta.genero === 'FEMININO') ? 'Fem' : 'Masc';
         const minhaClasseStr = `Classe ${classeAtleta} (${generoAtleta})`;
 
-        // Modelo de Disputa
+        // Modelo de Disputa (Lê prioritariamente o contrato oficial do torneio)
+        const modeloTorneioReal = cal.formatoTorneio || configRanking.modeloAtivo || "grupos";
         const modeloFormatado = {
-            piramide: "Escada (Pirâmide)",
-            barragem: "Pontos Corridos",
+            piramide: "Pirâmide",
+            barragem: "Barragem",
             grupos: "Fase de Grupos"
-        }[configRanking.modeloAtivo || "grupos"] || "Fase de Grupos"; 
+        }[modeloTorneioReal] || "Fase de Grupos"; 
 
         // Datas
         const dataFimInscricao = fmtData(cal.fimInscricoes || cal.fimInscricao);
