@@ -2749,7 +2749,9 @@ function renderizarHTMLBarragemAcervoSaaS() {
     const edicao = edicaoHistoricaFocoSaaS;
     const cal = edicao.contrato || {};
     const categorias = Object.keys(edicao.classificacaoFinal || {});
-    const listaIDs = (edicao.classificacaoFinal && edicao.classificacaoFinal[categoriaHistoricaAtivaSaaS]) || [];
+    const catAtiva = categoriaHistoricaAtivaSaaS || categorias.sort()[0] || '';
+    categoriaHistoricaAtivaSaaS = catAtiva;
+    const listaIDs = (edicao.classificacaoFinal && edicao.classificacaoFinal[catAtiva]) || [];
     const partidasMap = edicao.partidas || {};
 
     if (txtSub) {
@@ -2759,14 +2761,14 @@ function renderizarHTMLBarragemAcervoSaaS() {
     let html = '';
 
     if (categorias.length > 1) {
-        html += `<div style="margin-bottom: 16px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">`;
+        html += `<div style="margin-bottom: 16px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;" data-html2canvas-ignore="true">`;
         categorias.sort().forEach(cat => {
-            const ativa = (cat === categoriaHistoricaAtivaSaaS);
+            const ativa = (cat === catAtiva);
             let label = cat.replace('CLASSE_', 'Classe ').replace('_', ' ');
             label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
             
             html += `
-                <button onclick="mudarCategoriaBarragemHistoricaSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                <button type="button" onclick="mudarCategoriaBarragemHistoricaSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
                     ${label}
                 </button>
             `;
@@ -2788,7 +2790,7 @@ function renderizarHTMLBarragemAcervoSaaS() {
     });
 
     Object.values(partidasMap).forEach(partida => {
-        if (partida.status === 'finalizada' && (partida.categoria === categoriaHistoricaAtivaSaaS || !partida.categoria)) {
+        if (partida.status === 'finalizada' && (partida.categoria === catAtiva || !partida.categoria)) {
             const p1 = partida.jogador1Id;
             const p2 = partida.jogador2Id;
             const vitorioso = partida.vencedorId;
@@ -2820,24 +2822,63 @@ function renderizarHTMLBarragemAcervoSaaS() {
         return stB.v - stA.v;
     });
 
-    html += `
-        <div class="box-dica-leaderboard" style="margin-bottom: 12px;">
-            💡 <b>Modelo Barragem:</b> Classificação final por pontos corridos. Vitória = 3 pts, Derrota = 1 pt.
-        </div>
+    const elNomeClube = document.getElementById('txt-nome-clube');
+    let nomeClubeRaw = elNomeClube ? elNomeClube.textContent.trim() : 'CLUBE';
+    if (!nomeClubeRaw || nomeClubeRaw.toUpperCase() === 'CARREGANDO...') {
+        nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || 'CLUBE';
+    }
+    const nomeClube = nomeClubeRaw.toUpperCase();
+    const nomeTorneio = cal.nomeTorneio || 'Torneio';
 
-        <table class="tabela-leaderboard-barragem">
-            <thead>
-                <tr>
-                    <th style="width: 35px;">POS</th>
-                    <th style="text-align: left; padding-left: 8px;">ATLETA</th>
-                    <th style="width: 25px;">J</th>
-                    <th style="width: 25px;">V</th>
-                    <th style="width: 25px;">D</th>
-                    <th style="width: 35px;">SG</th>
-                    <th style="width: 40px;">PTS</th>
-                </tr>
-            </thead>
-            <tbody>
+    let catTxt = catAtiva.replace('CLASSE_', 'Classe ').replace('_', ' ');
+    catTxt = (typeof capitalizarNome === 'function') ? capitalizarNome(catTxt) : catTxt;
+    const dataHoje = new Date().toLocaleDateString('pt-BR');
+
+    // 📸 Botão PNG Verde Esmeralda (Idêntico ao da Pirâmide)
+    const btnPngHtml = `
+        <button type="button" onclick="exportarBarragemPNGSaaS()" title="Exportar Imagem PNG" data-html2canvas-ignore="true" style="position: absolute; bottom: 12px; right: 12px; width: 38px; height: 38px; background-color: #ffffff; border: 1.5px solid #10b981; border-radius: 10px; color: #10b981; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15); z-index: 10; transition: transform 0.2s, background-color 0.2s;" onmouseover="this.style.transform='scale(1.08)'; this.style.backgroundColor='#f0fdf4';" onmouseout="this.style.transform='scale(1)'; this.style.backgroundColor='#ffffff';">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 9V17C5 18.1046 5.89543 19 7 19H15" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="9" y="4" width="11" height="11" rx="2" fill="#10b981"/>
+                <text x="14.5" y="11.8" fill="#ffffff" font-size="4.8" font-family="Arial, sans-serif" font-weight="900" text-anchor="middle">PNG</text>
+            </svg>
+        </button>
+    `;
+
+    html += `
+        <div id="area-capture-barragem" style="position: relative; background: #ffffff; min-height: calc(80vh - 150px); display: flex; flex-direction: column;">
+            <!-- 🏛️ CABEÇALHO DINÂMICO (INVISÍVEL NA TELA, REVELADO NO PNG) -->
+            <div id="bar-header-export" style="display: none; text-align: center; margin-bottom: 16px; padding-top: 4px; padding-left: 20px; padding-right: 20px; width: 100%; box-sizing: border-box;">
+                <div style="font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px;">
+                    ${nomeClube} • SETPOINT SAAS
+                </div>
+                <div style="font-size: 17px; font-weight: 900; color: #0f172a; line-height: 1.2;">
+                    ${nomeTorneio}
+                </div>
+                ${catTxt ? `<div style="font-size: 12px; font-weight: 700; color: #0284c7; margin-top: 2px;">${catTxt}</div>` : ''}
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;">
+                    <span style="font-size: 11.5px; font-weight: 600; color: #475569;">Edição Encerrada</span>
+                    <span style="font-size: 10px; font-weight: 800; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 10px; display: inline-block;">📦 Acervo Histórico</span>
+                </div>
+            </div>
+
+            <div class="box-dica-leaderboard" style="margin-bottom: 12px;">
+                💡 <b>Modelo Barragem:</b> Classificação final por pontos corridos. Vitória = 3 pts, Derrota = 1 pt.
+            </div>
+
+            <table class="tabela-leaderboard-barragem">
+                <thead>
+                    <tr>
+                        <th style="width: 35px;">POS</th>
+                        <th style="text-align: left; padding-left: 8px;">ATLETA</th>
+                        <th style="width: 25px;">J</th>
+                        <th style="width: 25px;">V</th>
+                        <th style="width: 25px;">D</th>
+                        <th style="width: 35px;">SG</th>
+                        <th style="width: 40px;">PTS</th>
+                    </tr>
+                </thead>
+                <tbody>
     `;
 
     listaOrdenada.forEach((idAtleta, index) => {
@@ -2861,10 +2902,124 @@ function renderizarHTMLBarragemAcervoSaaS() {
         `;
     });
 
-    html += `</tbody></table>`;
+    html += `
+                </tbody>
+            </table>
+
+            <!-- 🏷️ RODAPÉ DO PNG (INVISÍVEL NA TELA) -->
+            <div id="bar-footer-export" style="display: none; text-align: center; margin-top: 18px; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 10px; color: #94a3b8; font-weight: 600;">
+                Gerado em ${dataHoje} via SetPoint SaaS
+            </div>
+
+            ${btnPngHtml}
+        </div>
+    `;
 
     bodyList.innerHTML = html;
 }
+
+async function exportarBarragemPNGSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const painelBarragem = document.getElementById('area-capture-barragem');
+    if (!painelBarragem) {
+        showToast("Erro ao localizar a área da barragem.", "error");
+        return;
+    }
+
+    showToast("Gerando imagem PNG...", "info");
+
+    // Injeta a biblioteca html2canvas se ainda não estiver carregada (com Fallback Multi-CDN)
+    if (typeof window.html2canvas === 'undefined') {
+        const cdns = [
+            'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+            'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.js'
+        ];
+
+        let carregou = false;
+        for (const url of cdns) {
+            try {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = () => { carregou = true; resolve(); };
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+                if (carregou && typeof window.html2canvas !== 'undefined') break;
+            } catch (e) {
+                console.warn(`⚠️ Falha ao carregar html2canvas de ${url}, tentando fallback...`);
+            }
+        }
+
+        if (typeof window.html2canvas === 'undefined') {
+            console.error("❌ Não foi possível carregar o motor html2canvas de nenhuma CDN.");
+            showToast("Erro ao carregar o motor de captura de imagem.", "error");
+            return;
+        }
+    }
+
+    try {
+        const canvas = await window.html2canvas(painelBarragem, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            ignoreElements: (element) => {
+                return element.getAttribute('data-html2canvas-ignore') === 'true';
+            },
+            onclone: (clonedDoc) => {
+                const clonedHeader = clonedDoc.getElementById('bar-header-export');
+                const clonedFooter = clonedDoc.getElementById('bar-footer-export');
+                if (clonedHeader) clonedHeader.style.display = 'block';
+                if (clonedFooter) clonedFooter.style.display = 'block';
+            }
+        });
+
+        const imageBase64 = canvas.toDataURL('image/png');
+        const elNomeClube = document.getElementById('txt-nome-clube');
+        let nomeClubeRaw = elNomeClube ? elNomeClube.textContent.trim() : 'Clube';
+        if (!nomeClubeRaw || nomeClubeRaw.toUpperCase() === 'CARREGANDO...') {
+            nomeClubeRaw = localStorage.getItem('setpoint_jogador_clube_nome') || 'Clube';
+        }
+        
+        const nomeArquivo = `Barragem_${nomeClubeRaw.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.png`;
+        const isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+
+        if (isNative) {
+            const cleanBase64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+            const Filesystem = window.Capacitor.Plugins.Filesystem;
+            const FileOpener = window.Capacitor.Plugins.FileOpener;
+
+            const fileResult = await Filesystem.writeFile({
+                path: nomeArquivo,
+                data: cleanBase64,
+                directory: 'CACHE'
+            });
+
+            await FileOpener.openFile({
+                path: fileResult.uri,
+                mimeType: 'image/png'
+            });
+
+            showToast("Imagem da Barragem gerada e aberta!", "success");
+        } else {
+            const link = document.createElement('a');
+            link.download = nomeArquivo;
+            link.href = imageBase64;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("Imagem da Barragem baixada com sucesso!", "success");
+        }
+
+    } catch (err) {
+        console.error("❌ Erro ao capturar imagem da barragem:", err);
+        showToast("Erro ao gerar a imagem PNG da barragem.", "error");
+    }
+}
+
 
 function mudarCategoriaBarragemHistoricaSaaS(novaCat) {
     categoriaHistoricaAtivaSaaS = novaCat;

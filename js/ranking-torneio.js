@@ -2394,6 +2394,10 @@ function encerrarInscricoesECriarChavesSaaS() {
             const categoriasFila = Object.keys(inscritosAptosPorCategoria).sort();
             const updatesGerais = {};
             updatesGerais[`${raizBanco}/config/ranking/faseAtual`] = 3;
+			
+			// 🛑 FECHAMENTO DE CONVITES: Encerra formalmente as inscrições
+            updatesGerais[`${raizBanco}/convites_ranking/status`] = "fechado";
+            updatesGerais[`${raizBanco}/convites_ranking/pendentes`] = null;
 
             const executarSorteioCategoriaFila = (idxFila) => {
                 const catChaveAtual = categoriasFila[idxFila];
@@ -2519,6 +2523,10 @@ function encerrarInscricoesECriarChavesSaaS() {
             showToast("Montando tabelas das categorias...", "info");
             const updates = {};
             updates[`${raizBanco}/config/ranking/faseAtual`] = 3;
+			
+			// 🛑 FECHAMENTO DE CONVITES: Encerra formalmente as inscrições
+            updates[`${raizBanco}/convites_ranking/status`] = "fechado";
+            updates[`${raizBanco}/convites_ranking/pendentes`] = null;
 
             Object.keys(inscritosAptosPorCategoria).forEach(chaveTab => {
                 updates[`${raizBanco}/ranking/tabelas/${chaveTab}`] = inscritosAptosPorCategoria[chaveTab];
@@ -2651,20 +2659,22 @@ async function encerrarFase3EAvancarSaaS() {
     const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
     const emFaseMataMata = (modelo === 'grupos' && ((emMataMataDireto && faseAtual === 3) || (!emMataMataDireto && faseAtual === 4)));
 
-    // 🛡️ 1. PRÉ-VALIDAÇÃO INTELIGENTE DO MATA-MATA (BLOQUEIA O MODAL SE HOUVER PENDÊNCIAS)
+    // 🛡️ 1. PRÉ-VALIDAÇÃO INTELIGENTE DO MATA-MATA (CONSOLIDA TODAS AS CLASSES - OPÇÃO 2)
     if (emFaseMataMata) {
         const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
         const partidasMap = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
 
-        for (const chaveCat of Object.keys(chavesMap)) {
+        const chavesKeys = Object.keys(chavesMap);
+        const temMultiploGenero = chavesKeys.some(k => k.endsWith('_FEMININO')) && chavesKeys.some(k => k.endsWith('_MASCULINO'));
+
+        let totalPendentesGeral = 0;
+        const pendenciasPorClasse = [];
+
+        chavesKeys.forEach(chaveCat => {
             const chaveInfo = chavesMap[chaveCat] || {};
             const rodadaAtual = chaveInfo.rodada1 || [];
-            const tamChave = parseInt(chaveInfo.faseAtual, 10) || (rodadaAtual.length * 2) || 2;
-            const nomeFaseAtual = (typeof obterRotuloFaseMataMataSaaS === 'function') 
-                ? obterRotuloFaseMataMataSaaS(tamChave) 
-                : "fase atual";
 
-            let totalPendentes = 0;
+            let pendentesDestaCat = 0;
             rodadaAtual.forEach(conf => {
                 if (conf.isBye || !conf.jogador2Id) return;
 
@@ -2679,18 +2689,34 @@ async function encerrarFase3EAvancarSaaS() {
                 });
 
                 if (!partidaSalva || !partidaSalva.vencedorId) {
-                    totalPendentes++;
+                    pendentesDestaCat++;
                 }
             });
 
-            if (totalPendentes > 0) {
-                const artigoFase = (tamChave === 2) ? "na" : "nas";
-                const verbo = (totalPendentes === 1) ? "Existe" : "Existem";
-                const substantivo = (totalPendentes === 1) ? "partida pendente" : "partidas pendentes";
-
-                showToast(`${verbo} ${totalPendentes} ${substantivo} ${artigoFase} ${nomeFaseAtual}.`, "warning");
-                return; // ⛔ INTERROMPE A EXECUÇÃO: NÃO ABRE O MODAL
+            if (pendentesDestaCat > 0) {
+                totalPendentesGeral += pendentesDestaCat;
+                const partesCat = chaveCat.split('_');
+                const genSufixo = (temMultiploGenero && partesCat[1] && partesCat[1] !== 'UNIFICADO') 
+                    ? ` (${partesCat[1] === 'FEMININO' ? 'Fem' : 'Masc'})` 
+                    : '';
+                const rotuloClasse = `Classe ${partesCat[0]}${genSufixo}`;
+                pendenciasPorClasse.push(`${pendentesDestaCat} na ${rotuloClasse}`);
             }
+        });
+
+        if (totalPendentesGeral > 0) {
+            let msgToast = '';
+            if (pendenciasPorClasse.length === 1) {
+                const classeInfo = pendenciasPorClasse[0].replace(/^\d+\s+na\s+/, '');
+                msgToast = totalPendentesGeral === 1
+                    ? `Existe 1 partida pendente na ${classeInfo}.`
+                    : `Existem ${totalPendentesGeral} partidas pendentes na ${classeInfo}.`;
+            } else {
+                msgToast = `Existem ${totalPendentesGeral} partidas pendentes (${pendenciasPorClasse.join(' • ')}).`;
+            }
+
+            showToast(msgToast, "warning");
+            return; // ⛔ INTERROMPE A EXECUÇÃO: NÃO ABRE O MODAL
         }
     }
 
@@ -2984,6 +3010,15 @@ async function encerrarFase3EAvancarSaaS() {
 				// 🧹 LIMPEZA DE CICLO: Extingue a fila de espera e inscrições ao homologar o torneio
                 updates[`${raizBanco}/config/ranking/filaEspera`] = null;
                 updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
+				
+				// 🧠 SINCRONIZAÇÃO IMEDIATA DA MEMÓRIA RAM (ACERVO HISTÓRICO):
+                const novaEdicaoHistorica = { id: edicaoId, ...objetoHistorico };
+                if (typeof acervoHistoricoGlobalSaaS !== 'undefined' && Array.isArray(acervoHistoricoGlobalSaaS)) {
+                    acervoHistoricoGlobalSaaS = acervoHistoricoGlobalSaaS.filter(item => item.id !== edicaoId);
+                    acervoHistoricoGlobalSaaS.unshift(novaEdicaoHistorica);
+                } else {
+                    acervoHistoricoGlobalSaaS = [novaEdicaoHistorica];
+                }
             }
 
             await database.ref().update(updates);

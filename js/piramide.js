@@ -215,7 +215,7 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
                 ${btnPngHtml}
 
                 <!-- 🏛️ CABEÇALHO DINÂMICO DA PIRÂMIDE (VISÍVEL NO ECRÃ E NA FOTO) -->
-                <div id="pyr-header-export" class="pyr-header-card" style="display: block; text-align: center; margin-bottom: 16px; padding-top: 4px; padding-left: 36px; padding-right: 36px; width: 100%; box-sizing: border-box;">
+                <div id="pyr-header-export" class="pyr-header-card" style="display: none; text-align: center; margin-bottom: 16px; padding-top: 4px; padding-left: 36px; padding-right: 36px; width: 100%; box-sizing: border-box;">
                     <div style="font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px;">
                         ${nomeClube} • SETPOINT SAAS
                     </div>
