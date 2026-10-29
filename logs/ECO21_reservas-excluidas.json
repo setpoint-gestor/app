@@ -4774,5 +4774,127 @@
         "hora": 10
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-29T11:24:12.942Z",
+    "dataLocal": "29/10/2026, 08:24:12",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "20:00 - 22:00",
+    "duracao": "2 Horas",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANDY MURRAY",
+    "confirmacoes": {
+      "Murray": true,
+      "Verdasco": true
+    },
+    "jogadores": "Murray, Verdasco",
+    "jogadores_completo": "ANDY MURRAY, FERNANDO VERDASCO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 20
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 21
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-29T11:24:12.954Z",
+    "dataLocal": "29/10/2026, 08:24:12",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "22:00 - 23:00",
+    "duracao": "1 Hora",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "FERNANDO VERDASCO",
+    "confirmacoes": {
+      "Murray": true,
+      "Verdasco": true
+    },
+    "jogadores": "Verdasco, Murray",
+    "jogadores_completo": "FERNANDO VERDASCO, ANDY MURRAY",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 22
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-29T11:24:12.954Z",
+    "dataLocal": "29/10/2026, 08:24:12",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "20:00 - 22:00",
+    "duracao": "2 Horas",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alex": true
+    },
+    "jogadores": "Adriano Feitosa, Alex",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 7,
+        "hora": 20
+      },
+      {
+        "quadra": "Quadra - 2",
+        "dia": 7,
+        "hora": 21
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-10-29T11:24:12.954Z",
+    "dataLocal": "29/10/2026, 08:24:12",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "22:00 - 23:00",
+    "duracao": "1 Hora",
+    "data": "25-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alex": true
+    },
+    "jogadores": "Alex, Adriano Feitosa",
+    "jogadores_completo": "ALEX SOUZA, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 7,
+        "hora": 22
+      }
+    ]
   }
 ]
