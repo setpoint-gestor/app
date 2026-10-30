@@ -4952,5 +4952,32 @@
         "hora": 22
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-30T19:00:35.017Z",
+    "dataLocal": "30/10/2026, 16:00:35",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "16:00 - 17:00",
+    "duracao": "1 Hora",
+    "data": "30-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Alex": true,
+      "Ana Francisca": true
+    },
+    "jogadores": "Ana Francisca, Alex",
+    "jogadores_completo": "ANA FRANCISCA SANTOS, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "dia": 5,
+        "hora": 16
+      }
+    ]
   }
 ]
