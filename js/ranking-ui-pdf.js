@@ -29,7 +29,7 @@ let modoVisaoMataMataSaaS = 'lista'; // 'lista' ou 'arvore'
 /* 1. LEADERBOARD / GAVETA DA CLASSIFICAÇÃO                 */
 /* ======================================================== */
 
-function abrirLeaderboardSaaS() {
+function abrirLeaderboardSaaS(classeForcada = null, generoForcado = null) {
     if (navigator.vibrate) navigator.vibrate(30); 
 
     const sheet = document.getElementById('sheet-leaderboard-ranking');
@@ -57,49 +57,58 @@ function abrirLeaderboardSaaS() {
     if (containerDropdowns) containerDropdowns.style.display = '';
 
     // INTEGRAÇÃO INTELIGENTE DE SELEÇÃO DE CLASSE & GÊNERO
-    const conf = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
-    const temTorneioAtivo = (faseAtual >= 2 && cal.nomeTorneio);
+    if (classeForcada) {
+        abaClasseAtivaSaaS = classeForcada;
+        if (generoForcado) abaGeneroAtivaSaaS = generoForcado;
+    } else if (typeof isGestorLogado !== 'undefined' && isGestorLogado && typeof categoriaGestaoAtivaSaaS !== 'undefined' && categoriaGestaoAtivaSaaS) {
+        const partesGestao = categoriaGestaoAtivaSaaS.split('_');
+        abaClasseAtivaSaaS = partesGestao[0] || 'A';
+        abaGeneroAtivaSaaS = partesGestao[1] || 'MASCULINO';
+    } else {
+        const conf = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const cal = conf.calendario || {};
+        const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+        const temTorneioAtivo = (faseAtual >= 2 && cal.nomeTorneio);
 
-    const idLogado = localStorage.getItem('jogadorLogadoId');
-    const atleta = (idLogado && typeof jogadoresGlobal !== 'undefined') ? jogadoresGlobal[idLogado] : null;
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+        const atleta = (idLogado && typeof jogadoresGlobal !== 'undefined') ? jogadoresGlobal[idLogado] : null;
 
-    let classeAtleta = atleta?.classe ? atleta.classe.toUpperCase().replace('CLASSE_', '').trim() : '';
-    let generoAtleta = atleta?.genero ? atleta.genero.toUpperCase().trim() : '';
-    if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+        let classeAtleta = atleta?.classe ? atleta.classe.toUpperCase().replace('CLASSE_', '').trim() : '';
+        let generoAtleta = atleta?.genero ? atleta.genero.toUpperCase().trim() : '';
+        if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
 
-    if (temTorneioAtivo && Array.isArray(cal.categoriasHabilitadas) && cal.categoriasHabilitadas.length > 0) {
-        const catsHabilitadas = cal.categoriasHabilitadas;
+        if (temTorneioAtivo && Array.isArray(cal.categoriasHabilitadas) && cal.categoriasHabilitadas.length > 0) {
+            const catsHabilitadas = cal.categoriasHabilitadas;
 
-        const classesTorneio = catsHabilitadas
-            .filter(c => c.startsWith('CLASSE_'))
-            .map(c => c.replace('CLASSE_', '').trim());
+            const classesTorneio = catsHabilitadas
+                .filter(c => c.startsWith('CLASSE_'))
+                .map(c => c.replace('CLASSE_', '').trim());
 
-        const generosTorneio = catsHabilitadas
-            .filter(c => ['MASCULINO', 'FEMININO'].includes(c));
+            const generosTorneio = catsHabilitadas
+                .filter(c => ['MASCULINO', 'FEMININO'].includes(c));
 
-        const atletaTemClasseNoTorneio = classeAtleta && classesTorneio.includes(classeAtleta);
-        const atletaTemGeneroNoTorneio = generoAtleta && (generosTorneio.length === 0 || generosTorneio.includes(generoAtleta));
+            const atletaTemClasseNoTorneio = classeAtleta && classesTorneio.includes(classeAtleta);
+            const atletaTemGeneroNoTorneio = generoAtleta && (generosTorneio.length === 0 || generosTorneio.includes(generoAtleta));
 
-        if (atletaTemClasseNoTorneio) {
-            abaClasseAtivaSaaS = classeAtleta;
-        } else if (classesTorneio.length > 0) {
-            abaClasseAtivaSaaS = classesTorneio[0];
+            if (atletaTemClasseNoTorneio) {
+                abaClasseAtivaSaaS = classeAtleta;
+            } else if (classesTorneio.length > 0) {
+                abaClasseAtivaSaaS = classesTorneio[0];
+            } else {
+                abaClasseAtivaSaaS = classeAtleta || 'A';
+            }
+
+            if (atletaTemGeneroNoTorneio && generoAtleta) {
+                abaGeneroAtivaSaaS = generoAtleta;
+            } else if (generosTorneio.length > 0) {
+                abaGeneroAtivaSaaS = generosTorneio[0];
+            } else {
+                abaGeneroAtivaSaaS = generoAtleta || 'MASCULINO';
+            }
         } else {
             abaClasseAtivaSaaS = classeAtleta || 'A';
-        }
-
-        if (atletaTemGeneroNoTorneio && generoAtleta) {
-            abaGeneroAtivaSaaS = generoAtleta;
-        } else if (generosTorneio.length > 0) {
-            abaGeneroAtivaSaaS = generosTorneio[0];
-        } else {
             abaGeneroAtivaSaaS = generoAtleta || 'MASCULINO';
         }
-    } else {
-        abaClasseAtivaSaaS = classeAtleta || 'A';
-        abaGeneroAtivaSaaS = generoAtleta || 'MASCULINO';
     }
 
     // 🎨 1. Renderiza o conteúdo PRIMEIRO na memória (modal ainda invisível)
@@ -2189,11 +2198,13 @@ function toggleSanfonaHallCampeoesSaaS(totalAtletas) {
 
 function trocarClasseLeaderboardSaaS(cls) {
     abaClasseAtivaSaaS = cls;
+    abaFaseAtivaSaaS = 'AUTO';
     renderizarLeaderboardSaaS();
 }
 
 function trocarGeneroLeaderboardSaaS(gen) {
     abaGeneroAtivaSaaS = gen;
+    abaFaseAtivaSaaS = 'AUTO';
     renderizarLeaderboardSaaS();
 }
 

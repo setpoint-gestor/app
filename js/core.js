@@ -814,6 +814,17 @@ function iniciarOuvinteMestreSaaS() {
         if (gavetaAgenda && gavetaAgenda.style.display === 'block' && typeof renderizarAgendaPessoalSaaS === 'function') {
             renderizarAgendaPessoalSaaS();
         }
+
+        // 🏆 REATIVIDADE EM TEMPO REAL DO RANKING (Esteira & Botão do Rodapé)
+        const modalRanking = document.getElementById('modal-config-ranking');
+        if (modalRanking && modalRanking.style.display === 'flex') {
+            if (typeof renderizarGestaoTemporadaSaaS === 'function') {
+                renderizarGestaoTemporadaSaaS();
+            }
+            if (typeof atualizarBotaoRodapeRankingSaaS === 'function') {
+                atualizarBotaoRodapeRankingSaaS();
+            }
+        }
     });
 	
 	// --- 4.11. OUVINTE MESTRE DOS CONVITES DO RANKING ---

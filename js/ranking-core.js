@@ -25,7 +25,7 @@ let nomeDesistenteRETSaaS = "";
 let motivoRETSaaS = "";
 let motivoCustomizadoRETSaaS = "";
 
-let eModoArbitroAtivoSumula = false;
+let eModoArbitroAtivoSumula = false; 
 let intervaloTimerValidacao = null;
 
 /* ======================================================== */
@@ -1115,12 +1115,26 @@ function salvarSumulaSaaS() {
             return parseInt(el.value, 10);
         };
 
-        const s1j1 = getVal('inp-s1-j1'), s1j2 = getVal('inp-s1-j2');
-        const tb1j1 = getVal('inp-tb1-j1'), tb1j2 = getVal('inp-tb1-j2');
-        const s2j1 = getVal('inp-s2-j1'), s2j2 = getVal('inp-s2-j2');
-        const tb2j1 = getVal('inp-tb2-j1'), tb2j2 = getVal('inp-tb2-j2');
-        const s3j1 = getVal('inp-s3-j1'), s3j2 = getVal('inp-s3-j2');
-        const tb3j1 = getVal('inp-tb3-j1'), tb3j2 = getVal('inp-tb3-j2');
+        let s1j1 = getVal('inp-s1-j1'), s1j2 = getVal('inp-s1-j2');
+        let tb1j1 = getVal('inp-tb1-j1'), tb1j2 = getVal('inp-tb1-j2');
+        let s2j1 = getVal('inp-s2-j1'), s2j2 = getVal('inp-s2-j2');
+        let tb2j1 = getVal('inp-tb2-j1'), tb2j2 = getVal('inp-tb2-j2');
+        let s3j1 = getVal('inp-s3-j1'), s3j2 = getVal('inp-s3-j2');
+        let tb3j1 = getVal('inp-tb3-j1'), tb3j2 = getVal('inp-tb3-j2');
+
+        // 🎯 REGRA SSOT: Se um dos campos do set estiver preenchido e o outro em branco, assume 0 (zero) para o vazio
+        if (!isNaN(s1j1) || !isNaN(s1j2)) {
+            if (isNaN(s1j1)) s1j1 = 0;
+            if (isNaN(s1j2)) s1j2 = 0;
+        }
+        if (!isNaN(s2j1) || !isNaN(s2j2)) {
+            if (isNaN(s2j1)) s2j1 = 0;
+            if (isNaN(s2j2)) s2j2 = 0;
+        }
+        if (!isNaN(s3j1) || !isNaN(s3j2)) {
+            if (isNaN(s3j1)) s3j1 = 0;
+            if (isNaN(s3j2)) s3j2 = 0;
+        }
 
         const formatarSetStr = (g1, g2, tb1, tb2) => {
             if (isNaN(g1) || isNaN(g2)) return null;
@@ -1146,6 +1160,16 @@ function salvarSumulaSaaS() {
         }
 
         if (modoRETAtivoSaaS) {
+            // 🛡️ REGRA SSOT: Desistência (RET) exige obrigatoriamente que ao menos 1 game tenha sido disputado
+            const totalGamesDisputados = (parciais.set1 ? (parciais.set1.j1 + parciais.set1.j2) : 0) +
+                                         (parciais.set2 ? (parciais.set2.j1 + parciais.set2.j2) : 0) +
+                                         (parciais.set3 ? (parciais.set3.j1 + parciais.set3.j2) : 0);
+
+            if (partesPlacar.length === 0 || totalGamesDisputados === 0) {
+                showToast("Desistência (RET) exige ao menos 1 game disputado. Sem games disputados, declare W.O.", "warning");
+                return;
+            }
+
             if (!desistenteRETSaaS) {
                 showToast("Selecione o atleta que desistiu da partida.", "warning");
                 return;
@@ -1168,7 +1192,7 @@ function salvarSumulaSaaS() {
             desistenteCodigo = desistenteRETSaaS;
             vencedorCodigo = (desistenteRETSaaS === 'J1') ? "J2" : "J1";
             nomeVencedor = (vencedorCodigo === 'J1') ? nomeJ1 : nomeJ2;
-            placarFormatado = partesPlacar.length > 0 ? `${partesPlacar.join(' ')} (RET)` : "RET";
+            placarFormatado = `${partesPlacar.join(' ')} (RET)`;
         } else {
             const txtVencedorDOM = document.getElementById('label-vencedor-sumula');
             nomeVencedor = txtVencedorDOM ? txtVencedorDOM.textContent.trim() : "";
@@ -2822,13 +2846,13 @@ function montarGruposUniversaisSaaS(listaIDs, mapaGruposReais = {}, tamanhoGrupo
     const totalSlots = temNullsIntercalados ? listaIDs.length : listaIDsLimpos.length;
     const numGruposCalculado = Math.ceil(totalSlots / tamGrupo);
 
-    const tagsExistentes = Object.keys(mapaGruposReais).sort((a, b) => {
-        const numA = parseInt(a.replace(/\D/g, '')) || 0;
-        const numB = parseInt(b.replace(/\D/g, '')) || 0;
-        return numA - numB;
+    let maxNumGrupoPartidas = 0;
+    Object.keys(mapaGruposReais).forEach(tag => {
+        const n = parseInt(tag.replace(/\D/g, ''), 10) || 0;
+        if (n > maxNumGrupoPartidas) maxNumGrupoPartidas = n;
     });
 
-    const totalGruposExibir = Math.max(numGruposCalculado, tagsExistentes.length);
+    const totalGruposExibir = Math.max(numGruposCalculado, maxNumGrupoPartidas);
     const baseGrupo = totalGruposExibir > 0 ? Math.floor(listaIDsLimpos.length / totalGruposExibir) : 0;
     const restoGrupo = totalGruposExibir > 0 ? listaIDsLimpos.length % totalGruposExibir : 0;
 
@@ -2836,7 +2860,12 @@ function montarGruposUniversaisSaaS(listaIDs, mapaGruposReais = {}, tamanhoGrupo
     let ponteiroInscritos = 0;
 
     for (let g = 0; g < totalGruposExibir; g++) {
-        const tagAtual = tagsExistentes[g] || `G${g + 1}`;
+        const numGrupo = g + 1;
+        // Localiza a etiqueta exata deste grupo pelo número (ex: G1, G2), sem desfasamento de índice
+        const tagEncontrada = Object.keys(mapaGruposReais).find(tag => {
+            return (parseInt(tag.replace(/\D/g, ''), 10) || 0) === numGrupo;
+        });
+        const tagAtual = tagEncontrada || `G${numGrupo}`;
         let fatiaRaw = [];
 
         if (temNullsIntercalados) {
@@ -2852,7 +2881,7 @@ function montarGruposUniversaisSaaS(listaIDs, mapaGruposReais = {}, tamanhoGrupo
         const limiteAtletasReais = fatiaRaw.filter(Boolean).length;
         let membrosChave = [];
 
-        // 1. Prioridade: Atletas com partidas registradas neste grupo
+        // 1. Prioridade: Atletas com partidas registadas neste grupo específico
         if (mapaGruposReais[tagAtual] && mapaGruposReais[tagAtual].size > 0) {
             membrosChave = Array.from(mapaGruposReais[tagAtual]);
         }
@@ -2865,7 +2894,7 @@ function montarGruposUniversaisSaaS(listaIDs, mapaGruposReais = {}, tamanhoGrupo
         });
 
         resultadoGrupos.push({
-            numGrupo: g + 1,
+            numGrupo: numGrupo,
             tagGrupo: tagAtual,
             membros: membrosChave
         });

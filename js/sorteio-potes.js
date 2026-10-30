@@ -27,7 +27,7 @@ let sorteioPotesGlobal = {
 // BLOCO 2: INJEÇÃO DINÂMICA DO MODAL E CSS NO DOM (RESPONSIVO MOBILE)
 // ========================================================
 function garantirModalSorteioNoDOMSaaS() {
-    if (document.getElementById('modal-sorteio-potes')) return;  
+    if (document.getElementById('modal-sorteio-potes')) return;   
 
     const modalHTML = `
     <style id="style-sorteio-potes-anim">
@@ -526,7 +526,20 @@ window.SorteioPotes = {
             elPilula.setAttribute('style', `display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; ${cfg.estilo}`);
         }
 
-        if (elTitle) elTitle.innerText = sorteioPotesGlobal.torneioNome;
+        if (elTitle) {
+            const rawTitle = sorteioPotesGlobal.torneioNome || "TORNEIO";
+            if (rawTitle.includes('•')) {
+                const partesTitulo = rawTitle.split('•');
+                const nomePrincipal = partesTitulo[0].trim();
+                const subtituloCat = partesTitulo.slice(1).join('•').trim();
+                elTitle.innerHTML = `
+                    <span style="display: block; font-size: 16px; font-weight: 800; color: #ffffff; line-height: 1.3;">${nomePrincipal}</span>
+                    <span style="display: block; font-size: 14.5px; font-weight: 700; color: #38bdf8; margin-top: 4px; line-height: 1.2;">${subtituloCat}</span>
+                `;
+            } else {
+                elTitle.innerHTML = rawTitle;
+            }
+        }
 
         // 🎯 PÍLULA DE INFORMAÇÕES INTELIGENTE (POTE ÚNICO VS MULTIPLOS POTES)
         const totalAtletas = preparo.sequencia.length;

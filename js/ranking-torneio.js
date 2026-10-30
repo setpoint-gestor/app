@@ -573,6 +573,7 @@ async function zerarRankingSaaS() {
                 updates['config/ranking/calendario'] = null;
                 updates['config/ranking/inscritosConfirmados'] = null;
                 updates['config/ranking/filaEspera'] = null;
+                updates['config/ranking/torneioConcluido'] = null;
 
                 caminhosReservasExcluir.forEach(path => { updates[path] = null; });
                 caminhosNotificacoesExcluir.forEach(path => { updates[path] = null; }); 
@@ -591,6 +592,7 @@ async function zerarRankingSaaS() {
                     configRegrasGlobal.ranking.calendario = null;
                     configRegrasGlobal.ranking.inscritosConfirmados = null;
                     configRegrasGlobal.ranking.filaEspera = null;
+                    configRegrasGlobal.ranking.torneioConcluido = null;
                 }
 
                 limparFormularioFase1SaaS();
@@ -619,22 +621,40 @@ async function zerarRankingSaaS() {
 /* 3. ESTEIRA DINÂMICA DA TEMPORADA (MÁQUINA DE ESTADOS)   */
 /* ======================================================== */
 
+let categoriaGestaoAtivaSaaS = null;
+
 function renderizarGestaoTemporadaSaaS() {
     const containerStepper = document.getElementById('stepper-gestor-container');
     const cardResumo = document.getElementById('card-resumo-calendario-saas');
     if (!containerStepper) return;
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
     
     // 💡 Lógica Neutra: Se houver formato salvo usa ele, senão assume o 'generico'
-    const temContratoSalvo = !!conf.calendario?.formatoTorneio;
-    const modelo = temContratoSalvo ? conf.calendario.formatoTorneio : "generico";
-    
-    // 🎯 Leitura do parâmetro de Fase Inicial do modelo Grupos
-    const faseInicialGrupos = conf.grupos?.faseInicial || "grupos";
-    
+    const temContratoSalvo = !!cal.formatoTorneio;
+    const modelo = temContratoSalvo ? cal.formatoTorneio : "generico";
+
+    // 🛡️ DETEÇÃO DE HOMOLOGAÇÃO: Verifica se a edição ativa já foi homologada no histórico
+    const edicaoIdAtual = cal.nomeTorneio ? `${new Date().getFullYear()}_${cal.nomeTorneio.replace(/\s+/g, '_')}` : '';
+    const jaEstaNoHistorico = edicaoIdAtual && (
+        typeof acervoHistoricoGlobalSaaS !== 'undefined' && 
+        Array.isArray(acervoHistoricoGlobalSaaS) && 
+        acervoHistoricoGlobalSaaS.some(item => item.id === edicaoIdAtual)
+    );
+    const itemHistoricoEdicao = jaEstaNoHistorico 
+        ? acervoHistoricoGlobalSaaS.find(item => item.id === edicaoIdAtual) 
+        : null;
+
+    // 🎯 Prioriza a faseInicial congelada no contrato do torneio (imune a trocas na Aba 2)
+    const faseInicialGrupos = cal.faseInicial || itemHistoricoEdicao?.contrato?.faseInicial || conf.grupos?.faseInicial || "grupos";
     const faseAtual = parseInt(conf.faseAtual, 10) || 1;
-    const cal = conf.calendario || {};
+
+    // 🎯 Identificação universal do estado concluído
+    const emMataMataDiretoEsteira = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
+    const torneioConcluido = conf.torneioConcluido === true || jaEstaNoHistorico || 
+        (modelo !== "grupos" && faseAtual >= 4) || 
+        (modelo === "grupos" && ((emMataMataDiretoEsteira && faseAtual >= 4) || (!emMataMataDiretoEsteira && faseAtual >= 5)));
 
     // 🎯 Ajuste dinâmico da esteira de Grupos conforme a Fase Inicial (5 ou 4 passos)
     const rotulosGrupos = (faseInicialGrupos === "matamata")
@@ -645,10 +665,11 @@ function renderizarGestaoTemporadaSaaS() {
         grupos: rotulosGrupos,
         barragem: ["1. Calendário", "2. Inscrições", "3. Pontos Corridos", "4. Concluído"],
         piramide: ["1. Calendário", "2. Inscrições", "3. Escada", "4. Concluído"],
-        generico: ["1. Calendário", "2. Inscrições", "3. Competição", "4. Concluído"] // 🌟 Esteira Base
+        generico: ["1. Calendário", "2. Inscrições", "3. Competição", "4. Concluído"]
     };
 
     const listaRotulos = rotulosPorModelo[modelo] || rotulosPorModelo.generico;
+    const totalPassos = listaRotulos.length;
 
     let htmlStepper = '';
     listaRotulos.forEach((rotulo, index) => {
@@ -656,11 +677,20 @@ function renderizarGestaoTemporadaSaaS() {
         let classeNode = 'step-node';
         let conteudoCirculo = numFase;
 
-        if (numFase < faseAtual) {
-            classeNode += ' concluido';
-            conteudoCirculo = '<i class="material-icons" style="font-size: 16px;">check</i>';
-        } else if (numFase === faseAtual) {
-            classeNode += ' ativo';
+        if (torneioConcluido) {
+            if (numFase < totalPassos) {
+                classeNode += ' concluido';
+                conteudoCirculo = '<i class="material-icons" style="font-size: 16px;">check</i>';
+            } else {
+                classeNode += ' ativo';
+            }
+        } else {
+            if (numFase < faseAtual) {
+                classeNode += ' concluido';
+                conteudoCirculo = '<i class="material-icons" style="font-size: 16px;">check</i>';
+            } else if (numFase === faseAtual) {
+                classeNode += ' ativo';
+            }
         }
 
         htmlStepper += `
@@ -672,24 +702,112 @@ function renderizarGestaoTemporadaSaaS() {
     });
     containerStepper.innerHTML = htmlStepper;
 
-    // Se a fase for 1 (início/zerado), direciona para o painel neutro (Painel 5)
-        let painelAlvo = faseAtual;
-        if (faseAtual === 1) {
-            painelAlvo = 5;
-        } else if (modelo !== "grupos" && faseAtual === 4) {
-            painelAlvo = 5;
-        } else if (modelo === "grupos" && faseInicialGrupos === "matamata") {
-            if (faseAtual === 3) painelAlvo = 4; // No Mata-Mata Direto, a Fase 3 exibe o painel do Mata-Mata (#fase-panel-4)
-            if (faseAtual === 4) painelAlvo = 5; // A Fase 4 encerra e exibe o painel Concluído (#fase-panel-5)
-        }
+    // Se a fase for 1 ou o torneio estiver homologado, exibe o Painel 5 (Dourado de Campeões)
+    let painelAlvo = faseAtual;
+    if (faseAtual === 1 || torneioConcluido) {
+        painelAlvo = 5;
+    } else if (modelo === "grupos" && faseInicialGrupos === "matamata") {
+        if (faseAtual === 3) painelAlvo = 4;
+        if (faseAtual === 4) painelAlvo = 5;
+    }
 
-        document.querySelectorAll('#container-fases-gestor .fase-panel').forEach((panel, idx) => {
-            if ((idx + 1) === painelAlvo) {
-                panel.classList.add('ativa');
-            } else {
-                panel.classList.remove('ativa');
+    document.querySelectorAll('#container-fases-gestor .fase-panel').forEach((panel, idx) => {
+        if ((idx + 1) === painelAlvo) {
+            panel.classList.add('ativa');
+        } else {
+            panel.classList.remove('ativa');
+        }
+    });
+
+    
+    // 🎯 SELETOR MODULAR DE CATEGORIA (CLASSE E GÊNERO) NA GESTÃO
+    const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+    const tabelasMap = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) ? rankingTabelasGlobal : {};
+    const categoriasTorneio = Array.from(new Set([
+        ...Object.keys(chavesMap),
+        ...Object.keys(tabelasMap)
+    ])).sort();
+
+    // Oculta o seletor quando o torneio estiver concluído ou zerado
+    const emFaseCompeticao = (faseAtual >= 3 && !torneioConcluido && categoriasTorneio.length > 0);
+
+    let containerSeletorCat = document.getElementById('container-seletor-gestor-categoria');
+    const containerFases = document.getElementById('container-fases-gestor');
+	
+    if (!containerSeletorCat && containerFases) {
+        containerSeletorCat = document.createElement('div');
+        containerSeletorCat.id = 'container-seletor-gestor-categoria';
+        containerFases.parentElement.insertBefore(containerSeletorCat, containerFases);
+    }
+
+    if (containerSeletorCat) {
+        if (!emFaseCompeticao) {
+            containerSeletorCat.style.display = 'none';
+        } else {
+            if (!categoriaGestaoAtivaSaaS || !categoriasTorneio.includes(categoriaGestaoAtivaSaaS)) {
+                categoriaGestaoAtivaSaaS = categoriasTorneio[0] || 'A_MASCULINO';
             }
-        });
+
+            const classesDisponiveis = Array.from(new Set(categoriasTorneio.map(cat => cat.split('_')[0]))).sort();
+            const generosDisponiveis = Array.from(new Set(categoriasTorneio.map(cat => cat.split('_')[1] || 'MASCULINO'))).sort();
+
+            const partesAtiva = (categoriaGestaoAtivaSaaS || 'A_MASCULINO').split('_');
+            const classeAtiva = partesAtiva[0] || 'A';
+            const generoAtivo = partesAtiva[1] || 'MASCULINO';
+
+            const divGenero = conf.divisaoGenero || 'separado';
+
+            let optionsClasseHtml = classesDisponiveis.map(c => `
+                <option value="${c}" ${c === classeAtiva ? 'selected' : ''}>Classe ${c}</option>
+            `).join('');
+
+            let selectGeneroHtml = '';
+            if (divGenero !== 'unificado') {
+                const optionsGen = generosDisponiveis.map(g => `
+                    <option value="${g}" ${g === generoAtivo ? 'selected' : ''}>${g === 'FEMININO' ? 'Feminino' : 'Masculino'}</option>
+                `).join('');
+
+                selectGeneroHtml = `
+                    <select id="select-gestor-genero" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: #1e293b; outline: none; cursor: pointer;">
+                        ${optionsGen}
+                    </select>
+                `;
+            }
+
+            containerSeletorCat.style.cssText = 'display: flex; gap: 8px; justify-content: center; align-items: center; margin: 0 0 14px 0; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;';
+            containerSeletorCat.innerHTML = `
+                <span style="font-size: 11.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;">
+                    <i class="material-icons" style="font-size: 16px; color: #8b5cf6;">tune</i> Categoria:
+                </span>
+                <select id="select-gestor-classe" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: #1e293b; outline: none; cursor: pointer;">
+                    ${optionsClasseHtml}
+                </select>
+                ${selectGeneroHtml}
+            `;
+
+            const selCls = document.getElementById('select-gestor-classe');
+            const selGen = document.getElementById('select-gestor-genero');
+
+            const aplicarTrocaCategoriaGestao = () => {
+                const novaClasse = selCls ? selCls.value : classeAtiva;
+                const novoGenero = (selGen && divGenero !== 'unificado') ? selGen.value : (divGenero === 'unificado' ? 'UNIFICADO' : generoAtivo);
+                
+                let chaveCandidata = `${novaClasse}_${novoGenero}`;
+                if (!categoriasTorneio.includes(chaveCandidata)) {
+                    chaveCandidata = categoriasTorneio.find(k => k.startsWith(`${novaClasse}_`)) || categoriasTorneio[0];
+                }
+
+                categoriaGestaoAtivaSaaS = chaveCandidata;
+                renderizarGestaoTemporadaSaaS();
+                if (typeof atualizarBotaoRodapeRankingSaaS === 'function') {
+                    atualizarBotaoRodapeRankingSaaS();
+                }
+            };
+
+            if (selCls) selCls.onchange = aplicarTrocaCategoriaGestao;
+            if (selGen) selGen.onchange = aplicarTrocaCategoriaGestao;
+        }
+    }
 
     const panelFase3 = document.querySelectorAll('#container-fases-gestor .fase-panel')[2];
     if (panelFase3) {
@@ -697,21 +815,24 @@ function renderizarGestaoTemporadaSaaS() {
         const btnAcaoFase3 = panelFase3.querySelector('button[onclick*="encerrarFase3EAvancarSaaS"]');
 
         if (elBoxAviso) {
+            const partesCatFoco = (categoriaGestaoAtivaSaaS || 'A_MASCULINO').split('_');
+            const rotuloCatTexto = `Classe ${partesCatFoco[0]}` + (partesCatFoco[1] && partesCatFoco[1] !== 'UNIFICADO' ? ` (${partesCatFoco[1] === 'FEMININO' ? 'Feminino' : 'Masculino'})` : '');
+
             if (modelo === 'barragem') {
                 elBoxAviso.innerHTML = `
-                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Disputa por Pontos Corridos (Barragem)</p>
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Disputa por Pontos Corridos (Barragem) • ${rotuloCatTexto}</p>
                     <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Atletas somam pontos a cada partida realizada na temporada.</span>
                     <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Acompanhe a tabela do Leaderboard em tempo real e encerre ao fim do prazo.</span>
                 `;
             } else if (modelo === 'piramide') {
                 elBoxAviso.innerHTML = `
-                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Escada de Desafios (Pirâmide)</p>
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Escada de Desafios (Pirâmide) • ${rotuloCatTexto}</p>
                     <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Atletas realizam desafios diretos para trocar de posição e subir na tabela.</span>
                     <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Acompanhe a movimentação em tempo real e encerre no prazo.</span>
                 `;
             } else {
                 elBoxAviso.innerHTML = `
-                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Fase de Chaves (Grupos)</p>
+                    <p style="margin: 0 0 4px 0; font-weight: 700; color: #166534;">📍 Fase 3: Fase de Chaves (Grupos) • ${rotuloCatTexto}</p>
                     <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Grupos congelados no banco e agendamentos restritos aos adversários da mesma chave.</span>
                     <span style="display: block; font-size: 12.5px; color: #15803d; line-height: 1.4;">• Acompanhe a classificação em tempo real e encerre ao fim das rodadas.</span>
                 `;
@@ -720,6 +841,21 @@ function renderizarGestaoTemporadaSaaS() {
 
         if (btnAcaoFase3) {
             btnAcaoFase3.style.display = 'none';
+        }
+
+        // 🔗 Vincula o botão para abrir a Central filtrada na categoria ativa selecionada na tela
+        const btnVerTabelaFase3 = panelFase3.querySelector('button[onclick*="abrirLeaderboardSaaS"]') || 
+                                  Array.from(panelFase3.querySelectorAll('button')).find(b => b !== btnAcaoFase3);
+        if (btnVerTabelaFase3) {
+            btnVerTabelaFase3.onclick = () => {
+                const partes = (categoriaGestaoAtivaSaaS || 'A_MASCULINO').split('_');
+                abaClasseAtivaSaaS = partes[0] || 'A';
+                abaGeneroAtivaSaaS = partes[1] || 'MASCULINO';
+                abaFaseAtivaSaaS = 'AUTO';
+                if (typeof abrirLeaderboardSaaS === 'function') {
+                    abrirLeaderboardSaaS();
+                }
+            };
         }
     }
     
@@ -730,38 +866,127 @@ function renderizarGestaoTemporadaSaaS() {
     if (panelFase4 && emFaseExibicaoMataMata) {
         const elBoxAviso4 = panelFase4.children[0];
         if (elBoxAviso4) {
-            const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
-            let maiorTamanhoChave = 2;
-            const chavesList = Object.values(chavesMap);
-            if (chavesList.length > 0) {
-                const tamanhos = chavesList.map(c => parseInt(c.faseAtual || (c.rodada1 ? c.rodada1.length * 2 : 2), 10));
-                maiorTamanhoChave = Math.max(...tamanhos);
-            }
+            const chaveCatFoco = categoriaGestaoAtivaSaaS || Object.keys(chavesMap)[0] || 'A_MASCULINO';
+            const chaveInfoCat = chavesMap[chaveCatFoco] || {};
+            const tamanhoChaveCat = parseInt(chaveInfoCat.faseAtual || (chaveInfoCat.rodada1 ? chaveInfoCat.rodada1.length * 2 : 2), 10);
 
             const rotuloAtual = (typeof obterRotuloFaseMataMataSaaS === 'function')
-                ? obterRotuloFaseMataMataSaaS(maiorTamanhoChave)
+                ? obterRotuloFaseMataMataSaaS(tamanhoChaveCat)
                 : "Mata-Mata"; 
             
-            const artigoAtual = (maiorTamanhoChave === 2) ? "da" : "das";
+            const artigoAtual = (tamanhoChaveCat === 2) ? "da" : "das";
 
-            let bulletInstrucao = "";
-            if (maiorTamanhoChave > 2) {
-                const proximoTamanho = maiorTamanhoChave / 2;
+            const partesCatFoco = chaveCatFoco.split('_');
+            const rotuloCatTexto = `Classe ${partesCatFoco[0]}` + (partesCatFoco[1] && partesCatFoco[1] !== 'UNIFICADO' ? ` (${partesCatFoco[1] === 'FEMININO' ? 'Feminino' : 'Masculino'})` : '');
+
+			let bulletInstrucao = "";
+            let subtituloFase4 = `• Confrontos decisivos ${artigoAtual} ${rotuloAtual} em andamento.`;
+
+            if (tamanhoChaveCat > 2) {
+                const proximoTamanho = tamanhoChaveCat / 2;
                 const rotuloProximo = (typeof obterRotuloFaseMataMataSaaS === 'function')
                     ? obterRotuloFaseMataMataSaaS(proximoTamanho)
                     : "Próxima Fase";
                 const artigoProximo = (proximoTamanho === 2) ? "para a" : "para as";
 
-                bulletInstrucao = `• Finalizados os jogos, avance ${artigoProximo} ${rotuloProximo}.`;
+                bulletInstrucao = `• Finalizados os jogos desta categoria, avance ${artigoProximo} ${rotuloProximo}.`;
             } else {
-                bulletInstrucao = "• Finalizados os jogos, conclua a temporada para pontuar os atletas.";
+                // Afere o estado real da Grande Final desta categoria específica com blindagem de temporadaId
+                const finalMatch = (chaveInfoCat.rodada1 && chaveInfoCat.rodada1[0]) || null;
+                let finalConcluidaCat = false;
+                let finalAgendadaCat = false;
+
+                if (finalMatch) {
+                    if (finalMatch.isBye) {
+                        finalConcluidaCat = true;
+                    } else {
+                        // 1. Procura em rankingPartidasGlobal
+                        const partidasMap = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
+                        const pFinal = Object.values(partidasMap).find(p => {
+                            if (p.categoria !== chaveCatFoco || p.status !== 'finalizada') return false;
+                            const dp = p.dadosPlacar || {};
+                            if (p.tagGrupoRanking || dp.tagGrupoRanking) return false;
+                            return (p.jogador1Id === finalMatch.jogador1Id && p.jogador2Id === finalMatch.jogador2Id) ||
+                                   (p.jogador1Id === finalMatch.jogador2Id && p.jogador2Id === finalMatch.jogador1Id);
+                        });
+
+                        if (pFinal && pFinal.vencedorId) {
+                            finalConcluidaCat = true;
+                        } else {
+                            // 2. Consulta em reservas com blindagem de temporadaId
+                            const temporadaIdAtiva = (typeof convitesRankingGlobal !== 'undefined' && convitesRankingGlobal?.temporadaId)
+                                ? convitesRankingGlobal.temporadaId
+                                : null;
+
+                            const reservasRAM = (typeof reservasGeralGlobal !== 'undefined' && reservasGeralGlobal) ? reservasGeralGlobal : {};
+                            for (const qKey of Object.keys(reservasRAM)) {
+                                const slots = reservasRAM[qKey] || {};
+                                for (const sKey of Object.keys(slots)) {
+                                    const r = slots[sKey];
+                                    if (!r) continue;
+
+                                    const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
+                                    if (!ehRanking) continue;
+
+                                    // 🛡️ TRAVA CRUCIAL: Ignora partidas de edições ou testes anteriores
+                                    if (temporadaIdAtiva && r.temporadaId !== temporadaIdAtiva) continue;
+                                    if (!r.temporadaId) continue;
+
+                                    const partesComp = (r.jogadores_completo || '').split(',').map(s => s.trim());
+                                    const partesAp = (r.jogadores || '').split(',').map(s => s.trim());
+                                    const id1 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[0] || partesAp[0]) : null;
+                                    const id2 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[1] || partesAp[1]) : null;
+
+                                    if ((id1 === finalMatch.jogador1Id && id2 === finalMatch.jogador2Id) ||
+                                        (id1 === finalMatch.jogador2Id && id2 === finalMatch.jogador1Id)) {
+                                        finalAgendadaCat = true;
+                                        const dp = r.dadosPlacar || {};
+                                        const st = r.statusPlacar || dp.statusPlacar || 'sem_placar';
+                                        if (st === 'consolidado' && (dp.vencedorCodigo || dp.vencedor)) {
+                                            finalConcluidaCat = true;
+                                        }
+                                        break;
+                                    }
+                                }
+                                if (finalConcluidaCat) break;
+                            }
+                        }
+                    }
+                }
+
+                if (finalConcluidaCat) {
+                    subtituloFase4 = "• Grande Final desta categoria finalizada e homologada com sucesso!";
+                    bulletInstrucao = "• Aguardando a conclusão das decisões das demais classes para concluir o torneio.";
+                } else if (finalAgendadaCat) {
+                    subtituloFase4 = "• Partida da Grande Final agendada nas quadras da arena.";
+                    bulletInstrucao = "• Lance o resultado oficial da súmula para homologar esta categoria.";
+                } else {
+                    subtituloFase4 = "• Confronto da Grande Final definido no chaveamento.";
+                    bulletInstrucao = "• Partida ainda não agendada. Crie a reserva na agenda de quadras para realizar a disputa.";
+                }
             }
 
             elBoxAviso4.innerHTML = `
-                <p style="margin: 0 0 4px 0; font-weight: 700; color: #6b21a8;">📍 Fase ${faseAtual}: Quadro Eliminatório (${rotuloAtual})</p>
-                <span style="display: block; font-size: 12.5px; color: #7e22ce; line-height: 1.4;">• Confrontos decisivos ${artigoAtual} ${rotuloAtual} em andamento.</span>
+                <p style="margin: 0 0 4px 0; font-weight: 700; color: #6b21a8;">📍 Fase ${faseAtual}: Quadro Eliminatório (${rotuloAtual}) • ${rotuloCatTexto}</p>
+                <span style="display: block; font-size: 12.5px; color: #7e22ce; line-height: 1.4;">${subtituloFase4}</span>
                 <span style="display: block; font-size: 12.5px; color: #7e22ce; line-height: 1.4;">${bulletInstrucao}</span>
             `;
+        }
+
+        // 🔗 Vincula o botão central para abrir a Central filtrada na categoria ativa da tela
+        const btnVerQuadro = panelFase4.querySelector('button[onclick*="abrirQuadroMataMataSaaS"]');
+        if (btnVerQuadro) {
+            btnVerQuadro.onclick = () => {
+                const partes = (categoriaGestaoAtivaSaaS || 'A_MASCULINO').split('_');
+                abaClasseAtivaSaaS = partes[0] || 'A';
+                abaGeneroAtivaSaaS = partes[1] || 'MASCULINO';
+                abaFaseAtivaSaaS = 'AUTO';
+                if (typeof abrirLeaderboardSaaS === 'function') {
+                    abrirLeaderboardSaaS();
+                } else if (typeof abrirQuadroMataMataSaaS === 'function') {
+                    abrirQuadroMataMataSaaS();
+                }
+            };
         }
     }
 
@@ -851,7 +1076,6 @@ function renderizarGestaoTemporadaSaaS() {
 
     const btnZerar = document.querySelector('#modal-config-ranking .btn-ranking-reset');
     if (btnZerar && btnZerar.parentElement) {
-        const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && faseAtual >= 5);
         const exibirZerar = (faseAtual > 1 && !torneioConcluido);
         btnZerar.parentElement.style.display = exibirZerar ? 'block' : 'none';
     }
@@ -1659,6 +1883,7 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
     const payloadCalendario = {
         nomeTorneio: nome,
         formatoTorneio: formatoTorneioEscolhido,
+        faseInicial: (formatoTorneioEscolhido === 'grupos') ? (gruposConfig.faseInicial || 'grupos') : 'grupos',
         limiteVagas: limiteVagas,
         categoriasHabilitadas: categoriasHabilitadas,
         inicioInscricoes: dtIncIni,
@@ -2461,10 +2686,17 @@ function encerrarInscricoesECriarChavesSaaS() {
                     if (proximoIndice < categoriasFila.length) {
                         const proxCatChave = categoriasFila[proximoIndice];
                         const partesProx = proxCatChave.split('_');
-                        const proxNomeCurto = `Classe ${partesProx[0]}` + (partesProx[1] !== 'UNIFICADO' ? ` (${partesProx[1] === 'FEMININO' ? 'Fem' : 'Masc'})` : '');
+                        const rotuloProxGenero = (partesProx[1] === 'FEMININO' ? 'Feminino' : (partesProx[1] === 'MASCULINO' ? 'Masculino' : ''));
+                        const proxNomeCompleto = `Classe ${partesProx[0]}` + (rotuloProxGenero ? ` (${rotuloProxGenero})` : '');
 
                         if (btnFinish) {
-                            btnFinish.innerHTML = `Sorteio da Próxima Categoria (${proxNomeCurto}) <i class="material-icons">arrow_forward</i>`;
+                            btnFinish.innerHTML = `
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.25;">
+                                    <span>Sorteio da Próxima Categoria</span>
+                                    <span style="font-size: 13.5px; opacity: 0.95; font-weight: 700; text-transform: none; margin-top: 2px;">${proxNomeCompleto}</span>
+                                </div>
+                                <i class="material-icons" style="font-size: 22px;">arrow_forward</i>
+                            `;
                             btnFinish.onclick = () => {
                                 btnFinish.onclick = null;
                                 executarSorteioCategoriaFila(proximoIndice);
@@ -2659,74 +2891,191 @@ async function encerrarFase3EAvancarSaaS() {
     const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
     const emFaseMataMata = (modelo === 'grupos' && ((emMataMataDireto && faseAtual === 3) || (!emMataMataDireto && faseAtual === 4)));
 
-    // 🛡️ 1. PRÉ-VALIDAÇÃO INTELIGENTE DO MATA-MATA (CONSOLIDA TODAS AS CLASSES - OPÇÃO 2)
+    // 🎯 IDENTIFICAÇÃO DA CATEGORIA FOCO SELECIONADA NA GESTÃO
+    const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+    const chaveCatFoco = (typeof categoriaGestaoAtivaSaaS !== 'undefined' && categoriaGestaoAtivaSaaS)
+        ? categoriaGestaoAtivaSaaS
+        : (window.categoriaGestaoAtivaSaaS || Object.keys(chavesMap)[0] || 'A_MASCULINO');
+
+    const chaveInfoCat = chavesMap[chaveCatFoco] || {};
+    const tamanhoChaveCat = parseInt(chaveInfoCat.faseAtual || (chaveInfoCat.rodada1 ? chaveInfoCat.rodada1.length * 2 : 2), 10);
+
+    // 1. Verifica se todas as categorias concluíram suas decisões finais (com blindagem de temporadaId)
+    const temporadaIdAtiva = (typeof convitesRankingGlobal !== 'undefined' && convitesRankingGlobal?.temporadaId)
+        ? convitesRankingGlobal.temporadaId
+        : null;
+
+    const checarFinalConcluidaAvanco = (catKey) => {
+        const info = chavesMap[catKey] || {};
+        const tam = parseInt(info.faseAtual, 10) || (info.rodada1 ? info.rodada1.length * 2 : 2);
+        if (tam > 2) return false;
+
+        const finalMatch = (info.rodada1 && info.rodada1[0]) || null;
+        if (!finalMatch || finalMatch.isBye) return true;
+
+        // A. Procura em rankingPartidasGlobal
+        const pFinal = Object.values(rankingPartidasGlobal || {}).find(p => {
+            if (p.categoria !== catKey || p.status !== 'finalizada') return false;
+            const dp = p.dadosPlacar || {};
+            if (p.tagGrupoRanking || dp.tagGrupoRanking) return false;
+            return (p.jogador1Id === finalMatch.jogador1Id && p.jogador2Id === finalMatch.jogador2Id) ||
+                   (p.jogador1Id === finalMatch.jogador2Id && p.jogador2Id === finalMatch.jogador1Id);
+        });
+        if (pFinal && pFinal.vencedorId) return true;
+
+        // B. Procura em reservas da temporada ativa
+        const reservasRAM = (typeof reservasGeralGlobal !== 'undefined' && reservasGeralGlobal) ? reservasGeralGlobal : {};
+        for (const quadraKey of Object.keys(reservasRAM)) {
+            const slots = reservasRAM[quadraKey] || {};
+            for (const slotKey of Object.keys(slots)) {
+                const r = slots[slotKey];
+                if (!r) continue;
+
+                const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
+                if (!ehRanking) continue;
+                if (temporadaIdAtiva && r.temporadaId !== temporadaIdAtiva) continue;
+                if (!r.temporadaId) continue;
+
+                const dp = r.dadosPlacar || {};
+                const stPlacar = r.statusPlacar || dp.statusPlacar || 'sem_placar';
+                if (stPlacar !== 'consolidado') continue;
+
+                const tagF = (r.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
+                if (tagF.includes('grupo') && !tagF.includes('final')) continue;
+
+                const partesComp = (r.jogadores_completo || '').split(',').map(s => s.trim());
+                const partesAp = (r.jogadores || '').split(',').map(s => s.trim());
+                const id1 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[0] || partesAp[0]) : null;
+                const id2 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[1] || partesAp[1]) : null;
+
+                if ((id1 === finalMatch.jogador1Id && id2 === finalMatch.jogador2Id) ||
+                    (id1 === finalMatch.jogador2Id && id2 === finalMatch.jogador1Id)) {
+                    if (dp.vencedorCodigo || dp.vencedor) return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    const todasCategoriasConcluidas = Object.keys(chavesMap).length > 0 && Object.keys(chavesMap).every(catKey => checarFinalConcluidaAvanco(catKey));
+
+    // 🛡️ 1. PRÉ-VALIDAÇÃO DO MATA-MATA: Valida apenas a categoria ativa (ou todas, se for homologação)
     if (emFaseMataMata) {
-        const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
         const partidasMap = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
+        const reservasRAM = (typeof reservasGeralGlobal !== 'undefined' && reservasGeralGlobal) ? reservasGeralGlobal : {};
+        const categoriasParaValidar = todasCategoriasConcluidas ? Object.keys(chavesMap) : [chaveCatFoco];
 
-        const chavesKeys = Object.keys(chavesMap);
-        const temMultiploGenero = chavesKeys.some(k => k.endsWith('_FEMININO')) && chavesKeys.some(k => k.endsWith('_MASCULINO'));
-
-        let totalPendentesGeral = 0;
+        let totalPendentes = 0;
         const pendenciasPorClasse = [];
 
-        chavesKeys.forEach(chaveCat => {
-            const chaveInfo = chavesMap[chaveCat] || {};
+        categoriasParaValidar.forEach(catKey => {
+            const chaveInfo = chavesMap[catKey] || {};
             const rodadaAtual = chaveInfo.rodada1 || [];
 
-            let pendentesDestaCat = 0;
-            rodadaAtual.forEach(conf => {
-                if (conf.isBye || !conf.jogador2Id) return;
+            let pendentesCat = 0;
+            rodadaAtual.forEach(confItem => {
+                if (confItem.isBye || !confItem.jogador2Id) return;
 
-                const partidaSalva = Object.values(partidasMap || {}).find(p => {
-                    if (p.categoria !== chaveCat || p.status !== 'finalizada') return false;
-
+                // 1. Procura em rankingPartidasGlobal
+                let partidaFinalizada = Object.values(partidasMap || {}).find(p => {
+                    if (p.categoria !== catKey || p.status !== 'finalizada') return false;
                     const dp = p.dadosPlacar || {};
                     if (p.tagGrupoRanking || dp.tagGrupoRanking) return false;
-
-                    return (p.jogador1Id === conf.jogador1Id && p.jogador2Id === conf.jogador2Id) ||
-                           (p.jogador1Id === conf.jogador2Id && p.jogador2Id === conf.jogador1Id);
+                    return (p.jogador1Id === confItem.jogador1Id && p.jogador2Id === confItem.jogador2Id) ||
+                           (p.jogador1Id === confItem.jogador2Id && p.jogador2Id === confItem.jogador1Id);
                 });
 
-                if (!partidaSalva || !partidaSalva.vencedorId) {
-                    pendentesDestaCat++;
+                if (partidaFinalizada && partidaFinalizada.vencedorId) return;
+
+                // 2. Consulta em reservas com blindagem de temporadaId
+                let achouEmReservas = false;
+                for (const qKey of Object.keys(reservasRAM)) {
+                    const slots = reservasRAM[qKey] || {};
+                    for (const sKey of Object.keys(slots)) {
+                        const r = slots[sKey];
+                        if (!r) continue;
+
+                        const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
+                        if (!ehRanking) continue;
+                        if (temporadaIdAtiva && r.temporadaId !== temporadaIdAtiva) continue;
+                        if (!r.temporadaId) continue;
+
+                        const dp = r.dadosPlacar || {};
+                        const st = r.statusPlacar || dp.statusPlacar || 'sem_placar';
+                        if (st !== 'consolidado') continue;
+
+                        const partesComp = (r.jogadores_completo || '').split(',').map(s => s.trim());
+                        const partesAp = (r.jogadores || '').split(',').map(s => s.trim());
+                        const id1 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[0] || partesAp[0]) : null;
+                        const id2 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[1] || partesAp[1]) : null;
+
+                        if ((id1 === confItem.jogador1Id && id2 === confItem.jogador2Id) ||
+                            (id1 === confItem.jogador2Id && id2 === confItem.jogador1Id)) {
+                            if (dp.vencedorCodigo || dp.vencedor) {
+                                achouEmReservas = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (achouEmReservas) break;
+                }
+
+                if (!achouEmReservas) {
+                    pendentesCat++;
                 }
             });
 
-            if (pendentesDestaCat > 0) {
-                totalPendentesGeral += pendentesDestaCat;
-                const partesCat = chaveCat.split('_');
-                const genSufixo = (temMultiploGenero && partesCat[1] && partesCat[1] !== 'UNIFICADO') 
-                    ? ` (${partesCat[1] === 'FEMININO' ? 'Fem' : 'Masc'})` 
-                    : '';
-                const rotuloClasse = `Classe ${partesCat[0]}${genSufixo}`;
-                pendenciasPorClasse.push(`${pendentesDestaCat} na ${rotuloClasse}`);
+            if (pendentesCat > 0) {
+                totalPendentes += pendentesCat;
+                const partesCat = catKey.split('_');
+                const rotuloClasse = `Classe ${partesCat[0]}`;
+                pendenciasPorClasse.push(`${pendentesCat} na ${rotuloClasse}`);
             }
         });
 
-        if (totalPendentesGeral > 0) {
+        if (totalPendentes > 0) {
             let msgToast = '';
             if (pendenciasPorClasse.length === 1) {
                 const classeInfo = pendenciasPorClasse[0].replace(/^\d+\s+na\s+/, '');
-                msgToast = totalPendentesGeral === 1
+                msgToast = totalPendentes === 1
                     ? `Existe 1 partida pendente na ${classeInfo}.`
-                    : `Existem ${totalPendentesGeral} partidas pendentes na ${classeInfo}.`;
+                    : `Existem ${totalPendentes} partidas pendentes na ${classeInfo}.`;
             } else {
-                msgToast = `Existem ${totalPendentesGeral} partidas pendentes (${pendenciasPorClasse.join(' • ')}).`;
+                msgToast = `Existem ${totalPendentes} partidas pendentes (${pendenciasPorClasse.join(' • ')}).`;
             }
 
             showToast(msgToast, "warning");
-            return; // ⛔ INTERROMPE A EXECUÇÃO: NÃO ABRE O MODAL
+            return; // ⛔ Interrompe se houver pendência na categoria
         }
     }
 
-    // 🛡️ 2. PRÉ-VALIDAÇÃO DE SÚMULAS E RESERVAS EM ABERTO NO QUADRO DE QUADRAS
+    // 🛡️ 2. PRÉ-VALIDAÇÃO DE SÚMULAS E RESERVAS: Garante que nenhuma partida da temporada fique pendente
     try {
-        const snapReservas = await database.ref(`${raizBanco}/reservas`).once('value');
+        const [snapReservas, snapTabelasBanco, snapConvites] = await Promise.all([
+            database.ref(`${raizBanco}/reservas`).once('value'),
+            database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
+            database.ref(`${raizBanco}/convites_ranking`).once('value')
+        ]);
         const todasReservas = snapReservas.exists() ? snapReservas.val() : {};
-        
-        const pendentes = [];
-        const contestadas = [];
+        const tabelasBanco = snapTabelasBanco.exists() ? snapTabelasBanco.val() : {};
+        const dadosConvites = snapConvites.exists() ? snapConvites.val() : {};
+        const temporadaIdAtiva = dadosConvites.temporadaId || (typeof convitesRankingGlobal !== 'undefined' && convitesRankingGlobal?.temporadaId) || null;
+
+        const pendentesPorCat = {};
+
+        // Mapeamento universal dos atletas por categoria (Grupos e Mata-Mata)
+        const mapaAtletasPorCat = {};
+        Object.keys(tabelasBanco).forEach(catK => {
+            if (!mapaAtletasPorCat[catK]) mapaAtletasPorCat[catK] = new Set();
+            (tabelasBanco[catK] || []).forEach(id => { if (id) mapaAtletasPorCat[catK].add(id); });
+        });
+        Object.keys(chavesMap).forEach(catK => {
+            if (!mapaAtletasPorCat[catK]) mapaAtletasPorCat[catK] = new Set();
+            (chavesMap[catK]?.rodada1 || []).forEach(c => {
+                if (c.jogador1Id) mapaAtletasPorCat[catK].add(c.jogador1Id);
+                if (c.jogador2Id) mapaAtletasPorCat[catK].add(c.jogador2Id);
+            });
+        });
 
         Object.keys(todasReservas).forEach(quadraKey => {
             const slots = todasReservas[quadraKey] || {};
@@ -2739,34 +3088,68 @@ async function encerrarFase3EAvancarSaaS() {
 
                 if (r.borda === undefined && parseInt(r.duracao) === 2) return;
 
-                const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
+                // 🛡️ TRAVA DE TEMPORADA: Considera apenas agendamentos da temporada ativa
+                if (temporadaIdAtiva && r.temporadaId && r.temporadaId !== temporadaIdAtiva) return;
 
-                if (stPlacar === 'pendente_validacao' || stPlacar === 'contestado' || stPlacar === 'sem_placar') {
-                    if (stPlacar === 'pendente_validacao' || stPlacar === 'sem_placar') {
-                        pendentes.push(r);
-                    } else {
-                        contestadas.push(r);
+                const stPlacar = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : 'sem_placar');
+                if (stPlacar !== 'pendente_validacao' && stPlacar !== 'contestado' && stPlacar !== 'sem_placar') return;
+
+                // Identifica com precisão a qual categoria técnica este agendamento pertence
+                let catR = r.categoria || r.dadosPlacar?.categoria;
+
+                const partesAp = (r.jogadores || '').split(',').map(s => s.trim());
+                const partesComp = (r.jogadores_completo || '').split(',').map(s => s.trim());
+                const id1 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[0] || partesAp[0]) : null;
+                const id2 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[1] || partesAp[1]) : null;
+
+                if (!catR && (id1 || id2)) {
+                    for (const catK of Object.keys(mapaAtletasPorCat)) {
+                        if ((id1 && mapaAtletasPorCat[catK].has(id1)) || (id2 && mapaAtletasPorCat[catK].has(id2))) {
+                            catR = catK;
+                            break;
+                        }
+                    }
+                    if (!catR && id1 && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[id1]) {
+                        const at = jogadoresGlobal[id1];
+                        const cl = (at.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
+                        let gen = (at.genero || 'MASCULINO').toUpperCase().trim();
+                        if (gen === 'NAO_INFORMAR') gen = 'MASCULINO';
+                        catR = (conf.divisaoGenero === 'unificado') ? `${cl}_UNIFICADO` : `${cl}_${gen}`;
                     }
                 }
+
+                const catFinal = catR || chaveCatFoco;
+
+                // Se estiver no Mata-Mata e ainda não for a final geral, filtra estritamente pela categoria ativa
+                if (emFaseMataMata && !todasCategoriasConcluidas && catFinal !== chaveCatFoco) return;
+
+                if (!pendentesPorCat[catFinal]) pendentesPorCat[catFinal] = [];
+                pendentesPorCat[catFinal].push(r);
             });
         });
 
-        const totalPendencias = pendentes.length + contestadas.length;
+        const totalPendenciasGeral = Object.values(pendentesPorCat).reduce((acc, arr) => acc + arr.length, 0);
 
-        if (totalPendencias > 0) {
-            const verbo = (totalPendencias === 1) ? "Existe" : "Existem";
-            const substantivo = (totalPendencias === 1) ? "partida pendente" : "partidas pendentes";
-            let complementoFase = ".";
-            if (modelo === 'piramide') {
-                complementoFase = " na Pirâmide.";
-            } else if (modelo === 'barragem') {
-                complementoFase = " na Barragem.";
-            } else if (modelo === 'grupos') {
-                complementoFase = (!emMataMataDireto && faseAtual === 3) ? " na Fase de Grupos." : " no Mata-Mata.";
+        if (totalPendenciasGeral > 0) {
+            const pendenciasTxt = Object.keys(pendentesPorCat).map(catK => {
+                const qtd = pendentesPorCat[catK].length;
+                const partes = catK.split('_');
+                const rotulo = `Classe ${partes[0]}`;
+                return `${qtd} na ${rotulo}`;
+            });
+
+            let msgToast = '';
+            if (pendenciasTxt.length === 1) {
+                const classeInfo = pendenciasTxt[0].replace(/^\d+\s+na\s+/, '');
+                msgToast = totalPendenciasGeral === 1
+                    ? `Existe 1 partida pendente na ${classeInfo}.`
+                    : `Existem ${totalPendenciasGeral} partidas pendentes na ${classeInfo}.`;
+            } else {
+                msgToast = `Existem ${totalPendenciasGeral} partidas pendentes (${pendenciasTxt.join(' • ')}).`;
             }
 
-            showToast(`${verbo} ${totalPendencias} ${substantivo}${complementoFase}`, "warning");
-            return; // ⛔ INTERROMPE A EXECUÇÃO: NÃO ABRE O MODAL
+            showToast(msgToast, "warning", 5000);
+            return; // ⛔ Interrompe se houver jogo não homologado
         }
 
     } catch (err) {
@@ -2788,46 +3171,39 @@ async function encerrarFase3EAvancarSaaS() {
                     database.ref(`${raizBanco}/ranking/partidas`).once('value')
                 ]);
 
-                const chavesMap = snapChaves.exists() ? snapChaves.val() : {};
+                const chavesMapBanco = snapChaves.exists() ? snapChaves.val() : {};
                 const partidasMap = snapPartidas.exists() ? snapPartidas.val() : {};
 
-                let temProximaRodada = false;
-
-                for (const chaveCat of Object.keys(chavesMap)) {
-                    const chaveInfo = chavesMap[chaveCat] || {};
-                    const rodadaAtual = chaveInfo.rodada1 || [];
-
-                    const res = gerarProximaRodadaMataMataSaaS(rodadaAtual, partidasMap, chaveCat);
-
-                    if (!res.concluida) {
-                        showToast(res.motivo || "Existem partidas pendentes no Mata-Mata.", "warning");
-                        return;
-                    }
-
-                    if (rodadaAtual.length > 1) {
-                        temProximaRodada = true;
-                        
-                        const historico = chaveInfo.historicoRodadas || {};
-                        const faseAnteriorNum = parseInt(chaveInfo.faseAtual, 10) || (rodadaAtual.length * 2);
-                        historico[faseAnteriorNum] = rodadaAtual;
-                        
-                        updates[`${raizBanco}/ranking/chaves/${chaveCat}`] = {
-                            totalClassificados: chaveInfo.totalClassificados || 0,
-                            faseAtual: res.faseAtual,
-                            rodada1: res.rodada1,
-                            historicoRodadas: historico
-                        };
-                    }
-                }
-
-                if (temProximaRodada) {
-                    novaFase = faseAtual;
-                    eHomologacaoFinal = false;
-                    updates[`${raizBanco}/config/ranking/faseAtual`] = novaFase;
-                } else {
+                if (todasCategoriasConcluidas) {
+                    // 🏆 HOMOLOGAÇÃO GERAL: Todas as finais de todas as classes terminaram
                     novaFase = emMataMataDireto ? 4 : 5;
                     eHomologacaoFinal = true;
                     updates[`${raizBanco}/config/ranking/faseAtual`] = novaFase;
+                } else {
+                    // 🎯 AVANÇO MODULAR: Avança exclusivamente a categoria ativa selecionada
+                    const chaveInfo = chavesMapBanco[chaveCatFoco] || {};
+                    const rodadaAtual = chaveInfo.rodada1 || [];
+
+                    const res = gerarProximaRodadaMataMataSaaS(rodadaAtual, partidasMap, chaveCatFoco);
+
+                    if (!res.concluida) {
+                        showToast(res.motivo || "Existem partidas pendentes nesta categoria.", "warning");
+                        return;
+                    }
+
+                    const historico = chaveInfo.historicoRodadas || {};
+                    const faseAnteriorNum = parseInt(chaveInfo.faseAtual, 10) || (rodadaAtual.length * 2);
+                    historico[faseAnteriorNum] = rodadaAtual;
+
+                    updates[`${raizBanco}/ranking/chaves/${chaveCatFoco}`] = {
+                        totalClassificados: chaveInfo.totalClassificados || 0,
+                        faseAtual: res.faseAtual,
+                        rodada1: res.rodada1,
+                        historicoRodadas: historico
+                    };
+
+                    novaFase = faseAtual;
+                    eHomologacaoFinal = false;
                 }
             } else if (modelo === 'grupos' && !emMataMataDireto && faseAtual === 3) {
                 const [snapTabelas, snapPartidas] = await Promise.all([
@@ -3010,6 +3386,8 @@ async function encerrarFase3EAvancarSaaS() {
 				// 🧹 LIMPEZA DE CICLO: Extingue a fila de espera e inscrições ao homologar o torneio
                 updates[`${raizBanco}/config/ranking/filaEspera`] = null;
                 updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
+                // 🏆 CARIMBO IMUTÁVEL DE CONCLUSÃO (0 ms de latência no reload)
+                updates[`${raizBanco}/config/ranking/torneioConcluido`] = true;
 				
 				// 🧠 SINCRONIZAÇÃO IMEDIATA DA MEMÓRIA RAM (ACERVO HISTÓRICO):
                 const novaEdicaoHistorica = { id: edicaoId, ...objetoHistorico };
@@ -3025,6 +3403,9 @@ async function encerrarFase3EAvancarSaaS() {
 
             if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
                 configRegrasGlobal.ranking.faseAtual = novaFase;
+                if (eHomologacaoFinal) {
+                    configRegrasGlobal.ranking.torneioConcluido = true;
+                }
             }
 
             const msgSucesso = eHomologacaoFinal 
@@ -3050,31 +3431,26 @@ async function encerrarFase3EAvancarSaaS() {
         }
     };
 
-    // 🚀 4. SÓ CHEGA AQUI SE ZERADAS TODAS AS PENDÊNCIAS: MONTA E EXIBE O MODAL
+    // 🚀 4. MONTAGEM CONTEXTUAL DO MODAL
     let tituloPrompt = "Avançar Fase";
     let msgPrompt = "Deseja avançar para a próxima fase?";
 
     if (emFaseMataMata) {
-        const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
-        let maiorTamanhoChave = 2;
-        const chavesList = Object.values(chavesMap);
-        if (chavesList.length > 0) {
-            const tamanhos = chavesList.map(c => parseInt(c.faseAtual || (c.rodada1 ? c.rodada1.length * 2 : 2), 10));
-            maiorTamanhoChave = Math.max(...tamanhos);
-        }
-
-        if (maiorTamanhoChave > 2) {
-            const proximaTamanho = maiorTamanhoChave / 2;
-            const rotuloProxima = (typeof obterRotuloFaseMataMataSaaS === 'function')
-                ? obterRotuloFaseMataMataSaaS(proximaTamanho)
-                : "Próxima Fase";
-            const artigo = (proximaTamanho === 2) ? "para a" : "para as";
-            
-            tituloPrompt = `Avançar ${artigo} ${rotuloProxima}`;
-            msgPrompt = `Todas as partidas da rodada atual foram concluídas. Deseja consolidar os vencedores e avançar ${artigo} <b>${rotuloProxima}</b>?`;
-        } else {
+        if (todasCategoriasConcluidas) {
             tituloPrompt = "Concluir e Homologar Torneio";
-            msgPrompt = "Deseja encerrar o torneio, creditar os pontos e arquivar a edição no Histórico?"; 
+            msgPrompt = "Todas as finais foram concluídas! Deseja homologar o torneio, creditar os pontos e arquivar a edição no Histórico?";
+        } else {
+            const partesCat = chaveCatFoco.split('_');
+            const rotuloCatTxt = `Classe ${partesCat[0]}`;
+
+            const proximoTamanho = tamanhoChaveCat / 2;
+            const rotuloProxima = (typeof obterRotuloFaseMataMataSaaS === 'function')
+                ? obterRotuloFaseMataMataSaaS(proximoTamanho)
+                : "Próxima Fase";
+            const artigo = (proximoTamanho === 2) ? "para a" : "para as";
+
+            tituloPrompt = `Avançar ${artigo} ${rotuloProxima} (${rotuloCatTxt})`;
+            msgPrompt = `As partidas desta rodada na <b>${rotuloCatTxt}</b> foram concluídas. Deseja consolidar os vencedores e avançar ${artigo} <b>${rotuloProxima}</b>?`;
         }
     } else if (faseAtual === 3) {
         if (modelo === 'piramide') {
@@ -3128,8 +3504,13 @@ function reiniciarEsteiraNovoTorneioSaaS() {
             updates[`${raizBanco}/config/ranking/calendario`] = null;
             updates[`${raizBanco}/config/ranking/inscritosConfirmados`] = null;
 			updates[`${raizBanco}/config/ranking/filaEspera`] = null;
+            updates[`${raizBanco}/config/ranking/torneioConcluido`] = null;
 
             await database.ref().update(updates);
+
+            if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
+                configRegrasGlobal.ranking.torneioConcluido = null;
+            }
 
             console.log("✅ [Novo Torneio] Banco zerado e retornado à Fase 1.");
             showToast("Módulo pronto para o novo torneio!", "success");

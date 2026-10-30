@@ -377,11 +377,19 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             faseDesc = mapaModelos[modeloReserva];
         }
 
-        // Limpeza dos prefixos para atender à regra visual
-        faseDesc = faseDesc.replace('Grupos - G', 'Grupos G').replace('Grupos - ', '');
+        // 🎯 PADRONIZAÇÃO DO MODELO E FASE NO CARD DE DETALHES
+        // Preserva o nome do modelo (Grupos, Pirâmide, Barragem) e formata com o separador oficial (•)
+        if (/^Grupos/i.test(faseDesc)) {
+            faseDesc = faseDesc
+                .replace(/^Grupos\s*[-•]?\s*/i, 'Grupos • ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        } else if (modeloReserva === 'grupos' && !faseDesc.toLowerCase().includes('grupos')) {
+            faseDesc = `Grupos • ${faseDesc}`;
+        }
 
         const labelModelo = classeAtleta ? `Classe ${classeAtleta} • ${faseDesc}` : faseDesc;
-
+		
         let classNomeJ1 = '', classNomeJ2 = '';
         let setaJ1 = '', setaJ2 = '';
         let s1J1 = '-', s2J1 = '-', s3J1 = '-';

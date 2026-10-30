@@ -1509,6 +1509,11 @@ function atualizarBadgeAgendaSaaS() {
             const duracao = parseInt(r.duracao) || 1;
             if (r.dataCompleta === hojeYMD && (r.hora + duracao <= horaAtual)) return;
 
+            // 🎾 Se a partida já foi jogada (súmula pendente de validação, contestada ou consolidada), sai da agenda
+            const stPlacarBadge = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : '');
+            if (stPlacarBadge && stPlacarBadge !== 'sem_placar') return;
+            if (r.dadosPlacar || r.status === 'finalizada') return;
+
             const jogsComp = norm(r.jogadores_completo || '');
             const jogsAp = norm(r.jogadores || '');
             const org = norm(r.organizador || '');
@@ -1560,6 +1565,11 @@ function renderizarAgendaPessoalSaaS() {
 
             const duracao = parseInt(r.duracao) || 1;
             if (r.dataCompleta === hojeYMD && (r.hora + duracao <= horaAtual)) return;
+
+            // 🎾 Se a partida já foi jogada (súmula pendente de validação, contestada ou consolidada), sai da agenda
+            const stPlacarFiltro = r.statusPlacar || (r.dadosPlacar ? r.dadosPlacar.statusPlacar : '');
+            if (stPlacarFiltro && stPlacarFiltro !== 'sem_placar') return;
+            if (r.dadosPlacar || r.status === 'finalizada') return;
 
             const jogsComp = norm(r.jogadores_completo || '');
             const jogsAp = norm(r.jogadores || '');

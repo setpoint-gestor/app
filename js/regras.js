@@ -23,7 +23,7 @@ const dicNomesRegras = {
     PartidasAbertas: "Partidas Abertas",
     PrivacidadeLGPD: "Privacidade (LGPD)",
     LimiteReservas: "Limite de Reservas Ativas",
-    RestricaoNobre: "Restrição de Horário Nobre",
+    RestricaoNobre: "Restrição de Horário Nobre", 
     PrazoCancelamento: "Prazo de Cancelamento",
     ToleranciaAtraso: "Tolerância de Atraso"
 };
@@ -32,7 +32,7 @@ const dicSubNomesAgendar = {
 	Titular: "Agendamento: Sócios Titulares", 
 	Dependente: "Agendamento: Dependentes",
 	Professor: "Agendamento: Professores",
-	Staff: "Agendamento: Staff / Manutenção",
+	Staff: "Agendamento: Staff / Manutenção", 
 	Convidado: "Agendamento: Convidados"
 }; 
 
@@ -120,9 +120,28 @@ function atualizarBotaoRodapeRankingSaaS() {
     }
 
     const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const modelo = conf.calendario?.formatoTorneio || "grupos";
-    const faseInicialGrupos = conf.grupos?.faseInicial || "grupos";
+    const cal = conf.calendario || {};
+    const modelo = cal.formatoTorneio || "grupos";
+
+    // 🛡️ DETECÇÃO DE HOMOLOGAÇÃO: Verifica se a edição já foi homologada no histórico
+    const edicaoIdAtual = cal.nomeTorneio ? `${new Date().getFullYear()}_${cal.nomeTorneio.replace(/\s+/g, '_')}` : '';
+    const jaEstaNoHistorico = edicaoIdAtual && (
+        typeof acervoHistoricoGlobalSaaS !== 'undefined' && 
+        Array.isArray(acervoHistoricoGlobalSaaS) && 
+        acervoHistoricoGlobalSaaS.some(item => item.id === edicaoIdAtual)
+    );
+    const itemHistoricoEdicao = jaEstaNoHistorico 
+        ? acervoHistoricoGlobalSaaS.find(item => item.id === edicaoIdAtual) 
+        : null;
+
+    // 🎯 Prioriza a faseInicial congelada no contrato do torneio (imune a trocas na Aba 2)
+    const faseInicialGrupos = cal.faseInicial || itemHistoricoEdicao?.contrato?.faseInicial || conf.grupos?.faseInicial || "grupos";
     const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+
+    const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
+    const torneioConcluido = conf.torneioConcluido === true || jaEstaNoHistorico || 
+        (modelo !== "grupos" && faseAtual >= 4) || 
+        (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
 
     // 🔵 ABA 5 (índice 4): Gestão da Temporada
     if (idxAbaAtiva === 4) {
@@ -132,8 +151,6 @@ function atualizarBotaoRodapeRankingSaaS() {
 
         const panelFase1 = document.querySelectorAll('#container-fases-gestor .fase-panel')[0];
         const formularioFase1Ativo = panelFase1 && panelFase1.classList.contains('ativa');
-
-        const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
 
         if (faseAtual === 1) {
             if (formularioFase1Ativo) {
@@ -149,6 +166,11 @@ function atualizarBotaoRodapeRankingSaaS() {
             textoBotao = '<i class="material-icons">event_available</i> Salvar Alterações do Calendário';
             corBotao = '#3b82f6';
             acaoOnClick = 'salvarCalendarioEAbrirInscricoesSaaS()';
+        } else if (torneioConcluido) {
+            // 🏆 TORNEIO CONCLUÍDO: Exibe exclusivamente o botão azul de criar novo torneio
+            textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
+            corBotao = '#2563eb';
+            acaoOnClick = 'reiniciarEsteiraNovoTorneioSaaS()';
         } else if (faseAtual === 2) {
             const txtGruposFase2 = emMataMataDireto 
                 ? '<i class="material-icons">lock</i> Encerrar Inscrições e Iniciar Mata-Mata Direto'
@@ -163,27 +185,105 @@ function atualizarBotaoRodapeRankingSaaS() {
             corBotao = '#f59e0b';
             acaoOnClick = 'encerrarInscricoesECriarChavesSaaS()';
         } else if ((modelo === 'grupos' && !emMataMataDireto && faseAtual === 4) || (emMataMataDireto && faseAtual === 3)) {
+            // 🎯 LÓGICA MODULAR POR CATEGORIA ATIVA (CENÁRIO A)
             const chavesMap = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
-            const chavesList = Object.values(chavesMap);
-            
-            let maiorTamanhoChave = 2; 
-            if (chavesList.length > 0) {
-                const tamanhos = chavesList.map(c => parseInt(c.faseAtual || (c.rodada1 ? c.rodada1.length * 2 : 2), 10));
-                maiorTamanhoChave = Math.max(...tamanhos);
-            }
+            const chaveCatFoco = (typeof categoriaGestaoAtivaSaaS !== 'undefined' && categoriaGestaoAtivaSaaS)
+                ? categoriaGestaoAtivaSaaS
+                : (window.categoriaGestaoAtivaSaaS || Object.keys(chavesMap)[0] || 'A_MASCULINO');
 
-            if (maiorTamanhoChave > 2) {
-                const proximaFaseTamanho = maiorTamanhoChave / 2;
+            const chaveInfoCat = chavesMap[chaveCatFoco] || {};
+            const tamanhoChaveCat = parseInt(chaveInfoCat.faseAtual || (chaveInfoCat.rodada1 ? chaveInfoCat.rodada1.length * 2 : 2), 10);
+
+            // Função auxiliar: afere se a Grande Final de uma categoria foi concluída (com blindagem de temporadaId)
+            const checarFinalConcluida = (catKey) => {
+                const info = chavesMap[catKey] || {};
+                const tam = parseInt(info.faseAtual, 10) || (info.rodada1 ? info.rodada1.length * 2 : 2);
+                if (tam > 2) return false;
+                const finalMatch = (info.rodada1 && info.rodada1[0]) || null;
+                if (!finalMatch) return false;
+                if (finalMatch.isBye) return true;
+
+                // 1. Procura em rankingPartidasGlobal
+                const pFinal = Object.values(rankingPartidasGlobal || {}).find(p => {
+                    if (p.categoria !== catKey || p.status !== 'finalizada') return false;
+                    const dp = p.dadosPlacar || {};
+                    if (p.tagGrupoRanking || dp.tagGrupoRanking) return false;
+                    return (p.jogador1Id === finalMatch.jogador1Id && p.jogador2Id === finalMatch.jogador2Id) ||
+                           (p.jogador1Id === finalMatch.jogador2Id && p.jogador2Id === finalMatch.jogador1Id);
+                });
+                if (pFinal && pFinal.vencedorId) return true;
+
+                // 2. Consulta em tempo real na memória de reservas da arena (filtrando estritamente pela temporada ativa)
+                const temporadaIdAtiva = (typeof convitesRankingGlobal !== 'undefined' && convitesRankingGlobal?.temporadaId)
+                    ? convitesRankingGlobal.temporadaId
+                    : null;
+
+                const reservasRAM = (typeof reservasGeralGlobal !== 'undefined' && reservasGeralGlobal) ? reservasGeralGlobal : {};
+                for (const quadraKey of Object.keys(reservasRAM)) {
+                    const slots = reservasRAM[quadraKey] || {};
+                    for (const slotKey of Object.keys(slots)) {
+                        const r = slots[slotKey];
+                        if (!r) continue;
+
+                        const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
+                        if (!ehRanking) continue;
+
+                        // 🛡️ TRAVA CRUCIAL: Ignora partidas de edições ou testes anteriores
+                        if (temporadaIdAtiva && r.temporadaId !== temporadaIdAtiva) continue;
+                        if (!r.temporadaId) continue;
+
+                        const dp = r.dadosPlacar || {};
+                        const stPlacar = r.statusPlacar || dp.statusPlacar || 'sem_placar';
+                        if (stPlacar !== 'consolidado') continue;
+
+                        const tagF = (r.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
+                        if (tagF.includes('grupo') && !tagF.includes('final')) continue;
+
+                        const partesComp = (r.jogadores_completo || '').split(',').map(s => s.trim());
+                        const partesAp = (r.jogadores || '').split(',').map(s => s.trim());
+                        const id1 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[0] || partesAp[0]) : null;
+                        const id2 = (typeof obterIdJogadorPorTextoSaaS === 'function') ? obterIdJogadorPorTextoSaaS(partesComp[1] || partesAp[1]) : null;
+
+                        const bateConfronto = (id1 === finalMatch.jogador1Id && id2 === finalMatch.jogador2Id) ||
+                                              (id1 === finalMatch.jogador2Id && id2 === finalMatch.jogador1Id);
+
+                        if (bateConfronto && (dp.vencedorCodigo || dp.vencedor)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            };
+
+            const todasFinaisConcluidas = Object.keys(chavesMap).length > 0 && Object.keys(chavesMap).every(k => checarFinalConcluida(k));
+
+            if (todasFinaisConcluidas) {
+                textoBotao = '<i class="material-icons">workspace_premium</i> Concluir Torneio e Somar Pontos no Ranking';
+                corBotao = '#16a34a';
+                acaoOnClick = 'encerrarFase3EAvancarSaaS()';
+            } else if (tamanhoChaveCat > 2) {
+                const proximaFaseTamanho = tamanhoChaveCat / 2;
                 const rotuloProxima = (typeof obterRotuloFaseMataMataSaaS === 'function')
                     ? obterRotuloFaseMataMataSaaS(proximaFaseTamanho)
                     : "Próxima Fase";
-
                 const artigo = (proximaFaseTamanho === 2) ? "para a" : "para as";
                 textoBotao = `<i class="material-icons">east</i> Avançar ${artigo} ${rotuloProxima}`;
                 corBotao = '#8b5cf6';
+                acaoOnClick = 'encerrarFase3EAvancarSaaS()';
             } else {
-                textoBotao = '<i class="material-icons">workspace_premium</i> Concluir Torneio e Somar Pontos no Ranking';
-                corBotao = '#16a34a';
+                const finalDestaCatPronta = checarFinalConcluida(chaveCatFoco);
+                const partesCatAtual = chaveCatFoco.split('_');
+                const rotuloClasseAtual = `Classe ${partesCatAtual[0]}`;
+
+                if (finalDestaCatPronta) {
+                    textoBotao = '<i class="material-icons">check_circle</i> Grande Final Concluída';
+                    corBotao = '#475569';
+                    acaoOnClick = `showToast('A final da ${rotuloClasseAtual} já foi concluída. Aguarde as demais categorias.', 'info')`;
+                } else {
+                    textoBotao = '<i class="material-icons">sports_tennis</i> Grande Final em Andamento';
+                    corBotao = '#f59e0b';
+                    acaoOnClick = `showToast('Existe 1 partida pendente na ${rotuloClasseAtual}.', 'warning')`;
+                }
             }
         } else if (faseAtual === 3 && !emMataMataDireto) {
             const titulosFase3 = {
@@ -194,10 +294,6 @@ function atualizarBotaoRodapeRankingSaaS() {
             textoBotao = titulosFase3[modelo] || '<i class="material-icons">alt_route</i> Encerrar Grupos e Gerar Mata-Mata';
             corBotao = '#f59e0b';
             acaoOnClick = 'encerrarFase3EAvancarSaaS()';
-        } else if ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 4 && modelo !== 'grupos') || (faseAtual >= 5)) {
-            textoBotao = '<i class="material-icons">add_circle</i> Criar Novo Torneio';
-            corBotao = '#2563eb';
-            acaoOnClick = 'reiniciarEsteiraNovoTorneioSaaS()';
         } else {
             textoBotao = 'Salvar Parâmetros do Ranking';
             corBotao = '#28a745';
@@ -214,7 +310,6 @@ function atualizarBotaoRodapeRankingSaaS() {
         btnFooter.setAttribute('onclick', 'exportarRelatorioHistoricoSaaS()');
         btnFooter.style.cssText = 'background-color: #8b5cf6 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; opacity: 1; pointer-events: auto;';
 
-    // 🟠 ABA 7 (índice 6): Ranking Geral
     // 🟠 ABA 7 (índice 6): Ranking Geral
     } else if (idxAbaAtiva === 6) { 
         const vConfig = document.getElementById('visao-config-ranking-geral');
@@ -1836,14 +1931,52 @@ function solicitarResetRankingSaaS() {
    ======================================================== */
 function aplicarTravaParametrosCongeladosSaaS(confRanking) { 
     const conf = confRanking || {};
+    const cal = conf.calendario || {};
     const faseAtual = parseInt(conf.faseAtual, 10) || 1;
-    const modelo = conf.calendario?.formatoTorneio || "grupos";
-    const faseInicialGrupos = conf.grupos?.faseInicial || "grupos";
+    const modelo = cal.formatoTorneio || "grupos";
 
+    // 🛡️ 1. DETECÇÃO SÍNCRONA LOCAL (0 ms): Avalia as decisões finais já presentes na memória RAM
+    const chavesMapLocal = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+    const partidasMapLocal = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
+    const temChavesLocal = Object.keys(chavesMapLocal).length > 0;
+    const todasFinaisEncerradas = temChavesLocal && Object.keys(chavesMapLocal).every(catKey => {
+        const info = chavesMapLocal[catKey] || {};
+        const tam = parseInt(info.faseAtual, 10) || (info.rodada1 ? info.rodada1.length * 2 : 2);
+        if (tam > 2) return false;
+        const finalMatch = (info.rodada1 && info.rodada1[0]) || null;
+        if (!finalMatch || finalMatch.isBye) return true;
+        const pFinal = Object.values(partidasMapLocal || {}).find(p => {
+            if (p.categoria !== catKey || p.status !== 'finalizada') return false;
+            const dp = p.dadosPlacar || {};
+            if (p.tagGrupoRanking || dp.tagGrupoRanking) return false;
+            return (p.jogador1Id === finalMatch.jogador1Id && p.jogador2Id === finalMatch.jogador2Id) ||
+                   (p.jogador1Id === finalMatch.jogador2Id && p.jogador2Id === finalMatch.jogador1Id);
+        });
+        return !!(pFinal && pFinal.vencedorId);
+    });
+
+    // 🛡️ 2. DETECÇÃO DE HOMOLOGAÇÃO NO ACERVO HISTÓRICO (Quando a resposta da rede já chegou)
+    const edicaoIdAtual = cal.nomeTorneio ? `${new Date().getFullYear()}_${cal.nomeTorneio.replace(/\s+/g, '_')}` : '';
+    const jaEstaNoHistorico = edicaoIdAtual && (
+        typeof acervoHistoricoGlobalSaaS !== 'undefined' && 
+        Array.isArray(acervoHistoricoGlobalSaaS) && 
+        acervoHistoricoGlobalSaaS.some(item => item.id === edicaoIdAtual)
+    );
+    const itemHistoricoEdicao = jaEstaNoHistorico 
+        ? acervoHistoricoGlobalSaaS.find(item => item.id === edicaoIdAtual) 
+        : null;
+
+    // 🎯 Prioriza a faseInicial congelada no contrato do torneio (imune a trocas na Aba 2)
+    const faseInicialGrupos = cal.faseInicial || itemHistoricoEdicao?.contrato?.faseInicial || conf.grupos?.faseInicial || "grupos";
     const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
-    const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
 
-    // A trava só se aplica a partir da Fase 3 (após encerrar as inscrições e montar as chaves)
+    // 🏆 Conclusão imediata: se estiver na fase 4+ e todas as decisões foram finalizadas, o torneio está concluído
+    const torneioConcluido = conf.torneioConcluido === true || jaEstaNoHistorico || 
+        (faseAtual >= 4 && todasFinaisEncerradas) ||
+        (modelo !== "grupos" && faseAtual >= 4) || 
+        (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
+
+    // A trava só se aplica durante uma competição em andamento (nunca se concluída ou em preparação)
     const ehTorneioAtivo = (faseAtual >= 3 && !torneioConcluido);
 
     // Lista dos IDs dos campos sensíveis que devem ser congelados durante a competição
@@ -1861,7 +1994,7 @@ function aplicarTravaParametrosCongeladosSaaS(confRanking) {
         'select-ranking-grupos-fase-inicial', 
         'select-ranking-grupos-tamanho',
         'select-ranking-grupos-classificados', 
-		'box-criterio-desempate',
+        'box-criterio-desempate',
         'sel-desempate-games',
         'sel-desempate-confronto',
         'sel-desempate-sorteio',
