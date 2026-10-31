@@ -432,9 +432,12 @@ function renderizarLeaderboardSaaS() {
                 abaGeneroAtivaSaaS = 'UNIFICADO';
             } else {
                 selectGenero.disabled = false;
+                const isMobile = window.innerWidth <= 768;
+                const txtMasc = isMobile ? 'Masc' : 'Masculino';
+                const txtFem = isMobile ? 'Fem' : 'Feminino';
                 selectGenero.innerHTML = `
-                    <option value="MASCULINO" ${abaGeneroAtivaSaaS === 'MASCULINO' ? 'selected' : ''}>Masculino</option>
-                    <option value="FEMININO" ${abaGeneroAtivaSaaS === 'FEMININO' ? 'selected' : ''}>Feminino</option>
+                    <option value="MASCULINO" ${abaGeneroAtivaSaaS === 'MASCULINO' ? 'selected' : ''}>${txtMasc}</option>
+                    <option value="FEMININO" ${abaGeneroAtivaSaaS === 'FEMININO' ? 'selected' : ''}>${txtFem}</option>
                 `;
             }
         }
@@ -591,38 +594,9 @@ function renderizarLeaderboardSaaS() {
             }
         }
 		
-		// Injeção do Botão da Árvore do Mata-Mata (Ao lado do PDF)
-        let btnArvore = document.getElementById('btn-toggle-arvore-saas');
-        if (!btnArvore && selectGenero && selectGenero.parentElement) {
-            btnArvore = document.createElement('button');
-            btnArvore.id = 'btn-toggle-arvore-saas';
-            btnArvore.type = 'button';
-            btnArvore.title = 'Alternar Visão Árvore / Lista';
-            btnArvore.style.cssText = 'width: 38px; height: 36px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; color: #8b5cf6; display: none; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-left: 4px;';
-            btnArvore.innerHTML = '<i class="material-icons" style="font-size: 18px;">account_tree</i>';
-            btnArvore.onclick = () => alternarVisaoMataMataSaaS();
-
-            const btnPdf = selectGenero.parentElement.querySelector('button[onclick*="exportarPDFContextualSaaS"], button[onclick*="exportarSumulasPDFSaaS"], .btn-pdf');
-            if (btnPdf) {
-                selectGenero.parentElement.insertBefore(btnArvore, btnPdf);
-            } else {
-                selectGenero.parentElement.appendChild(btnArvore);
-            }
-        }
-
-        if (btnArvore) {
-            btnArvore.style.display = (emFaseMataMata && abaVisaoLeaderboardSaaS === 'TORNEIO') ? 'flex' : 'none';
-            
-            if (modoVisaoMataMataSaaS === 'arvore') {
-                btnArvore.style.background = '#8b5cf6';
-                btnArvore.style.color = '#ffffff';
-                btnArvore.style.borderColor = '#7c3aed';
-            } else {
-                btnArvore.style.background = '#f5f3ff';
-                btnArvore.style.color = '#8b5cf6';
-                btnArvore.style.borderColor = '#ddd6fe';
-            }
-        }
+		// 🧹 Limpeza: remove botão antigo de árvore da barra superior de filtros, se existir
+        const btnArvoreAntigo = document.getElementById('btn-toggle-arvore-saas');
+        if (btnArvoreAntigo) btnArvoreAntigo.remove();
 
         if (containerAbas) containerAbas.style.display = 'flex';
 
@@ -2146,8 +2120,13 @@ function renderizarLeaderboardSaaS() {
                 }
 
                 htmlMataMata = `
-                    <div class="box-dica-leaderboard">
-                        🌳 <b>Fase 4 - ${rotuloFaseHeader}:</b> Confrontos decisivos do torneio.
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+                        <div class="box-dica-leaderboard" style="flex: 1; margin-bottom: 0;">
+                            🌳 <b>Fase 4 - ${rotuloFaseHeader}:</b> Confrontos decisivos do torneio.
+                        </div>
+                        <button type="button" onclick="alternarVisaoMataMataSaaS()" title="Alternar Visão Árvore / Lista" style="width: 38px; height: 36px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; color: #8b5cf6; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+                            <i class="material-icons" style="font-size: 18px;">account_tree</i>
+                        </button>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 10px;">
