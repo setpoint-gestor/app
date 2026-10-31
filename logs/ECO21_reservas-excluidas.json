@@ -5035,5 +5035,31 @@
         "hora": 21
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-10-31T13:19:00.509Z",
+    "dataLocal": "31/10/2026, 10:19:00",
+    "autor": "JUAN MARTIN DEL POTRO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "31-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Del Potro": true
+    },
+    "jogadores": "Del Potro",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 10
+      }
+    ]
   }
 ]
