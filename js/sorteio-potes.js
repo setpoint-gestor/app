@@ -27,7 +27,7 @@ let sorteioPotesGlobal = {
 // BLOCO 2: INJEÇÃO DINÂMICA DO MODAL E CSS NO DOM (RESPONSIVO MOBILE)
 // ========================================================
 function garantirModalSorteioNoDOMSaaS() {
-    if (document.getElementById('modal-sorteio-potes')) return;   
+    if (document.getElementById('modal-sorteio-potes')) return;    
 
     const modalHTML = `
     <style id="style-sorteio-potes-anim">
@@ -552,7 +552,12 @@ window.SorteioPotes = {
             textoPotesInfo = qtdPotes === 1 ? "1 Pote" : `${qtdPotes} Potes`;
         }
 
-        if (elMicro) elMicro.innerText = `${totalAtletas} Atletas Confirmados • ${textoPotesInfo}`;
+        // ♀️ Flexão dinâmica de gênero (Confirmadas vs Confirmados)
+        const rawTitleStr = (sorteioPotesGlobal.torneioNome || "").toLowerCase();
+        const ehFeminino = rawTitleStr.includes('feminino') || rawTitleStr.includes('fem');
+        const termoConfirmados = ehFeminino ? "Atletas Confirmadas" : "Atletas Confirmados";
+
+        if (elMicro) elMicro.innerText = `${totalAtletas} ${termoConfirmados} • ${textoPotesInfo}`;
 
         if (btnFast) btnFast.style.display = 'block';
         if (btnFinish) btnFinish.style.display = 'none';

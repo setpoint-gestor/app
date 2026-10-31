@@ -19,7 +19,7 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
 
     // 🛡️ PORTARIA DE SEGURANÇA: Avalia se o usuário ativo tem poder de alteração
     const nomeLogado = localStorage.getItem('jogadorLogadoNome') || ""; 
-    const idLogado = localStorage.getItem('jogadorLogadoId') || "";
+    const idLogado = localStorage.getItem('jogadorLogadoId') || ""; 
     let perfis = {};
     try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
     const ehAdmin = perfis['Admin'] === true;
@@ -334,30 +334,78 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const htmlPosJ1 = posJ1 ? `<span class="atp-pos">${posJ1}</span>` : '';
         const htmlPosJ2 = posJ2 ? `<span class="atp-pos">${posJ2}</span>` : '';
 
-        // 🏷️ Identificação da Classe do confronto na memória RAM
+        // 🏷️ Identificação da Classe e Género do confronto na memória RAM
         let classeAtleta = '';
-        if (dadosReserva.categoria) {
-            classeAtleta = dadosReserva.categoria.replace('CLASSE_', '').split('_')[0];
-        } else if (dadosReserva.dadosPlacar?.categoria) {
-            classeAtleta = dadosReserva.dadosPlacar.categoria.replace('CLASSE_', '').split('_')[0];
+        let generoAtleta = '';
+
+        const catBruta = dadosReserva.categoria || dadosReserva.dadosPlacar?.categoria;
+
+        if (catBruta) {
+            const partes = catBruta.replace('CLASSE_', '').split('_');
+            classeAtleta = partes[0] || '';
+            generoAtleta = partes[1] || '';
         } else {
-            // Localiza o ID do atleta para ler a categoria da tabela ou do cadastro
+            // Localiza o ID dos atletas para ler a categoria da tabela, chaves ou cadastro
             const idAtleta1 = (typeof obterIdJogadorPorTextoSaaS === 'function')
                 ? (obterIdJogadorPorTextoSaaS(j1Completo) || obterIdJogadorPorTextoSaaS(nomesApelidos[0]))
                 : null;
+            const idAtleta2 = (typeof obterIdJogadorPorTextoSaaS === 'function')
+                ? (obterIdJogadorPorTextoSaaS(j2Completo) || obterIdJogadorPorTextoSaaS(nomesApelidos[1]))
+                : null;
 
-            if (idAtleta1 && typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
-                Object.keys(rankingTabelasGlobal).forEach(catKey => {
-                    const ids = Array.isArray(rankingTabelasGlobal[catKey]) ? rankingTabelasGlobal[catKey] : Object.values(rankingTabelasGlobal[catKey]);
-                    if (ids.includes(idAtleta1)) {
-                        classeAtleta = catKey.replace('CLASSE_', '').split('_')[0];
+            const idAlvo = idAtleta1 || idAtleta2;
+
+            // 1. Procura em rankingChavesGlobal (Mata-Mata)
+            if (idAlvo && typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) {
+                Object.keys(rankingChavesGlobal).forEach(catKey => {
+                    if (classeAtleta) return;
+                    const dadosChave = rankingChavesGlobal[catKey] || {};
+                    const confs = [...(dadosChave.rodada1 || [])];
+                    if (dadosChave.historicoRodadas) {
+                        Object.values(dadosChave.historicoRodadas).forEach(arr => {
+                            if (Array.isArray(arr)) confs.push(...arr);
+                        });
+                    }
+                    if (confs.some(c => c && (c.jogador1Id === idAlvo || c.jogador2Id === idAlvo))) {
+                        const partes = catKey.replace('CLASSE_', '').split('_');
+                        classeAtleta = partes[0] || '';
+                        generoAtleta = partes[1] || '';
                     }
                 });
             }
 
-            if (!classeAtleta && idAtleta1 && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta1]) {
-                classeAtleta = (jogadoresGlobal[idAtleta1].classe || '').toUpperCase().replace('CLASSE_', '').trim();
+            // 2. Procura em rankingTabelasGlobal (Grupos / Tabelas)
+            if (!classeAtleta && idAlvo && typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
+                Object.keys(rankingTabelasGlobal).forEach(catKey => {
+                    if (classeAtleta) return;
+                    const ids = Array.isArray(rankingTabelasGlobal[catKey]) ? rankingTabelasGlobal[catKey] : Object.values(rankingTabelasGlobal[catKey]);
+                    if (ids.includes(idAlvo)) {
+                        const partes = catKey.replace('CLASSE_', '').split('_');
+                        classeAtleta = partes[0] || '';
+                        generoAtleta = partes[1] || '';
+                    }
+                });
             }
+
+            // 3. Fallback no cadastro do atleta
+            if (idAlvo && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAlvo]) {
+                const j = jogadoresGlobal[idAlvo];
+                if (!classeAtleta) {
+                    classeAtleta = (j.classe || '').toUpperCase().replace('CLASSE_', '').trim();
+                }
+                if (!generoAtleta) {
+                    generoAtleta = (j.genero || '').toUpperCase().trim();
+                    if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
+                }
+            }
+        }
+
+        // 🎾 Sufixo de género abreviado
+        let sufixoGen = '';
+        if (generoAtleta) {
+            const gUp = generoAtleta.toUpperCase();
+            if (gUp.includes('MASC')) sufixoGen = ' Masc';
+            else if (gUp.includes('FEM')) sufixoGen = ' Fem';
         }
 
         const modeloReserva = (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo || "").toLowerCase();
@@ -388,7 +436,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             faseDesc = `Grupos • ${faseDesc}`;
         }
 
-        const labelModelo = classeAtleta ? `Classe ${classeAtleta} • ${faseDesc}` : faseDesc;
+        const labelModelo = classeAtleta ? `Classe ${classeAtleta}${sufixoGen} • ${faseDesc}` : faseDesc;
 		
         let classNomeJ1 = '', classNomeJ2 = '';
         let setaJ1 = '', setaJ2 = '';
