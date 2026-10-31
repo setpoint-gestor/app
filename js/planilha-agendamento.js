@@ -19,7 +19,7 @@ function cliqueCelula(dia, hora) {
 
         const colHeader = linhaDatasTabela.children[dia - 1];
         if (colHeader) {
-            const dataTexto = colHeader.textContent.trim();
+            const dataTexto = colHeader.textContent.trim(); 
             // Se o usuario clicou na coluna de hoje e a hora do slot já se encerrou, barra na hora!
             if (dataTexto === stringHoje && hora < horaAtual) {
                 showToast("Aviso: Não é permitido realizar agendamentos em horários passados.", "error"); 
@@ -1148,14 +1148,35 @@ async function aplicarFiltroRankingModalSaaS() {
             };
 
             const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-            
-            // 🎯 CONSOLIDAÇÃO DE ATLETAS VÁLIDOS NAS TABELAS: Cria uma lista de todos os IDs de quem está competindo ativamente
+            const modeloAtivo = confRanking.calendario?.formatoTorneio || 'grupos';
+            const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
+            const emMataMataDireto = (modeloAtivo === 'grupos' && confRanking.grupos?.faseInicial === 'matamata');
+            const emFaseMataMata = (modeloAtivo === 'grupos' && ((emMataMataDireto && faseAtualRanking >= 3) || (!emMataMataDireto && faseAtualRanking >= 4)));
+
+            // 🎯 CONSOLIDAÇÃO DE ATLETAS VÁLIDOS: Filtra apenas quem está competindo ativamente na rodada atual
             const atletasValidosNaTabela = new Set();
-            if (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
-                Object.values(rankingTabelasGlobal).forEach(categoriaTabela => {
-                    const idsCategoria = Array.isArray(categoriaTabela) ? categoriaTabela : Object.values(categoriaTabela);
-                    idsCategoria.forEach(id => { if (id) atletasValidosNaTabela.add(id); });
-                });
+
+            if (modeloAtivo === 'grupos' && emFaseMataMata) {
+                // 🏆 NO MATA-MATA DE GRUPOS: Filtra exclusivamente os atletas com confronto ativo na rodada atual das chaves
+                if (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) {
+                    Object.values(rankingChavesGlobal).forEach(dadosChave => {
+                        const rodada1 = (dadosChave && dadosChave.rodada1) ? dadosChave.rodada1 : [];
+                        rodada1.forEach(confronto => {
+                            if (!confronto.isBye) {
+                                if (confronto.jogador1Id) atletasValidosNaTabela.add(confronto.jogador1Id);
+                                if (confronto.jogador2Id) atletasValidosNaTabela.add(confronto.jogador2Id);
+                            }
+                        });
+                    });
+                }
+            } else {
+                // 🎾 NA FASE DE GRUPOS, PIRÂMIDE OU BARRAGEM: Considera todos os atletas das tabelas ativas
+                if (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
+                    Object.values(rankingTabelasGlobal).forEach(categoriaTabela => {
+                        const idsCategoria = Array.isArray(categoriaTabela) ? categoriaTabela : Object.values(categoriaTabela);
+                        idsCategoria.forEach(id => { if (id) atletasValidosNaTabela.add(id); });
+                    });
+                }
             }
 
             const precisaPovoar = (selJ1.options.length <= 1) || 
@@ -1166,13 +1187,20 @@ async function aplicarFiltroRankingModalSaaS() {
                 selJ1.innerHTML = '<option value="">Selecionar Jogador 1...</option>';
 
                 if (typeof jogadoresGlobal !== 'undefined' && Object.keys(jogadoresGlobal).length > 0) {
-                    Object.keys(jogadoresGlobal).forEach(id => {
-                        const j = jogadoresGlobal[id];
-                        // 🎯 FILTRO DE ALTA PRECISÃO: Exige que o atleta esteja ativo, apto ao ranking e presente nas tabelas de sorteio/chaves
-                        const participaETaNaTabela = j && j.ativo !== false && j.participaRanking && atletasValidosNaTabela.has(id);
+                    const atletasOrdenados = Object.keys(jogadoresGlobal)
+                        .map(id => ({ id: id, ...jogadoresGlobal[id] }))
+                        .sort((a, b) => {
+                            const nomeA = (a.nomeCompleto || "").trim().toLowerCase();
+                            const nomeB = (b.nomeCompleto || "").trim().toLowerCase();
+                            return nomeA.localeCompare(nomeB, 'pt-BR');
+                        });
+
+                    atletasOrdenados.forEach(j => {
+                        // 🎯 FILTRO DE ALTA PRECISÃO: Exige que o atleta esteja ativo, apto ao ranking e presente nas disputas ativas
+                        const participaETaNaTabela = j && j.ativo !== false && j.participaRanking && atletasValidosNaTabela.has(j.id);
                         if (participaETaNaTabela) {
                             const opt = document.createElement('option');
-                            opt.value = id;
+                            opt.value = j.id;
                             opt.textContent = formatarNomeJogador1GestorSaaS(j.nomeCompleto);
                             selJ1.appendChild(opt); 
                         }

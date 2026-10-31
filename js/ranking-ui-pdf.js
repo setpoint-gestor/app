@@ -3480,10 +3480,14 @@ function obterPesoFaseSaaS(partida) {
     const tagFase = (partida.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
     const tagGrupo = (partida.tagGrupoRanking || dp.tagGrupoRanking || '').toLowerCase();
 
-    if (tagFase.includes('grande final') || tagFase.includes('final')) return 1000;
+    // 🏆 Hierarquia Eliminatória: Isola a Grande Final antes de checar as demais etapas
+    if (tagFase.includes('grande final') || (tagFase.includes('final') && !tagFase.includes('quarta') && !tagFase.includes('semi') && !tagFase.includes('oitava') && !tagFase.includes('16avos'))) {
+        return 1000;
+    }
     if (tagFase.includes('semi')) return 800;
-    if (tagFase.includes('quartas')) return 600;
-    if (tagFase.includes('oitavas')) return 400;
+    if (tagFase.includes('quarta')) return 600;
+    if (tagFase.includes('oitava')) return 400;
+    if (tagFase.includes('16avos')) return 300;
 
     if (tagGrupo || tagFase.includes('grupo')) {
         const numGrupoMatch = (tagGrupo || tagFase).match(/\d+/);
