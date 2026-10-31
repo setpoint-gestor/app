@@ -967,7 +967,7 @@ function renderizarGestaoTemporadaSaaS() {
             }
 
             elBoxAviso4.innerHTML = `
-                <p style="margin: 0 0 4px 0; font-weight: 700; color: #6b21a8;">📍 Fase ${faseAtual}: Quadro Eliminatório (${rotuloAtual}) • ${rotuloCatTexto}</p>
+                <p style="margin: 0 0 4px 0; font-weight: 700; color: #6b21a8;">📍 Fase ${faseAtual}: Quadro Eliminatório (${rotuloAtual})</p>
                 <span style="display: block; font-size: 12.5px; color: #7e22ce; line-height: 1.4;">${subtituloFase4}</span>
                 <span style="display: block; font-size: 12.5px; color: #7e22ce; line-height: 1.4;">${bulletInstrucao}</span>
             `;
@@ -3449,7 +3449,7 @@ async function encerrarFase3EAvancarSaaS() {
                 : "Próxima Fase";
             const artigo = (proximoTamanho === 2) ? "para a" : "para as";
 
-            tituloPrompt = `Avançar ${artigo} ${rotuloProxima} (${rotuloCatTxt})`;
+            tituloPrompt = `Avançar ${artigo} ${rotuloProxima}`;
             msgPrompt = `As partidas desta rodada na <b>${rotuloCatTxt}</b> foram concluídas. Deseja consolidar os vencedores e avançar ${artigo} <b>${rotuloProxima}</b>?`;
         }
     } else if (faseAtual === 3) {

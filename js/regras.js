@@ -2026,25 +2026,70 @@ function aplicarTravaParametrosCongeladosSaaS(confRanking) {
         }
     });
 
-    // Controle do Banner de Aviso posicionado fora do contêiner da sanfona
-    let banner = document.getElementById('banner-trava-parametros-ranking');
-    if (ehTorneioAtivo) {
-        if (!banner) {
-            banner = document.createElement('div');
-            banner.id = 'banner-trava-parametros-ranking';
-            banner.style.cssText = 'background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; color: #991b1b; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px;';
-            banner.innerHTML = `<i class="material-icons" style="font-size: 18px; color: #dc2626;">lock</i> <span><b>Parâmetros Congelados:</b> As regras operacionais estão travadas durante o torneio ativo. Para alterar, conclua ou zere a temporada.</span>`;
+    // 1. Remove o banner antigo do topo geral, se existir
+        const bannerAntigo = document.getElementById('banner-trava-parametros-ranking');
+        if (bannerAntigo) {
+            bannerAntigo.remove();
+        }
 
-            const containerGeral = document.querySelector('#modal-config-ranking .sanfona-container');
-            if (containerGeral && containerGeral.parentNode) {
-                containerGeral.parentNode.insertBefore(banner, containerGeral);
+        const isMobile = window.innerWidth <= 768;
+        const itemsSanfona = document.querySelectorAll('#modal-config-ranking .sanfona-container .accordion-item');
+
+        // 2. Aplica a borda vermelha e o selo discreto exclusivamente nas Abas 1, 2 e 3
+        itemsSanfona.forEach((item, idx) => {
+            const header = item.querySelector('.accordion-header');
+            const deveTravar = ehTorneioAtivo && (idx === 0 || idx === 1 || idx === 2);
+
+            if (deveTravar) {
+                if (isMobile) {
+                    item.style.setProperty('border', '2px solid #ef4444', 'important');
+                    if (header) header.style.removeProperty('border');
+                } else {
+                    item.style.removeProperty('border');
+                    if (header) header.style.setProperty('border', '2px solid #ef4444', 'important');
+                }
+            } else {
+                item.style.removeProperty('border');
+                if (header) header.style.removeProperty('border');
             }
-        } else {
-            banner.style.display = 'flex';
-        }
-    } else {
-        if (banner) {
-            banner.style.display = 'none';
-        }
+
+            if (idx <= 2) {
+                const content = item.querySelector('.accordion-content');
+                if (!content) return;
+
+                const inner = content.querySelector('.accordion-content-inner');
+                if (inner) {
+                    inner.style.paddingTop = ehTorneioAtivo ? '0px' : '';
+                }
+
+                let badgeAba = content.querySelector('.badge-trava-aba-conteudo');
+
+                if (ehTorneioAtivo) {
+                    if (!badgeAba) {
+                        badgeAba = document.createElement('div');
+                        badgeAba.className = 'badge-trava-aba-conteudo';
+                        badgeAba.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 6px 12px; margin-top: 16px; margin-bottom: 2px; color: #991b1b; font-size: 12.5px; font-weight: 700;';
+                        badgeAba.innerHTML = `
+                            <i class="material-icons" style="font-size: 16px; color: #dc2626;">lock</i>
+                            <span>Parâmetros Congelados.</span>
+                            <span style="position: relative; display: inline-flex; margin-left: 2px;">
+                                <span onclick="mostrarAjudaIconeSaaS(event, this, 'As regras operacionais estão travadas durante o torneio ativo. Para alterar, conclua ou zere a temporada.')" title="Ajuda" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; font-size: 11px; font-weight: 800; user-select: none;">?</span>
+                            </span>
+                        `;
+                        content.insertBefore(badgeAba, content.firstChild);
+                    } else {
+                        badgeAba.style.display = 'inline-flex';
+                        badgeAba.style.marginTop = '16px';
+                        badgeAba.style.marginBottom = '2px';
+                    }
+                } else {
+                    if (badgeAba) {
+                        badgeAba.style.display = 'none';
+                    }
+                    if (inner) {
+                        inner.style.paddingTop = '';
+                    }
+                }
+            }
+        });
     }
-}
