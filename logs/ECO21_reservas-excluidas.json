@@ -5144,5 +5144,458 @@
         "hora": 21
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Alice Pereira",
+    "jogadores_completo": "ANA JULIA MARTINS, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 10
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "11:00 - 12:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "RAFAEL NADAL",
+    "confirmacoes": {
+      "Nadal": true,
+      "Verdasco": true
+    },
+    "jogadores": "Nadal, Verdasco",
+    "jogadores_completo": "RAFAEL NADAL, FERNANDO VERDASCO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "12:00 - 13:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "RAFAEL NADAL",
+    "confirmacoes": {
+      "Murray": true,
+      "Nadal": true
+    },
+    "jogadores": "Nadal, Murray",
+    "jogadores_completo": "RAFAEL NADAL, ANDY MURRAY",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 12
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "19:00 - 20:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Alex, Alice Pereira",
+    "jogadores_completo": "ALEX SOUZA, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 19
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "20:00 - 21:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA FRANCISCA SANTOS",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Ana Francisca": true
+    },
+    "jogadores": "Ana Francisca, Alexandre Voj",
+    "jogadores_completo": "ANA FRANCISCA SANTOS, ALEXANDRE VOJCIECHOVSKI",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 20
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "21:00 - 22:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA FRANCISCA SANTOS",
+    "confirmacoes": {
+      "Almir": true,
+      "Ana Francisca": true
+    },
+    "jogadores": "Ana Francisca, Almir",
+    "jogadores_completo": "ANA FRANCISCA SANTOS, ALMIR ALVES DA CRUZ",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 21
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alex": true
+    },
+    "jogadores": "Adriano Feitosa, Alex",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 7
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANDY MURRAY",
+    "confirmacoes": {
+      "Murray": true,
+      "Nadal": true
+    },
+    "jogadores": "Murray, Nadal",
+    "jogadores_completo": "ANDY MURRAY, RAFAEL NADAL",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 3,
+        "hora": 10
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "11:00 - 12:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Adriano Feitosa, Alice Pereira",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 3,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "12:00 - 13:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alessandro Xavier": true
+    },
+    "jogadores": "Adriano Feitosa, Alessandro Xavier",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, ALESSANDRO ROMERO XAVIER",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 3,
+        "hora": 12
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "19:00 - 20:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "RAFAEL NADAL",
+    "confirmacoes": {
+      "Nadal": true,
+      "Verdasco": true
+    },
+    "jogadores": "Nadal, Verdasco",
+    "jogadores_completo": "RAFAEL NADAL, FERNANDO VERDASCO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 3,
+        "hora": 19
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "21:00 - 22:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANA JULIA MARTINS",
+    "confirmacoes": {
+      "Alex": true,
+      "Ana Julia": true
+    },
+    "jogadores": "Ana Julia, Alex",
+    "jogadores_completo": "ANA JULIA MARTINS, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 3,
+        "hora": 21
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "11:00 - 12:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALESSANDRO ROMERO XAVIER",
+    "confirmacoes": {
+      "Alessandro Xavier": true,
+      "Ana Julia": true
+    },
+    "jogadores": "Alessandro Xavier, Ana Julia",
+    "jogadores_completo": "ALESSANDRO ROMERO XAVIER, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 3,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "19:00 - 20:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANDY MURRAY",
+    "confirmacoes": {
+      "Del Potro": true,
+      "Murray": true
+    },
+    "jogadores": "Murray, Del Potro",
+    "jogadores_completo": "ANDY MURRAY, JUAN MARTIN DEL POTRO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 3,
+        "hora": 19
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 3 - Coberta",
+    "horario": "21:00 - 22:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "RAFAEL NADAL",
+    "confirmacoes": {
+      "Murray": true,
+      "Nadal": true
+    },
+    "jogadores": "Nadal, Murray",
+    "jogadores_completo": "RAFAEL NADAL, ANDY MURRAY",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 3",
+        "dia": 3,
+        "hora": 21
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-01T13:08:39.100Z",
+    "dataLocal": "01/11/2026, 10:08:39",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "11:00 - 12:00",
+    "duracao": "1 Hora",
+    "data": "28-10-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ANDY MURRAY",
+    "confirmacoes": {
+      "Del Potro": true,
+      "Murray": true
+    },
+    "jogadores": "Murray, Del Potro",
+    "jogadores_completo": "ANDY MURRAY, JUAN MARTIN DEL POTRO",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 4",
+        "dia": 3,
+        "hora": 11
+      }
+    ]
   }
 ]
