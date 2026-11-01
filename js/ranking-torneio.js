@@ -623,39 +623,49 @@ async function zerarRankingSaaS() {
 
 let categoriaGestaoAtivaSaaS = null;
 
+/**
+ * 🎯 FONTE ÚNICA DA VERDADE (SSOT) DO ESTADO DO TORNEIO ATIVO
+ * Centraliza o cálculo de fase, modelo, mata-mata e conclusão em um único lugar para todo o sistema.
+ */
+function obterEstadoTorneioAtivoSaaS() {
+    const conf = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const cal = conf.calendario || {};
+
+    const modelo = cal.formatoTorneio || "grupos";
+    const modeloEsteira = cal.formatoTorneio || "generico";
+    const faseInicialGrupos = cal.faseInicial || conf.grupos?.faseInicial || "grupos";
+    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
+
+    const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
+    const emFaseMataMata = (modelo === 'grupos' && ((emMataMataDireto && faseAtual >= 3) || (!emMataMataDireto && faseAtual >= 4)));
+
+    const torneioConcluido = (conf.torneioConcluido === true) || 
+        (modelo !== "grupos" && faseAtual >= 4) || 
+        (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
+
+    const ehTorneioAtivo = (faseAtual >= 3 && !torneioConcluido);
+
+    return {
+        conf,
+        cal,
+        modelo,
+        modeloEsteira,
+        faseInicialGrupos,
+        faseAtual,
+        emMataMataDireto,
+        emFaseMataMata,
+        torneioConcluido,
+        ehTorneioAtivo
+    };
+}
+
 function renderizarGestaoTemporadaSaaS() {
     const containerStepper = document.getElementById('stepper-gestor-container');
     const cardResumo = document.getElementById('card-resumo-calendario-saas');
     if (!containerStepper) return;
 
-    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    
-    // 💡 Lógica Neutra: Se houver formato salvo usa ele, senão assume o 'generico'
-    const temContratoSalvo = !!cal.formatoTorneio;
-    const modelo = temContratoSalvo ? cal.formatoTorneio : "generico";
-
-    // 🛡️ DETEÇÃO DE HOMOLOGAÇÃO: Verifica se a edição ativa já foi homologada no histórico
-    const edicaoIdAtual = cal.nomeTorneio ? `${new Date().getFullYear()}_${cal.nomeTorneio.replace(/\s+/g, '_')}` : '';
-    const jaEstaNoHistorico = edicaoIdAtual && (
-        typeof acervoHistoricoGlobalSaaS !== 'undefined' && 
-        Array.isArray(acervoHistoricoGlobalSaaS) && 
-        acervoHistoricoGlobalSaaS.some(item => item.id === edicaoIdAtual)
-    );
-    const itemHistoricoEdicao = jaEstaNoHistorico 
-        ? acervoHistoricoGlobalSaaS.find(item => item.id === edicaoIdAtual) 
-        : null;
-
-    // 🎯 Prioriza a faseInicial congelada no contrato do torneio (imune a trocas na Aba 2)
-    const faseInicialGrupos = cal.faseInicial || itemHistoricoEdicao?.contrato?.faseInicial || conf.grupos?.faseInicial || "grupos";
-    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
-
-    // 🎯 Identificação universal do estado concluído
-    const emMataMataDiretoEsteira = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
-    const torneioConcluido = conf.torneioConcluido === true || jaEstaNoHistorico || 
-        (modelo !== "grupos" && faseAtual >= 4) || 
-        (modelo === "grupos" && ((emMataMataDiretoEsteira && faseAtual >= 4) || (!emMataMataDiretoEsteira && faseAtual >= 5)));
-
+    const { conf, cal, modeloEsteira: modelo, faseInicialGrupos, faseAtual, torneioConcluido } = obterEstadoTorneioAtivoSaaS();
+		
     // 🎯 Ajuste dinâmico da esteira de Grupos conforme a Fase Inicial (5 ou 4 passos)
     const rotulosGrupos = (faseInicialGrupos === "matamata")
         ? ["1. Calendário", "2. Inscrições", "3. Mata-Mata", "4. Concluído"]
@@ -3192,7 +3202,7 @@ async function encerrarFase3EAvancarSaaS() {
                     }
 
                     const historico = chaveInfo.historicoRodadas || {};
-                    const faseAnteriorNum = parseInt(chaveInfo.faseAtual, 10) || (rodadaAtual.length * 2);
+                    const faseAnteriorNum = parseInt(chaveInfo.faseAtual, 10) || (rodadaAtual.length * 2); 
                     historico[faseAnteriorNum] = rodadaAtual;
 
                     updates[`${raizBanco}/ranking/chaves/${chaveCatFoco}`] = {
@@ -3293,7 +3303,8 @@ async function encerrarFase3EAvancarSaaS() {
             }
 
             if (eHomologacaoFinal) {
-                const edicaoId = `${new Date().getFullYear()}_${(cal.nomeTorneio || 'Torneio').replace(/\s+/g, '_')}`;
+                const timestampHomologacao = Date.now();
+                const edicaoId = `${new Date().getFullYear()}_${(cal.nomeTorneio || 'Torneio').replace(/\s+/g, '_')}_${timestampHomologacao}`;
 
                 const [snapTabelasTorneio, snapSemeadura, snapRankingGeral, snapPartidas, snapPontosGeral] = await Promise.all([
                     database.ref(`${raizBanco}/ranking/tabelas`).once('value'),
@@ -3369,7 +3380,7 @@ async function encerrarFase3EAvancarSaaS() {
                 };
 
                 const objetoHistorico = {
-                    dataHomologacao: Date.now(),
+                    dataHomologacao: timestampHomologacao,
                     modelo: modelo,
                     contrato: contratoCongelado,
                     classificacaoFinal: tabelasTorneio,
@@ -3509,7 +3520,16 @@ function reiniciarEsteiraNovoTorneioSaaS() {
             await database.ref().update(updates);
 
             if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
+                configRegrasGlobal.ranking.faseAtual = 1;
+                configRegrasGlobal.ranking.calendario = null;
+                configRegrasGlobal.ranking.inscritosConfirmados = null;
+                configRegrasGlobal.ranking.filaEspera = null;
                 configRegrasGlobal.ranking.torneioConcluido = null;
+            }
+
+            window.emModoEdicaoCalendarioSaaS = false;
+            if (typeof limparFormularioFase1SaaS === 'function') {
+                limparFormularioFase1SaaS();
             }
 
             console.log("✅ [Novo Torneio] Banco zerado e retornado à Fase 1.");

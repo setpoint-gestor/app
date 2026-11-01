@@ -393,19 +393,30 @@ function renderizarLeaderboardSaaS() {
     if (!bodyList) return;
 
     try {
-        const configRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        // 🎯 FONTE ÚNICA DA VERDADE (SSOT): Consulta direta ao estado centralizado do torneio
+        const {
+            conf: configRanking,
+            cal,
+            modelo,
+            faseAtual,
+            emMataMataDireto,
+            emFaseMataMata,
+            torneioConcluido
+        } = (typeof obterEstadoTorneioAtivoSaaS === 'function')
+            ? obterEstadoTorneioAtivoSaaS()
+            : {
+                conf: (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {},
+                cal: {},
+                modelo: 'grupos',
+                faseAtual: 1,
+                emMataMataDireto: false,
+                emFaseMataMata: false,
+                torneioConcluido: false
+            };
 
-		const modelo = configRanking.calendario?.formatoTorneio || 'grupos';
         const divisaoGenero = configRanking.divisaoGenero || 'separado';
-        const ptsVit = parseInt(configRanking.barragem?.pontosVitoria) || 3;
-        const ptsDer = parseInt(configRanking.barragem?.pontosDerrota) || 1;
-        const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
-        const cal = configRanking.calendario || {};
-
-        const emMataMataDireto = (modelo === 'grupos' && configRanking.grupos?.faseInicial === 'matamata');
-        const emFaseMataMata = (modelo === 'grupos' && ((emMataMataDireto && faseAtual >= 3) || (!emMataMataDireto && faseAtual >= 4)));
-
-        const torneioConcluido = (modelo !== "grupos" && faseAtual >= 4) || (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
+        const ptsVit = parseInt(configRanking.barragem?.pontosVitoria, 10) || 3;
+        const ptsDer = parseInt(configRanking.barragem?.pontosDerrota, 10) || 1;
 
         if (txtSub) {
             if (torneioConcluido) {
@@ -2124,7 +2135,7 @@ function renderizarLeaderboardSaaS() {
                         <div class="box-dica-leaderboard" style="flex: 1; margin-bottom: 0;">
                             🌳 <b>Fase 4 - ${rotuloFaseHeader}:</b> Confrontos decisivos do torneio.
                         </div>
-                        <button type="button" onclick="alternarVisaoMataMataSaaS()" title="Alternar Visão Árvore / Lista" style="width: 38px; height: 36px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; color: #8b5cf6; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+                        <button type="button" onclick="alternarVisaoMataMataSaaS()" title="Alternar Visão Árvore / Lista" style="width: 38px; height: 38px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; color: #8b5cf6; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
                             <i class="material-icons" style="font-size: 18px;">account_tree</i>
                         </button>
                     </div>
@@ -2177,12 +2188,58 @@ function toggleSanfonaHallCampeoesSaaS(totalAtletas) {
 
 function trocarClasseLeaderboardSaaS(cls) {
     abaClasseAtivaSaaS = cls;
+
+    // 🎯 COMUTAÇÃO INTELIGENTE: Auto-ajuste de Gênero para evitar tela vazia
+    const conf = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const divGenero = conf.divisaoGenero || 'separado';
+
+    if (divGenero !== 'unificado') {
+        const tabelas = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) ? rankingTabelasGlobal : {};
+        const chaves = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+        const catsAtivas = Array.from(new Set([
+            ...Object.keys(tabelas).filter(k => Array.isArray(tabelas[k]) && tabelas[k].length > 0),
+            ...Object.keys(chaves).filter(k => chaves[k] && (chaves[k].rodada1 || chaves[k].totalClassificados))
+        ]));
+
+        const chaveCandidata = `${cls}_${abaGeneroAtivaSaaS}`;
+        if (catsAtivas.length > 0 && !catsAtivas.includes(chaveCandidata)) {
+            const catCompravel = catsAtivas.find(k => k.startsWith(`${cls}_`));
+            if (catCompravel) {
+                const partes = catCompravel.split('_');
+                abaGeneroAtivaSaaS = partes[1] || abaGeneroAtivaSaaS;
+            }
+        }
+    }
+
     abaFaseAtivaSaaS = 'AUTO';
     renderizarLeaderboardSaaS();
 }
 
 function trocarGeneroLeaderboardSaaS(gen) {
     abaGeneroAtivaSaaS = gen;
+
+    // 🎯 COMUTAÇÃO INTELIGENTE: Auto-ajuste de Classe para evitar tela vazia
+    const conf = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+    const divGenero = conf.divisaoGenero || 'separado';
+
+    if (divGenero !== 'unificado') {
+        const tabelas = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) ? rankingTabelasGlobal : {};
+        const chaves = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+        const catsAtivas = Array.from(new Set([
+            ...Object.keys(tabelas).filter(k => Array.isArray(tabelas[k]) && tabelas[k].length > 0),
+            ...Object.keys(chaves).filter(k => chaves[k] && (chaves[k].rodada1 || chaves[k].totalClassificados))
+        ]));
+
+        const chaveCandidata = `${abaClasseAtivaSaaS}_${gen}`;
+        if (catsAtivas.length > 0 && !catsAtivas.includes(chaveCandidata)) {
+            const catCompravel = catsAtivas.find(k => k.endsWith(`_${gen}`));
+            if (catCompravel) {
+                const partes = catCompravel.split('_');
+                abaClasseAtivaSaaS = partes[0] || abaClasseAtivaSaaS;
+            }
+        }
+    }
+
     abaFaseAtivaSaaS = 'AUTO';
     renderizarLeaderboardSaaS();
 }
@@ -3208,7 +3265,7 @@ function renderizarTabelaHistoricoSaaS() {
             <button type="button" 
                     onclick="excluirTorneioHistoricoSaaS('${edicao.id}', '${nomeTorneioEscapado}')" 
                     title="Excluir Torneio do Histórico" 
-                    style="float: right; background: none; border: none; cursor: pointer; padding: 2px 4px; vertical-align: middle; margin-left: 8px; display: inline-flex; align-items: center; transition: transform 0.2s;"
+                    style="background: none; border: none; cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; transition: transform 0.2s;"
                     onmouseover="this.style.transform='scale(1.15)'"
                     onmouseout="this.style.transform='scale(1)'">
                 <i class="material-icons" style="font-size: 18px; color: #ef4444;">delete_outline</i>
@@ -3224,16 +3281,20 @@ function renderizarTabelaHistoricoSaaS() {
         if (edicao.modelo === 'piramide') {
             onclickBadge = `abrirPiramideAcervoSaaS('${edicao.id}')`;
         } else if (edicao.modelo === 'barragem') {
-            onclickBadge = `abrirBarragemAcervoSaaS('${edicao.id}')`;
+            onclickBadge = `abrirBarragemAcervoSaaS('${edicao.id}')`; 
         } else if (edicao.modelo === 'grupos') {
-            onclickBadge = `abrirGruposAcervoSaaS('${edicao.id}')`;
+            onclickBadge = `abrirGruposAcervoSaaS('${edicao.id}')`; 
         }
 
         html += `
             <tr>
                 <td class="col-edicao">
-                    <strong style="color: #1e293b; font-size: 14px;">${nomeTorneioRaw}</strong>
-                    ${btnLixeiraHtml}${btnPdf}
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;">
+                        <strong style="color: #1e293b; font-size: 14px; line-height: 1.35; flex: 1; min-width: 0;">${nomeTorneioRaw}</strong>
+                        <span style="display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            ${btnPdf}${btnLixeiraHtml}
+                        </span>
+                    </div>
                 </td>
                 <td class="col-modelo">
                     <span class="format-badge" onclick="${onclickBadge}" style="cursor: pointer;">

@@ -73,7 +73,7 @@ function toggleGavetaRegras(elemento) {
 		
         const content = elemento.querySelector('.accordion-content');
         if (content) {
-            content.style.maxHeight = content.scrollHeight + "px";
+            content.style.maxHeight = content.scrollHeight + "px"; 
         }
     }
 
@@ -119,29 +119,10 @@ function atualizarBotaoRodapeRankingSaaS() {
         }
     }
 
-    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    const modelo = cal.formatoTorneio || "grupos";
-
-    // 🛡️ DETECÇÃO DE HOMOLOGAÇÃO: Verifica se a edição já foi homologada no histórico
-    const edicaoIdAtual = cal.nomeTorneio ? `${new Date().getFullYear()}_${cal.nomeTorneio.replace(/\s+/g, '_')}` : '';
-    const jaEstaNoHistorico = edicaoIdAtual && (
-        typeof acervoHistoricoGlobalSaaS !== 'undefined' && 
-        Array.isArray(acervoHistoricoGlobalSaaS) && 
-        acervoHistoricoGlobalSaaS.some(item => item.id === edicaoIdAtual)
-    );
-    const itemHistoricoEdicao = jaEstaNoHistorico 
-        ? acervoHistoricoGlobalSaaS.find(item => item.id === edicaoIdAtual) 
-        : null;
-
-    // 🎯 Prioriza a faseInicial congelada no contrato do torneio (imune a trocas na Aba 2)
-    const faseInicialGrupos = cal.faseInicial || itemHistoricoEdicao?.contrato?.faseInicial || conf.grupos?.faseInicial || "grupos";
-    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
-
-    const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
-    const torneioConcluido = conf.torneioConcluido === true || jaEstaNoHistorico || 
-        (modelo !== "grupos" && faseAtual >= 4) || 
-        (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
+    // 🎯 FONTE ÚNICA DA VERDADE (SSOT): Consulta direta ao estado centralizado do torneio
+    const { modelo, faseAtual, emMataMataDireto, torneioConcluido } = (typeof obterEstadoTorneioAtivoSaaS === 'function')
+        ? obterEstadoTorneioAtivoSaaS()
+        : { modelo: "grupos", faseAtual: 1, emMataMataDireto: false, torneioConcluido: false };
 
     // 🔵 ABA 5 (índice 4): Gestão da Temporada
     if (idxAbaAtiva === 4) {
@@ -1930,54 +1911,10 @@ function solicitarResetRankingSaaS() {
    FUNÇÃO AUXILIAR: TRAVA DE SEGURANÇA PARA TORNEIO ATIVO
    ======================================================== */
 function aplicarTravaParametrosCongeladosSaaS(confRanking) { 
-    const conf = confRanking || {};
-    const cal = conf.calendario || {};
-    const faseAtual = parseInt(conf.faseAtual, 10) || 1;
-    const modelo = cal.formatoTorneio || "grupos";
-
-    // 🛡️ 1. DETECÇÃO SÍNCRONA LOCAL (0 ms): Avalia as decisões finais já presentes na memória RAM
-    const chavesMapLocal = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
-    const partidasMapLocal = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
-    const temChavesLocal = Object.keys(chavesMapLocal).length > 0;
-    const todasFinaisEncerradas = temChavesLocal && Object.keys(chavesMapLocal).every(catKey => {
-        const info = chavesMapLocal[catKey] || {};
-        const tam = parseInt(info.faseAtual, 10) || (info.rodada1 ? info.rodada1.length * 2 : 2);
-        if (tam > 2) return false;
-        const finalMatch = (info.rodada1 && info.rodada1[0]) || null;
-        if (!finalMatch || finalMatch.isBye) return true;
-        const pFinal = Object.values(partidasMapLocal || {}).find(p => {
-            if (p.categoria !== catKey || p.status !== 'finalizada') return false;
-            const dp = p.dadosPlacar || {};
-            if (p.tagGrupoRanking || dp.tagGrupoRanking) return false;
-            return (p.jogador1Id === finalMatch.jogador1Id && p.jogador2Id === finalMatch.jogador2Id) ||
-                   (p.jogador1Id === finalMatch.jogador2Id && p.jogador2Id === finalMatch.jogador1Id);
-        });
-        return !!(pFinal && pFinal.vencedorId);
-    });
-
-    // 🛡️ 2. DETECÇÃO DE HOMOLOGAÇÃO NO ACERVO HISTÓRICO (Quando a resposta da rede já chegou)
-    const edicaoIdAtual = cal.nomeTorneio ? `${new Date().getFullYear()}_${cal.nomeTorneio.replace(/\s+/g, '_')}` : '';
-    const jaEstaNoHistorico = edicaoIdAtual && (
-        typeof acervoHistoricoGlobalSaaS !== 'undefined' && 
-        Array.isArray(acervoHistoricoGlobalSaaS) && 
-        acervoHistoricoGlobalSaaS.some(item => item.id === edicaoIdAtual)
-    );
-    const itemHistoricoEdicao = jaEstaNoHistorico 
-        ? acervoHistoricoGlobalSaaS.find(item => item.id === edicaoIdAtual) 
-        : null;
-
-    // 🎯 Prioriza a faseInicial congelada no contrato do torneio (imune a trocas na Aba 2)
-    const faseInicialGrupos = cal.faseInicial || itemHistoricoEdicao?.contrato?.faseInicial || conf.grupos?.faseInicial || "grupos";
-    const emMataMataDireto = (modelo === 'grupos' && faseInicialGrupos === 'matamata');
-
-    // 🏆 Conclusão imediata: se estiver na fase 4+ e todas as decisões foram finalizadas, o torneio está concluído
-    const torneioConcluido = conf.torneioConcluido === true || jaEstaNoHistorico || 
-        (faseAtual >= 4 && todasFinaisEncerradas) ||
-        (modelo !== "grupos" && faseAtual >= 4) || 
-        (modelo === "grupos" && ((emMataMataDireto && faseAtual >= 4) || (!emMataMataDireto && faseAtual >= 5)));
-
-    // A trava só se aplica durante uma competição em andamento (nunca se concluída ou em preparação)
-    const ehTorneioAtivo = (faseAtual >= 3 && !torneioConcluido);
+    // 🎯 FONTE ÚNICA DA VERDADE (SSOT): Consulta direta ao estado centralizado do torneio
+    const { ehTorneioAtivo } = (typeof obterEstadoTorneioAtivoSaaS === 'function')
+        ? obterEstadoTorneioAtivoSaaS()
+        : { ehTorneioAtivo: false };
 
     // Lista dos IDs dos campos sensíveis que devem ser congelados durante a competição
     const idsCamposSensiveis = [
