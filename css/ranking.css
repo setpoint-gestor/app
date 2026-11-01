@@ -15,7 +15,7 @@
     padding: 0 !important; 
     display: flex;
     flex-direction: column;
-    background-color: var(--bg-site, #f4f6f8);    
+    background-color: var(--bg-site, #f4f6f8);     
 }
 
 #modal-config-ranking .header-painel {
@@ -165,9 +165,9 @@
 
     .table-exec-striped td.col-edicao strong {
         flex: 1; 
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        white-space: normal;
+        line-height: 1.3;
+        word-break: normal;
     }
 
     .table-exec-striped td.col-edicao button,
@@ -440,8 +440,8 @@
 }
 
 .col-edicao {
-    white-space: nowrap;
-    padding-right: 12px !important;
+    white-space: normal;
+    padding-right: 12px !important; 
     vertical-align: middle;
 }
 
@@ -451,8 +451,8 @@ td.col-edicao {
 }
 
 td.col-edicao .pdf-link-inline {
-    float: right;
-    margin-left: 12px;
+    margin-left: 0;
+    vertical-align: middle;
 }
 
 .col-periodo {
@@ -627,6 +627,11 @@ td.col-edicao .pdf-link-inline {
 .btn-ranking-view { background-color: var(--cor-primaria, #2E8B57); color: #ffffff; }
 .btn-ranking-invite { background-color: #3b82f6; color: #ffffff; }
 .btn-ranking-reset { background-color: #ef4444; color: #ffffff; }
+
+/* Espaçamento entre botões de ação consecutivos na mesma fase */
+#modal-config-ranking #container-fases-gestor .btn-ranking-action + .btn-ranking-action {
+    margin-top: 10px !important;
+}
 
 /* STEPPER / LINHA DO TEMPO */
 #modal-config-ranking .stepper-container {
