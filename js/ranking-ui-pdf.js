@@ -385,6 +385,8 @@ function renderizarLeaderboardSaaS() {
     const bodyList = document.getElementById('body-leaderboard-scroll');
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
 
+    if (bodyList) bodyList.style.paddingTop = '0px';
+
     const btnTorneio = document.getElementById('btn-tab-torneio-saas');
     const btnSumulas = document.getElementById('btn-tab-sumulas-saas');
     const btnGeral = document.getElementById('btn-tab-geral-saas');
@@ -497,7 +499,7 @@ function renderizarLeaderboardSaaS() {
                 ? rankingChavesGlobal[chaveTabela] 
                 : null;
 
-            if (emFaseMataMata && dadosChaveCat && dadosChaveCat.faseAtual >= 2) {
+            if (abaVisaoLeaderboardSaaS !== 'GERAL' && emFaseMataMata && dadosChaveCat && dadosChaveCat.faseAtual >= 2) {
                 const rodada1 = dadosChaveCat.rodada1 || [];
                 const tamanhoChaveAtual = parseInt(dadosChaveCat.faseAtual, 10) || (rodada1.length * 2);
                 const totalClassific = parseInt(dadosChaveCat.totalClassificados, 10) || tamanhoChaveAtual;
@@ -563,51 +565,19 @@ function renderizarLeaderboardSaaS() {
 			}
         }
 		
-		// Injeção do Botão e Popover do Filtro de Status (Modelo 2)
-        let containerFiltroStatus = document.getElementById('box-filtro-status-m2');
-        if (!containerFiltroStatus && selectGenero && selectGenero.parentElement) {
-            containerFiltroStatus = document.createElement('div');
-            containerFiltroStatus.id = 'box-filtro-status-m2';
-            containerFiltroStatus.style.cssText = 'position: relative; display: flex; align-items: center;';
-
-            containerFiltroStatus.innerHTML = `
-				<button id="btn-filtro-status-m2" type="button" onclick="togglePopoverStatusM2SaaS(event)" title="Filtrar por Status" style="width: 38px; height: 36px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 10px; color: #1e293b; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-left: 4px;">
-					<i class="material-icons" style="font-size: 18px;">filter_list</i>
-				</button>
-				<div id="popover-status-m2" style="display: none; position: absolute; top: 42px; right: 0; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); padding: 6px; flex-direction: column; gap: 4px; z-index: 1000; width: 175px;"></div>
-			`;
-
-            const btnPdf = selectGenero.parentElement.querySelector('button[onclick*="exportarPDFContextualSaaS"], button[onclick*="exportarSumulasPDFSaaS"], .btn-pdf');
-            if (btnPdf) {
-                selectGenero.parentElement.insertBefore(containerFiltroStatus, btnPdf);
-            } else {
-                selectGenero.parentElement.appendChild(containerFiltroStatus);
-            }
-        }
-
-        if (containerFiltroStatus) {
-            containerFiltroStatus.style.display = (abaVisaoLeaderboardSaaS === 'SUMULAS') ? 'flex' : 'none';
-            const btnM2 = document.getElementById('btn-filtro-status-m2');
-            if (btnM2) {
-                const estritosCores = {
-                    TODOS:      { bg: '#f1f5f9', border: '#cbd5e1', color: '#1e293b' },
-                    PENDENTE:   { bg: '#fef3c7', border: '#fde68a', color: '#d97706' },
-                    AGENDADO:   { bg: '#e0f2fe', border: '#bae6fd', color: '#0284c7' },
-                    HOMOLOGADO: { bg: '#dcfce7', border: '#86efac', color: '#16a34a' },
-                    CONTESTADO: { bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
-                    ARBITRADO:  { bg: '#f5f3ff', border: '#ddd6fe', color: '#6f42c1' }
-                };
-
-                const tema = estritosCores[abaStatusAtivoSaaS] || estritosCores.TODOS;
-                btnM2.style.background = tema.bg;
-                btnM2.style.borderColor = tema.border;
-                btnM2.style.color = tema.color;
-            }
-        }
-		
-		// 🧹 Limpeza: remove botão antigo de árvore da barra superior de filtros, se existir
+		// 🧹 Limpeza: remove botão de árvore e filtro de status da barra superior, se existirem
         const btnArvoreAntigo = document.getElementById('btn-toggle-arvore-saas');
         if (btnArvoreAntigo) btnArvoreAntigo.remove();
+        const boxFiltroAntigo = document.getElementById('box-filtro-status-m2');
+        if (boxFiltroAntigo && boxFiltroAntigo.parentElement === selectGenero?.parentElement) {
+            boxFiltroAntigo.remove();
+        }
+        if (bodyList) bodyList.style.paddingTop = '0px';
+
+        const btnPdfTopo = document.getElementById('btn-export-pdf-contextual');
+        if (btnPdfTopo) {
+            btnPdfTopo.style.display = (abaVisaoLeaderboardSaaS === 'GERAL') ? 'none' : 'flex';
+        }
 
         if (containerAbas) containerAbas.style.display = 'flex';
 
@@ -633,8 +603,15 @@ function renderizarLeaderboardSaaS() {
         // VISÃO A: RANKING GERAL
         if (abaVisaoLeaderboardSaaS === 'GERAL') {
             let htmlGeral = `
-                <div class="box-dica-leaderboard">
-                    💡 <b>Ranking Geral do Clube:</b> Exibe a Fila Mestre acumulada e o saldo de pontos da categoria.
+                <div style="position: sticky; top: 0; z-index: 20; background: #ffffff; padding-top: 4px; padding-bottom: 6px; margin-bottom: 6px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <div class="box-dica-leaderboard" style="flex: 1; margin-bottom: 0;">
+                            💡 <b>Ranking Geral do Clube:</b> Saldo de pontos da categoria.
+                        </div>
+                        <button type="button" onclick="exportarRankingGeralPDFSaaS()" title="Exportar PDF do Ranking Geral" style="width: 38px; height: 38px; background: #0284c7; color: #ffffff; border: none; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="material-icons" style="font-size: 20px;">picture_as_pdf</i>
+                        </button>
+                    </div>
                 </div>
             `;
 
@@ -901,9 +878,29 @@ function renderizarLeaderboardSaaS() {
 				return 0;
 			};
 
+			const estritosCores = {
+				TODOS:      { bg: '#f8fafc', border: '#cbd5e1', color: '#1e293b' },
+				PENDENTE:   { bg: '#fef3c7', border: '#fde68a', color: '#d97706' },
+				AGENDADO:   { bg: '#e0f2fe', border: '#bae6fd', color: '#0284c7' },
+				HOMOLOGADO: { bg: '#dcfce7', border: '#86efac', color: '#16a34a' },
+				CONTESTADO: { bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
+				ARBITRADO:  { bg: '#f5f3ff', border: '#ddd6fe', color: '#6f42c1' }
+			};
+			const temaStatus = estritosCores[abaStatusAtivoSaaS] || estritosCores.TODOS;
+
 			let htmlSumulas = `
-				<div style="margin-top: 2px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px; font-size: 12px; color: #64748b; text-align: center;">
-					📋 Total de <b>${totalExibicao} partida(s)</b> nesta categoria.
+				<div style="position: sticky; top: 0; z-index: 30; background: #ffffff; padding-top: 4px; padding-bottom: 6px; margin-bottom: 6px;">
+					<div style="display: flex; gap: 8px; align-items: center;">
+						<div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; font-size: 12px; color: #64748b; text-align: center;">
+							📋 Total de <b>${totalExibicao} partida(s)</b> nesta categoria.
+						</div>
+						<div id="box-filtro-status-m2" style="position: relative; display: flex; align-items: center;">
+							<button id="btn-filtro-status-m2" type="button" onclick="togglePopoverStatusM2SaaS(event)" title="Filtrar por Status" style="width: 38px; height: 38px; background: ${temaStatus.bg}; border: 1.5px solid ${temaStatus.border}; border-radius: 10px; color: ${temaStatus.color}; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s;">
+								<i class="material-icons" style="font-size: 20px;">filter_list</i>
+							</button>
+							<div id="popover-status-m2" style="display: none; position: absolute; top: 44px; right: 0; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); padding: 6px; flex-direction: column; gap: 4px; z-index: 1000; width: 175px;"></div>
+						</div>
+					</div>
 				</div>
 				<div style="display: flex; flex-direction: column; gap: 12px;">
 			`;
@@ -1738,8 +1735,10 @@ function renderizarLeaderboardSaaS() {
             }
 
             let htmlList = `
-                <div class="box-dica-leaderboard">
-                    💡 <b>Modelo Pirâmide:</b> Exibe a posição ordinal. As posições destacadas em laranja estão dentro do seu limite de desafio (${textoAlcanceDica}).
+                <div style="position: sticky; top: 0; z-index: 20; background: #ffffff; padding-top: 4px; padding-bottom: 4px; margin-bottom: 6px;">
+                    <div class="box-dica-leaderboard" style="margin-bottom: 0;">
+                        💡 <b>Modelo Pirâmide:</b> Exibe a posição ordinal. As posições destacadas em laranja estão dentro do seu limite de desafio (${textoAlcanceDica}).
+                    </div>
                 </div>
             `;
 
@@ -1816,9 +1815,11 @@ function renderizarLeaderboardSaaS() {
             }
 
             let htmlTable = `
-                <div class="box-dica-leaderboard">
-                    ${btnVoltarPodio}
-                    💡 <b>Modelo Barragem:</b> Pontos corridos. Vitória = ${ptsVit} pts, Derrota =${ptsDer} pt. Saldo de Games desempata a classificação.
+                <div style="position: sticky; top: 0; z-index: 20; background: #ffffff; padding-top: 4px; padding-bottom: 4px; margin-bottom: 6px;">
+                    <div class="box-dica-leaderboard" style="margin-bottom: 0;">
+                        ${btnVoltarPodio}
+                        💡 <b>Modelo Barragem:</b> Pontos corridos. Vitória = ${ptsVit} pts, Derrota =${ptsDer} pt. Saldo de Games desempata a classificação.
+                    </div>
                 </div>
 
                 <table class="tabela-leaderboard-barragem">
@@ -1867,8 +1868,10 @@ function renderizarLeaderboardSaaS() {
             const criterioDesempate = configRanking.grupos?.criterioDesempate || 'games_confronto_sorteio';
 
             let htmlGrupos = `
-                <div class="box-dica-leaderboard">
-                    💡 <b>Modelo Grupos:</b> Atletas divididos em chaves. Os ${classificadosQtd} primeiros colocados avançam com a tag de Zona de Classificação.
+                <div style="position: sticky; top: 0; z-index: 20; background: #ffffff; padding-top: 4px; padding-bottom: 4px; margin-bottom: 6px;">
+                    <div class="box-dica-leaderboard" style="margin-bottom: 0;">
+                        💡 <b>Modelo Grupos:</b> Atletas divididos em chaves. Os ${classificadosQtd} primeiros colocados avançam com a tag de Zona de Classificação.
+                    </div>
                 </div>
             `;
             let numGrupo = 1;
@@ -2131,13 +2134,15 @@ function renderizarLeaderboardSaaS() {
                 }
 
                 htmlMataMata = `
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
-                        <div class="box-dica-leaderboard" style="flex: 1; margin-bottom: 0;">
-                            🌳 <b>Fase 4 - ${rotuloFaseHeader}:</b> Confrontos decisivos do torneio.
+                    <div style="position: sticky; top: 0; z-index: 20; background: #ffffff; padding-top: 4px; padding-bottom: 6px; margin-bottom: 6px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div class="box-dica-leaderboard" style="flex: 1; margin-bottom: 0;">
+                                🌳 <b>Fase 4 - ${rotuloFaseHeader}:</b> Confrontos decisivos do torneio.
+                            </div>
+                            <button type="button" onclick="alternarVisaoMataMataSaaS()" title="Alternar Visão Árvore / Lista" style="width: 38px; height: 38px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; color: #8b5cf6; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+                                <i class="material-icons" style="font-size: 18px;">account_tree</i>
+                            </button>
                         </div>
-                        <button type="button" onclick="alternarVisaoMataMataSaaS()" title="Alternar Visão Árvore / Lista" style="width: 38px; height: 38px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; color: #8b5cf6; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
-                            <i class="material-icons" style="font-size: 18px;">account_tree</i>
-                        </button>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -2156,7 +2161,7 @@ function renderizarLeaderboardSaaS() {
                             <div style="height:1px; background:#e2e8f0; width:100%;"></div>
                         </div>
                     `;
-                    bodyList.innerHTML = htmlMataMata + htmlSeparador + htmlGrupos;
+                    bodyList.innerHTML = htmlMataMata + htmlSeparador + htmlGrupos; 
                 } else {
                     bodyList.innerHTML = htmlMataMata;
                 }
