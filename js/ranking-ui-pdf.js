@@ -576,7 +576,7 @@ function renderizarLeaderboardSaaS() {
 
         const btnPdfTopo = document.getElementById('btn-export-pdf-contextual');
         if (btnPdfTopo) {
-            btnPdfTopo.style.display = (abaVisaoLeaderboardSaaS === 'GERAL') ? 'none' : 'flex';
+            btnPdfTopo.style.display = 'flex';
         }
 
         if (containerAbas) containerAbas.style.display = 'flex';
@@ -604,13 +604,8 @@ function renderizarLeaderboardSaaS() {
         if (abaVisaoLeaderboardSaaS === 'GERAL') {
             let htmlGeral = `
                 <div style="position: sticky; top: 0; z-index: 20; background: #ffffff; padding-top: 4px; padding-bottom: 6px; margin-bottom: 6px;">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <div class="box-dica-leaderboard" style="flex: 1; margin-bottom: 0;">
-                            💡 <b>Ranking Geral do Clube:</b> Saldo de pontos da categoria.
-                        </div>
-                        <button type="button" onclick="exportarRankingGeralPDFSaaS()" title="Exportar PDF do Ranking Geral" style="width: 38px; height: 38px; background: #0284c7; color: #ffffff; border: none; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
-                            <i class="material-icons" style="font-size: 20px;">picture_as_pdf</i>
-                        </button>
+                    <div class="box-dica-leaderboard" style="margin-bottom: 0;">
+                        💡 <b>Ranking Geral do Clube:</b> Saldo de pontos da categoria.
                     </div>
                 </div>
             `;
