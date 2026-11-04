@@ -16,7 +16,7 @@ function formatarNomePiramideSaaS(atleta) {
     // 1. Prioriza Apelido se for de APENAS 1 palavra (ex: "Joca", "Guga")
     if (atleta.apelido && atleta.apelido.trim()) {
         const apelidoTrim = atleta.apelido.trim();
-        const palavrasApelido = apelidoTrim.split(/\s+/); 
+        const palavrasApelido = apelidoTrim.split(/\s+/);  
         if (palavrasApelido.length === 1) {
             return cap(palavrasApelido[0]);   
         }
@@ -32,7 +32,7 @@ function formatarNomePiramideSaaS(atleta) {
     }
 
     const primeiroNome = cap(palavras[0]);
-    const conectivos = ['de', 'da', 'do', 'dos', 'das'];
+    const conectivos = ['de', 'da', 'do', 'dos', 'das']; 
     let inicialSobrenome = '';
 
     for (let i = palavras.length - 1; i > 0; i--) {
@@ -91,8 +91,11 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
         const cal = edicaoHistoricaFocoSaaS.contrato || {};
         nomeTorneio = cal.nomeTorneio || 'Torneio Histórico';
         if (typeof categoriaHistoricaAtivaSaaS !== 'undefined' && categoriaHistoricaAtivaSaaS) {
-            catTxt = categoriaHistoricaAtivaSaaS.replace('CLASSE_', 'Classe ').replace('_', ' ');
-            catTxt = (typeof capitalizarNome === 'function') ? capitalizarNome(catTxt) : catTxt;
+            const partesHist = categoriaHistoricaAtivaSaaS.replace('CLASSE_', '').split('_');
+            const clsHist = partesHist[0] || 'B';
+            const genHist = (partesHist[1] || 'MASCULINO').toUpperCase();
+            const genTxtHist = (genHist === 'UNIFICADO' || genHist === 'MISTO') ? 'Misto' : (genHist === 'FEMININO' ? 'Feminino' : 'Masculino');
+            catTxt = `Classe ${clsHist} ${genTxtHist}`;
         }
         subtituloTxt = 'Edição Encerrada';
         badgeTxt = '📦 Acervo Histórico';
@@ -103,11 +106,17 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
         const cal = confRanking.calendario || {};
         nomeTorneio = cal.nomeTorneio || 'Torneio Pirâmide';
         
+        const divGenero = confRanking.divisaoGenero || 'separado';
         const selClasse = document.getElementById('select-leaderboard-classe');
         const selGenero = document.getElementById('select-leaderboard-genero');
-        const txtClasse = selClasse ? `Classe ${selClasse.value}` : (typeof abaClasseAtivaSaaS !== 'undefined' ? `Classe ${abaClasseAtivaSaaS}` : '');
-        const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : (typeof abaGeneroAtivaSaaS !== 'undefined' && abaGeneroAtivaSaaS !== 'UNIFICADO' ? abaGeneroAtivaSaaS : '');
-        catTxt = [txtClasse, (typeof capitalizarNome === 'function' && txtGenero ? capitalizarNome(txtGenero) : txtGenero)].filter(Boolean).join(' • ');
+        const clsVal = selClasse ? selClasse.value : (typeof abaClasseAtivaSaaS !== 'undefined' ? abaClasseAtivaSaaS : 'B');
+        const genVal = (selGenero ? selGenero.value : (typeof abaGeneroAtivaSaaS !== 'undefined' ? abaGeneroAtivaSaaS : 'MASCULINO')).toUpperCase();
+
+        let genFormatado = 'Misto';
+        if (divGenero !== 'unificado' && genVal !== 'UNIFICADO' && genVal !== 'MISTO') {
+            genFormatado = (genVal === 'FEMININO') ? 'Feminino' : 'Masculino';
+        }
+        catTxt = `Classe ${clsVal} ${genFormatado}`;
 
         if (faseAtual >= 4) {
             subtituloTxt = 'Classificação Final Homologada';
@@ -215,7 +224,7 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
                 ${btnPngHtml}
 
                 <!-- 🏛️ CABEÇALHO DINÂMICO DA PIRÂMIDE (VISÍVEL NO ECRÃ E NA FOTO) -->
-                <div id="pyr-header-export" class="pyr-header-card" style="display: none; text-align: center; margin-bottom: 16px; padding-top: 4px; padding-left: 36px; padding-right: 36px; width: 100%; box-sizing: border-box;">
+                <div id="pyr-header-export" class="pyr-header-card" style="display: none; text-align: center; margin-bottom: 0; padding-top: 4px; padding-left: 36px; padding-right: 36px; width: 100%; box-sizing: border-box;">
                     <div style="font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px;">
                         ${nomeClube} • SETPOINT SAAS
                     </div>
@@ -229,6 +238,9 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
                         <span style="font-size: 10px; font-weight: 800; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; padding: 2px 8px; border-radius: 10px; display: inline-block;">${badgeTxt}</span>
                     </div>
                 </div>
+
+                <!-- 🧱 CONTÊINER CENTRAL DA PIRÂMIDE (OCUPA O MEIO DA TELA) -->
+                <div id="pyr-shelves-wrapper" style="flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
     `;
 
     tiers.forEach((tier, idx) => {
@@ -293,8 +305,10 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
     });
 
     pyrHtml += `
-            <!-- 🏷️ RODAPÉ OCULTO NO ECRÃ (display: none) / ATIVADO APENAS NA FOTO -->
-            <div id="pyr-footer-export" class="pyr-footer-card" style="display: none; text-align: center; margin-top: 18px; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 10px; color: #94a3b8; font-weight: 600;">
+                </div>
+
+            <!-- 🏷️ RODAPÉ OCULTO NO ECRÃ (display: none) / ATIVADO NA BASE DA FOTO -->
+            <div id="pyr-footer-export" class="pyr-footer-card" style="display: none; text-align: center; margin-top: 0; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 10px; color: #94a3b8; font-weight: 600; width: 100%; box-sizing: border-box;">
                 Gerado em ${dataHoje} via SetPoint SaaS
             </div>
 
@@ -321,23 +335,31 @@ function renderizarHTMLPiramideAcervoSaaS() {
     categoriaHistoricaAtivaSaaS = catAtiva;
     const listaIDs = (edicao.classificacaoFinal && edicao.classificacaoFinal[catAtiva]) || [];
 
+    // Linha 1: Subtítulo limpo (sem troféu)
     if (txtSub) {
-        txtSub.innerHTML = `<b>🏆 Pirâmide Final</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
+        txtSub.innerHTML = `<b>Pirâmide Final</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
     }
 
     if (typeof renderizarVisaoPiramideSaaS === 'function') {
         renderizarVisaoPiramideSaaS(bodyList, listaIDs, null, null, true);
     }
 
-    if (categorias.length > 1) {
+    // Linha 2: Pílula oficial exibida em todos os cenários (classe única ou múltiplas)
+    if (categorias.length > 0) {
+        const ehClasseUnica = (categorias.length === 1);
         let htmlPills = `<div style="margin-bottom: 12px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
         categorias.sort().forEach(cat => {
             const ativa = (cat === catAtiva);
-            let label = cat.replace('CLASSE_', 'Classe ').replace('_', ' ');
-            label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            const p = cat.replace('CLASSE_', '').split('_');
+            const c = p[0] || 'B';
+            const g = (p[1] || 'MASCULINO').toUpperCase();
+            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Feminino' : 'Masculino');
+            const label = ehClasseUnica ? `Classe ${c} ${gTxt}` : `${c} ${gTxt}`;
+            const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
+            const acaoClick = ehClasseUnica ? '' : `onclick="mudarCategoriaPiramideHistoricaSaaS('${cat}')"`;
 
             htmlPills += `
-                <button type="button" onclick="mudarCategoriaPiramideHistoricaSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                <button type="button" ${acaoClick} style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; ${estiloCursor} transition: all 0.2s;">
                     ${label}
                 </button>
             `;
@@ -347,6 +369,7 @@ function renderizarHTMLPiramideAcervoSaaS() {
         bodyList.insertAdjacentHTML('afterbegin', htmlPills);
     }
 }
+
 
 function abrirPiramideAcervoSaaS(idEdicao) {
     const edicao = acervoHistoricoGlobalSaaS.find(e => e.id === idEdicao);
@@ -423,8 +446,12 @@ async function exportarPiramidePNGSaaS() {
                 return element.getAttribute('data-html2canvas-ignore') === 'true';
             },
             onclone: (clonedDoc) => {
+                const clonedPanel = clonedDoc.getElementById('area-capture-piramide');
                 const clonedHeader = clonedDoc.getElementById('pyr-header-export');
                 const clonedFooter = clonedDoc.getElementById('pyr-footer-export');
+                if (clonedPanel) {
+                    clonedPanel.style.justifyContent = 'space-between';
+                }
                 if (clonedHeader) clonedHeader.style.display = 'block';
                 if (clonedFooter) clonedFooter.style.display = 'block';
             }

@@ -28,7 +28,7 @@ function cliqueCelula(dia, hora) {
         }
     }
 
-    let statusDaQuadraAtiva = 'liberada';
+    let statusDaQuadraAtiva = 'liberada'; 
     if (configQuadrasGlobal.nomes && configQuadrasGlobal.quantidade) {
         const qtd = parseInt(configQuadrasGlobal.quantidade) || 0;
         for (let i = 1; i <= qtd; i++) {
@@ -2118,45 +2118,35 @@ function validarEAgendarPartidaSaas() {
             objetoReservaReferencia.posicaoP1 = obterPosicaoTextoRankingSaaS(listaApelidos[0]);
             objetoReservaReferencia.posicaoP2 = obterPosicaoTextoRankingSaaS(listaApelidos[1]);
 
+            // 🎯 IDENTIFICAÇÃO E GRAVAÇÃO IMUTÁVEL DA CATEGORIA NA RESERVA
+            const idAtleta1 = Object.keys(bancoJogadores).find(key => 
+                bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
+                bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()
+            );
+            const atleta1Obj = (idAtleta1 && bancoJogadores[idAtleta1]) ? bancoJogadores[idAtleta1] : {};
+            const modoGenero = confRanking.divisaoGenero || 'separado';
+            let generoKey = (atleta1Obj.genero || 'MASCULINO').toUpperCase();
+            if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
+            const classeKey = (atleta1Obj.classe || 'B').toUpperCase();
+            const chaveTabela = (modoGenero === 'unificado') ? `${classeKey}_UNIFICADO` : `${classeKey}_${generoKey}`;
+
+            objetoReservaReferencia.categoria = chaveTabela;
+
             const emMataMataDireto = (modeloDisputaOficial === 'grupos' && confRanking.grupos?.faseInicial === 'matamata');
 
             if (modeloDisputaOficial === 'grupos' && !emMataMataDireto && faseAtualRanking === 3) {
-                const idAtleta1 = Object.keys(bancoJogadores).find(key => 
-                    bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
-                    bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()
-                );
-                if (idAtleta1 && typeof rankingTabelasGlobal !== 'undefined') {
-                    const atleta1Obj = bancoJogadores[idAtleta1] || {};
-                    const modoGenero = confRanking.divisaoGenero || 'separado';
-                    let generoKey = (atleta1Obj.genero || 'MASCULINO').toUpperCase();
-                    if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
-                    const classeKey = (atleta1Obj.classe || 'B').toUpperCase();
-                    const chaveTabela = (modoGenero === 'unificado') ? `${classeKey}_UNIFICADO` : `${classeKey}_${generoKey}`;
-
-                    if (rankingTabelasGlobal[chaveTabela]) {
-                        const idsArr = Array.isArray(rankingTabelasGlobal[chaveTabela]) ? rankingTabelasGlobal[chaveTabela] : Object.values(rankingTabelasGlobal[chaveTabela]);
-                        const idx = idsArr.indexOf(idAtleta1);
-                        if (idx !== -1) {
-                            const tamanhoGrupo = parseInt(confRanking.grupos?.tamanhoGrupo, 10) || 3;
-                            const numGrupo = Math.floor(idx / tamanhoGrupo) + 1;
-                            objetoReservaReferencia.tagGrupoRanking = `G${numGrupo}`;
-                            objetoReservaReferencia.tagFaseRanking = `Grupos - G${numGrupo}`;
-                        }
+                if (idAtleta1 && typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal[chaveTabela]) {
+                    const idsArr = Array.isArray(rankingTabelasGlobal[chaveTabela]) ? rankingTabelasGlobal[chaveTabela] : Object.values(rankingTabelasGlobal[chaveTabela]);
+                    const idx = idsArr.indexOf(idAtleta1);
+                    if (idx !== -1) {
+                        const tamanhoGrupo = parseInt(confRanking.grupos?.tamanhoGrupo, 10) || 3;
+                        const numGrupo = Math.floor(idx / tamanhoGrupo) + 1;
+                        objetoReservaReferencia.tagGrupoRanking = `G${numGrupo}`;
+                        objetoReservaReferencia.tagFaseRanking = `Grupos - G${numGrupo}`;
                     }
                 }
             } else if (modeloDisputaOficial === 'grupos' && ((emMataMataDireto && faseAtualRanking >= 3) || (!emMataMataDireto && faseAtualRanking >= 4))) {
-                const idAtleta1 = Object.keys(bancoJogadores).find(key => 
-                    bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
-                    bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()
-                );
                 if (idAtleta1) {
-                    const atleta1Obj = bancoJogadores[idAtleta1] || {};
-                    const modoGenero = confRanking.divisaoGenero || 'separado';
-                    let generoKey = (atleta1Obj.genero || 'MASCULINO').toUpperCase();
-                    if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
-                    const classeKey = (atleta1Obj.classe || 'B').toUpperCase();
-                    const chaveTabela = (modoGenero === 'unificado') ? `${classeKey}_UNIFICADO` : `${classeKey}_${generoKey}`;
-
                     const dadosChaveCat = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal[chaveTabela] : null;
                     const tamChave = dadosChaveCat ? parseInt(dadosChaveCat.faseAtual, 10) : 2;
 

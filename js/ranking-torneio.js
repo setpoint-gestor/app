@@ -13,7 +13,7 @@
 /* ======================================================== */
 
 async function aceitarConviteRankingSocioSaaS() {
-    const idLogado = localStorage.getItem('jogadorLogadoId'); 
+    const idLogado = localStorage.getItem('jogadorLogadoId');  
     if (!idLogado || !raizBanco) return;
 
     if (navigator.vibrate) navigator.vibrate(30);
@@ -765,14 +765,47 @@ function renderizarGestaoTemporadaSaaS() {
             const classeAtiva = partesAtiva[0] || 'A';
             const generoAtivo = partesAtiva[1] || 'MASCULINO';
 
-            const divGenero = conf.divisaoGenero || 'separado';
+            const divGenero = conf.divisaoGenero || 'separado'; 
 
-            let optionsClasseHtml = classesDisponiveis.map(c => `
-                <option value="${c}" ${c === classeAtiva ? 'selected' : ''}>Classe ${c}</option>
-            `).join('');
+            // 🎯 1. GESTÃO INTELIGENTE DO SELETOR DE CLASSE
+            const ehClasseUnica = classesDisponiveis.length === 1;
+            let selectClasseHtml = '';
 
+            if (ehClasseUnica) {
+                selectClasseHtml = `
+                    <select id="select-gestor-classe" disabled style="appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: none !important; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 14px; font-size: 12.5px; font-weight: 700; color: #334155; text-align: center; text-align-last: center; cursor: default; pointer-events: none; outline: none;">
+                        <option value="${classesDisponiveis[0]}" selected>Classe ${classesDisponiveis[0]}</option>
+                    </select>
+                `;
+            } else {
+                let optionsClasseHtml = classesDisponiveis.map(c => `
+                    <option value="${c}" ${c === classeAtiva ? 'selected' : ''}>Classe ${c}</option>
+                `).join('');
+
+                selectClasseHtml = `
+                    <select id="select-gestor-classe" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: #1e293b; outline: none; cursor: pointer;">
+                        ${optionsClasseHtml}
+                    </select>
+                `;
+            }
+
+            // 🎯 2. GESTÃO INTELIGENTE DO SELETOR DE GÊNERO
             let selectGeneroHtml = '';
-            if (divGenero !== 'unificado') {
+            if (divGenero === 'unificado' || generosDisponiveis.includes('UNIFICADO')) {
+                selectGeneroHtml = `
+                    <select id="select-gestor-genero" disabled style="appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: none !important; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 14px; font-size: 12.5px; font-weight: 700; color: #334155; text-align: center; text-align-last: center; cursor: default; pointer-events: none; outline: none;">
+                        <option value="UNIFICADO" selected>Misto</option>
+                    </select>
+                `;
+            } else if (generosDisponiveis.length === 1) {
+                const unicoGen = generosDisponiveis[0];
+                const txtGen = unicoGen === 'FEMININO' ? 'Feminino' : 'Masculino';
+                selectGeneroHtml = `
+                    <select id="select-gestor-genero" disabled style="appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: none !important; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 14px; font-size: 12.5px; font-weight: 700; color: #334155; text-align: center; text-align-last: center; cursor: default; pointer-events: none; outline: none;">
+                        <option value="${unicoGen}" selected>${txtGen}</option>
+                    </select>
+                `;
+            } else {
                 const optionsGen = generosDisponiveis.map(g => `
                     <option value="${g}" ${g === generoAtivo ? 'selected' : ''}>${g === 'FEMININO' ? 'Feminino' : 'Masculino'}</option>
                 `).join('');
@@ -789,22 +822,27 @@ function renderizarGestaoTemporadaSaaS() {
                 <span style="font-size: 11.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;">
                     <i class="material-icons" style="font-size: 16px; color: #8b5cf6;">tune</i> Categoria:
                 </span>
-                <select id="select-gestor-classe" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: #1e293b; outline: none; cursor: pointer;">
-                    ${optionsClasseHtml}
-                </select>
+                ${selectClasseHtml}
                 ${selectGeneroHtml}
             `;
 
             const selCls = document.getElementById('select-gestor-classe');
             const selGen = document.getElementById('select-gestor-genero');
 
-            const aplicarTrocaCategoriaGestao = () => {
+            // 🎯 3. COMUTAÇÃO INTELIGENTE PRESERVADA (AUTO-AJUSTE ENTRE CLASSES E GÊNEROS)
+            const aplicarTrocaCategoriaGestao = (origem) => {
                 const novaClasse = selCls ? selCls.value : classeAtiva;
-                const novoGenero = (selGen && divGenero !== 'unificado') ? selGen.value : (divGenero === 'unificado' ? 'UNIFICADO' : generoAtivo);
+                const novoGenero = (selGen && divGenero !== 'unificado' && !generosDisponiveis.includes('UNIFICADO')) 
+                    ? selGen.value 
+                    : (divGenero === 'unificado' ? 'UNIFICADO' : generoAtivo);
                 
                 let chaveCandidata = `${novaClasse}_${novoGenero}`;
                 if (!categoriasTorneio.includes(chaveCandidata)) {
-                    chaveCandidata = categoriasTorneio.find(k => k.startsWith(`${novaClasse}_`)) || categoriasTorneio[0];
+                    if (origem === 'classe') {
+                        chaveCandidata = categoriasTorneio.find(k => k.startsWith(`${novaClasse}_`)) || categoriasTorneio[0];
+                    } else {
+                        chaveCandidata = categoriasTorneio.find(k => k.endsWith(`_${novoGenero}`)) || categoriasTorneio[0];
+                    }
                 }
 
                 categoriaGestaoAtivaSaaS = chaveCandidata;
@@ -814,8 +852,8 @@ function renderizarGestaoTemporadaSaaS() {
                 }
             };
 
-            if (selCls) selCls.onchange = aplicarTrocaCategoriaGestao;
-            if (selGen) selGen.onchange = aplicarTrocaCategoriaGestao;
+            if (selCls && !selCls.disabled) selCls.onchange = () => aplicarTrocaCategoriaGestao('classe');
+            if (selGen && !selGen.disabled) selGen.onchange = () => aplicarTrocaCategoriaGestao('genero');
         }
     }
 
@@ -1039,7 +1077,37 @@ function renderizarGestaoTemporadaSaaS() {
 
             const elNomeTorneio = document.getElementById('lbl-resumo-torneio-nome');
             if (elNomeTorneio) {
-                elNomeTorneio.innerHTML = `${cal.nomeTorneio} <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;">⚔️ Modelo: ${txtModeloExibicao}</span>`;
+                const divGen = conf.divisaoGenero || 'separado';
+                const catsHab = Array.isArray(cal.categoriasHabilitadas) ? cal.categoriasHabilitadas : [];
+                const classesHab = catsHab
+                    .filter(c => c.startsWith('CLASSE_') || ['A', 'B', 'C'].includes(c.toUpperCase()))
+                    .map(c => c.replace('CLASSE_', '').trim());
+                const classesOrdenadas = Array.from(new Set(classesHab)).sort();
+
+                let pillsCatsHtml = '';
+                if (divGen === 'unificado') {
+                    classesOrdenadas.forEach(c => {
+                        pillsCatsHtml += `<span class="pill-resumo-cat" style="font-size: 11px; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; padding: 2px 7px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; white-space: nowrap;">${c} Misto</span>`;
+                    });
+                } else {
+                    const gensHab = catsHab
+                        .filter(g => ['MASCULINO', 'FEMININO'].includes(g.toUpperCase()))
+                        .map(g => g.toUpperCase());
+                    const gensFinais = gensHab.length > 0 ? Array.from(new Set(gensHab)) : ['MASCULINO'];
+
+                    classesOrdenadas.forEach(c => {
+                        gensFinais.forEach(g => {
+                            const gAbrev = (g === 'FEMININO') ? 'Fem' : 'Masc';
+                            pillsCatsHtml += `<span class="pill-resumo-cat" style="font-size: 11px; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; padding: 2px 7px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; white-space: nowrap;">${c} ${gAbrev}</span>`;
+                        });
+                    });
+                }
+
+                const containerPillsHtml = pillsCatsHtml 
+                    ? `<span class="container-pills-resumo" style="display: inline-flex; flex-wrap: nowrap; white-space: nowrap; gap: 4px; vertical-align: middle; margin: 2px 0 2px 6px;">${pillsCatsHtml}</span>` 
+                    : '';
+
+                elNomeTorneio.innerHTML = `<span class="resumo-linha-cabecalho">${cal.nomeTorneio} <span class="badge-modelo-resumo" style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;">⚔️ Modelo: ${txtModeloExibicao}</span></span>${containerPillsHtml}`;
             }
 
             document.getElementById('lbl-resumo-torneio-insc').textContent = dtInc;
@@ -3335,6 +3403,8 @@ async function encerrarFase3EAvancarSaaS() {
 
                 const chavesMapGlobal = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
 
+                const categoriasAfetadasGeral = new Set();
+
                 Object.keys(tabelasTorneio).forEach(chaveCat => {
                     let classificacaoTorneio = tabelasTorneio[chaveCat] || [];
                     if (!Array.isArray(classificacaoTorneio) || classificacaoTorneio.length === 0) return;
@@ -3344,29 +3414,50 @@ async function encerrarFase3EAvancarSaaS() {
                         tabelasTorneio[chaveCat] = classificacaoTorneio;
                     }
 
-                    let pontosCat = pontosGeralAtual[chaveCat] || {};
+                    const ehUnificado = chaveCat.endsWith('_UNIFICADO');
+                    const classeTorneio = chaveCat.split('_')[0];
 
                     classificacaoTorneio.forEach((idAtleta, posicaoIdx) => {
                         const pontosGanhos = TABELA_PONTOS_SaaS[posicaoIdx] !== undefined 
                             ? TABELA_PONTOS_SaaS[posicaoIdx] 
                             : PONTOS_PARTICIPACAO_DEFAULT;
 
-                        const pontosAtuais = parseInt(pontosCat[idAtleta], 10) || 0;
-                        pontosCat[idAtleta] = pontosAtuais + pontosGanhos;
+                        // 🎯 OPÇÃO 2: Se o torneio foi Unificado/Misto, roteia a pontuação para a Fila Mestre do gênero real do atleta
+                        let chaveDestino = chaveCat;
+                        if (ehUnificado) {
+                            const atletaObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAtleta]) ? jogadoresGlobal[idAtleta] : {};
+                            let genAtleta = (atletaObj.genero || 'MASCULINO').toUpperCase().trim();
+                            if (genAtleta !== 'FEMININO') genAtleta = 'MASCULINO';
+                            chaveDestino = `${classeTorneio}_${genAtleta}`;
+                        }
+
+                        categoriasAfetadasGeral.add(chaveDestino);
+
+                        if (!pontosGeralAtual[chaveDestino]) {
+                            pontosGeralAtual[chaveDestino] = {};
+                        }
+
+                        const pontosAtuais = parseInt(pontosGeralAtual[chaveDestino][idAtleta], 10) || 0;
+                        pontosGeralAtual[chaveDestino][idAtleta] = pontosAtuais + pontosGanhos;
                     });
 
-                    updates[`${raizBanco}/ranking/pontos_geral/${chaveCat}`] = pontosCat; 
-
-                    const todosAtletasCat = Object.keys(pontosCat);
-                    todosAtletasCat.sort((a, b) => (parseInt(pontosCat[b], 10) || 0) - (parseInt(pontosCat[a], 10) || 0));
-
-                    updates[`${raizBanco}/ranking/ranking_geral/${chaveCat}`] = todosAtletasCat;
-
+                    // Hall de Campeões do Torneio (registra o pódio real da edição unificada disputada na quadra)
                     updates[`${raizBanco}/hall_de_campeoes/${edicaoId}/${chaveCat}`] = {
                         campeao: classificacaoTorneio[0] || null,
                         vice: classificacaoTorneio[1] || null,
                         terceiro: classificacaoTorneio[2] || null
                     };
+                }); 
+
+                // Persiste os saldos acumulados e reordena as categorias afetadas no Ranking Geral
+                categoriasAfetadasGeral.forEach(catDestino => {
+                    const pontosCat = pontosGeralAtual[catDestino] || {};
+                    updates[`${raizBanco}/ranking/pontos_geral/${catDestino}`] = pontosCat;
+
+                    const todosAtletasCat = Object.keys(pontosCat);
+                    todosAtletasCat.sort((a, b) => (parseInt(pontosCat[b], 10) || 0) - (parseInt(pontosCat[a], 10) || 0));
+
+                    updates[`${raizBanco}/ranking/ranking_geral/${catDestino}`] = todosAtletasCat;
                 });
 
                 const gruposConfig = conf.grupos || {};
@@ -3380,7 +3471,7 @@ async function encerrarFase3EAvancarSaaS() {
                 };
 
                 const objetoHistorico = {
-                    dataHomologacao: timestampHomologacao,
+                    dataHomologacao: timestampHomologacao, 
                     modelo: modelo,
                     contrato: contratoCongelado,
                     classificacaoFinal: tabelasTorneio,

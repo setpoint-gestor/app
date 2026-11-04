@@ -15,7 +15,7 @@ let faseFocoMataMataSaaS = null;
 let timerScrollMataMataSaaS = null;
 
 function agendarVerificacaoFaseSaaS() {
-    if (timerScrollMataMataSaaS) clearTimeout(timerScrollMataMataSaaS);
+    if (timerScrollMataMataSaaS) clearTimeout(timerScrollMataMataSaaS); 
     timerScrollMataMataSaaS = setTimeout(() => {
         verificarEAtualizarFaseFocadaSaaS();
     }, 180); // Aguarda a rolagem do dedo parar para recriar o HTML suavemente
@@ -26,7 +26,7 @@ function selecionarQuadranteSaaS(idxVal) {
     
     const viewport = document.getElementById('bracket-scroll-viewport');
     const scrollSalvo = viewport ? viewport.scrollLeft : 0;
-    const containerAlvo = document.getElementById('body-leaderboard-scroll'); 
+    const containerAlvo = document.getElementById('container-bracket-acervo-grupos') || document.getElementById('body-leaderboard-scroll'); 
 
     if (containerAlvo && window.chaveCatDataUltimaSaaS) {
         renderizarVisaoMataMataSaaS(
@@ -38,17 +38,8 @@ function selecionarQuadranteSaaS(idxVal) {
 
         const novoViewport = document.getElementById('bracket-scroll-viewport');
         if (novoViewport) {
-            const ehMobile = window.innerWidth <= 768;
             novoViewport.style.scrollBehavior = 'auto';
             novoViewport.scrollLeft = scrollSalvo;
-
-            // 📱 NO TELEMÓVEL: Faz scroll suave vertical até ao bloco de jogos selecionado
-            if (ehMobile) {
-                const elAncora = document.getElementById(`ancora-quadrante-${quadranteAtivoMataMataSaaS}`);
-                if (elAncora) {
-                    elAncora.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }
 
             setTimeout(() => {
                 novoViewport.style.scrollBehavior = '';
@@ -123,7 +114,7 @@ function verificarEAtualizarFaseFocadaSaaS() {
         quadranteAtivoMataMataSaaS = 0; // Reseta para o bloco 1 da nova fase
 
         const scrollSalvo = viewport.scrollLeft;
-        const containerAlvo = document.getElementById('body-leaderboard-scroll');
+        const containerAlvo = document.getElementById('container-bracket-acervo-grupos') || document.getElementById('body-leaderboard-scroll');
 
         if (containerAlvo) {
             renderizarVisaoMataMataSaaS(
@@ -168,9 +159,11 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
     const rodadaAtualBanco = chaveCatData.rodada1 || [];
     const historicoRodadas = chaveCatData.historicoRodadas || {};
     const partidasGlobal = partidasCustomizadas || ((typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {});
-    const chaveCat = (typeof abaClasseAtivaSaaS !== 'undefined' && typeof abaGeneroAtivaSaaS !== 'undefined')
-        ? (confRanking.divisaoGenero === 'unificado' ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`)
-        : '';
+    const chaveCat = (ehHistorico && typeof categoriaHistoricaAtivaSaaS !== 'undefined' && categoriaHistoricaAtivaSaaS)
+        ? categoriaHistoricaAtivaSaaS
+        : ((typeof abaClasseAtivaSaaS !== 'undefined' && typeof abaGeneroAtivaSaaS !== 'undefined')
+            ? (confRanking.divisaoGenero === 'unificado' ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`)
+            : '');
 
     const totalClassific = parseInt(chaveCatData.totalClassificados, 10) || 8;
     const faseInicial = (typeof calcularPotenciaDeDoisSuperiorSaaS === 'function')
@@ -367,8 +360,10 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
 
     const totalJogosR1 = faseInicial / 2;
 
-    if (!faseFocoMataMataSaaS || faseFocoMataMataSaaS > faseInicial) {
+    // 🎯 Se a chave atual mudou de categoria ou a fase guardada for diferente, força sempre o início na primeira fase da categoria
+    if (!faseFocoMataMataSaaS || faseFocoMataMataSaaS !== faseInicial) {
         faseFocoMataMataSaaS = faseInicial;
+        quadranteAtivoMataMataSaaS = 0;
     }
 
     const totalJogosFoco = faseFocoMataMataSaaS / 2;
@@ -383,7 +378,7 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
     let htmlDotsSaaS = '';
 
     if (totalJogosFoco > jogosPorBloco) {
-        let htmlOptions = '';
+        let htmlOptions = ''; 
         let dotsItems = '';
 
         for (let b = 0; b < totalBlocosFoco; b++) {
@@ -397,8 +392,8 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
         }
 
         htmlDropdownSaaS = `
-            <div class="bracket-quadrante-row" data-html2canvas-ignore="true">
-                <select id="select-saas-quadrante" class="select-saas-quadrante" onchange="selecionarQuadranteSaaS(this.value)">
+            <div class="bracket-quadrante-row" data-html2canvas-ignore="true" style="display: flex !important; position: relative !important; width: 100% !important; margin: 2px 0 8px 0 !important; box-sizing: border-box !important; flex-shrink: 0 !important;">
+                <select id="select-saas-quadrante" class="select-saas-quadrante" style="width: 100% !important; box-sizing: border-box !important; display: block !important;" onchange="selecionarQuadranteSaaS(this.value)">
                     ${htmlOptions}
                 </select>
             </div>
@@ -448,9 +443,8 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
         const ehMobile = window.innerWidth <= 768; 
 
 		rodadaFase.forEach((confItem, idxJogo) => {
-			// 🖥️ NO PC: Mantém o filtro original por blocos intocado
-			// 📱 NO CELULAR: Renderiza a árvore completa para dar a altura real e alinhar as Quartas/Semis
-			if (!ehMobile && totalJogosR1 > jogosPorBloco) {
+			// 🎯 Paginação proporcional por blocos de 8 jogos (PC e Celular)
+			if (totalJogosR1 > jogosPorBloco) {
 				if (idxJogo < inicioJogoPot || idxJogo >= fimJogoPot) {
 					return;
 				}

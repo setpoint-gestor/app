@@ -25,7 +25,7 @@ let nomeDesistenteRETSaaS = "";
 let motivoRETSaaS = "";
 let motivoCustomizadoRETSaaS = "";
 
-let eModoArbitroAtivoSumula = false; 
+let eModoArbitroAtivoSumula = false;  
 let intervaloTimerValidacao = null;
 
 /* ======================================================== */
@@ -916,22 +916,27 @@ function confirmarPlacarAdversarioSaaS() {
     const updates = {};
     const agora = Date.now();
 
-    // 1. Atualiza o status de validação na Reserva de Quadra
+    // 1. Atualiza o status de validação na Reserva de Quadra e assegura a categoria nativa
+    const catOficial = partidaRankingEmFoco.categoria || partidaRankingEmFoco.dadosPlacar?.categoria || "";
+
     updates[`${pathSlot1}/statusPlacar`] = "consolidado";
     updates[`${pathSlot1}/dadosPlacar/statusPlacar`] = "consolidado";
     updates[`${pathSlot1}/dadosPlacar/dataHoraValidacao`] = agora;
+    if (catOficial) updates[`${pathSlot1}/categoria`] = catOficial;
 
     if (duracao === 2) {
         const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
         updates[`${pathSlot2}/statusPlacar`] = "consolidado";
         updates[`${pathSlot2}/dadosPlacar/statusPlacar`] = "consolidado";
         updates[`${pathSlot2}/dadosPlacar/dataHoraValidacao`] = agora;
+        if (catOficial) updates[`${pathSlot2}/categoria`] = catOficial;
     }
 
     // 2. Prepara a gravação atômica simultânea da partida oficial em ranking/partidas
     const dp = partidaRankingEmFoco.dadosPlacar || {};
     dp.statusPlacar = "consolidado";
     dp.dataHoraValidacao = agora;
+    if (catOficial) dp.categoria = catOficial;
 
     const partesApelidos = (partidaRankingEmFoco.jogadores || "").split(',').map(s => s.trim());
     const partesCompletos = (partidaRankingEmFoco.jogadores_completo || "").split(',').map(s => s.trim());
@@ -946,7 +951,7 @@ function confirmarPlacarAdversarioSaaS() {
         let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
         if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
 
-        const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+        const chaveTabela = catOficial || ((divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`);
         
 		const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
 		const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;
@@ -1248,6 +1253,7 @@ function salvarSumulaSaaS() {
         const agora = Date.now();
         const prazoHorasAutoconf = (regrasSessaoRanking && regrasSessaoRanking.prazoAutoconf) || 24;
         const statusNovo = ehArbitragemNeutra ? "consolidado" : "pendente_validacao";
+        const catOficial = partidaRankingEmFoco.categoria || partidaRankingEmFoco.dadosPlacar?.categoria || "";
 
         const dadosPlacar = {
             statusPlacar: statusNovo,
@@ -1260,6 +1266,7 @@ function salvarSumulaSaaS() {
             vencedorCodigo: vencedorCodigo,
             placarFormatado: placarFormatado,
             parciais: parciais,
+            categoria: catOficial,
             posicaoP1: partidaRankingEmFoco.posicaoP1 || '',
             posicaoP2: partidaRankingEmFoco.posicaoP2 || '',
             autorSumula: (ehContestado && ehArbitragemNeutra) ? (partidaRankingEmFoco.dadosPlacar?.autorSumula || autorSumulaGravar) : autorSumulaGravar,
@@ -1290,14 +1297,16 @@ function salvarSumulaSaaS() {
         const pathSlot1 = `reservas/${quadraKey}/${dia}_${hora}`;
         const updates = {};
 
-        // 1. Gravação no nó reservas
+        // 1. Gravação no nó reservas assegurando a integridade da categoria
         updates[`${pathSlot1}/statusPlacar`] = statusNovo;
         updates[`${pathSlot1}/dadosPlacar`] = dadosPlacar;
+        if (catOficial) updates[`${pathSlot1}/categoria`] = catOficial;
 
         if (duracao === 2) {
             const pathSlot2 = `reservas/${quadraKey}/${dia}_${hora + 1}`;
             updates[`${pathSlot2}/statusPlacar`] = statusNovo;
             updates[`${pathSlot2}/dadosPlacar`] = dadosPlacar;
+            if (catOficial) updates[`${pathSlot2}/categoria`] = catOficial;
         }
 
         // 2. Gravação atômica direta em ranking/partidas se for consolidado via arbitragem neutra
@@ -1315,7 +1324,7 @@ function salvarSumulaSaaS() {
                 let generoKey = (atletaBase.genero || 'MASCULINO').toUpperCase();
                 if (generoKey === 'NAO_INFORMAR') generoKey = 'MASCULINO';
 
-                const chaveTabela = (divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`;
+                const chaveTabela = catOficial || ((divGenero === 'unificado') ? `${classe}_UNIFICADO` : `${classe}_${generoKey}`);
                 
 				const quadraRef = partidaRankingEmFoco.quadra || partidaRankingEmFoco.dadosPlacar?.quadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : "");
 				const matchQuadra = quadraRef ? quadraRef.match(/\d+/) : null;

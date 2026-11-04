@@ -26,7 +26,7 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
 
     // SHIELD ANTI-SUTILEZAS: Normaliza as strings para evitar furos de espaços ou case-sensitive
     const organizadorReserva = (dadosReserva.organizador || "").trim().toUpperCase();
-    const usuarioAtivoNome = nomeLogado.trim().toUpperCase();
+    const usuarioAtivoNome = nomeLogado.trim().toUpperCase(); 
     
     // Busca o apelido do jogador logado para também comparar
     let usuarioAtivoApelido = usuarioAtivoNome;
@@ -334,78 +334,16 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         const htmlPosJ1 = posJ1 ? `<span class="atp-pos">${posJ1}</span>` : '';
         const htmlPosJ2 = posJ2 ? `<span class="atp-pos">${posJ2}</span>` : '';
 
-        // 🏷️ Identificação da Classe e Género do confronto na memória RAM
-        let classeAtleta = '';
-        let generoAtleta = '';
-
-        const catBruta = dadosReserva.categoria || dadosReserva.dadosPlacar?.categoria;
+        // 🏷️ Identificação direta da Categoria e Fase (SSOT Nativo da Reserva)
+        const catBruta = dadosReserva.categoria || dadosReserva.dadosPlacar?.categoria || "";
+        let rotuloCategoria = "";
 
         if (catBruta) {
             const partes = catBruta.replace('CLASSE_', '').split('_');
-            classeAtleta = partes[0] || '';
-            generoAtleta = partes[1] || '';
-        } else {
-            // Localiza o ID dos atletas para ler a categoria da tabela, chaves ou cadastro
-            const idAtleta1 = (typeof obterIdJogadorPorTextoSaaS === 'function')
-                ? (obterIdJogadorPorTextoSaaS(j1Completo) || obterIdJogadorPorTextoSaaS(nomesApelidos[0]))
-                : null;
-            const idAtleta2 = (typeof obterIdJogadorPorTextoSaaS === 'function')
-                ? (obterIdJogadorPorTextoSaaS(j2Completo) || obterIdJogadorPorTextoSaaS(nomesApelidos[1]))
-                : null;
-
-            const idAlvo = idAtleta1 || idAtleta2;
-
-            // 1. Procura em rankingChavesGlobal (Mata-Mata)
-            if (idAlvo && typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) {
-                Object.keys(rankingChavesGlobal).forEach(catKey => {
-                    if (classeAtleta) return;
-                    const dadosChave = rankingChavesGlobal[catKey] || {};
-                    const confs = [...(dadosChave.rodada1 || [])];
-                    if (dadosChave.historicoRodadas) {
-                        Object.values(dadosChave.historicoRodadas).forEach(arr => {
-                            if (Array.isArray(arr)) confs.push(...arr);
-                        });
-                    }
-                    if (confs.some(c => c && (c.jogador1Id === idAlvo || c.jogador2Id === idAlvo))) {
-                        const partes = catKey.replace('CLASSE_', '').split('_');
-                        classeAtleta = partes[0] || '';
-                        generoAtleta = partes[1] || '';
-                    }
-                });
-            }
-
-            // 2. Procura em rankingTabelasGlobal (Grupos / Tabelas)
-            if (!classeAtleta && idAlvo && typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
-                Object.keys(rankingTabelasGlobal).forEach(catKey => {
-                    if (classeAtleta) return;
-                    const ids = Array.isArray(rankingTabelasGlobal[catKey]) ? rankingTabelasGlobal[catKey] : Object.values(rankingTabelasGlobal[catKey]);
-                    if (ids.includes(idAlvo)) {
-                        const partes = catKey.replace('CLASSE_', '').split('_');
-                        classeAtleta = partes[0] || '';
-                        generoAtleta = partes[1] || '';
-                    }
-                });
-            }
-
-            // 3. Fallback no cadastro do atleta
-            if (idAlvo && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAlvo]) {
-                const j = jogadoresGlobal[idAlvo];
-                if (!classeAtleta) {
-                    classeAtleta = (j.classe || '').toUpperCase().replace('CLASSE_', '').trim();
-                }
-                if (!generoAtleta) {
-                    generoAtleta = (j.genero || '').toUpperCase().trim();
-                    if (generoAtleta === 'NAO_INFORMAR') generoAtleta = 'MASCULINO';
-                }
-            }
-        }
-
-        // 🎾 Sufixo de género abreviado
-        let sufixoGen = '';
-        if (generoAtleta) {
-            const gUp = generoAtleta.toUpperCase();
-            if (gUp.includes('MASC')) sufixoGen = ' Masc';
-            else if (gUp.includes('FEM')) sufixoGen = ' Fem';
+            const classe = partes[0] || 'B';
+            const genero = (partes[1] || 'MASCULINO').toUpperCase();
+            const sufixoGen = (genero === 'UNIFICADO' || genero === 'MISTO') ? 'Misto' : (genero === 'FEMININO' ? 'Fem' : 'Masc');
+            rotuloCategoria = `Classe ${classe} ${sufixoGen}`;
         }
 
         const modeloReserva = (dadosReserva.modelo || dadosReserva.dadosPlacar?.modelo || "").toLowerCase();
@@ -422,7 +360,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         } else if (dadosReserva.dadosPlacar?.tagGrupoRanking) {
             faseDesc = `Grupos ${dadosReserva.dadosPlacar.tagGrupoRanking}`;
         } else if (mapaModelos[modeloReserva]) {
-            faseDesc = mapaModelos[modeloReserva];
+            faseDesc = mapaModelos[modeloReserva]; 
         }
 
         // 🎯 PADRONIZAÇÃO DO MODELO E FASE NO CARD DE DETALHES
@@ -436,7 +374,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             faseDesc = `Grupos • ${faseDesc}`;
         }
 
-        const labelModelo = classeAtleta ? `Classe ${classeAtleta}${sufixoGen} • ${faseDesc}` : faseDesc;
+        const labelModelo = rotuloCategoria ? `${rotuloCategoria} • ${faseDesc}` : faseDesc;
 		
         let classNomeJ1 = '', classNomeJ2 = '';
         let setaJ1 = '', setaJ2 = '';

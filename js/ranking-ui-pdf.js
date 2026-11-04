@@ -19,7 +19,7 @@ let abaStatusAtivoSaaS = 'TODOS'; // 'TODOS', 'PENDENTE', 'AGENDADO', 'HOMOLOGAD
 
 let edicaoHistoricaFocoSaaS = null;
 let categoriaHistoricaAtivaSaaS = null;
-let listenerGavetaHistoricoAdd = false;
+let listenerGavetaHistoricoAdd = false; 
 
 let modoVisaoPiramideSaaS = 'lista'; // 'lista' ou 'piramide'
 
@@ -429,22 +429,103 @@ function renderizarLeaderboardSaaS() {
             }
         }
 
-        // MANTÉM SEMPRE AS 3 CLASSES A, B e C
-        const classesAvulsa = ['A', 'B', 'C'];
-        if (selectClasse) {
-            selectClasse.innerHTML = classesAvulsa.map(cls => `
-                <option value="${cls}" ${cls === abaClasseAtivaSaaS ? 'selected' : ''}>Classe ${cls}</option>
-            `).join('');
+        // 🎯 APURAÇÃO DINÂMICA DAS CATEGORIAS ATIVAS DO TORNEIO (CLASSES E GÊNEROS)
+        const tabelasMapUI = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) ? rankingTabelasGlobal : {};
+        const chavesMapUI = (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) ? rankingChavesGlobal : {};
+
+        const setCategoriasTorneioUI = new Set([
+            ...Object.keys(tabelasMapUI).filter(k => Array.isArray(tabelasMapUI[k]) && tabelasMapUI[k].length > 0),
+            ...Object.keys(chavesMapUI).filter(k => chavesMapUI[k] && (chavesMapUI[k].rodada1 || chavesMapUI[k].totalClassificados))
+        ]);
+
+        if (setCategoriasTorneioUI.size === 0 && Array.isArray(cal.categoriasHabilitadas)) {
+            const classesCal = cal.categoriasHabilitadas
+                .filter(c => c.startsWith('CLASSE_') || ['A', 'B', 'C'].includes(c))
+                .map(c => c.replace('CLASSE_', '').trim());
+            const generosCal = cal.categoriasHabilitadas
+                .filter(c => ['MASCULINO', 'FEMININO'].includes(c.toUpperCase()));
+
+            if (divisaoGenero === 'unificado') {
+                classesCal.forEach(c => setCategoriasTorneioUI.add(`${c}_UNIFICADO`));
+            } else {
+                const gens = generosCal.length > 0 ? generosCal : ['MASCULINO'];
+                classesCal.forEach(c => gens.forEach(g => setCategoriasTorneioUI.add(`${c}_${g}`)));
+            }
         }
 
-        // MANTÉM OS GÊNEROS DISPONÍVEIS
-        if (selectGenero) {
-            if (divisaoGenero === 'unificado') {
-                selectGenero.innerHTML = `<option value="UNIFICADO" selected>Geral / Unificado</option>`;
-                selectGenero.disabled = true;
-                abaGeneroAtivaSaaS = 'UNIFICADO';
+        const classesDisponiveisUI = Array.from(new Set(Array.from(setCategoriasTorneioUI).map(cat => cat.split('_')[0]))).sort();
+        const generosDisponiveisUI = Array.from(new Set(Array.from(setCategoriasTorneioUI).map(cat => cat.split('_')[1] || 'MASCULINO'))).sort();
+
+        // 1. GESTÃO INTELIGENTE DO SELETOR DE CLASSE
+        if (selectClasse) {
+            if (abaVisaoLeaderboardSaaS === 'GERAL') {
+                // No Ranking Geral, mantém todas as 3 classes disponíveis para consulta anual
+                selectClasse.disabled = false;
+                selectClasse.style.cssText = '';
+                selectClasse.innerHTML = ['A', 'B', 'C'].map(cls => `
+                    <option value="${cls}" ${cls === abaClasseAtivaSaaS ? 'selected' : ''}>Classe ${cls}</option>
+                `).join('');
+            } else if (classesDisponiveisUI.length === 1) {
+                // Classe única no torneio: campo estático sem setinha
+                abaClasseAtivaSaaS = classesDisponiveisUI[0];
+                selectClasse.innerHTML = `<option value="${abaClasseAtivaSaaS}" selected>Classe ${abaClasseAtivaSaaS}</option>`;
+                selectClasse.disabled = true;
+                selectClasse.style.cssText = 'appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: none !important; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; height: 36px; min-height: 36px; box-sizing: border-box; font-size: 13px; font-weight: 700; color: #334155; text-align: center; text-align-last: center; cursor: default; flex: 1; pointer-events: none; display: flex; align-items: center; justify-content: center;';
             } else {
+                // Múltiplas classes: dropdown ativo com setinha
+                const listaClassesExibir = classesDisponiveisUI.length > 0 ? classesDisponiveisUI : ['A', 'B', 'C'];
+                if (!listaClassesExibir.includes(abaClasseAtivaSaaS)) {
+                    abaClasseAtivaSaaS = listaClassesExibir[0];
+                }
+                selectClasse.disabled = false;
+                selectClasse.style.cssText = '';
+                selectClasse.innerHTML = listaClassesExibir.map(cls => `
+                    <option value="${cls}" ${cls === abaClasseAtivaSaaS ? 'selected' : ''}>Classe ${cls}</option>
+                `).join('');
+            }
+        }
+
+        // 2. GESTÃO INTELIGENTE DO SELETOR DE GÊNERO
+        if (selectGenero) {
+            if (abaVisaoLeaderboardSaaS === 'GERAL') {
+                // No Ranking Geral, exibe sempre Masculino e Feminino com setinha
                 selectGenero.disabled = false;
+                selectGenero.style.cssText = '';
+                if (abaGeneroAtivaSaaS === 'UNIFICADO') {
+                    const idLogado = localStorage.getItem('jogadorLogadoId');
+                    const atleta = (idLogado && typeof jogadoresGlobal !== 'undefined') ? jogadoresGlobal[idLogado] : null;
+                    let genAtleta = atleta?.genero ? atleta.genero.toUpperCase().trim() : '';
+                    abaGeneroAtivaSaaS = (genAtleta === 'FEMININO') ? 'FEMININO' : 'MASCULINO';
+                }
+                const isMobile = window.innerWidth <= 768;
+                const txtMasc = isMobile ? 'Masc' : 'Masculino';
+                const txtFem = isMobile ? 'Fem' : 'Feminino';
+                selectGenero.innerHTML = `
+                    <option value="MASCULINO" ${abaGeneroAtivaSaaS === 'MASCULINO' ? 'selected' : ''}>${txtMasc}</option>
+                    <option value="FEMININO" ${abaGeneroAtivaSaaS === 'FEMININO' ? 'selected' : ''}>${txtFem}</option>
+                `;
+            } else if (divisaoGenero === 'unificado' || generosDisponiveisUI.includes('UNIFICADO')) {
+                // Torneio Misto: crachá estático sem setinha
+                selectGenero.innerHTML = `<option value="UNIFICADO" selected>Misto</option>`;
+                selectGenero.disabled = true;
+                selectGenero.style.cssText = 'appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: none !important; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; height: 36px; min-height: 36px; box-sizing: border-box; font-size: 13px; font-weight: 700; color: #334155; text-align: center; text-align-last: center; cursor: default; flex: 1; pointer-events: none; display: flex; align-items: center; justify-content: center;';
+                abaGeneroAtivaSaaS = 'UNIFICADO';
+            } else if (generosDisponiveisUI.length === 1) {
+                // Gênero único no torneio tradicional (ex: só Masculino): crachá estático sem setinha
+                const unicoGen = generosDisponiveisUI[0];
+                abaGeneroAtivaSaaS = unicoGen;
+                const isMobile = window.innerWidth <= 768;
+                const txtUnico = (unicoGen === 'FEMININO') ? (isMobile ? 'Fem' : 'Feminino') : (isMobile ? 'Masc' : 'Masculino');
+                selectGenero.innerHTML = `<option value="${unicoGen}" selected>${txtUnico}</option>`;
+                selectGenero.disabled = true;
+                selectGenero.style.cssText = 'appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: none !important; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; height: 36px; min-height: 36px; box-sizing: border-box; font-size: 13px; font-weight: 700; color: #334155; text-align: center; text-align-last: center; cursor: default; flex: 1; pointer-events: none; display: flex; align-items: center; justify-content: center;';
+            } else {
+                // Ambos os gêneros disputados: dropdown ativo com setinha
+                selectGenero.disabled = false;
+                selectGenero.style.cssText = '';
+                if (abaGeneroAtivaSaaS === 'UNIFICADO') {
+                    abaGeneroAtivaSaaS = generosDisponiveisUI[0] || 'MASCULINO';
+                }
                 const isMobile = window.innerWidth <= 768;
                 const txtMasc = isMobile ? 'Masc' : 'Masculino';
                 const txtFem = isMobile ? 'Fem' : 'Feminino';
@@ -455,7 +536,9 @@ function renderizarLeaderboardSaaS() {
             }
         }
 
-        const chaveTabela = (divisaoGenero === 'unificado') ? `${abaClasseAtivaSaaS}_UNIFICADO` : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
+        const chaveTabela = (abaVisaoLeaderboardSaaS !== 'GERAL' && divisaoGenero === 'unificado') 
+            ? `${abaClasseAtivaSaaS}_UNIFICADO` 
+            : `${abaClasseAtivaSaaS}_${abaGeneroAtivaSaaS}`;
         
         // 🎯 Proteção de Modelos: Lê a tabela oficial sorteada dos grupos
         let listaIDs = [];
@@ -589,7 +672,7 @@ function renderizarLeaderboardSaaS() {
             if (btn) {
                 btn.style.flex = '1';
                 btn.style.cursor = 'pointer';
-                btn.style.pointerEvents = 'auto';
+                btn.style.pointerEvents = 'auto'; 
                 btn.classList.remove('active');
             }
         });
@@ -669,7 +752,7 @@ function renderizarLeaderboardSaaS() {
 					if (!r) return;
 
 					const ehRanking = (r.isRanking === true || r.isRanking === 'true' || r.tipo === 'ranking');
-					if (!ehRanking) return;
+					if (!ehRanking) return; 
 
 					if (r.borda === undefined && parseInt(r.duracao) === 2) return;
 
@@ -983,7 +1066,7 @@ function renderizarLeaderboardSaaS() {
 						let thSetsHtml = '';
 						if (temSet1) thSetsHtml += `<th class="col-score"></th>`;
 						if (temSet2) thSetsHtml += `<th class="col-score"></th>`;
-						if (temSet3) thSetsHtml += `<th class="col-score"></th>`;
+						if (temSet3) thSetsHtml += `<th class="col-score"></th>`; 
 
 						let tdSetsJ1Html = '';
 						let tdSetsJ2Html = '';
@@ -2300,26 +2383,32 @@ function renderizarHTMLGruposAcervoSaaS() {
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
     if (!bodyList || !edicaoHistoricaFocoSaaS) return;
 
-    const edicao = edicaoHistoricaFocoSaaS;
+    const edicao = edicaoHistoricaFocoSaaS; 
     const cal = edicao.contrato || {};
     const categorias = Object.keys(edicao.classificacaoFinal || {});
     const catAtiva = categoriaHistoricaAtivaSaaS || categorias[0] || '';
     const partidasMap = edicao.partidas || {};
 
     if (txtSub) {
-        txtSub.innerHTML = `Ranking Oficial do Clube • Modelo Grupos (Chaves) <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
+        txtSub.innerHTML = `<b>Grupos Final</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
     }
 
     let htmlHeaderCat = '';
-    if (categorias.length > 1) {
-        htmlHeaderCat += `<div style="margin-bottom: 12px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9;">`;
+    if (categorias.length > 0) {
+        const ehClasseUnica = (categorias.length === 1);
+        htmlHeaderCat += `<div style="margin-bottom: 6px; display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px 2px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
         categorias.sort().forEach(cat => {
             const ativa = (cat === catAtiva);
-            let label = cat.replace('CLASSE_', 'Classe ').replace('_', ' ');
-            label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            
+            const p = cat.replace('CLASSE_', '').split('_');
+            const c = p[0] || 'B';
+            const g = (p[1] || 'MASCULINO').toUpperCase();
+            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Feminino' : 'Masculino');
+            const label = ehClasseUnica ? `Classe ${c} ${gTxt}` : `${c} ${gTxt}`;
+            const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
+            const acaoClick = ehClasseUnica ? '' : `onclick="mudarCategoriaGruposHistoricaSaaS('${cat}')"`;
+
             htmlHeaderCat += `
-                <button onclick="mudarCategoriaGruposHistoricaSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                <button type="button" ${acaoClick} style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; ${estiloCursor} transition: all 0.2s;">
                     ${label}
                 </button>
             `;
@@ -2327,245 +2416,204 @@ function renderizarHTMLGruposAcervoSaaS() {
         htmlHeaderCat += `</div>`;
     }
 
-    const partidasCat = Object.values(partidasMap).filter(p => {
-        if (p.categoria && p.categoria !== catAtiva) return false; 
-        const dp = p.dadosPlacar || {};
-        const tagFase = (p.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
-        return tagFase.includes('oitavas') || tagFase.includes('quartas') || tagFase.includes('semi') || tagFase.includes('final');
-    });
-
-    const mapaSeedsBracket = {};
+    // 🎯 RECONSTITUIÇÃO ALGORÍTMICA UNIVERSAL DA ÁRVORE (ELIMINA HARDCODES DE FASES)
     const semeaduraGlobal = edicao.semeaduraGrupos || {};
-    const listaSemeaduraGlobal = (semeaduraGlobal[catAtiva] && semeaduraGlobal[catAtiva].length > 0)
+    const listaSemeaduraCat = (semeaduraGlobal[catAtiva] && semeaduraGlobal[catAtiva].length > 0)
         ? semeaduraGlobal[catAtiva]
         : ((edicao.classificacaoFinal && edicao.classificacaoFinal[catAtiva]) || []);
 
-    listaSemeaduraGlobal.forEach((idAtleta, idx) => {
+    const mapaSeedsBracket = {};
+    listaSemeaduraCat.forEach((idAtleta, idx) => {
         mapaSeedsBracket[idAtleta] = String(idx + 1);
     });
 
-    const formatarPartidaComSeeds = (fase, pOriginal, idOverride1 = null, idOverride2 = null, isBye = false) => {
-        const id1 = idOverride1 || (pOriginal ? pOriginal.jogador1Id : null);
-        const id2 = idOverride2 || (pOriginal ? pOriginal.jogador2Id : null);
+    const faseInicialTorneio = cal.faseInicial || (cal.grupos?.faseInicial) || 'grupos';
+    const ehMataMataDireto = (faseInicialTorneio === 'matamata');
 
+    let rodada1Inicial = [];
+    let tamanhoInicial = 2;
+
+    if (ehMataMataDireto) {
+        if (typeof gerarCruzamentosMataMataDiretoSaaS === 'function') {
+            const resMM = gerarCruzamentosMataMataDiretoSaaS(listaSemeaduraCat, catAtiva);
+            rodada1Inicial = resMM.rodada1 || [];
+            tamanhoInicial = resMM.faseAtual || (rodada1Inicial.length * 2);
+        }
+    } else {
+        // Torneio com Fase de Grupos Prévia
+        const tabelasGrupos = edicao.tabelasGrupos || edicao.semeaduraGrupos || {};
+        const listaIDsGrupos = (tabelasGrupos[catAtiva] && tabelasGrupos[catAtiva].length > 0)
+            ? tabelasGrupos[catAtiva]
+            : listaSemeaduraCat;
+
+        const tamanhoGrupo = parseInt(cal.tamanhoGrupo, 10) || 3;
+        const classificadosQtd = parseInt(cal.classificadosGrupo, 10) || 2;
+        const criterioDesempate = cal.criterioDesempate || 'games_confronto_sorteio';
+        const ptsVit = 3;
+        const ptsDer = 1;
+
+        const estatisticas = {};
+        const confrontosDiretos = {};
+        listaIDsGrupos.forEach(id => { if (id) estatisticas[id] = { j: 0, v: 0, d: 0, sg: 0, pts: 0 }; });
+
+        Object.values(partidasMap).forEach(partida => {
+            if (!partida || (partida.categoria && partida.categoria !== catAtiva)) return;
+            const dp = partida.dadosPlacar || {};
+            const tagG = dp.tagGrupoRanking || partida.tagGrupoRanking;
+            const tagF = (partida.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
+            const ehEliminatorias = tagF.includes('oitavas') || tagF.includes('quartas') || tagF.includes('semi') || tagF.includes('final') || tagF.includes('16avos') || tagF.includes('32avos');
+
+            if ((!!tagG || tagF.includes('grupo')) && !ehEliminatorias) {
+                const p1 = partida.jogador1Id;
+                const p2 = partida.jogador2Id;
+                const vitorioso = partida.vencedorId || (dp.vencedorCodigo === 'J1' ? p1 : (dp.vencedorCodigo === 'J2' ? p2 : null));
+                const gamesP1 = parseInt(partida.gamesP1) || 0;
+                const gamesP2 = parseInt(partida.gamesP2) || 0;
+
+                confrontosDiretos[`${p1}_vs_${p2}`] = vitorioso;
+                confrontosDiretos[`${p2}_vs_${p1}`] = vitorioso;
+
+                if (estatisticas[p1]) {
+                    estatisticas[p1].j++;
+                    estatisticas[p1].sg += (gamesP1 - gamesP2);
+                    if (vitorioso === p1) { estatisticas[p1].v++; estatisticas[p1].pts += ptsVit; }
+                    else { estatisticas[p1].d++; estatisticas[p1].pts += ptsDer; }
+                }
+                if (estatisticas[p2]) {
+                    estatisticas[p2].j++;
+                    estatisticas[p2].sg += (gamesP2 - gamesP1);
+                    if (vitorioso === p2) { estatisticas[p2].v++; estatisticas[p2].pts += ptsVit; }
+                    else { estatisticas[p2].d++; estatisticas[p2].pts += ptsDer; }
+                }
+            }
+        });
+
+        const mapaGruposReais = {};
+        Object.values(partidasMap).forEach(partida => {
+            if (!partida || (partida.categoria && partida.categoria !== catAtiva)) return;
+            const dp = partida.dadosPlacar || {};
+            const tagG = partida.tagGrupoRanking || dp.tagGrupoRanking || "";
+            if (tagG) {
+                if (!mapaGruposReais[tagG]) mapaGruposReais[tagG] = new Set();
+                if (partida.jogador1Id) mapaGruposReais[tagG].add(partida.jogador1Id);
+                if (partida.jogador2Id) mapaGruposReais[tagG].add(partida.jogador2Id);
+            }
+        });
+
+        const gruposProcessados = (typeof montarGruposUniversaisSaaS === 'function')
+            ? montarGruposUniversaisSaaS(listaIDsGrupos, mapaGruposReais, tamanhoGrupo)
+            : [];
+
+        const classificadosMataMata = [];
+        gruposProcessados.forEach(grupoInfo => {
+            const membrosChave = [...grupoInfo.membros];
+            membrosChave.sort((a, b) => {
+                const stA = estatisticas[a] || { pts: 0, sg: 0, v: 0 };
+                const stB = estatisticas[b] || { pts: 0, sg: 0, v: 0 };
+                if (stB.pts !== stA.pts) return stB.pts - stA.pts;
+                if (criterioDesempate === 'confronto_games') {
+                    const vDir = confrontosDiretos[`${a}_vs_${b}`];
+                    if (vDir) return vDir === a ? -1 : 1;
+                    if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                } else {
+                    if (stB.sg !== stA.sg) return stB.sg - stA.sg;
+                    const vDir = confrontosDiretos[`${a}_vs_${b}`];
+                    if (vDir) return vDir === a ? -1 : 1;
+                }
+                return stB.v - stA.v;
+            });
+            classificadosMataMata.push(...membrosChave.slice(0, classificadosQtd));
+        });
+
+        if (typeof gerarCruzamentosMataMataSaaS === 'function' && classificadosMataMata.length >= 2) {
+            const resMM = gerarCruzamentosMataMataSaaS(classificadosMataMata, classificadosQtd, catAtiva);
+            rodada1Inicial = resMM.rodada1 || [];
+            tamanhoInicial = resMM.faseAtual || (rodada1Inicial.length * 2);
+        }
+    }
+
+    // Auxiliares de correspondência e avanço em cascata dos jogos
+    const encontrarPartidaEliminatoria = (idA, idB) => {
+        if (!idA || !idB) return null;
+        return Object.values(partidasMap || {}).find(p => {
+            if (p.categoria && p.categoria !== catAtiva) return false;
+            const dp = p.dadosPlacar || {};
+            if (p.tagGrupoRanking || dp.tagGrupoRanking) return false;
+            return (p.jogador1Id === idA && p.jogador2Id === idB) ||
+                   (p.jogador1Id === idB && p.jogador2Id === idA);
+        });
+    };
+
+    const obterVencedorConfronto = (conf) => {
+        if (!conf) return null;
+        if (conf.isBye || !conf.jogador2Id) return conf.jogador1Id || conf.jogador2Id;
+        const p = encontrarPartidaEliminatoria(conf.jogador1Id, conf.jogador2Id);
+        if (!p) return null;
+        return p.vencedorId || (p.dadosPlacar?.vencedorCodigo === 'J1' ? conf.jogador1Id : (p.dadosPlacar?.vencedorCodigo === 'J2' ? conf.jogador2Id : null));
+    };
+
+    const formatarItemConfronto = (faseNum, conf) => {
+        const id1 = conf.jogador1Id || null;
+        const id2 = conf.jogador2Id || null;
         const s1 = id1 ? (mapaSeedsBracket[id1] || '') : '';
         const s2 = id2 ? (mapaSeedsBracket[id2] || '') : '';
+        const ehBye = conf.isBye || (!id2 && !!id1);
 
-        const dpOriginal = pOriginal ? (pOriginal.dadosPlacar || {}) : {};
+        const pReal = (id1 && id2 && !ehBye) ? encontrarPartidaEliminatoria(id1, id2) : null;
+        const dp = pReal ? (pReal.dadosPlacar || {}) : (conf.dadosPlacar || {});
+        const vencedor = pReal ? (pReal.vencedorId || (dp.vencedorCodigo === 'J1' ? id1 : (dp.vencedorCodigo === 'J2' ? id2 : null))) : (conf.vencedorId || (ehBye ? id1 : null));
 
         return {
-            ...(pOriginal || {}),
-            fase: fase,
+            ...(pReal || {}),
+            fase: faseNum,
             jogador1Id: id1,
             jogador2Id: id2,
-            isBye: isBye,
+            isBye: ehBye,
             posicaoP1: s1,
             posicaoP2: s2,
+            vencedorId: vencedor,
             dadosPlacar: {
-                ...dpOriginal,
+                ...dp,
                 posicaoP1: s1,
                 posicaoP2: s2
             }
         };
     };
 
-    const ordenarJogadoresConfrontoGen = (partida) => {
-        if (!partida) return { idTop: null, idBottom: null };
-        const s1 = parseInt(mapaSeedsBracket[partida.jogador1Id] || '999', 10);
-        const s2 = parseInt(mapaSeedsBracket[partida.jogador2Id] || '999', 10);
-
-        let idTop = partida.jogador1Id;
-        let idBottom = partida.jogador2Id;
-
-        if (s1 === 2) {
-            idTop = partida.jogador2Id;
-            idBottom = partida.jogador1Id;
-        } else if (s2 === 2) {
-            idTop = partida.jogador1Id;
-            idBottom = partida.jogador2Id;
-        } else if (s1 > s2 && s2 !== 999) {
-            idTop = partida.jogador2Id;
-            idBottom = partida.jogador1Id;
-        }
-
-        return { idTop, idBottom };
-    };
-
-    const partidasPorFaseBrutas = {};
-    let maiorFase = 2;
-
-    partidasCat.forEach(p => {
-        const dp = p.dadosPlacar || {};
-        const tagFase = (p.tagFaseRanking || dp.tagFaseRanking || '').toLowerCase();
-        let numPot = 2;
-
-        if (tagFase.includes('16avos')) numPot = 32;
-        else if (tagFase.includes('oitavas')) numPot = 16;
-        else if (tagFase.includes('quartas')) numPot = 8;
-        else if (tagFase.includes('semi')) numPot = 4;
-        else if (tagFase.includes('final')) numPot = 2;
-
-        if (numPot > maiorFase) maiorFase = numPot;
-
-        if (!partidasPorFaseBrutas[numPot]) partidasPorFaseBrutas[numPot] = [];
-        partidasPorFaseBrutas[numPot].push(p);
-    });
-
     const historicoRodadas = {};
+    let rodadaAtualFormatada = rodada1Inicial.map(c => formatarItemConfronto(tamanhoInicial, c));
+    historicoRodadas[tamanhoInicial] = rodadaAtualFormatada;
 
-    if (maiorFase >= 8) {
-        const quartasBrutas = partidasPorFaseBrutas[8] || [];
-        const rodadaQuartasOrdenada = new Array(4).fill(null);
+    // Constrói todas as fases subsequentes (ex: 32 -> 16 -> 8 -> 4 -> 2)
+    let potLoop = tamanhoInicial;
+    while (potLoop > 2) {
+        const proxPot = potLoop / 2;
+        const proxRodada = [];
 
-        quartasBrutas.forEach(qPartida => {
-            const p1 = qPartida.jogador1Id;
-            const p2 = qPartida.jogador2Id;
-            const s1 = parseInt(mapaSeedsBracket[p1] || '999', 10);
-            const s2 = parseInt(mapaSeedsBracket[p2] || '999', 10);
+        for (let i = 0; i < rodadaAtualFormatada.length; i += 2) {
+            const conf1 = rodadaAtualFormatada[i];
+            const conf2 = rodadaAtualFormatada[i + 1];
 
-            let idTop = (s1 < s2) ? p1 : p2;
-            let idBottom = (s1 < s2) ? p2 : p1;
+            const v1 = obterVencedorConfronto(conf1);
+            const v2 = obterVencedorConfronto(conf2);
 
-            if ((s1 === 5 && s2 === 6) || (s1 === 6 && s2 === 5)) {
-                idTop = (s1 === 6) ? p1 : p2;
-                idBottom = (s1 === 5) ? p1 : p2;
-            }
-
-            const objP = formatarPartidaComSeeds(8, qPartida, idTop, idBottom, false);
-
-            if (s1 === 5 || s2 === 5 || s1 === 6 || s2 === 6) {
-                rodadaQuartasOrdenada[1] = objP;
-            } else {
-                rodadaQuartasOrdenada[2] = objP;
-            }
-        });
-
-        if (!rodadaQuartasOrdenada[0]) {
-            const idBye1 = Object.keys(mapaSeedsBracket).find(id => mapaSeedsBracket[id] === '1');
-            if (idBye1) rodadaQuartasOrdenada[0] = formatarPartidaComSeeds(8, null, idBye1, null, true);
-        }
-        if (!rodadaQuartasOrdenada[3]) {
-            const idBye3 = Object.keys(mapaSeedsBracket).find(id => mapaSeedsBracket[id] === '3');
-            if (idBye3) rodadaQuartasOrdenada[3] = formatarPartidaComSeeds(8, null, idBye3, null, true);
+            proxRodada.push(formatarItemConfronto(proxPot, {
+                fase: proxPot,
+                jogador1Id: v1,
+                jogador2Id: v2,
+                isBye: (v1 && !v2) || (!v1 && v2)
+            }));
         }
 
-        for (let k = 0; k < 4; k++) {
-            if (!rodadaQuartasOrdenada[k]) {
-                rodadaQuartasOrdenada[k] = { fase: 8, jogador1Id: null, jogador2Id: null, isBye: false };
-            }
-        }
-
-        historicoRodadas[8] = rodadaQuartasOrdenada;
+        historicoRodadas[proxPot] = proxRodada;
+        rodadaAtualFormatada = proxRodada;
+        potLoop = proxPot;
     }
 
-    if (maiorFase >= 16) {
-        const oitavasBrutas = partidasPorFaseBrutas[16] || [];
-        const rodadaQuartas = historicoRodadas[8] || [];
-        const rodadaOitavasOrdenada = [];
-
-        rodadaQuartas.forEach(qJogo => {
-            const atletasNoJogo = [qJogo.jogador1Id, qJogo.jogador2Id].filter(Boolean);
-
-            atletasNoJogo.forEach(idAtletaQuartas => {
-                const partidaEncontrada = oitavasBrutas.find(p => p.jogador1Id === idAtletaQuartas || p.jogador2Id === idAtletaQuartas);
-
-                if (partidaEncontrada) {
-                    const { idTop, idBottom } = ordenarJogadoresConfrontoGen(partidaEncontrada);
-                    rodadaOitavasOrdenada.push(formatarPartidaComSeeds(16, partidaEncontrada, idTop, idBottom, false));
-                } else {
-                    rodadaOitavasOrdenada.push(formatarPartidaComSeeds(16, null, idAtletaQuartas, null, true));
-                }
-            });
-
-            if (atletasNoJogo.length < 2) {
-                for (let k = atletasNoJogo.length; k < 2; k++) {
-                    rodadaOitavasOrdenada.push({ fase: 16, jogador1Id: null, jogador2Id: null, isBye: false });
-                }
-            }
-        });
-
-        while (rodadaOitavasOrdenada.length < 8) {
-            rodadaOitavasOrdenada.push({ fase: 16, jogador1Id: null, jogador2Id: null, isBye: false });
-        }
-
-        historicoRodadas[16] = rodadaOitavasOrdenada;
-    }
-
-    if (maiorFase >= 4) {
-        const semisBrutas = partidasPorFaseBrutas[4] || [];
-        const rodadaQuartasOrdenada = historicoRodadas[8] || [];
-        const rodadaSemisOrdenada = new Array(2).fill(null);
-
-        const temQuartas = rodadaQuartasOrdenada.some(Boolean);
-
-        if (temQuartas) {
-            const idQF0_Top = rodadaQuartasOrdenada[0]?.jogador1Id || rodadaQuartasOrdenada[0]?.jogador2Id;
-            const idQF2_Adv = rodadaQuartasOrdenada[2]?.vencedorId || (rodadaQuartasOrdenada[2]?.dadosPlacar?.vencedorCodigo === 'J2' ? rodadaQuartasOrdenada[2]?.jogador2Id : rodadaQuartasOrdenada[2]?.jogador1Id);
-
-            semisBrutas.forEach(sPartida => {
-                const p1 = sPartida.jogador1Id;
-                const p2 = sPartida.jogador2Id;
-
-                const ehSemi1 = (p1 === idQF0_Top || p2 === idQF0_Top);
-
-                if (ehSemi1) {
-                    const idTop = (p1 === idQF0_Top) ? p1 : p2;
-                    const idBottom = (p1 === idQF0_Top) ? p2 : p1;
-                    rodadaSemisOrdenada[0] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
-                } else {
-                    const idTop = (p1 === idQF2_Adv) ? p1 : p2;
-                    const idBottom = (p1 === idQF2_Adv) ? p2 : p1;
-                    rodadaSemisOrdenada[1] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
-                }
-            });
-        } else {
-            semisBrutas.forEach(sPartida => {
-                const p1 = sPartida.jogador1Id;
-                const p2 = sPartida.jogador2Id;
-                const s1 = parseInt(mapaSeedsBracket[p1] || '999', 10);
-                const s2 = parseInt(mapaSeedsBracket[p2] || '999', 10);
-                const minSeed = Math.min(s1, s2);
-
-                if (minSeed === 1 || semisBrutas.length === 1) {
-                    const idTop = (s1 < s2) ? p1 : p2;
-                    const idBottom = (s1 < s2) ? p2 : p1;
-                    rodadaSemisOrdenada[0] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
-                } else {
-                    let idTop = p1, idBottom = p2;
-                    if (s1 === 2) { idTop = p2; idBottom = p1; }
-                    else if (s2 === 2) { idTop = p1; idBottom = p2; }
-                    else if (s1 < s2) { idTop = p1; idBottom = p2; }
-                    rodadaSemisOrdenada[1] = formatarPartidaComSeeds(4, sPartida, idTop, idBottom, false);
-                }
-            });
-        }
-
-        for (let k = 0; k < 2; k++) {
-            if (!rodadaSemisOrdenada[k]) {
-                rodadaSemisOrdenada[k] = { fase: 4, jogador1Id: null, jogador2Id: null, isBye: false };
-            }
-        }
-
-        historicoRodadas[4] = rodadaSemisOrdenada;
-    }
-
-    const jogoFinal = (partidasPorFaseBrutas[2] && partidasPorFaseBrutas[2][0]) || null;
-    if (jogoFinal) {
-        const rodadaSemis = historicoRodadas[4] || [];
-        const semi1 = rodadaSemis[0];
-        const semi2 = rodadaSemis[1];
-
-        const idTop = semi1?.vencedorId || (semi1?.dadosPlacar?.vencedorCodigo === 'J2' ? semi1?.jogador2Id : semi1?.jogador1Id) || jogoFinal.jogador1Id;
-        const idBottom = semi2?.vencedorId || (semi2?.dadosPlacar?.vencedorCodigo === 'J2' ? semi2?.jogador2Id : semi2?.jogador1Id) || jogoFinal.jogador2Id;
-
-        historicoRodadas[2] = [formatarPartidaComSeeds(2, jogoFinal, idTop, idBottom, false)];
-    }
-
-    const rodadaInicial = historicoRodadas[maiorFase] || []; 
     const chaveCatData = {
-        faseAtual: maiorFase,
-        totalClassificados: maiorFase,
-        rodada1: rodadaInicial,
+        faseAtual: tamanhoInicial,
+        totalClassificados: tamanhoInicial,
+        rodada1: historicoRodadas[tamanhoInicial] || [],
         historicoRodadas: historicoRodadas
     };
 
@@ -2573,14 +2621,23 @@ function renderizarHTMLGruposAcervoSaaS() {
     
     if (modoVisaoMataMataSaaS === 'arvore') {
         if (typeof renderizarVisaoMataMataSaaS === 'function') {
-            renderizarVisaoMataMataSaaS(bodyList, chaveCatData, idLogado, partidasMap);
+            bodyList.style.overflow = 'hidden';
+            bodyList.scrollTop = 0;
 
-            if (htmlHeaderCat) {
-                bodyList.insertAdjacentHTML('afterbegin', htmlHeaderCat);
-            }
+            bodyList.innerHTML = `
+                <div id="container-pills-acervo-grupos" style="flex-shrink: 0; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">
+                    ${htmlHeaderCat}
+                </div>
+                <div id="container-bracket-acervo-grupos" style="flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; position: relative; box-sizing: border-box;"></div>
+            `;
+
+            const bracketContainer = document.getElementById('container-bracket-acervo-grupos');
+            renderizarVisaoMataMataSaaS(bracketContainer, chaveCatData, idLogado, partidasMap);
             return;
         }
     }
+
+    bodyList.style.overflow = '';
 
     const configRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
 
@@ -2753,8 +2810,14 @@ function mudarCategoriaGruposHistoricaSaaS(novaCat) {
     const partesCat = novaCat.split('_');
     abaClasseAtivaSaaS = partesCat[0] || 'B';
     abaGeneroAtivaSaaS = partesCat[1] || 'MASCULINO';
+    
+    // 🎯 Reseta os ponteiros de bloco e fase focada para a nova categoria abrir sempre limpa
+    if (typeof faseFocoMataMataSaaS !== 'undefined') faseFocoMataMataSaaS = null;
+    if (typeof quadranteAtivoMataMataSaaS !== 'undefined') quadranteAtivoMataMataSaaS = 0;
+    
     renderizarHTMLGruposAcervoSaaS();
 }
+
 
 function abrirBarragemAcervoSaaS(idEdicao) {
     const edicao = acervoHistoricoGlobalSaaS.find(e => e.id === idEdicao);
@@ -2802,20 +2865,26 @@ function renderizarHTMLBarragemAcervoSaaS() {
     const partidasMap = edicao.partidas || {};
 
     if (txtSub) {
-        txtSub.innerHTML = `<b>🏆 Barragem Final</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
+        txtSub.innerHTML = `<b>Barragem Final</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
     }
 
     let html = '';
 
-    if (categorias.length > 1) {
+    if (categorias.length > 0) {
+        const ehClasseUnica = (categorias.length === 1);
         html += `<div style="margin-bottom: 16px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;" data-html2canvas-ignore="true">`;
         categorias.sort().forEach(cat => {
             const ativa = (cat === catAtiva);
-            let label = cat.replace('CLASSE_', 'Classe ').replace('_', ' ');
-            label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            
+            const p = cat.replace('CLASSE_', '').split('_');
+            const c = p[0] || 'B';
+            const g = (p[1] || 'MASCULINO').toUpperCase();
+            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Feminino' : 'Masculino');
+            const label = ehClasseUnica ? `Classe ${c} ${gTxt}` : `${c} ${gTxt}`;
+            const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
+            const acaoClick = ehClasseUnica ? '' : `onclick="mudarCategoriaBarragemHistoricaSaaS('${cat}')"`;
+
             html += `
-                <button type="button" onclick="mudarCategoriaBarragemHistoricaSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                <button type="button" ${acaoClick} style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; ${estiloCursor} transition: all 0.2s;">
                     ${label}
                 </button>
             `;
@@ -2877,8 +2946,12 @@ function renderizarHTMLBarragemAcervoSaaS() {
     const nomeClube = nomeClubeRaw.toUpperCase();
     const nomeTorneio = cal.nomeTorneio || 'Torneio';
 
-    let catTxt = catAtiva.replace('CLASSE_', 'Classe ').replace('_', ' ');
-    catTxt = (typeof capitalizarNome === 'function') ? capitalizarNome(catTxt) : catTxt;
+    const partesCat = catAtiva.replace('CLASSE_', '').split('_');
+    const clsCat = partesCat[0] || 'B';
+    const genCat = (partesCat[1] || 'MASCULINO').toUpperCase();
+    const genTxtCat = (genCat === 'UNIFICADO' || genCat === 'MISTO') ? 'Misto' : (genCat === 'FEMININO' ? 'Feminino' : 'Masculino');
+    const catTxt = `Classe ${clsCat} ${genTxtCat}`;
+	
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
     // 📸 Botão PNG Verde Esmeralda (Idêntico ao da Pirâmide)
@@ -3380,23 +3453,31 @@ function renderizarHTMLPodioAcervoSaaS() {
     const edicao = edicaoHistoricaFocoSaaS;
     const cal = edicao.contrato || {};
     const categorias = Object.keys(edicao.classificacaoFinal || {});
-    const listaIDs = (edicao.classificacaoFinal && edicao.classificacaoFinal[categoriaHistoricaAtivaSaaS]) || [];
+    const catAtiva = categoriaHistoricaAtivaSaaS || categorias.sort()[0] || '';
+    categoriaHistoricaAtivaSaaS = catAtiva;
+    const listaIDs = (edicao.classificacaoFinal && edicao.classificacaoFinal[catAtiva]) || [];
     
     if (txtSub) {
-        txtSub.innerHTML = `<b>🏆 Hall de Campeões</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
+        txtSub.innerHTML = `<b>Hall de Campeões</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
     }
 
-    let html = '';
+    let html = ''; 
 
-    if (categorias.length > 1) {
-        html += `<div style="margin-bottom: 16px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">`;
+    if (categorias.length > 0) {
+        const ehClasseUnica = (categorias.length === 1);
+        html += `<div style="margin-bottom: 12px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
         categorias.sort().forEach(cat => {
-            const ativa = (cat === categoriaHistoricaAtivaSaaS);
-            let label = cat.replace('CLASSE_', 'Classe ').replace('_', ' ');
-            label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            
+            const ativa = (cat === catAtiva);
+            const p = cat.replace('CLASSE_', '').split('_');
+            const c = p[0] || 'B';
+            const g = (p[1] || 'MASCULINO').toUpperCase();
+            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Feminino' : 'Masculino');
+            const label = ehClasseUnica ? `Classe ${c} ${gTxt}` : `${c} ${gTxt}`;
+            const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
+            const acaoClick = ehClasseUnica ? '' : `onclick="mudarCategoriaHistoricaSaaS('${cat}')"`;
+
             html += `
-                <button onclick="mudarCategoriaHistoricaSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                <button type="button" ${acaoClick} style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; ${estiloCursor} transition: all 0.2s;">
                     ${label}
                 </button>
             `;
@@ -3642,6 +3723,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
 
     const cal = edicao.contrato || {};
     const fmtDataCurta = (str) => {
+
         if (!str) return '--/--';
         const p = str.split('-');
         if (p.length === 3) return `${p[2]}/${p[1]}`;
@@ -3651,7 +3733,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     const dtFim = fmtDataCurta(cal.fimTorneio);
 
     if (txtSub) {
-        txtSub.innerHTML = `<span style="font-weight: 700; color: #1e293b;">${cal.nomeTorneio || 'Torneio'}</span> <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px; margin-left:6px; border:1px solid #cbd5e1;">${dtInicio} a ${dtFim}</span>`;
+        txtSub.innerHTML = `<b>Súmulas</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
         txtSub.style.marginBottom = "0px";
     }
 
@@ -3733,6 +3815,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
             const catKey = partida.categoria || '';
             let catLabel = catKey.replace('CLASSE_', 'Classe ').replace('_', ' ');
             catLabel = catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            catLabel = catLabel.replace(/\bUnificado\b/gi, 'Misto');
 
             const dataMs = partida.dataHora || dp.dataHoraLancamento || dp.dataHoraValidacao || dp.dataHoraArbitragem;
             let dataPartidaStr = '--/--/----';
@@ -3920,28 +4003,48 @@ function abrirSumulasAcervoSaaS(idEdicao) {
     }
 
     let htmlPills = '';
-    if (categorias.length > 1) {
+    if (categorias.length > 0) {
+        const ehClasseUnica = (categorias.length === 1);
         htmlPills += `<div style="flex-shrink: 0; margin-top: 2px; margin-bottom: 12px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
 
-        const ehAtivaTodas = (window.categoriaSumulasAcervoAtivaSaaS === 'TODAS');
-        htmlPills += `
-            <button type="button" onclick="window.mudarCategoriaSumulasAcervoSaaS('TODAS')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ehAtivaTodas ? '#8b5cf6' : '#cbd5e1'}; background: ${ehAtivaTodas ? '#8b5cf6' : '#f8fafc'}; color: ${ehAtivaTodas ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
-                Todas (${todasPartidasLista.length})
-            </button>
-        `;
-
-        categorias.forEach(cat => {
-            const ehAtiva = (cat === window.categoriaSumulasAcervoAtivaSaaS);
-            const qtdCat = todasPartidasLista.filter(p => p.categoria === cat).length;
-            let label = cat.replace('CLASSE_', '').replace('_', ' ');
-            label = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        if (ehClasseUnica) {
+            const cat = categorias[0];
+            const p = cat.replace('CLASSE_', '').split('_');
+            const c = p[0] || 'B';
+            const g = (p[1] || 'MASCULINO').toUpperCase();
+            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Fem' : 'Masc');
+            const label = `Classe ${c} ${gTxt}`;
 
             htmlPills += `
-                <button type="button" onclick="window.mudarCategoriaSumulasAcervoSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ehAtiva ? '#8b5cf6' : '#cbd5e1'}; background: ${ehAtiva ? '#8b5cf6' : '#f8fafc'}; color: ${ehAtiva ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
-                    ${label} (${qtdCat})
+                <button type="button" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid #8b5cf6; background: #8b5cf6; color: #fff; cursor: default; pointer-events: none; transition: all 0.2s;">
+                    ${label}
                 </button>
             `;
-        });
+        } else {
+            const ehAtivaTodas = (window.categoriaSumulasAcervoAtivaSaaS === 'TODAS');
+            htmlPills += `
+                <button type="button" onclick="window.mudarCategoriaSumulasAcervoSaaS('TODAS')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ehAtivaTodas ? '#8b5cf6' : '#cbd5e1'}; background: ${ehAtivaTodas ? '#8b5cf6' : '#f8fafc'}; color: ${ehAtivaTodas ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                    Todas (${todasPartidasLista.length})
+                </button>
+            `;
+
+            categorias.forEach(cat => {
+                const ehAtiva = (cat === window.categoriaSumulasAcervoAtivaSaaS);
+                const qtdCat = todasPartidasLista.filter(p => p.categoria === cat).length;
+                const p = cat.replace('CLASSE_', '').split('_');
+                const c = p[0] || 'B';
+                const g = (p[1] || 'MASCULINO').toUpperCase();
+                const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Fem' : 'Masc');
+                const label = `${c} ${gTxt}`;
+
+                htmlPills += `
+                    <button type="button" onclick="window.mudarCategoriaSumulasAcervoSaaS('${cat}')" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ehAtiva ? '#8b5cf6' : '#cbd5e1'}; background: ${ehAtiva ? '#8b5cf6' : '#f8fafc'}; color: ${ehAtiva ? '#fff' : '#475569'}; cursor: pointer; transition: all 0.2s;">
+                        ${label} (${qtdCat})
+                    </button>
+                `;
+            });
+        }
+
         htmlPills += `</div>`;
     }
 
@@ -4078,6 +4181,7 @@ async function exportarLeaderboardPDFSaaS() {
 
     let linha2TorneioCategoria = "";
     let linha3Subtitulo = "";
+    let ehHomologado = false;
     let tipoModelo = 'piramide';
     const leaderboardItems = [];
     const mataMataItems = [];
@@ -4086,11 +4190,20 @@ async function exportarLeaderboardPDFSaaS() {
     if (ehHistorico) {
         const cal = edicaoHistoricaFocoSaaS.contrato || {};
         const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio');
-        let catLabel = (categoriaHistoricaAtivaSaaS || '').replace('CLASSE_', 'Classe ').replace('_', ' ');
-        catLabel = limparTextoPdf(catLabel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '));
+        let catLabel = '';
+        if (typeof categoriaHistoricaAtivaSaaS !== 'undefined' && categoriaHistoricaAtivaSaaS) {
+            const partesHist = categoriaHistoricaAtivaSaaS.replace('CLASSE_', '').split('_');
+            const clsHist = partesHist[0] || 'B';
+            const genHist = (partesHist[1] || 'MASCULINO').toUpperCase();
+            const genTxtHist = (genHist === 'UNIFICADO' || genHist === 'MISTO') ? 'Misto' : (genHist === 'FEMININO' ? 'Feminino' : 'Masculino');
+            catLabel = `Classe ${clsHist} ${genTxtHist}`;
+        } else {
+            catLabel = 'Classe Oficial';
+        }
 
         linha2TorneioCategoria = `${nomeTorneio} - ${catLabel}`;
-        linha3Subtitulo = "Hall de Campeões [Acervo Histórico]";
+        linha3Subtitulo = "Hall de Campeões";
+        ehHomologado = true;
 
         const listaIDs = (edicaoHistoricaFocoSaaS.classificacaoFinal && edicaoHistoricaFocoSaaS.classificacaoFinal[categoriaHistoricaAtivaSaaS]) || [];
         const capitalizar = (str) => {
@@ -4116,21 +4229,38 @@ async function exportarLeaderboardPDFSaaS() {
         const cal = conf.calendario || {};
         const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio Oficial');
 
+        const divGenero = conf.divisaoGenero || 'separado';
         const selClasse = document.getElementById('select-leaderboard-classe');
         const selGenero = document.getElementById('select-leaderboard-genero');
         const selFase = document.getElementById('select-leaderboard-fase');
 
-        const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
-        const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
-        const txtFase = selFase ? (selFase.options[selFase.selectedIndex]?.text || '') : '';
+        const clsVal = selClasse ? selClasse.value : (typeof abaClasseAtivaSaaS !== 'undefined' ? abaClasseAtivaSaaS : 'B');
+        const genVal = (selGenero ? selGenero.value : (typeof abaGeneroAtivaSaaS !== 'undefined' ? abaGeneroAtivaSaaS : 'MASCULINO')).toUpperCase();
 
-        const categoriaAtivaTxt = limparTextoPdf([txtClasse, txtGenero, txtFase].filter(Boolean).join(' - '));
+        let genFormatado = 'Misto';
+        if (divGenero !== 'unificado' && genVal !== 'UNIFICADO' && genVal !== 'MISTO') {
+            genFormatado = (genVal === 'FEMININO') ? 'Feminino' : 'Masculino';
+        }
+
+        const txtClasseGenero = `Classe ${clsVal} ${genFormatado}`;
+        const txtFase = (selFase && selFase.style.display !== 'none') ? (selFase.options[selFase.selectedIndex]?.text || '') : '';
+
+        const categoriaAtivaTxt = limparTextoPdf([txtClasseGenero, txtFase].filter(Boolean).join(' - '));
 
         linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} - ${categoriaAtivaTxt}` : nomeTorneio;
         
-        let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube', '').replace('Central do Ranking', '').trim() : '';
-        modeloTxt = limparTextoPdf(modeloTxt);
-        linha3Subtitulo = modeloTxt ? `Tabela de Classificação - ${modeloTxt}` : "Tabela de Classificação";
+        const estadoTorneio = (typeof obterEstadoTorneioAtivoSaaS === 'function') ? obterEstadoTorneioAtivoSaaS() : {};
+        const torneioConcluido = (conf.torneioConcluido === true) || (estadoTorneio.torneioConcluido === true) || (txtSub && txtSub.innerHTML && txtSub.innerHTML.includes('Homologado'));
+
+        if (torneioConcluido) {
+            linha3Subtitulo = "Hall de Campeões";
+            ehHomologado = true;
+        } else {
+            let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').replace('Ranking Oficial do Clube', '').replace('Central do Ranking', '').trim() : '';
+            modeloTxt = limparTextoPdf(modeloTxt);
+            linha3Subtitulo = modeloTxt ? `Tabela de Classificação - ${modeloTxt}` : "Tabela de Classificação";
+            ehHomologado = false;
+        }
 
         const cardsMataMataDOM = Array.from(bodyLeaderboard.querySelectorAll('div[style*="border: 1.5px solid"], div[style*="border: 2px solid"]'));
         
@@ -4308,6 +4438,36 @@ async function exportarLeaderboardPDFSaaS() {
         doc.setTextColor(71, 85, 105);
         doc.text(linha3Subtitulo, marginX, currentY);
 
+        if (ehHomologado) {
+            const txtSubW = doc.getTextWidth(linha3Subtitulo);
+            const pillX = marginX + txtSubW + 2.5;
+            const pillY = currentY - 3.2;
+            const pillH = 4.2;
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7.5);
+            const txtHomologW = doc.getTextWidth("Homologado");
+            const pillW = 2.2 + 2.4 + 1.2 + txtHomologW + 2.2;
+
+            doc.setFillColor(220, 252, 231);
+            doc.setDrawColor(134, 239, 172);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(pillX, pillY, pillW, pillH, 1, 1, "FD");
+
+            // Checkmark vetorial ✓
+            const checkX = pillX + 3.2;
+            const checkY = currentY - 0.9;
+            doc.setDrawColor(21, 128, 61);
+            doc.setLineWidth(0.35);
+            doc.line(checkX - 1.2, checkY - 0.1, checkX - 0.4, checkY + 0.8);
+            doc.line(checkX - 0.4, checkY + 0.8, checkX + 1.2, checkY - 1.0);
+
+            // Texto Homologado
+            doc.setTextColor(21, 128, 61);
+            doc.text("Homologado", pillX + 5.6, currentY - 0.3);
+        }
+
+        doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.setTextColor(71, 85, 105);
         doc.text(dataHojeStr, pageWidth - marginX, currentY, { align: "right" });
@@ -4772,18 +4932,20 @@ async function exportarRankingGeralPDFSaaS() {
     const nomeClube = nomeClubeRaw.toUpperCase();
     const dataHojeStr = new Date().toLocaleDateString('pt-BR');
 
-    const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
-    const cal = conf.calendario || {};
-    const nomeTorneio = cal.nomeTorneio || 'Torneio Oficial';
-
     const selClasse = document.getElementById('select-leaderboard-classe');
     const selGenero = document.getElementById('select-leaderboard-genero');
-    const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
-    const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
-    const categoriaAtivaTxt = [txtClasse, txtGenero].filter(Boolean).join(' • ');
 
-    const linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} — ${categoriaAtivaTxt}` : nomeTorneio;
-    const linha3Subtitulo = "Extrato do Ranking Geral";
+    const clsVal = selClasse ? selClasse.value : (typeof abaClasseAtivaSaaS !== 'undefined' ? abaClasseAtivaSaaS : 'B');
+    const genVal = (selGenero ? selGenero.value : (typeof abaGeneroAtivaSaaS !== 'undefined' ? abaGeneroAtivaSaaS : 'MASCULINO')).toUpperCase();
+
+    let genFormatado = 'Misto';
+    if (genVal !== 'UNIFICADO' && genVal !== 'MISTO') {
+        genFormatado = (genVal === 'FEMININO') ? 'Feminino' : 'Masculino';
+    }
+
+    const categoriaAtivaTxt = `Classe ${clsVal} ${genFormatado}`;
+    const linha2TorneioCategoria = `Ranking Geral — ${categoriaAtivaTxt}`;
+    const linha3Subtitulo = "Extrato de Pontuação Acumulada";
 
     const rowsPiramide = Array.from(bodyLeaderboard.querySelectorAll('.item-leaderboard-piramide'));
     const leaderboardItems = rowsPiramide.map(itemEl => {
@@ -4946,6 +5108,7 @@ async function exportarSumulasPDFSaaS() {
     const limparTextoPdf = (txt) => {
         if (!txt) return '';
         return txt.replace(/[•—–]/g, '-')
+                  .replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
                   .replace(/\s+/g, ' ')
                   .trim();
     };
@@ -4997,26 +5160,65 @@ async function exportarSumulasPDFSaaS() {
 
     let linha2TorneioCategoria = "";
     let linha3Subtitulo = "";
+    let ehHomologado = false;
 
     if (ehHistorico) {
         const cal = edicaoHistoricaFocoSaaS.contrato || {};
         const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio Histórico');
-        linha2TorneioCategoria = `${nomeTorneio} - Acervo Histórico`;
-        linha3Subtitulo = "Súmulas e Resultados - Edição Concluída";
+        let catLabel = '';
+        if (typeof window.categoriaSumulasAcervoAtivaSaaS !== 'undefined' && window.categoriaSumulasAcervoAtivaSaaS && window.categoriaSumulasAcervoAtivaSaaS !== 'TODAS') {
+            const partesHist = window.categoriaSumulasAcervoAtivaSaaS.replace('CLASSE_', '').split('_');
+            const clsHist = partesHist[0] || 'B';
+            const genHist = (partesHist[1] || 'MASCULINO').toUpperCase();
+            const genTxtHist = (genHist === 'UNIFICADO' || genHist === 'MISTO') ? 'Misto' : (genHist === 'FEMININO' ? 'Feminino' : 'Masculino');
+            catLabel = `Classe ${clsHist} ${genTxtHist}`;
+        } else if (typeof categoriaHistoricaAtivaSaaS !== 'undefined' && categoriaHistoricaAtivaSaaS) {
+            const partesHist = categoriaHistoricaAtivaSaaS.replace('CLASSE_', '').split('_');
+            const clsHist = partesHist[0] || 'B';
+            const genHist = (partesHist[1] || 'MASCULINO').toUpperCase();
+            const genTxtHist = (genHist === 'UNIFICADO' || genHist === 'MISTO') ? 'Misto' : (genHist === 'FEMININO' ? 'Feminino' : 'Masculino');
+            catLabel = `Classe ${clsHist} ${genTxtHist}`;
+        }
+        linha2TorneioCategoria = catLabel ? `${nomeTorneio} - ${catLabel}` : `${nomeTorneio} - Acervo Histórico`;
+        linha3Subtitulo = "Súmulas e Resultados";
+        ehHomologado = true;
     } else {
         const conf = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
         const cal = conf.calendario || {};
         const nomeTorneio = limparTextoPdf(cal.nomeTorneio || 'Torneio Oficial');
 
+        const divGenero = conf.divisaoGenero || 'separado';
         const selClasse = document.getElementById('select-leaderboard-classe');
         const selGenero = document.getElementById('select-leaderboard-genero');
-        const txtClasse = selClasse ? `Classe ${selClasse.value}` : '';
-        const txtGenero = (selGenero && selGenero.value !== 'UNIFICADO') ? selGenero.value : '';
-        const categoriaAtivaTxt = limparTextoPdf([txtClasse, txtGenero].filter(Boolean).join(' - '));
+        const selFase = document.getElementById('select-leaderboard-fase');
+
+        const clsVal = selClasse ? selClasse.value : (typeof abaClasseAtivaSaaS !== 'undefined' ? abaClasseAtivaSaaS : 'B');
+        const genVal = (selGenero ? selGenero.value : (typeof abaGeneroAtivaSaaS !== 'undefined' ? abaGeneroAtivaSaaS : 'MASCULINO')).toUpperCase();
+
+        let genFormatado = 'Misto';
+        if (divGenero !== 'unificado' && genVal !== 'UNIFICADO' && genVal !== 'MISTO') {
+            genFormatado = (genVal === 'FEMININO') ? 'Feminino' : 'Masculino';
+        }
+
+        const txtClasseGenero = `Classe ${clsVal} ${genFormatado}`;
+        const txtFase = (selFase && selFase.style.display !== 'none') ? (selFase.options[selFase.selectedIndex]?.text || '') : '';
+
+        const categoriaAtivaTxt = limparTextoPdf([txtClasseGenero, txtFase].filter(Boolean).join(' - '));
 
         linha2TorneioCategoria = categoriaAtivaTxt ? `${nomeTorneio} - ${categoriaAtivaTxt}` : nomeTorneio;
-        let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').trim() : 'Modelo Oficial';
-        linha3Subtitulo = limparTextoPdf(`Súmulas e Resultados - ${modeloTxt}`);
+
+        const estadoTorneio = (typeof obterEstadoTorneioAtivoSaaS === 'function') ? obterEstadoTorneioAtivoSaaS() : {};
+        const torneioConcluido = (conf.torneioConcluido === true) || (estadoTorneio.torneioConcluido === true) || (txtSub && txtSub.innerHTML && txtSub.innerHTML.includes('Homologado'));
+
+        if (torneioConcluido) {
+            linha3Subtitulo = "Súmulas e Resultados";
+            ehHomologado = true;
+        } else {
+            let modeloTxt = txtSub ? txtSub.innerText.replace('Ranking Oficial do Clube • ', '').replace('Central do Ranking', '').trim() : '';
+            modeloTxt = limparTextoPdf(modeloTxt);
+            linha3Subtitulo = modeloTxt ? `Súmulas e Resultados - ${modeloTxt}` : "Súmulas e Resultados";
+            ehHomologado = false;
+        }
     }
 
     // Mapeamento individual de cada card de partida a partir do contêiner da tabela
@@ -5142,6 +5344,36 @@ async function exportarSumulasPDFSaaS() {
         doc.setTextColor(71, 85, 105);
         doc.text(linha3Subtitulo, marginX, currentY);
 
+        if (ehHomologado) {
+            const txtSubW = doc.getTextWidth(linha3Subtitulo);
+            const pillX = marginX + txtSubW + 2.5;
+            const pillY = currentY - 3.2;
+            const pillH = 4.2;
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7.5);
+            const txtHomologW = doc.getTextWidth("Homologado");
+            const pillW = 2.2 + 2.4 + 1.2 + txtHomologW + 2.2;
+
+            doc.setFillColor(220, 252, 231);
+            doc.setDrawColor(134, 239, 172);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(pillX, pillY, pillW, pillH, 1, 1, "FD");
+
+            // Checkmark vetorial ✓
+            const checkX = pillX + 3.2;
+            const checkY = currentY - 0.9;
+            doc.setDrawColor(21, 128, 61);
+            doc.setLineWidth(0.35);
+            doc.line(checkX - 1.2, checkY - 0.1, checkX - 0.4, checkY + 0.8);
+            doc.line(checkX - 0.4, checkY + 0.8, checkX + 1.2, checkY - 1.0);
+
+            // Texto Homologado
+            doc.setTextColor(21, 128, 61);
+            doc.text("Homologado", pillX + 5.6, currentY - 0.3);
+        }
+
+        doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.setTextColor(71, 85, 105);
         doc.text(dataHojeStr, pageWidth - marginX, currentY, { align: "right" });

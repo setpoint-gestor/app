@@ -1494,10 +1494,20 @@ function atualizarPilulaResumoDesempateSaaS() {
 }
 
 /**
- * Controla a exibição condicional dos blocos de modelo (Pirâmide, Barragem ou Grupos)
+ * Controla a exibição condicional dos blocos de modelo e a blindagem das pílulas de gênero
  */
 function toggleModeloTorneioRankingSaaS() {
-    const modelo = document.getElementById('select-ranking-modelo').value;
+    const selModelo = document.getElementById('select-ranking-modelo');
+    const modelo = selModelo ? selModelo.value : 'piramide';
+    const selGenero = document.getElementById('select-ranking-genero');
+    const divGenero = selGenero ? selGenero.value : 'separado';
+
+    // Vincula a escuta de troca de gênero para reagir em tempo real
+    if (selGenero && !selGenero.dataset.boundGenero) {
+        selGenero.dataset.boundGenero = 'true';
+        selGenero.addEventListener('change', toggleModeloTorneioRankingSaaS);
+    }
+
     const blocoPiramide = document.getElementById('bloco-regras-piramide');
     const blocoBarragem = document.getElementById('bloco-regras-barragem');
     const blocoGrupos = document.getElementById('bloco-regras-grupos');
@@ -1505,6 +1515,47 @@ function toggleModeloTorneioRankingSaaS() {
     if (blocoPiramide) blocoPiramide.style.display = (modelo === 'piramide') ? 'block' : 'none';
     if (blocoBarragem) blocoBarragem.style.display = (modelo === 'barragem') ? 'block' : 'none';
     if (blocoGrupos) blocoGrupos.style.display = (modelo === 'grupos') ? 'block' : 'none';
+
+    // 🛡️ MODO UNIFICADO: Desativa e oculta as pílulas de gênero na Fase 1 e exibe o crachá estático Misto
+    const containerPills = document.getElementById('container-pills-categorias');
+    const pMasc = document.querySelector('.pilula-check[data-cat="MASCULINO"]');
+    const pFem = document.querySelector('.pilula-check[data-cat="FEMININO"]');
+    let pMisto = document.getElementById('pilula-badge-misto');
+
+    if (!pMisto && containerPills) {
+        pMisto = document.createElement('div');
+        pMisto.id = 'pilula-badge-misto';
+        pMisto.title = 'Categoria Mista (Gênero Unificado)';
+        pMisto.innerHTML = '<i class="material-icons" style="font-size: 16px; color: #2563eb;">wc</i> Misto';
+        pMisto.style.cssText = 'display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; cursor: not-allowed; user-select: none;';
+        containerPills.appendChild(pMisto);
+    } else if (pMisto) {
+        pMisto.innerHTML = '<i class="material-icons" style="font-size: 16px; color: #2563eb;">wc</i> Misto';
+        pMisto.style.background = '#eff6ff';
+        pMisto.style.color = '#2563eb';
+        pMisto.style.border = '1px solid #bfdbfe';
+        pMisto.style.cursor = 'not-allowed';
+        pMisto.style.pointerEvents = 'auto';
+        pMisto.title = 'Categoria Mista (Gênero Unificado)';
+    }
+
+    if (pMasc && pFem) {
+        if (divGenero === 'unificado') {
+            pMasc.style.display = 'none';
+            pFem.style.display = 'none';
+            pMasc.classList.remove('ativa');
+            pFem.classList.remove('ativa');
+            const icoM = pMasc.querySelector('.material-icons');
+            const icoF = pFem.querySelector('.material-icons');
+            if (icoM) icoM.textContent = 'add_circle_outline';
+            if (icoF) icoF.textContent = 'add_circle_outline';
+            if (pMisto) pMisto.style.display = 'inline-flex';
+        } else {
+            pMasc.style.display = 'inline-flex';
+            pFem.style.display = 'inline-flex';
+            if (pMisto) pMisto.style.display = 'none';
+        }
+    }
 
     toggleSubAlcanceRankingSaaS();
 }
@@ -1914,7 +1965,7 @@ function aplicarTravaParametrosCongeladosSaaS(confRanking) {
     // 🎯 FONTE ÚNICA DA VERDADE (SSOT): Consulta direta ao estado centralizado do torneio
     const { ehTorneioAtivo } = (typeof obterEstadoTorneioAtivoSaaS === 'function')
         ? obterEstadoTorneioAtivoSaaS()
-        : { ehTorneioAtivo: false };
+        : { ehTorneioAtivo: false }; 
 
     // Lista dos IDs dos campos sensíveis que devem ser congelados durante a competição
     const idsCamposSensiveis = [

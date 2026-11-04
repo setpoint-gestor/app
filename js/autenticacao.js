@@ -15,7 +15,7 @@ auth.onAuthStateChanged((user) => {
         localStorage.setItem('god_mode_clube', godModeClube);
         carregamentoInicial = false;
         clubeAtivoId = godModeClube;
-        raizBanco = `Clubes/${godModeClube}/sistemas`;  
+        raizBanco = `Clubes/${godModeClube}/sistemas`;   
         isGestorLogado = true;
         
         // Acorda os ouvintes mestres instantaneamente
@@ -792,9 +792,12 @@ function renderizarListaNotificacoesSocioSaaS() {
         const nomeTorneio = configRanking.nomeTorneio || cal.nomeTorneio || configRanking.nome || "Torneio de Ranking";
 
         // Categoria do Atleta
-        const classeAtleta = (atleta.classe || 'A').toUpperCase();
+        const modoDivTorneio = configRanking.divisaoGenero || 'separado';
+        const classeAtleta = (atleta.classe || 'B').toUpperCase().replace('CLASSE_', '').trim();
         const generoAtleta = (atleta.genero === 'FEMININO') ? 'Fem' : 'Masc';
-        const minhaClasseStr = `Classe ${classeAtleta} (${generoAtleta})`;
+        const minhaClasseStr = (modoDivTorneio === 'unificado')
+            ? `Classe ${classeAtleta} (Misto)`
+            : `Classe ${classeAtleta} (${generoAtleta})`;
 
         // Modelo de Disputa (Lê prioritariamente o contrato oficial do torneio)
         const modeloTorneioReal = cal.formatoTorneio || configRanking.modeloAtivo || "grupos";
