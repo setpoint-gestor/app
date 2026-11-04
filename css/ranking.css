@@ -975,22 +975,32 @@ body.dark-mode #modal-config-ranking select.input-app:disabled {
         display: none !important;
     }
 
-    /* 2. Permite empilhar Linha 1 (Cabeçalho) e Linha 2 (Pílulas) no telemóvel */
+    /* 2. Chassi do cabeçalho centralizado no telemóvel */
     #modal-config-ranking .resumo-titulo {
         font-size: 13.5px !important;
         display: flex !important;
         flex-direction: column !important;
-        align-items: flex-start !important;
+        align-items: center !important;
+        width: 100% !important;
         gap: 0 !important;
+        text-align: center !important;
     }
 
-    /* 3. Linha 1: Garante Nome do Torneio e Modelo sempre lado a lado */
-    #modal-config-ranking .resumo-linha-cabecalho {
-        display: inline-flex !important;
+    #modal-config-ranking #lbl-resumo-torneio-nome {
+        display: flex !important;
+        flex-direction: column !important;
         align-items: center !important;
-        flex-wrap: nowrap !important;
-        gap: 6px !important;
-        white-space: nowrap !important;
+        width: 100% !important;
+    }
+
+    #modal-config-ranking .resumo-nome-torneio {
+        display: block !important;
+        text-align: center !important;
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        color: #1e293b !important;
+        width: 100% !important;
+        line-height: 1.25 !important;
     }
 
     #modal-config-ranking .badge-modelo-resumo {
@@ -1000,10 +1010,33 @@ body.dark-mode #modal-config-ranking select.input-app:disabled {
         flex-shrink: 0 !important;
     }
 
-    /* 4. Linha 2: Pílulas reunidas e compactas ocupando a largura total */
-    #modal-config-ranking .container-pills-resumo {
+    /* CENÁRIO 1 (Até 3 pílulas): Linha 2 com Modelo + Pílulas centralizados */
+    #modal-config-ranking .resumo-poucas-pills .container-pills-resumo {
         display: flex !important;
-        flex-wrap: nowrap !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 4px !important;
+        margin: 4px 0 0 0 !important;
+        width: 100% !important;
+    }
+
+    /* CENÁRIOS 2 e 3 (4+ pílulas): Nome + Modelo com quebra adaptativa e pílulas centralizadas */
+    #modal-config-ranking .resumo-muitas-pills .resumo-linha-cabecalho {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
+
+    #modal-config-ranking .resumo-muitas-pills .container-pills-resumo {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        align-items: center !important;
         gap: 3px !important;
         margin: 4px 0 0 0 !important;
         width: 100% !important;
@@ -1020,7 +1053,7 @@ body.dark-mode #modal-config-ranking select.input-app:disabled {
         padding-right: 36px !important;
     }
 
-    /* Botão Editar quadrado com ícone no canto inferior direito */
+    /* Botão Editar quadrado com ícone no canto inferior direito */ 
     #modal-config-ranking .card-resumo-calendario .btn-edit-cal,
     #modal-config-ranking .card-resumo-calendario button[onclick*="editarCalendarioAtivoSaaS"] {
         position: absolute !important;
