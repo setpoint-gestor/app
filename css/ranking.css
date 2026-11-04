@@ -442,7 +442,7 @@
 .col-edicao {
     white-space: normal;
     padding-right: 12px !important; 
-    vertical-align: middle;
+    vertical-align: middle; 
 }
 
 /* Garante a célula alinhada como tabela no PC sem quebrar a borda inferior */
@@ -965,13 +965,89 @@ body.dark-mode #modal-config-ranking select.input-app:disabled {
     }
 
     #modal-config-ranking .card-resumo-calendario {
+        position: relative !important;
         margin-bottom: 0px !important;
-        padding: 10px 14px !important;
+        padding: 10px 12px !important;
     }
 
-    /* Aproximação das linhas de Inscrições e Partidas */
+    /* 1. Oculta a taça exclusivamente no telemóvel */
+    #modal-config-ranking .resumo-trofeu-card {
+        display: none !important;
+    }
+
+    /* 2. Permite empilhar Linha 1 (Cabeçalho) e Linha 2 (Pílulas) no telemóvel */
+    #modal-config-ranking .resumo-titulo {
+        font-size: 13.5px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0 !important;
+    }
+
+    /* 3. Linha 1: Garante Nome do Torneio e Modelo sempre lado a lado */
+    #modal-config-ranking .resumo-linha-cabecalho {
+        display: inline-flex !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        white-space: nowrap !important;
+    }
+
+    #modal-config-ranking .badge-modelo-resumo {
+        font-size: 10.5px !important;
+        padding: 2px 6px !important;
+        margin-left: 0 !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* 4. Linha 2: Pílulas reunidas e compactas ocupando a largura total */
+    #modal-config-ranking .container-pills-resumo {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 3px !important;
+        margin: 4px 0 0 0 !important;
+        width: 100% !important;
+    }
+
+    #modal-config-ranking .container-pills-resumo .pill-resumo-cat {
+        font-size: 10px !important;
+        padding: 1.5px 5px !important;
+    }
+
+    /* Aproximação das linhas de Inscrições e Partidas com recuo à direita para o botão */
     #modal-config-ranking .card-resumo-calendario .resumo-datas {
         gap: 3px 14px !important;
+        padding-right: 36px !important;
+    }
+
+    /* Botão Editar quadrado com ícone no canto inferior direito */
+    #modal-config-ranking .card-resumo-calendario .btn-edit-cal,
+    #modal-config-ranking .card-resumo-calendario button[onclick*="editarCalendarioAtivoSaaS"] {
+        position: absolute !important;
+        right: 10px !important;
+        bottom: 10px !important;
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
+        padding: 0 !important;
+        font-size: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        background: #ffffff !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+        cursor: pointer !important;
+    }
+
+    #modal-config-ranking .card-resumo-calendario .btn-edit-cal i,
+    #modal-config-ranking .card-resumo-calendario .btn-edit-cal .material-icons,
+    #modal-config-ranking .card-resumo-calendario button[onclick*="editarCalendarioAtivoSaaS"] i,
+    #modal-config-ranking .card-resumo-calendario button[onclick*="editarCalendarioAtivoSaaS"] .material-icons {
+        font-size: 16px !important;
+        margin: 0 !important;
+        color: #334155 !important;
     }
 
     /* Seletor de Categoria Compacto */
@@ -1001,6 +1077,61 @@ body.dark-mode #modal-config-ranking select.input-app:disabled {
 
     #modal-config-ranking .btn-ranking-action.btn-ranking-reset {
         height: 42px !important;
+        font-size: 14px !important;
+    }
+
+    /* 6. Pílulas Compactas de Classes e Géneros (Fase 1 Mobile) */
+    .classes-pills-container .pilula-check {
+        font-size: 0 !important;
+        gap: 3px !important;
+        padding: 5px 9px !important;
+    }
+
+    .classes-pills-container .pilula-check .material-icons {
+        font-size: 14px !important;
+    }
+
+    .classes-pills-container .pilula-check[data-cat="CLASSE_A"]::after,
+    .classes-pills-container .pilula-check[data-cat="classe_a"]::after {
+        content: 'A';
+        font-size: 11.5px;
+        color: inherit;
+    }
+
+    .classes-pills-container .pilula-check[data-cat="CLASSE_B"]::after,
+    .classes-pills-container .pilula-check[data-cat="classe_b"]::after {
+        content: 'B';
+        font-size: 11.5px;
+        color: inherit;
+    }
+
+    .classes-pills-container .pilula-check[data-cat="CLASSE_C"]::after,
+    .classes-pills-container .pilula-check[data-cat="classe_c"]::after {
+        content: 'C';
+        font-size: 11.5px;
+        color: inherit;
+    }
+
+    .classes-pills-container .pilula-check[data-cat="MASCULINO"]::after,
+    .classes-pills-container .pilula-check[data-cat="masculino"]::after {
+        content: 'Masc';
+        font-size: 11.5px;
+        color: inherit;
+    }
+
+    .classes-pills-container .pilula-check[data-cat="FEMININO"]::after,
+    .classes-pills-container .pilula-check[data-cat="feminino"]::after {
+        content: 'Fem';
+        font-size: 11.5px;
+        color: inherit;
+    }
+
+    #modal-config-ranking #pilula-badge-misto {
+        padding: 5px 10px !important;
+        font-size: 11.5px !important;
+    }
+
+    #modal-config-ranking #pilula-badge-misto .material-icons {
         font-size: 14px !important;
     }
 
