@@ -2498,5 +2498,32 @@
         "hora": 10
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-04T14:33:24.679Z",
+    "dataLocal": "04/11/2026, 11:33:24",
+    "autor": "JUAN MARTIN DEL POTRO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "11:00 - 12:00",
+    "duracao": "1 Hora",
+    "data": "04-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Del Potro": true,
+      "Verdasco": true
+    },
+    "jogadores": "Del Potro, Verdasco",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, FERNANDO VERDASCO",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 11
+      }
+    ]
   }
 ]
