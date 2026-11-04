@@ -1082,11 +1082,14 @@ function renderizarGestaoTemporadaSaaS() {
                 const classesHab = catsHab
                     .filter(c => c.startsWith('CLASSE_') || ['A', 'B', 'C'].includes(c.toUpperCase()))
                     .map(c => c.replace('CLASSE_', '').trim());
-                const classesOrdenadas = Array.from(new Set(classesHab)).sort();
+                const classesOrdenadas = Array.from(new Set(classesHab)).sort(); 
 
                 let pillsCatsHtml = '';
+                let totalPillsCount = 0;
+
                 if (divGen === 'unificado') {
                     classesOrdenadas.forEach(c => {
+                        totalPillsCount++;
                         pillsCatsHtml += `<span class="pill-resumo-cat" style="font-size: 11px; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; padding: 2px 7px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; white-space: nowrap;">${c} Misto</span>`;
                     });
                 } else {
@@ -1097,17 +1100,25 @@ function renderizarGestaoTemporadaSaaS() {
 
                     classesOrdenadas.forEach(c => {
                         gensFinais.forEach(g => {
+                            totalPillsCount++;
                             const gAbrev = (g === 'FEMININO') ? 'Fem' : 'Masc';
                             pillsCatsHtml += `<span class="pill-resumo-cat" style="font-size: 11px; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; padding: 2px 7px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; white-space: nowrap;">${c} ${gAbrev}</span>`;
                         });
                     });
                 }
 
-                const containerPillsHtml = pillsCatsHtml 
-                    ? `<span class="container-pills-resumo" style="display: inline-flex; flex-wrap: nowrap; white-space: nowrap; gap: 4px; vertical-align: middle; margin: 2px 0 2px 6px;">${pillsCatsHtml}</span>` 
-                    : '';
+                const badgeModeloHtml = `<span class="badge-modelo-resumo" style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;">⚔️ Modelo: ${txtModeloExibicao}</span>`;
 
-                elNomeTorneio.innerHTML = `<span class="resumo-linha-cabecalho">${cal.nomeTorneio} <span class="badge-modelo-resumo" style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;">⚔️ Modelo: ${txtModeloExibicao}</span></span>${containerPillsHtml}`;
+                if (totalPillsCount <= 3) {
+                    elNomeTorneio.className = 'resumo-poucas-pills';
+                    elNomeTorneio.innerHTML = `<span class="resumo-nome-torneio">${cal.nomeTorneio}</span><span class="container-pills-resumo" style="display: inline-flex; flex-wrap: nowrap; white-space: nowrap; gap: 4px; vertical-align: middle; margin: 2px 0 2px 6px;">${badgeModeloHtml}${pillsCatsHtml}</span>`;
+                } else {
+                    elNomeTorneio.className = 'resumo-muitas-pills';
+                    const containerPillsHtml = pillsCatsHtml 
+                        ? `<span class="container-pills-resumo" style="display: inline-flex; flex-wrap: nowrap; white-space: nowrap; gap: 4px; vertical-align: middle; margin: 2px 0 2px 6px;">${pillsCatsHtml}</span>` 
+                        : '';
+                    elNomeTorneio.innerHTML = `<span class="resumo-linha-cabecalho">${cal.nomeTorneio} ${badgeModeloHtml}</span>${containerPillsHtml}`;
+                }
             }
 
             document.getElementById('lbl-resumo-torneio-insc').textContent = dtInc;
