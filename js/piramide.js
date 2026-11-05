@@ -24,7 +24,7 @@ function formatarNomePiramideSaaS(atleta) {
 
     // 2. Se o apelido for composto (> 1 palavra) ou não existir:
     // Padrão: Primeiro Nome + Inicial do Último Sobrenome (sem conectivos)
-    const nomeBruto = atleta.nomeCompleto || atleta.apelido || 'Atleta';
+    const nomeBruto = atleta.nomeCompleto || atleta.apelido || 'Atleta'; 
     const palavras = nomeBruto.trim().split(/\s+/);
 
     if (palavras.length === 1) {
@@ -196,6 +196,83 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
     const minWidth = 26;
     const maxWidth = 100;
 
+    // 🎯 Registra a função de troca rápida de categoria na pirâmide
+    window.trocarCategoriaPiramideSaaS = function(novaCat) {
+        if (navigator.vibrate) navigator.vibrate(15);
+        const partes = novaCat.replace('CLASSE_', '').split('_');
+        if (typeof abaClasseAtivaSaaS !== 'undefined') abaClasseAtivaSaaS = partes[0] || 'B';
+        if (typeof abaGeneroAtivaSaaS !== 'undefined') abaGeneroAtivaSaaS = partes[1] || 'MASCULINO';
+        if (typeof renderizarLeaderboardSaaS === 'function') {
+            renderizarLeaderboardSaaS();
+        }
+    };
+
+    // 🏷️ Pílulas de Navegação de Categoria (Canto Superior Esquerdo)
+    let btnPillsHtml = '';
+    let categoriasDisponiveis = [];
+
+    if (isHistorico && typeof edicaoHistoricaFocoSaaS !== 'undefined' && edicaoHistoricaFocoSaaS) {
+        categoriasDisponiveis = Object.keys(edicaoHistoricaFocoSaaS.classificacaoFinal || {}).sort();
+    } else {
+        const tabelasRAM = (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) ? rankingTabelasGlobal : {};
+        categoriasDisponiveis = Object.keys(tabelasRAM).filter(k => Array.isArray(tabelasRAM[k]) && tabelasRAM[k].length > 0).sort();
+
+        if (categoriasDisponiveis.length === 0 && Array.isArray(confRanking.calendario?.categoriasHabilitadas)) {
+            const classesCal = confRanking.calendario.categoriasHabilitadas
+                .filter(c => c.startsWith('CLASSE_') || ['A', 'B', 'C'].includes(c))
+                .map(c => c.replace('CLASSE_', '').trim());
+            const generosCal = confRanking.calendario.categoriasHabilitadas
+                .filter(c => ['MASCULINO', 'FEMININO'].includes(c.toUpperCase()));
+            const divGen = confRanking.divisaoGenero || 'separado';
+
+            if (divGen === 'unificado') {
+                classesCal.forEach(c => categoriasDisponiveis.push(`${c}_UNIFICADO`));
+            } else {
+                const gens = generosCal.length > 0 ? generosCal : ['MASCULINO'];
+                classesCal.forEach(c => gens.forEach(g => categoriasDisponiveis.push(`${c}_${g}`)));
+            }
+        }
+    }
+
+    if (categoriasDisponiveis.length > 0) {
+        btnPillsHtml = `<div class="floating-pills-container" data-html2canvas-ignore="true" style="position: absolute; top: 8px; left: 8px; z-index: 10; display: flex; gap: 6px; max-width: calc(100% - 50px); overflow-x: auto; scrollbar-width: none;">`;
+
+        categoriasDisponiveis.forEach(cat => {
+            const partes = cat.replace('CLASSE_', '').split('_');
+            const cls = partes[0] || 'B';
+            const gen = (partes[1] || 'MASCULINO').toUpperCase();
+            const genTxt = (gen === 'UNIFICADO' || gen === 'MISTO') ? 'Misto' : (gen === 'FEMININO' ? 'Fem' : 'Masc');
+            const rotuloPill = `${cls} ${genTxt}`;
+
+            let ehAtiva = false;
+            if (isHistorico) {
+                ehAtiva = (cat === categoriaHistoricaAtivaSaaS);
+            } else {
+                const divGen = confRanking.divisaoGenero || 'separado';
+                const clsVal = (typeof abaClasseAtivaSaaS !== 'undefined') ? abaClasseAtivaSaaS : 'B';
+                const genVal = (typeof abaGeneroAtivaSaaS !== 'undefined') ? abaGeneroAtivaSaaS : 'MASCULINO';
+                const catAtualRAM = (divGen === 'unificado') ? `${clsVal}_UNIFICADO` : `${clsVal}_${genVal}`;
+                ehAtiva = (cat === catAtualRAM);
+            }
+
+            const fnClick = isHistorico
+                ? `mudarCategoriaPiramideHistoricaSaaS('${cat}')`
+                : `trocarCategoriaPiramideSaaS('${cat}')`;
+
+            const estiloPill = ehAtiva
+                ? 'background: #8b5cf6; color: #ffffff; border: 1px solid #8b5cf6; font-weight: 700; box-shadow: 0 2px 6px rgba(139, 92, 246, 0.25);'
+                : 'background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; font-weight: 700;';
+
+            btnPillsHtml += `
+                <button type="button" onclick="${fnClick}" style="white-space: nowrap; padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.2s; ${estiloPill}">
+                    ${rotuloPill}
+                </button>
+            `;
+        });
+
+        btnPillsHtml += `</div>`;
+    }
+
     // 🏆 Botão de alternar visão (Canto Superior Direito)
     let btnToggleHtml = '';
     if (!isHistorico && typeof fnAlternar === 'function') {
@@ -220,6 +297,7 @@ function renderizarVisaoPiramideSaaS(containerAlvo, listaIDs, idLogado, fnAltern
     let pyrHtml = `
         <div class="full-pyramid-container" style="position: relative;">
             <div class="pyramid-panel" id="area-capture-piramide" style="position: relative; background: #ffffff; padding: 18px 16px 20px 16px; border-radius: 16px;">
+                ${btnPillsHtml}
                 ${btnToggleHtml}
                 ${btnPngHtml}
 
@@ -326,7 +404,7 @@ function mudarCategoriaPiramideHistoricaSaaS(novaCat) {
 function renderizarHTMLPiramideAcervoSaaS() {
     const bodyList = document.getElementById('body-leaderboard-scroll');
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
-    if (!bodyList || !edicaoHistoricaFocoSaaS) return;
+    if (!bodyList || !edicaoHistoricaFocoSaaS) return; 
 
     const edicao = edicaoHistoricaFocoSaaS;
     const cal = edicao.contrato || {};
@@ -341,32 +419,7 @@ function renderizarHTMLPiramideAcervoSaaS() {
     }
 
     if (typeof renderizarVisaoPiramideSaaS === 'function') {
-        renderizarVisaoPiramideSaaS(bodyList, listaIDs, null, null, true);
-    }
-
-    // Linha 2: Pílula oficial exibida em todos os cenários (classe única ou múltiplas)
-    if (categorias.length > 0) {
-        const ehClasseUnica = (categorias.length === 1);
-        let htmlPills = `<div style="margin-bottom: 12px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
-        categorias.sort().forEach(cat => {
-            const ativa = (cat === catAtiva);
-            const p = cat.replace('CLASSE_', '').split('_');
-            const c = p[0] || 'B';
-            const g = (p[1] || 'MASCULINO').toUpperCase();
-            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Feminino' : 'Masculino');
-            const label = ehClasseUnica ? `Classe ${c} ${gTxt}` : `${c} ${gTxt}`;
-            const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
-            const acaoClick = ehClasseUnica ? '' : `onclick="mudarCategoriaPiramideHistoricaSaaS('${cat}')"`;
-
-            htmlPills += `
-                <button type="button" ${acaoClick} style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; ${estiloCursor} transition: all 0.2s;">
-                    ${label}
-                </button>
-            `;
-        });
-        htmlPills += `</div>`;
-
-        bodyList.insertAdjacentHTML('afterbegin', htmlPills);
+        renderizarVisaoPiramideSaaS(bodyList, listaIDs, null, null, true); 
     }
 }
 
@@ -521,4 +574,14 @@ function exibirTooltipNomePiramideSaaS(elemento, nomeCompleto) {
         tooltip.style.opacity = '0';
         setTimeout(() => tooltip.remove(), 200);
     }, 2000);
+}
+
+function trocarCategoriaPiramideSaaS(novaCat) {
+    if (navigator.vibrate) navigator.vibrate(15);
+    const partes = novaCat.replace('CLASSE_', '').split('_');
+    if (typeof abaClasseAtivaSaaS !== 'undefined') abaClasseAtivaSaaS = partes[0] || 'B';
+    if (typeof abaGeneroAtivaSaaS !== 'undefined') abaGeneroAtivaSaaS = partes[1] || 'MASCULINO';
+    if (typeof renderizarLeaderboardSaaS === 'function') {
+        renderizarLeaderboardSaaS();
+    }
 }

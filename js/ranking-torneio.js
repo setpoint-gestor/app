@@ -1063,8 +1063,16 @@ function renderizarGestaoTemporadaSaaS() {
     }
 
     if (cardResumo) {
-        if (faseAtual > 1 && cal.nomeTorneio) {
-            const fmtData = (str) => str ? str.split('-').reverse().join('/') : '--/--';
+       if (faseAtual > 1 && cal.nomeTorneio) {
+            const isMobile = window.innerWidth <= 768;
+            const fmtData = (str) => {
+                if (!str) return '--/--';
+                const partes = str.split('-').reverse();
+                if (isMobile && partes.length === 3 && partes[2].length === 4) {
+                    partes[2] = partes[2].slice(-2);
+                }
+                return partes.join('/');
+            };
             const dtInc = `${fmtData(cal.inicioInscricoes)} a ${fmtData(cal.fimInscricoes)}`;
             const dtJog = `${fmtData(cal.inicioJogos)} a ${fmtData(cal.fimTorneio)}`;
 
