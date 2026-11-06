@@ -27,7 +27,7 @@
 /* ======================================================== */   
 .header-left {
     display: flex;
-    align-items: center;
+    align-items: center; 
     gap: 8px;
     flex: 1;               /* Ocupa todo o vão livre até a taça */
     min-width: 0;          /* Impede transbordamento horizontal que quebre a barra */
@@ -545,12 +545,17 @@ body.dark-mode .op4-body span {
 
 .celula-aula {
     background-color: var(--bg-celula-aula) !important;
-    color: var(--txt-celula-tabela) !important;
+    color: rgba(0, 0, 0, 0.50) !important;
 }
 
 .celula-dupla {
     background-color: var(--bg-celula-dupla) !important; 
-    color: var(--txt-celula-tabela) !important;
+    color: rgba(0, 0, 0, 0.50) !important;
+}
+
+.celula-torneio {
+    background-color: var(--bg-reserva-ranking) !important; 
+    color: rgba(0, 0, 0, 0.50) !important;
 }
 
 .celula-reserva-ranking {

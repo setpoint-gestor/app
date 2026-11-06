@@ -11,7 +11,7 @@
     display: flex;
     flex-direction: column;
     background-color: #ffffff;
-    border-radius: 0 !important;
+    border-radius: 0 !important; 
     margin: 0 !important; 
     transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -706,6 +706,22 @@ body.dark-mode .tabela-premium-config tr.linha-dia-fechada input[type="time"] { 
     filter: grayscale(100%) !important;
 }
 
+/* ESTADO 5: Torneio/Ranking Atribuído */
+.tabela-grade-interativa .celula-torneios-atribuida {
+    background-color: #FFEB99 !important; 
+    color: rgba(0, 0, 0, 0.50) !important; 
+    border-color: #e2e8f0 !important; 
+    font-weight: normal !important; 
+}
+
+/* ESTADO 6: Dupla Atribuída */
+.tabela-grade-interativa .celula-duplas-atribuida {
+    background-color: var(--bg-celula-dupla) !important; 
+    color: rgba(0, 0, 0, 0.50) !important; 
+    border-color: #e2e8f0 !important; 
+    font-weight: normal !important; 
+}
+
 /* A Capa Cinza */
 .tabela-grade-desativada {
     opacity: 0.5;
@@ -777,11 +793,18 @@ body.dark-mode .tabela-grade-interativa .celula-selecionada-lote {
     border-color: #a52a2a !important;
     color: #ffffff !important;
 }
+
 body.dark-mode .tabela-grade-interativa .celula-aula-atribuida {
     background-color: #cd5c5c !important;
     color: #000000 !important;
     border-color: #a52a2a !important;
     font-weight: normal !important;
+}
+body.dark-mode .tabela-grade-interativa .celula-torneios-atribuida {
+    background-color: #78350f !important; 
+    color: #fcd34d !important;
+    border-color: #b45309 !important;
+    font-weight: 700 !important;
 }
 
 
@@ -960,28 +983,39 @@ body.dark-mode .tabela-grade-interativa .celula-aula-atribuida {
 
 
 /* ======================================================== */
-/* 9. CABEÇALHO PREMIUM FULL-WIDTH (BARRA DE AULAS MATTE)   */ 
+/* 9. CABEÇALHO PREMIUM FULL-WIDTH (BARRA DE AULAS MATTE E TORNEIOS)   */ 
 /* ======================================================== */
 .modal-config-janela-fullscreen .header-painel {
-    background: linear-gradient(135deg, #e05c5c 0%, #f08080 100%) !important; 
-    border-bottom: 2px solid #e06666 !important; 
+    background: linear-gradient(135deg, #e05c5c 0%, #f08080 100%); 
+    border-bottom: 2px solid #e06666; 
     padding: 10px 24px !important; 
+}
+
+/* Modificador de Cor Âmbar/Dourado do Horário de Ranking */
+.modal-config-janela-fullscreen .header-painel.tema-torneios {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    border-bottom: 2px solid #d97706 !important;
 }
 
 .modal-config-janela-fullscreen .header-painel h2 {
     color: #ffffff !important; 
     font-size: 19px !important; 
-    font-weight: 700 !important;
+    font-weight: 700 !important; 
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important; 
     margin: 0 !important;
     width: 100% !important;
-    text-align: center !important; 
+    text-align: center !important;  
 }
 
 /* Compatibilidade da barra em Modo Escuro */
 body.dark-mode .modal-config-janela-fullscreen .header-painel {
-    background: linear-gradient(135deg, #9b4444 0%, #cd5c5c 100%) !important; 
-    border-bottom-color: #a52a2a !important; 
+    background: linear-gradient(135deg, #9b4444 0%, #cd5c5c 100%); 
+    border-bottom-color: #a52a2a; 
+}
+
+body.dark-mode .modal-config-janela-fullscreen .header-painel.tema-torneios {
+    background: linear-gradient(135deg, #b45309 0%, #d97706 100%) !important;
+    border-bottom-color: #92400e !important;
 }
 
 
