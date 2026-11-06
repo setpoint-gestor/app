@@ -1403,7 +1403,7 @@
 									</div>
 									<div class="bento-text-block">
 										<h4>Convidados</h4>
-										<p>Regras, taxas e chaves PIX.</p>
+										<p>Restrições, taxas e chaves PIX.</p>
 									</div>
 								</div>
 								<div class="bento-card" onclick="abrirSubModulo('torneios')">
@@ -1412,7 +1412,7 @@
 									</div>
 									<div class="bento-text-block">
 										<h4>Torneios</h4>
-										<p>Gestão de rankings, chaves e fases da pirâmide.</p>
+										<p>Restrições para jogos do Ranking.</p>
 									</div>
 								</div>
 							</div>
@@ -1492,7 +1492,7 @@
 									<button class="btn-grade-acao" onclick="selecionarTudoDuplas()">Selecionar Tudo</button>
 									<button class="btn-grade-acao outline" onclick="limparTudoDuplas()">Limpar Tudo</button>
 								</div>
-							</div>
+							</div> 
 
 							<div class="tabela-config-scroll tabela-grade-scroll" style="margin: 0 15px;">
 								<table class="tabela-premium-config tabela-grade-interativa" id="tabela-duplas-matriz">
@@ -1504,6 +1504,46 @@
 										</tr>
 									</thead>
 									<tbody id="tbodyGradeDuplas">
+									</tbody>
+								</table>
+							</div>
+						</div>
+						
+						<div id="quadras-visao-torneios" class="visao-painel-config" style="position: relative; height: 100%; display: none; flex-direction: column;">
+							
+							<div style="border-bottom: 1px solid #e2e8f0; padding: 10px 0; margin-bottom: 10px;">
+								<div id="torneios-tabs-quadras-desktop" class="config-tabs-quadras" style="border:none; margin:0; padding:0 15px;"></div>
+								
+								<div class="container-titulo-central" style="padding: 0 15px;">
+									<button style="background:none; border:none; color: #1e293b; padding:0; cursor:pointer;" onclick="abrirMapaUniversal('torneios')">
+										<i class="material-icons" style="font-size: 24px;">grid_view</i>
+									</button>
+									<h2 id="lbl-quadra-titulo-torneios" style="margin:0; font-size: 18px; color:#333;">Quadra 1</h2>
+								</div>
+							</div>
+
+							<div class="painel-controle-grade" style="margin: 0 15px 12px 15px;">
+								<label class="label-chave-mestra">
+									<input type="checkbox" id="chk-torneios-ativos" onchange="toggleChaveMestraTorneios(this.checked)">
+									<span id="txt-chave-mestra-torneios">Ativar Torneios</span>
+								</label>
+								
+								<div class="grupo-botoes-grade">
+									<button class="btn-grade-acao" onclick="selecionarTudoTorneios()">Selecionar Tudo</button>
+									<button class="btn-grade-acao outline" onclick="limparTudoTorneios()">Limpar Tudo</button>
+								</div>
+							</div>
+
+							<div class="tabela-config-scroll tabela-grade-scroll" style="margin: 0 15px;">
+								<table class="tabela-premium-config tabela-grade-interativa" id="tabela-torneios-matriz">
+									<thead>
+										<tr>
+											<th class="horario-celula">Horário</th>
+											<th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th><th>Dom</th>
+											<th class="horario-celula">Horário</th>
+										</tr>
+									</thead>
+									<tbody id="tbodyGradeTorneios">
 									</tbody>
 								</table>
 							</div>
