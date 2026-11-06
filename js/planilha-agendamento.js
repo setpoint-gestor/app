@@ -23,7 +23,7 @@ function cliqueCelula(dia, hora) {
             // Se o usuario clicou na coluna de hoje e a hora do slot já se encerrou, barra na hora!
             if (dataTexto === stringHoje && hora < horaAtual) {
                 showToast("Aviso: Não é permitido realizar agendamentos em horários passados.", "error"); 
-                return;
+                return; 
             }
         }
     }
@@ -45,6 +45,26 @@ function cliqueCelula(dia, hora) {
     if (statusDaQuadraAtiva === 'interditada' || statusDaQuadraAtiva === 'interdita') {
         showToast("Aviso: Não é permitido realizar novas reservas em uma quadra interditada.", "error");
         return;
+    }
+
+    // 🏆 Interceptação Opção A: Exclusividade Total de Horário de Ranking
+    const celClicada = document.getElementById(`cel-${hora}-${dia}`);
+    if (celClicada && celClicada.classList.contains('celula-torneio')) {
+        const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
+        const modeloRanking = confRanking.calendario?.formatoTorneio || 'grupos';
+        const emFaseDeJogos = (modeloRanking === 'grupos') ? (faseAtualRanking === 3 || faseAtualRanking === 4) : (faseAtualRanking === 3);
+
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+        let perfisLogado = {};
+        try { perfisLogado = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+        const isArbitroLogado = perfisLogado['Árbitro'] === true || perfisLogado['Arbitro'] === true;
+        let estaInscrito = isGestorLogado || isArbitroLogado || !!(confRanking.inscritosConfirmados && confRanking.inscritosConfirmados[idLogado]);
+
+        if (confRanking.ativo === false || !emFaseDeJogos || !estaInscrito) {
+            showToast("Aviso: Este horário é exclusivo para partidas do Ranking.", "warning");
+            return;
+        }
     }
 
     abrirAgendamentoSaaS(dia, hora);
@@ -457,11 +477,13 @@ function abrirAgendamentoSaaS(dia, hora) {
 					const celAtual = document.getElementById(`cel-${h}-${diaSel}`);
 					if (!celAtual) continue;
 
-					// 💉 INJEÇÃO: Uma célula de dupla só está ocupada se o texto dela NÃO for mais "Dupla"
+					// 💉 INJEÇÃO: Dupla só ocupa se preenchida; Torneio é exclusivo do Ranking
 					const estaOcupada = celAtual.classList.contains('celula-ocupada') || 
 										celAtual.classList.contains('celula-aula') || 
 										celAtual.classList.contains('celula-manutencao') || 
 										(celAtual.classList.contains('celula-dupla') && celAtual.textContent.trim() !== 'Dupla') || 
+										(valDuracao !== 'ranking' && celAtual.classList.contains('celula-torneio')) ||
+										(valDuracao === 'ranking' && celAtual.classList.contains('celula-torneio') && celAtual.textContent.trim() !== 'Ranking') ||
 										celAtual.classList.contains('celula-bloqueada');
 
 					if (estaOcupada) continue;
@@ -479,6 +501,8 @@ function abrirAgendamentoSaaS(dia, hora) {
 												celSeguinte.classList.contains('celula-aula') || 
 												celSeguinte.classList.contains('celula-manutencao') || 
 												(celSeguinte.classList.contains('celula-dupla') && celSeguinte.textContent.trim() !== 'Dupla') || 
+												(valDuracao !== 'ranking' && celSeguinte.classList.contains('celula-torneio')) ||
+												(valDuracao === 'ranking' && celSeguinte.classList.contains('celula-torneio') && celSeguinte.textContent.trim() !== 'Ranking') ||
 												celSeguinte.classList.contains('celula-bloqueada');
 
 						if (seguinteOcupada) continue;
@@ -525,6 +549,8 @@ function abrirAgendamentoSaaS(dia, hora) {
 					celSeguinte.classList.contains('celula-aula') || 
 					celSeguinte.classList.contains('celula-manutencao') || 
 					(celSeguinte.classList.contains('celula-dupla') && celSeguinte.textContent.trim() !== 'Dupla') || 
+					(valDuracao !== 'ranking' && celSeguinte.classList.contains('celula-torneio')) ||
+					(valDuracao === 'ranking' && celSeguinte.classList.contains('celula-torneio') && celSeguinte.textContent.trim() !== 'Ranking') ||
 					celSeguinte.classList.contains('celula-bloqueada')
 				) : true;
 
@@ -609,7 +635,31 @@ function abrirAgendamentoSaaS(dia, hora) {
             // 🔒 MODO CELULA: Fixa os parâmetros vindos direto do clique
             horarioBloqueadoPelaTabela = parseInt(hora, 10);
             campoDia.value = dia;
-            if (campoDuracao) campoDuracao.value = "1";
+
+            const celClicadaSmart = document.getElementById(`cel-${hora}-${dia}`);
+            const ehTorneioSlot = celClicadaSmart && celClicadaSmart.classList.contains('celula-torneio');
+
+            if (ehTorneioSlot && campoDuracao) {
+                campoDuracao.value = "ranking";
+                const op1h = campoDuracao.querySelector('option[value="1"]');
+                const op2h = campoDuracao.querySelector('option[value="2"]');
+                if (op1h) op1h.style.display = 'none';
+                if (op2h) op2h.style.display = 'none';
+                campoDuracao.disabled = true;
+
+                const cTipo = document.getElementById('linha-tipo-reserva');
+                if (cTipo) cTipo.style.setProperty('display', 'none', 'important');
+
+                setTimeout(() => {
+                    aplicarFiltroRankingModalSaaS();
+                }, 0);
+            } else if (campoDuracao) {
+                campoDuracao.value = "1";
+                const op1h = campoDuracao.querySelector('option[value="1"]');
+                const op2h = campoDuracao.querySelector('option[value="2"]');
+                if (op1h) op1h.style.display = '';
+                if (op2h) op2h.style.display = '';
+            }
             console.log("🔒 [Boot SaaS] Smart Lock Ativado. Hora Gravada na Memória:", horarioBloqueadoPelaTabela);
         } else {
             // ➕ MODO BOTÃO (+): Limpa completamente o passado para evitar memória fantasma
@@ -617,7 +667,13 @@ function abrirAgendamentoSaaS(dia, hora) {
             if (campoDia.options.length > 0) {
                 campoDia.selectedIndex = 0;
             }
-            if (campoDuracao) campoDuracao.value = "1";
+            if (campoDuracao) {
+                campoDuracao.value = "1";
+                const op1h = campoDuracao.querySelector('option[value="1"]');
+                const op2h = campoDuracao.querySelector('option[value="2"]');
+                if (op1h) op1h.style.display = '';
+                if (op2h) op2h.style.display = '';
+            }
             if (campoHora) campoHora.value = "";
             console.log("➕ [Boot SaaS] Botão (+) Ativado. Memória de Horários Resetada.");
         }
@@ -1157,14 +1213,24 @@ async function aplicarFiltroRankingModalSaaS() {
             const atletasValidosNaTabela = new Set();
 
             if (modeloAtivo === 'grupos' && emFaseMataMata) {
-                // 🏆 NO MATA-MATA DE GRUPOS: Filtra exclusivamente os atletas com confronto ativo na rodada atual das chaves
+                // 🏆 NO MATA-MATA DE GRUPOS: Filtra exclusivamente os atletas com confronto ativo e não finalizado na rodada atual das chaves
                 if (typeof rankingChavesGlobal !== 'undefined' && rankingChavesGlobal) {
-                    Object.values(rankingChavesGlobal).forEach(dadosChave => {
+                    const partidasRanking = (typeof rankingPartidasGlobal !== 'undefined' && rankingPartidasGlobal) ? rankingPartidasGlobal : {};
+
+                    Object.entries(rankingChavesGlobal).forEach(([catKey, dadosChave]) => {
                         const rodada1 = (dadosChave && dadosChave.rodada1) ? dadosChave.rodada1 : [];
                         rodada1.forEach(confronto => {
-                            if (!confronto.isBye) {
-                                if (confronto.jogador1Id) atletasValidosNaTabela.add(confronto.jogador1Id);
-                                if (confronto.jogador2Id) atletasValidosNaTabela.add(confronto.jogador2Id);
+                            if (!confronto.isBye && confronto.jogador1Id && confronto.jogador2Id) {
+                                const jaFinalizado = Object.values(partidasRanking).some(p => {
+                                    if (p.categoria !== catKey || p.status !== 'finalizada') return false;
+                                    return (p.jogador1Id === confronto.jogador1Id && p.jogador2Id === confronto.jogador2Id) ||
+                                           (p.jogador1Id === confronto.jogador2Id && p.jogador2Id === confronto.jogador1Id);
+                                });
+
+                                if (!jaFinalizado) {
+                                    atletasValidosNaTabela.add(confronto.jogador1Id);
+                                    atletasValidosNaTabela.add(confronto.jogador2Id);
+                                }
                             }
                         });
                     });
@@ -1796,6 +1862,14 @@ function validarEAgendarPartidaSaas() {
     // 🚀 BIFURCAÇÃO EXPRESSA: AULA OU MANUTENÇÃO (Ignora quórum e monopólio)
     // ====================================================================
     if (tipoAgendamento === 'aula' || tipoAgendamento === 'manutencao') {
+        const celAlvo1Esp = document.getElementById(`cel-${pacote.hora}-${pacote.dia}`);
+        const celAlvo2Esp = (pacote.duracao === 2) ? document.getElementById(`cel-${pacote.hora + 1}-${pacote.dia}`) : null;
+        const isTorneioSlotEsp = (celAlvo1Esp && celAlvo1Esp.classList.contains('celula-torneio')) || (celAlvo2Esp && celAlvo2Esp.classList.contains('celula-torneio'));
+        
+        if (isTorneioSlotEsp) {
+            showToast("Este horário é exclusivo para partidas do Ranking.", "error");
+            return;
+        }
         let organizadorEspecial = "";
         let textoGrid = "";
         let motivoOpcional = "";
@@ -1885,6 +1959,12 @@ function validarEAgendarPartidaSaas() {
     const celAlvo1 = document.getElementById(`cel-${pacote.hora}-${pacote.dia}`);
     const celAlvo2 = (pacote.duracao === 2) ? document.getElementById(`cel-${pacote.hora + 1}-${pacote.dia}`) : null;
     pacote.isDupla = (celAlvo1 && celAlvo1.classList.contains('celula-dupla')) || (celAlvo2 && celAlvo2.classList.contains('celula-dupla'));
+    const isTorneioSlot = (celAlvo1 && celAlvo1.classList.contains('celula-torneio')) || (celAlvo2 && celAlvo2.classList.contains('celula-torneio'));
+
+    if (isTorneioSlot && !ehPartidaRanking) {
+        showToast("Este horário é exclusivo para partidas do Ranking.", "error"); 
+        return;
+    }
 
     // ----------------------------------------------------
     // 🚨 TRAVA DE SEGURANÇA: VALIDAÇÃO DE CAMPOS ABERTOS / EMBRANCO

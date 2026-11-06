@@ -14,7 +14,7 @@ let ultimoCliqueTituloQuadra = 0;
 let primeiraCargaQuadra = true;   
 
 // Ponteiro da escuta (listener) em tempo real do Firebase para a quadra ativa 
-let ouvinteQuadraAtual = null;  
+let ouvinteQuadraAtual = null;   
 
 // Trava de segurança para bloquear interações concorrentes no mesmo horário 
 let horarioBloqueadoPelaTabela = null;   
@@ -484,6 +484,7 @@ function renderizarDadosPlanilha(reservas) {
     
     const configAula = configAulasGlobal[quadraKey] || null;
     const configDupla = configDuplasGlobal[quadraKey] || null;
+    const configTorneio = configTorneiosGlobal[quadraKey] || null;
 
     // 🧹 0. DESARMA OS ALARMES ANTIGOS ANTES DE REPINTAR A TELA
     if (typeof limparAlarmesInvisiveisSaaS === 'function') {
@@ -491,9 +492,17 @@ function renderizarDadosPlanilha(reservas) {
     }
 
     // 2. DISPAROS EM CADEIA DE RESPONSABILIDADE ÚNICA (Modulares)
-    limparGridEAplicarGradesFixas(configAula, configDupla);
+    limparGridEAplicarGradesFixas(configAula, configDupla, configTorneio);
     plotarReservasAtivas(reservas);
     aplicarValidacoesETempoReal();
+
+    // 🟡 Visibilidade dinâmica da legenda "Ranking"
+    const elLegendaRanking = document.getElementById('legenda-item-ranking');
+    if (elLegendaRanking) {
+        const temSlotRanking = configTorneio && configTorneio.Ativo && configTorneio.Grade && Object.values(configTorneio.Grade).some(v => v === true);
+        const isRankingRegraAtivo = (configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.ativo === true);
+        elLegendaRanking.style.display = (temSlotRanking || isRankingRegraAtivo) ? 'inline-flex' : 'none';
+    }
 
     // 📅 ATUALIZAÇÃO REATIVA DA AGENDA PESSOAL E DO BADGE NUMÉRICO
     if (typeof atualizarBadgeAgendaSaaS === 'function') {
@@ -516,7 +525,7 @@ function renderizarDadosPlanilha(reservas) {
 // ====================================================================
 // 🧹 SUB-MÓDULO 1: LIMPEZA RÍGIDA E INJEÇÃO DE TATUAGENS ADMINISTRATIVAS
 // ====================================================================
-function limparGridEAplicarGradesFixas(configAula, configDupla) {
+function limparGridEAplicarGradesFixas(configAula, configDupla, configTorneio) {
     for (let h = 6; h <= 22; h++) {
         for (let d = 1; d <= 7; d++) {
             const cel = document.getElementById(`cel-${h}-${d}`);
@@ -576,6 +585,21 @@ function limparGridEAplicarGradesFixas(configAula, configDupla) {
                     cel.classList.add('celula-aula'); 
                     cel.style.cursor = 'not-allowed';
                     cel.onclick = () => showToast(`Horário bloqueado para Aula Fixa com ${configAula.Grade[keyGrade]}.`, 'warning');
+                    preenchidoPorGradeFixa = true;
+                }
+            }
+
+            // Tatuagem Visual da Grade de Ranking / Torneios
+            if (!deveBloquear && !preenchidoPorGradeFixa && configTorneio && configTorneio.Ativo && configTorneio.Grade) {
+                const keyGrade = `${d}_${h}`;
+                
+                if (configTorneio.Grade[keyGrade] === true) {
+                    cel.innerHTML = 'Ranking'; 
+                    cel.classList.add('celula-torneio'); 
+                    cel.style.cursor = 'pointer'; 
+                    cel.onclick = () => {
+                        cliqueCelula(d, h);
+                    };
                     preenchidoPorGradeFixa = true;
                 }
             }

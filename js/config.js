@@ -6,12 +6,13 @@
 // ========================================================
 let carrinhoAulas = {};         // Espelho local temporário para edições em lote da Grade de Aulas (SaaS)
 let carrinhoDuplas = {};        // Espelho local temporário para edições em lote do Horário de Duplas (SaaS)
+let carrinhoTorneios = {};      // Espelho local temporário para edições em lote do Horário de Ranking / Torneios (SaaS)
 let carrinhoConvidados = {};    // Espelho local temporário para os parâmetros e regras do Concierge de Convidados (SaaS)
 let quadraAulaAtual = '';       // Armazena a string da quadra ativa em edição no submódulo de Aulas
 let selecaoLoteAulas = {};      // Rastreador de células selecionadas simultaneamente para atribuição em lote
 let quadraDuplaAtual = '';      // Armazena a string da quadra ativa em edição no submódulo de Duplas
+let quadraTorneiosAtual = '';   // Armazena a string da quadra ativa em edição no submódulo de Torneios / Ranking
 let quadraConvidadosAtual = '';  // Armazena a string da quadra ativa em edição no submódulo de Convidados
-
 
 
 // ========================================================
@@ -22,7 +23,7 @@ let quadraConvidadosAtual = '';  // Armazena a string da quadra ativa em ediçã
  * Altera de escopo entre as abas originais da tela mestre (Arena / Quadras)
  */
 function mudarEscopoConfig(escopoTarget) {
-    if (navigator.vibrate) navigator.vibrate(30);  
+    if (navigator.vibrate) navigator.vibrate(30);   
 
     document.getElementById('btn-escopo-arena').classList.remove('ativa');
     document.getElementById('btn-escopo-quadras').classList.remove('ativa');
@@ -114,7 +115,38 @@ function abrirSubModulo(moduloKey) {
                 <button class="btn-config-salvar" onclick="salvarGradeDuplasSaas()">Salvar</button>
             `;
         }
+		
         inicializarModuloDuplas(); 
+
+    } else if (moduloKey === 'torneios') {
+        // ASSOCIA A CLASSE FULLSCREEN (100vw) PARA O HORÁRIO DE RANKING / TORNEIOS
+        if (modalJanela) {
+            modalJanela.classList.remove('modal-config-janela-ampla');
+            modalJanela.classList.add('modal-config-janela-fullscreen');
+        }
+        if (tabsEscopo) tabsEscopo.style.display = 'none';
+
+        if (headerJanela) {
+            headerJanela.classList.add('tema-torneios');
+            headerJanela.innerHTML = `<h2 style="text-align: center; width: 100%; margin: 0; font-size: 22px; font-weight: 700;">Horário de Ranking</h2>`;
+        }
+
+        document.getElementById('quadras-visao-menu').classList.remove('ativa');
+        
+        const visaoTorneios = document.getElementById('quadras-visao-torneios');
+        if (visaoTorneios) {
+            visaoTorneios.classList.add('ativa');
+            visaoTorneios.style.display = 'flex'; 
+        }
+
+        if (footerJanela) {
+            footerJanela.classList.add('layout-duplo');
+            footerJanela.innerHTML = `
+                <button class="btn-config-fechar" onclick="voltarAoMenuHubGeral()">Fechar</button>
+                <button class="btn-config-salvar" onclick="salvarGradeTorneiosSaas()">Salvar</button>
+            `;
+        }
+        inicializarModuloTorneios(); 
 
     } else if (moduloKey === 'convidados') {
         // ASSOCIA A CLASSE FULLSCREEN PARA O HORÁRIO DE CONVIDADOS
@@ -304,6 +336,65 @@ function voltarAoMenuHubGeral() {
         }
     }
 
+    // --- 🏆 2.5. DETALHAMENTO: ANTI-DESCARTE NO HORÁRIO DE RANKING / TORNEIOS ---
+    const visaoTorneios = document.getElementById('quadras-visao-torneios');
+    if (visaoTorneios && visaoTorneios.classList.contains('ativa')) {
+        let blocosHTML = [];
+
+        Object.keys(carrinhoTorneios).forEach(qKey => {
+            const nomeQuadra = qKey.replace('Quadra', 'Quadra ');
+            let subMudancas = [];
+
+            const novoAtivo = carrinhoTorneios[qKey].Ativo === true;
+            const velhoAtivo = configTorneiosGlobal[qKey]?.Ativo === true;
+
+            if (novoAtivo !== velhoAtivo) {
+                subMudancas.push(`• <b>Status Geral:</b> de <i>${velhoAtivo ? 'Ativada' : 'Desativada'}</i> para <b style="color:#dc3545;">${novoAtivo ? 'Ativada' : 'Desativada'}</b>`);
+            }
+
+            const novaGrade = carrinhoTorneios[qKey].Grade || {};
+            const velhaGrade = configTorneiosGlobal[qKey]?.Grade || {};
+            const todasChaves = new Set([...Object.keys(novaGrade), ...Object.keys(velhaGrade)]);
+
+            todasChaves.forEach(k => {
+                if (novaGrade[k] !== velhaGrade[k]) {
+                    const [d, h] = k.split('_');
+                    const diaTxt = diasNome[d] || `Dia ${d}`;
+                    const horaTxt = `${String(h).padStart(2, '0')}:00`;
+
+                    subMudancas.push(`• <b>${diaTxt} às ${horaTxt}:</b> de <i>${velhaGrade[k] ? 'Ranking' : 'Livre'}</i> para <b style="color:#dc3545;">${novaGrade[k] ? 'Ranking' : 'Livre'}</b>`);
+                }
+            });
+
+            if (subMudancas.length > 0) {
+                blocosHTML.push(`
+                    <fieldset style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px 10px 12px; margin: 15px 0 5px 0; background: #f8fafc; text-align: left;">
+                        <legend style="padding: 0 8px; font-size: 11px; font-weight: 900; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; margin: 0 auto;">
+                            ${nomeQuadra}
+                        </legend>
+                        <div style="max-height: 110px; overflow-y: auto; padding-top: 8px; font-size: 13px; line-height: 1.6; color: #475569;">
+                            ${subMudancas.join('<br>')}
+                        </div>
+                    </fieldset>
+                `);
+            }
+        });
+
+        if (blocosHTML.length > 0) {
+            if (navigator.vibrate) navigator.vibrate(30);
+            const msgDetalhada = `
+                Você modificou as seguintes configurações que ainda não foram salvas:<br>
+                ${blocosHTML.join('')}
+                <br>Deseja realmente sair e <b style="color:#dc3545;">descartar</b> tudo?
+            `;
+            showPrompt("Descartar Alterações?", msgDetalhada, () => {
+                carrinhoTorneios = JSON.parse(JSON.stringify(configTorneiosGlobal || {}));
+                executarFechamentoHubGeral();
+            });
+            return;
+        }
+    }
+
     // --- 🥂 3. DETALHAMENTO: ANTI-DESCARTE EM CONVIDADOS ---
     const visaoConvidados = document.getElementById('quadras-visao-convidados');
     if (visaoConvidados && visaoConvidados.classList.contains('ativa')) {
@@ -413,6 +504,7 @@ function executarFechamentoHubGeral() {
 
     const headerJanela = document.querySelector('.modal-config-janela .header-painel');
     if (headerJanela) {
+        headerJanela.classList.remove('tema-torneios');
         headerJanela.innerHTML = `
             <div>
                 <h2>⏱️ Horários & Grades</h2>
@@ -436,6 +528,12 @@ function executarFechamentoHubGeral() {
     if (visaoDuplas) {
         visaoDuplas.classList.remove('ativa');
         visaoDuplas.style.display = 'none'; 
+    }
+
+    const visaoTorneios = document.getElementById('quadras-visao-torneios');
+    if (visaoTorneios) {
+        visaoTorneios.classList.remove('ativa');
+        visaoTorneios.style.display = 'none';
     }
 	
 	const visaoConvidados = document.getElementById('quadras-visao-convidados');
@@ -710,6 +808,9 @@ function abrirMapaUniversal(tipoTela) {
     } else if (tipoTela === 'duplas') {
         quadraAtual = quadraDuplaAtual;
         selecionarConfigFn = selecionarQuadraDuplaConfig;
+    } else if (tipoTela === 'torneios') {
+        quadraAtual = quadraTorneiosAtual;
+        selecionarConfigFn = selecionarQuadraTorneiosConfig;
     } else if (tipoTela === 'convidados') {
         quadraAtual = quadraConvidadosAtual;
         selecionarConfigFn = selecionarQuadraConvidadosConfig;
@@ -1410,15 +1511,10 @@ function renderizarGradeDuplas() {
                 } else {
                     // 3. ESTADO NORMAL DA CÉLULA (LIVRE OU ATIVA PARA DUPLAS)
                     if (grade[key] === true) {
-                        td.className = 'celula-aula-atribuida'; 
-                        td.style.backgroundColor = 'var(--bg-celula-dupla)'; 
-                        td.style.color = 'var(--txt-celula-tabela)';
-                        td.style.fontWeight = '700';
-                        td.style.textAlign = 'center';
+                        td.className = 'celula-duplas-atribuida'; 
                         td.textContent = 'Dupla';
                     } else {
                         td.className = 'celula-livre';
-                        td.style.backgroundColor = '';
                         td.textContent = '';
                     }
 
@@ -1569,9 +1665,303 @@ function salvarGradeDuplasSaas() {
         const tempoCalculado = 3000 + (totalMudancas * 1000);
         showToast(msgExtrato, "premium", tempoCalculado); //[cite: 4]
         
+    console.error("Erro ao salvar Grade de Duplas:", err);
+        showToast("Erro ao gravar dados de duplas no banco.", "error");
+    });
+}
+
+
+// ========================================================
+// INOVAÇÃO COMPLETA: MÓDULO HORÁRIO DE RANKING / TORNEIOS (SSOT)
+// ========================================================
+
+function inicializarModuloTorneios() {
+    Promise.all([
+        database.ref(`${raizBanco}/config/Quadras`).once('value'),
+        database.ref(`${raizBanco}/config/Horarios/Torneios`).once('value')
+    ]).then(([snapQuadras, snapTorneios]) => {
+        const quadrasObj = snapQuadras.val() || {};
+        const qtdQuadras = quadrasObj.quantidade || 2;
+        const nomesQuadras = quadrasObj.nomes || {};
+        
+        configTorneiosGlobal = snapTorneios.val() || {};
+        carrinhoTorneios = JSON.parse(JSON.stringify(configTorneiosGlobal)); 
+
+        renderizarAbasQuadrasTorneios(qtdQuadras, nomesQuadras);
+
     }).catch(err => {
-        console.error("Erro ao salvar Grade de Duplas:", err); //[cite: 5]
-        showToast("Erro ao gravar dados de duplas no banco.", "error"); //[cite: 5]
+        console.error("Erro ao carregar módulo de Torneios:", err);
+        showToast("Erro ao sincronizar os dados de Torneios.", "error");
+    });
+}
+
+function renderizarAbasQuadrasTorneios(qtd, nomes) {
+    const containerPC = document.getElementById('torneios-tabs-quadras-desktop');
+    if (containerPC) containerPC.innerHTML = '';
+    let primeiraQuadra = '';
+
+    for (let i = 1; i <= qtd; i++) {
+        const nomeDaQuadra = typeof nomes[i] === 'object' ? (nomes[i].nome || `Quadra ${i}`) : (nomes[i] || `Quadra ${i}`);
+        const quadraKey = `Quadra${i}`;
+        if (i === 1) primeiraQuadra = quadraKey;
+
+        const btn = document.createElement('button');
+        btn.className = 'quadra-pill';
+        btn.id = `btn-torneio-${quadraKey}`;
+        btn.textContent = `Quadra ${i}`;
+        btn.onclick = () => selecionarQuadraTorneiosConfig(quadraKey, nomeDaQuadra);
+        
+        if (containerPC) containerPC.appendChild(btn);
+    }
+    
+    const btnMapaTorneios = document.querySelector('#quadras-visao-torneios .container-titulo-central button');
+    
+    if (parseInt(qtd) === 1) {
+        if (containerPC) containerPC.style.setProperty('display', 'none', 'important');
+        if (btnMapaTorneios) btnMapaTorneios.style.setProperty('display', 'none', 'important');
+    } else {
+        if (containerPC) containerPC.style.removeProperty('display');
+        if (btnMapaTorneios) btnMapaTorneios.style.removeProperty('display');
+    }
+    
+    const nomeInicial = typeof nomes[1] === 'object' ? (nomes[1].nome || 'Quadra 1') : (nomes[1] || 'Quadra 1');
+    selecionarQuadraTorneiosConfig(primeiraQuadra, nomeInicial);
+}
+
+function selecionarQuadraTorneiosConfig(quadraKey, nomeExibicao) {
+    if (navigator.vibrate) navigator.vibrate(20);
+    quadraTorneiosAtual = quadraKey;
+
+    document.querySelectorAll('#torneios-tabs-quadras-desktop .quadra-pill').forEach(btn => btn.classList.remove('ativa'));
+    const btnAtivo = document.getElementById(`btn-torneio-${quadraKey}`);
+    if (btnAtivo) btnAtivo.classList.add('ativa');
+
+    const lblMobile = document.getElementById('lbl-quadra-titulo-torneios');
+    if (lblMobile) {
+        if (nomeExibicao) lblMobile.textContent = nomeExibicao;
+        const containerTitulo = lblMobile.closest('.container-titulo-central') || lblMobile.parentElement;
+        if (containerTitulo) {
+            containerTitulo.onclick = () => abrirMapaUniversal('torneios');
+        }
+    }
+
+    if (!carrinhoTorneios[quadraKey]) {
+        carrinhoTorneios[quadraKey] = { Ativo: false, Grade: {} };
+    }
+    if (!carrinhoTorneios[quadraKey].Grade) {
+        carrinhoTorneios[quadraKey].Grade = {};
+    }
+
+    document.getElementById('chk-torneios-ativos').checked = carrinhoTorneios[quadraKey].Ativo === true;
+    
+    renderizarGradeTorneios();
+}
+
+function toggleChaveMestraTorneios(isAtivo) {
+    carrinhoTorneios[quadraTorneiosAtual].Ativo = isAtivo;
+    renderizarGradeTorneios();
+}
+
+function renderizarGradeTorneios() {
+    const tbody = document.getElementById('tbodyGradeTorneios');
+    tbody.innerHTML = '';
+    const dadosQuadra = carrinhoTorneios[quadraTorneiosAtual] || { Grade: {} };
+    const grade = dadosQuadra.Grade || {};
+    const isAtiva = dadosQuadra.Ativo;
+
+    const tabelaScroll = document.querySelector('#quadras-visao-torneios .tabela-grade-scroll');
+    if (tabelaScroll) {
+        if (isAtiva) tabelaScroll.classList.remove('tabela-grade-desativada');
+        else tabelaScroll.classList.add('tabela-grade-desativada');
+    }
+
+    for (let h = 6; h <= 22; h++) {
+        const tr = document.createElement('tr');
+        const txtHora = `<span class="time-part">${String(h).padStart(2,'0')}:00</span><span class="time-sep"> - </span><span class="time-part">${String(h+1).padStart(2,'0')}:00</span>`;
+        
+        let tdHoraEsq = document.createElement('td');
+        tdHoraEsq.className = 'horario-celula';
+        tdHoraEsq.innerHTML = txtHora;
+        tr.appendChild(tdHoraEsq);
+
+        for (let d = 1; d <= 7; d++) {
+            const td = document.createElement('td');
+            const key = `${d}_${h}`;
+
+            // 1. ESCUDO DO HORÁRIO PADRÃO (FUNCIONAMENTO DA ARENA)
+            let bloqueadoPorHorario = false;
+            if (typeof regrasHorariosSaaS !== 'undefined' && regrasHorariosSaaS[d]) {
+                const regraDia = regrasHorariosSaaS[d];
+                if (regraDia.status === 'fechado') {
+                    td.className = 'celula-bloqueada-padrao';
+                    bloqueadoPorHorario = true;
+                } else {
+                    const inicio = parseInt(regraDia.abertura?.split(':')[0]) || 6;
+                    const fim = parseInt(regraDia.fechamento?.split(':')[0]) || 23;
+                    if (h < inicio || h >= fim) bloqueadoPorHorario = true;
+                }
+            }
+
+            if (bloqueadoPorHorario) {
+                td.className = 'celula-bloqueada-padrao';
+            } else {
+                // 2. ESCUDO ANTICONFLITO DA GRADE DE AULAS
+                const aulaExistente = (configAulasGlobal[quadraTorneiosAtual] && configAulasGlobal[quadraTorneiosAtual].Grade) ? configAulasGlobal[quadraTorneiosAtual].Grade[key] : null;
+
+                if (aulaExistente) {
+                    td.className = 'celula-bloqueada-padrao';
+                    td.textContent = ''; 
+                    td.style.cursor = 'not-allowed';
+                    td.style.setProperty('pointer-events', 'auto', 'important');
+
+                    td.onclick = () => {
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        showToast(`Horário indisponível: Aula com o Professor ${aulaExistente}`, 'warning');
+                    };
+                } else {
+                    // 3. ESTADO NORMAL DA CÉLULA (LIVRE OU ATIVA PARA RANKING)
+                    if (grade[key] === true) {
+                        td.className = 'celula-torneios-atribuida'; 
+                        td.textContent = 'Ranking';
+                    } else {
+                        td.className = 'celula-livre';
+                        td.textContent = '';
+                    }
+
+                    // CLIQUE DIRETO (TOGGLE LIGA/DESLIGA)
+                    td.onclick = () => {
+                        if (!carrinhoTorneios[quadraTorneiosAtual].Ativo) return;
+                        if (navigator.vibrate) navigator.vibrate(25);
+
+                        if (!carrinhoTorneios[quadraTorneiosAtual].Grade) carrinhoTorneios[quadraTorneiosAtual].Grade = {};
+
+                        if (carrinhoTorneios[quadraTorneiosAtual].Grade[key] === true) {
+                            delete carrinhoTorneios[quadraTorneiosAtual].Grade[key];
+                        } else {
+                            carrinhoTorneios[quadraTorneiosAtual].Grade[key] = true;
+                        }
+                        renderizarGradeTorneios();
+                    };
+                }
+            }
+            tr.appendChild(td);
+        }
+        
+        let tdHoraDir = document.createElement('td');
+        tdHoraDir.className = 'horario-celula';
+        tdHoraDir.innerHTML = txtHora;
+        tr.appendChild(tdHoraDir);
+
+        tbody.appendChild(tr);
+    }
+}
+
+function selecionarTudoTorneios() {
+    if (!carrinhoTorneios[quadraTorneiosAtual] || !carrinhoTorneios[quadraTorneiosAtual].Ativo) return;
+    
+    if (!carrinhoTorneios[quadraTorneiosAtual].Grade) carrinhoTorneios[quadraTorneiosAtual].Grade = {};
+    
+    const tbody = document.getElementById('tbodyGradeTorneios');
+    
+    for (let r = 0; r < tbody.rows.length; r++) {
+        const hora = r + 6;
+        for (let d = 1; d <= 7; d++) {
+            const td = tbody.rows[r].cells[d];
+            if (td.classList.contains('celula-livre')) {
+                const key = `${d}_${hora}`;
+                carrinhoTorneios[quadraTorneiosAtual].Grade[key] = true;
+            }
+        }
+    }
+    renderizarGradeTorneios();
+}
+
+function limparTudoTorneios() {
+    if (!carrinhoTorneios[quadraTorneiosAtual] || !carrinhoTorneios[quadraTorneiosAtual].Ativo) return;
+    carrinhoTorneios[quadraTorneiosAtual].Grade = {};
+    renderizarGradeTorneios();
+}
+
+function salvarGradeTorneiosSaas() {
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    const diasNome = { 1: 'Segunda-feira', 2: 'Terça-feira', 3: 'Quarta-feira', 4: 'Quinta-feira', 5: 'Sexta-feira', 6: 'Sábado', 7: 'Domingo' };
+    let blocosHTML = [];
+    let totalMudancas = 0;
+
+    Object.keys(carrinhoTorneios).forEach(qKey => {
+        const gradeNova = carrinhoTorneios[qKey].Grade || {};
+        const gradeVelha = (configTorneiosGlobal[qKey] && configTorneiosGlobal[qKey].Grade) ? configTorneiosGlobal[qKey].Grade : {};
+        
+        const ativoNovo = carrinhoTorneios[qKey].Ativo === true;
+        const ativoVelho = (configTorneiosGlobal[qKey] && configTorneiosGlobal[qKey].Ativo === true);
+        
+        const nomeQuadraFormatado = qKey.replace('Quadra', 'Quadra ');
+        let subMudancas = [];
+
+        if (ativoNovo !== ativoVelho) {
+            subMudancas.push(`• <b>Chave Mestra:</b> de <i>${ativoVelho ? 'Ativada' : 'Desativada'}</i> para <span style="color: #10b981; font-weight: bold;">${ativoNovo ? 'Ativada' : 'Desativada'}</span>`);
+            totalMudancas++;
+        }
+
+        for (let d = 1; d <= 7; d++) {
+            for (let h = 6; h <= 22; h++) {
+                const key = `${d}_${h}`;
+                const vNovo = gradeNova[key] === true;
+                const vVelho = gradeVelha[key] === true;
+
+                if (vNovo !== vVelho) {
+                    const diaTxt = diasNome[d];
+                    const horaTxt = `${String(h).padStart(2, '0')}:00`;
+                    
+                    subMudancas.push(`• <b>${diaTxt} às ${horaTxt}:</b> de <i>${vVelho ? 'Ranking' : 'Livre'}</i> para <span style="color: #10b981; font-weight: bold;">${vNovo ? 'Ranking' : 'Livre'}</span>`);
+                    totalMudancas++;
+                }
+            }
+        }
+
+        if (subMudancas.length > 0) {
+            blocosHTML.push(`
+                <fieldset style="border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 0 12px 10px 12px; margin: 12px 0 4px 0; background: rgba(0, 0, 0, 0.02); text-align: left; box-sizing: border-box;">
+                    <legend style="padding: 0 8px; font-size: 11px; font-weight: 900; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; margin: 0 auto;">
+                        ${nomeQuadraFormatado}
+                    </legend>
+                    <div style="max-height: 120px; overflow-y: auto; padding-top: 8px; font-size: 13px; line-height: 1.6; color: var(--txt-padrao, #475569);">
+                        ${subMudancas.join('<br>')}
+                    </div>
+                </fieldset>
+            `);
+        }
+    });
+
+    if (totalMudancas === 0) {
+        return showToast("Nenhum parâmetro de ranking foi modificado.", "info");
+    }
+
+    database.ref(`${raizBanco}/config/Horarios/Torneios`).set(carrinhoTorneios).then(() => {
+        configTorneiosGlobal = JSON.parse(JSON.stringify(carrinhoTorneios));
+        
+        let msgExtrato = `
+            <div style="background: var(--bg-painel, #ffffff); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border-left: 6px solid #f59e0b; padding: 20px; width: 100%; text-align: left; position: relative; box-sizing: border-box;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <i class="material-icons" style="color: #f59e0b; font-size: 24px;">emoji_events</i>
+                    <h4 style="margin: 0; color: var(--txt-titulo, #1e293b); font-size: 16px; font-weight: 800; letter-spacing: 0.3px;">HORÁRIO DE RANKING</h4>
+                </div>
+                <div style="max-height: 240px; overflow-y: auto; padding-right: 5px;">
+                    ${blocosHTML.join('')}
+                </div>
+                <div style="font-size: 11px; color: #94a3b8; text-align: right; margin-top: 12px; font-weight: 500;">
+                    👆 Toque para fechar
+                </div>
+            </div>
+        `;
+        
+        const tempoCalculado = 3000 + (totalMudancas * 1000);
+        showToast(msgExtrato, "premium", tempoCalculado);
+        
+    }).catch(err => {
+        console.error("Erro ao salvar Grade de Torneios:", err);
+        showToast("Erro ao gravar dados de ranking no banco.", "error");
     });
 }
 

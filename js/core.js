@@ -19,7 +19,7 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);    
 }
 
-const database = firebase.database();      
+const database = firebase.database();       
 const auth = firebase.auth();   
 
 
@@ -44,6 +44,7 @@ let DiasParaExibir = 1;         // Parâmetro mestre de retenção visual de dia
 let regrasHorariosSaaS = null;  // Espelho local das regras de abertura/fechamento ditadas pelo gestor
 let configAulasGlobal = {};     // Espelho local da Grade de Aulas
 let configDuplasGlobal = {};    // Espelho local do Horário de Duplas
+let configTorneiosGlobal = {};  // Espelho local do Horário de Ranking / Torneios
 let configConvidadosGlobal = {}; // Backup em tempo real de Convidados
 let reservasLocaisCache = {};   // Espelho local das reservas e agendamentos da quadra ativa
 let isLicencaAtivaGlobal = true; // Espelho local do status da licença (Kill Switch)
@@ -703,6 +704,17 @@ function iniciarOuvinteMestreSaaS() {
 	// --- 3.5. OUVINTE DO HORÁRIO DE CONVIDADOS ---
     database.ref(`${raizBanco}/config/Horarios/Convidados`).on('value', (snapshot) => {
         configConvidadosGlobal = snapshot.val() || {};
+        const telaQuadras = document.getElementById('tela-visao-quadras');
+        if (telaQuadras && telaQuadras.classList.contains('ativa')) {
+            if (typeof forcarRepinturaPlanilha === 'function') {
+                forcarRepinturaPlanilha();
+            }
+        }
+    });
+	
+	// --- 3.6. OUVINTE DO HORÁRIO DE TORNEIOS / RANKING ---
+    database.ref(`${raizBanco}/config/Horarios/Torneios`).on('value', (snapshot) => {
+        configTorneiosGlobal = snapshot.val() || {};
         const telaQuadras = document.getElementById('tela-visao-quadras');
         if (telaQuadras && telaQuadras.classList.contains('ativa')) {
             if (typeof forcarRepinturaPlanilha === 'function') {

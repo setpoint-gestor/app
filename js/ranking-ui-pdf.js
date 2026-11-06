@@ -13,7 +13,7 @@
 // --------------------------------------------------------
 let abaVisaoLeaderboardSaaS = 'TORNEIO'; // 'TORNEIO', 'SUMULAS' ou 'GERAL'
 let abaClasseAtivaSaaS = 'B';
-let abaGeneroAtivaSaaS = 'MASCULINO'; 
+let abaGeneroAtivaSaaS = 'MASCULINO';  
 let abaFaseAtivaSaaS = 'AUTO';
 let abaStatusAtivoSaaS = 'TODOS'; // 'TODOS', 'PENDENTE', 'AGENDADO', 'HOMOLOGADO', 'CONTESTADO'
 
@@ -1666,7 +1666,7 @@ function renderizarLeaderboardSaaS() {
             };
             const txtBadgeCampeao = rotulosBadgesCampeao[modelo] || "1º LUGAR • CAMPEÃO";
 
-            // 🔺 Botão vetorial com o ícone da Pirâmide ou Ícone da Barragem para alternar
+            // 🔺 Botão vetorial com o ícone da Pirâmide, Barragem ou Mata-Mata para alternar
             let btnPiramideOpt = '';
             if (modelo === 'piramide') {
                 btnPiramideOpt = `
@@ -1682,6 +1682,12 @@ function renderizarLeaderboardSaaS() {
                 btnPiramideOpt = `
                     <button type="button" onclick="alternarVisaoBarragemSaaS()" title="Ver Tabela Completa da Barragem" style="position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
                         <i class="material-icons" style="font-size: 26px; color: #d97706;">leaderboard</i>
+                    </button>
+                `;
+            } else if (modelo === 'grupos') {
+                btnPiramideOpt = `
+                    <button type="button" onclick="alternarVisaoMataMataSaaS()" title="Ver Chaves do Mata-Mata" style="position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                        <i class="material-icons" style="font-size: 26px; color: #d97706;">account_tree</i>
                     </button>
                 `;
             }

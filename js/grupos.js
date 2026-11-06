@@ -13,6 +13,8 @@
 let quadranteAtivoMataMataSaaS = 0;
 let faseFocoMataMataSaaS = null;
 let timerScrollMataMataSaaS = null;
+let etapaAtivaMataMataSaaS = 0;
+let categoriaAtivaMataMataSaaS = null;
 
 function agendarVerificacaoFaseSaaS() {
     if (timerScrollMataMataSaaS) clearTimeout(timerScrollMataMataSaaS); 
@@ -25,7 +27,7 @@ function selecionarQuadranteSaaS(idxVal) {
     quadranteAtivoMataMataSaaS = parseInt(idxVal, 10) || 0;
     
     const viewport = document.getElementById('bracket-scroll-viewport');
-    const scrollSalvo = viewport ? viewport.scrollLeft : 0;
+    const scrollSalvo = viewport ? viewport.scrollLeft : 0; 
     const containerAlvo = document.getElementById('container-bracket-acervo-grupos') || document.getElementById('body-leaderboard-scroll'); 
 
     if (containerAlvo && window.chaveCatDataUltimaSaaS) {
@@ -49,37 +51,18 @@ function selecionarQuadranteSaaS(idxVal) {
 }
 
 
-function atualizarVisibilidadeSetasSaaS() {
-    const viewport = document.getElementById('bracket-scroll-viewport');
-    const btnLeft = document.querySelector('#area-capture-matamata .bracket-nav-btn.left');
-    const btnRight = document.querySelector('#area-capture-matamata .bracket-nav-btn.right'); 
-
-    if (!viewport || !btnLeft || !btnRight) return;
-
-    const temScrollHorizontal = viewport.scrollWidth > viewport.clientWidth + 5;
-
-    if (!temScrollHorizontal) {
-        btnLeft.style.display = 'none';
-        btnRight.style.display = 'none';
-        return;
-    }
-
-    const maxScroll = viewport.scrollWidth - viewport.clientWidth;
-    const scrollAtual = viewport.scrollLeft;
-
-    btnLeft.style.display = scrollAtual <= 5 ? 'none' : 'flex';
-    btnRight.style.display = scrollAtual >= maxScroll - 5 ? 'none' : 'flex';
-}
-
 function rolarMataMataSaaS(direcao) {
-    const viewport = document.getElementById('bracket-scroll-viewport');
-    if (!viewport) return; 
-
-    const deslocamento = 256; // Largura da coluna (240px) + Gap (16px)
-    viewport.scrollBy({
-        left: direcao * deslocamento,  
-        behavior: 'smooth'
-    });
+    if (navigator.vibrate) navigator.vibrate(20);
+    etapaAtivaMataMataSaaS += direcao;
+    const containerAlvo = document.getElementById('container-bracket-acervo-grupos') || document.getElementById('body-leaderboard-scroll');
+    if (containerAlvo && window.chaveCatDataUltimaSaaS) {
+        renderizarVisaoMataMataSaaS(
+            containerAlvo,
+            window.chaveCatDataUltimaSaaS,
+            localStorage.getItem('jogadorLogadoId'), 
+            window.partidasCustomizadasUltimaSaaS
+        );
+    }
 }
 
 
@@ -360,11 +343,30 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
 
     const totalJogosR1 = faseInicial / 2;
 
-    // 🎯 Se a chave atual mudou de categoria ou a fase guardada for diferente, força sempre o início na primeira fase da categoria
-    if (!faseFocoMataMataSaaS || faseFocoMataMataSaaS !== faseInicial) {
-        faseFocoMataMataSaaS = faseInicial;
+    // Reseta a navegação para a primeira etapa se trocar de categoria
+    if (categoriaAtivaMataMataSaaS !== chaveCat) {
+        categoriaAtivaMataMataSaaS = chaveCat;
+        etapaAtivaMataMataSaaS = 0;
         quadranteAtivoMataMataSaaS = 0;
+        faseFocoMataMataSaaS = faseInicial;
     }
+
+    // Mapeamento sequencial de fases da categoria (ex: [32, 16, 8, 4, 2])
+    const fasesArray = [];
+    for (let pot = faseInicial; pot >= 2; pot /= 2) {
+        fasesArray.push(pot);
+    }
+    const totalEtapas = Math.max(1, fasesArray.length - 1);
+    if (etapaAtivaMataMataSaaS >= totalEtapas) etapaAtivaMataMataSaaS = totalEtapas - 1;
+    if (etapaAtivaMataMataSaaS < 0) etapaAtivaMataMataSaaS = 0;
+
+    // Identifica se estamos na etapa final (Semi-finais + Grande Final)
+    const ehEtapaFinal = (fasesArray.length > 1 && etapaAtivaMataMataSaaS === totalEtapas - 1);
+
+    // As duas fases ativas exibidas na tela atual
+    const fasesRenderizar = totalEtapas === 1 
+        ? fasesArray 
+        : [fasesArray[etapaAtivaMataMataSaaS], fasesArray[etapaAtivaMataMataSaaS + 1]];
 
     const totalJogosFoco = faseFocoMataMataSaaS / 2;
     const jogosPorBloco = 8;
@@ -377,7 +379,8 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
     let htmlDropdownSaaS = '';
     let htmlDotsSaaS = '';
 
-    if (totalJogosFoco > jogosPorBloco) {
+    // O dropdown de blocos é exibido nas fases preliminares e oculto compulsoriamente na decisão
+    if (!ehEtapaFinal && totalJogosFoco > jogosPorBloco) {
         let htmlOptions = ''; 
         let dotsItems = '';
 
@@ -403,8 +406,8 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
 
     let htmlColunas = '';
 
-
-    for (let pot = faseInicial; pot >= 2; pot /= 2) {
+    for (let idxFase = 0; idxFase < fasesRenderizar.length; idxFase++) {
+        const pot = fasesRenderizar[idxFase];
         const rotuloFase = (typeof obterRotuloFaseMataMataSaaS === 'function')
             ? obterRotuloFaseMataMataSaaS(pot)
             : `Fase ${pot}`;
@@ -443,8 +446,8 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
         const ehMobile = window.innerWidth <= 768; 
 
 		rodadaFase.forEach((confItem, idxJogo) => {
-			// 🎯 Paginação proporcional por blocos de 8 jogos (PC e Celular)
-			if (totalJogosR1 > jogosPorBloco) {
+			// Paginação por blocos apenas nas fases preliminares; na reta final exibe as duas semifinais completas
+			if (!ehEtapaFinal && totalJogosR1 > jogosPorBloco) {
 				if (idxJogo < inicioJogoPot || idxJogo >= fimJogoPot) {
 					return;
 				}
@@ -530,31 +533,31 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
 					</div>
 				`;
             }
-        });
+        }); 
 
-		const estiloColuna = ehMobile ? 'style="display: flex; flex-direction: column; flex: 1;"' : '';
-		const estiloMatches = ehMobile ? 'style="display: flex; flex-direction: column; justify-content: space-around !important; flex: 1;"' : '';
+		const estiloColuna = 'style="display: flex; flex-direction: column; flex: 1 1 0; min-width: 0 !important; width: 0 !important;"';
+		const estiloMatches = 'style="display: flex; flex-direction: column; justify-content: space-around !important; flex: 1; width: 100%; box-sizing: border-box;"';
 		
 		htmlColunas += `
 			<div class="bracket-column" ${estiloColuna}>
-				<div class="column-header">${rotuloFase}</div>
+				<div class="column-header" style="width: 100%; box-sizing: border-box;">${rotuloFase}</div>
 				<div class="bracket-column-matches" ${estiloMatches}>${htmlCardsJogo}
 				</div>
 			</div>
 		`;
 	}
 	
-    const btnNavLeft = `
-        <button type="button" class="bracket-nav-btn left" onclick="rolarMataMataSaaS(-1)" title="Fase Anterior" data-html2canvas-ignore="true">
+    const btnNavLeft = (etapaAtivaMataMataSaaS > 0) ? `
+        <button type="button" class="bracket-nav-btn left" onclick="rolarMataMataSaaS(-1)" title="Fase Anterior" data-html2canvas-ignore="true" style="display: flex !important;">
             <span class="material-icons" style="font-size: 18px;">chevron_left</span>
         </button>
-    `;
+    ` : '';
 
-    const btnNavRight = `
-        <button type="button" class="bracket-nav-btn right" onclick="rolarMataMataSaaS(1)" title="Próxima Fase" data-html2canvas-ignore="true">
+    const btnNavRight = (etapaAtivaMataMataSaaS < totalEtapas - 1) ? `
+        <button type="button" class="bracket-nav-btn right" onclick="rolarMataMataSaaS(1)" title="Próxima Fase" data-html2canvas-ignore="true" style="display: flex !important;">
             <span class="material-icons" style="font-size: 18px;">chevron_right</span>
         </button>
-    `;
+    ` : '';
 
     const btnPngHtml = `
         <button type="button" class="btn-png-saas" onclick="exportarMataMataPNGSaaS()" title="Exportar Chave em PNG" data-html2canvas-ignore="true">
@@ -572,21 +575,13 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
 		</button>
 	`;
 
-    const estiloViewportMobile = ehMobile 
-        ? 'style="overflow-x: auto !important; overflow-y: auto !important; max-height: 75vh !important; touch-action: pan-x pan-y !important; -webkit-overflow-scrolling: touch !important;"' 
-        : '';
-
-    const estiloWrapperMobile = ehMobile
-        ? 'style="display: flex; flex-direction: row; align-items: stretch; min-height: 100%; width: max-content;"'
-        : '';
-
     containerAlvo.innerHTML = `
         <div class="full-bracket-container" id="area-capture-matamata" style="position: relative; width: 100%;">
             ${htmlDropdownSaaS}
             ${btnNavLeft}
             ${btnNavRight}
-            <div class="bracket-scroll-viewport" id="bracket-scroll-viewport" ${estiloViewportMobile}>
-				<div class="bracket-wrapper" ${estiloWrapperMobile}>
+            <div class="bracket-scroll-viewport" id="bracket-scroll-viewport" style="overflow-x: hidden !important; overflow-y: auto !important; width: 100%; box-sizing: border-box; padding: 2px 4px 52px 4px;">
+				<div class="bracket-wrapper" style="display: flex; flex-direction: row; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box;">
 					${htmlColunas}
 				</div>
 			</div>
@@ -600,10 +595,8 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
         const viewport = document.getElementById('bracket-scroll-viewport');
         if (viewport) {
             viewport.onscroll = () => {
-                atualizarVisibilidadeSetasSaaS();
                 agendarVerificacaoFaseSaaS();
             };
-            atualizarVisibilidadeSetasSaaS();
         }
     }, 50);
 }
