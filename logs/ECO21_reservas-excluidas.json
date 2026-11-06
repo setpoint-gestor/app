@@ -3385,5 +3385,26 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-06T21:48:43.950Z",
+    "dataLocal": "06/11/2026, 18:48:43",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "14:00 - 15:00",
+    "duracao": "1 Hora",
+    "data": "07-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Del Potro": true
+    },
+    "jogadores": "Del Potro",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO",
+    "slotsExcluidos": []
   }
 ]
