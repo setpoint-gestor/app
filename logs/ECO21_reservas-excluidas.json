@@ -3800,5 +3800,32 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-11-07T21:07:06.521Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-07T21:20:18.068Z",
+    "dataLocal": "07/11/2026, 18:20:18",
+    "autor": "JUAN MARTIN DEL POTRO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "18:00 - 19:00",
+    "duracao": "1 Hora",
+    "data": "07-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Convidado": false,
+      "Del Potro": true
+    },
+    "jogadores": "Del Potro, Convidado",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, Carlos Silva (Convidado)",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 18
+      }
+    ]
   }
 ]
