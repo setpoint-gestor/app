@@ -4091,5 +4091,33 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-08T14:08:53.692Z",
+    "dataLocal": "08/11/2026, 11:08:53",
+    "autor": "JUAN MARTIN DEL POTRO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "09-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Alessandro Xavier": true,
+      "Alice Pereira": true,
+      "Del Potro": true
+    },
+    "jogadores": "Del Potro, Alessandro Xavier, Alice Pereira",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, ALESSANDRO ROMERO XAVIER, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "dia": 1,
+        "hora": 6
+      }
+    ]
   }
 ]
