@@ -4146,5 +4146,32 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-11-08T14:08:57.991Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-08T14:21:48.008Z",
+    "dataLocal": "08/11/2026, 11:21:48",
+    "autor": "JUAN MARTIN DEL POTRO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "11:00 - 12:00",
+    "duracao": "1 Hora",
+    "data": "08-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Alex": true,
+      "Del Potro": true
+    },
+    "jogadores": "Del Potro, Alex",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 11
+      }
+    ]
   }
 ]
