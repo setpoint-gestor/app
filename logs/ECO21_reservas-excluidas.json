@@ -7133,5 +7133,27 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-09T21:59:21.522Z",
+    "dataLocal": "09/11/2026, 18:59:21",
+    "autor": "Administração (Gestor)",
+    "acao": "CONFIRMACAO_TAXA_CONVIDADO",
+    "motivo": "A taxa de convidado foi confirmada pela administração.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Convidado": true
+    },
+    "jogadores": "Alice Pereira, Convidado",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, carlos silva (Convidado)",
+    "slotsExcluidos": []
   }
 ]
