@@ -6472,5 +6472,34 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-11-09T19:43:29.007Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-09T19:43:41.230Z",
+    "dataLocal": "09/11/2026, 16:43:41",
+    "autor": "ALICE ALMEIDA PEREIRA",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Alex": true,
+      "Convidado": true
+    },
+    "jogadores": "Alice Pereira, Alex, Convidado",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ALEX SOUZA, carlos silva (Convidado)",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 6
+      }
+    ]
   }
 ]
