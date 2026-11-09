@@ -6414,5 +6414,63 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-11-09T19:41:57.069Z"
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ALICE ALMEIDA PEREIRA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true,
+      "Convidado": true
+    },
+    "data": "10-11-2026",
+    "dataLocal": "09/11/2026, 16:43:08",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Alice Pereira, Alex, Convidado",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ALEX SOUZA, carlos silva (Convidado)",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 6,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-11-09T19:43:08.170Z"
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ALICE ALMEIDA PEREIRA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true,
+      "Convidado": true
+    },
+    "data": "10-11-2026",
+    "dataLocal": "09/11/2026, 16:43:29",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Alice Pereira, Alex, Convidado, Convidado",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ALEX SOUZA, carlos silva (Convidado), teste (Convidado)",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 6,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-11-09T19:43:29.007Z"
   }
 ]
