@@ -7062,5 +7062,27 @@
     "jogadores": "Alice Pereira, Convidado, Convidado, Convidado",
     "jogadores_completo": "ALICE ALMEIDA PEREIRA, calos silva (Convidado), jose maria (Convidado), joao beto (Convidado)",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-09T21:56:25.699Z",
+    "dataLocal": "09/11/2026, 18:56:25",
+    "autor": "Administração (Gestor)",
+    "acao": "CONFIRMACAO_TAXA_CONVIDADO",
+    "motivo": "A taxa de convidado foi confirmada pela administração.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Convidado": false
+    },
+    "jogadores": "Alice Pereira, Convidado, Convidado, Convidado",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, calos silva (Convidado), jose maria (Convidado), joao beto (Convidado)",
+    "slotsExcluidos": []
   }
 ]
