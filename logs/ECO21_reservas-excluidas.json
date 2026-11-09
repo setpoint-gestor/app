@@ -7218,5 +7218,35 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true,
+      "Almir": true,
+      "Convidado": false
+    },
+    "data": "10-11-2026",
+    "dataLocal": "09/11/2026, 19:08:42",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Alice Pereira, Convidado, Alex, Almir",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, carlos silva (Convidado), ALEX SOUZA, ALMIR ALVES DA CRUZ",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 4, Confirmado(s) 3)",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 6,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-11-09T22:08:42.990Z"
   }
 ]
