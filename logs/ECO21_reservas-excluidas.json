@@ -7155,5 +7155,38 @@
     "jogadores": "Alice Pereira, Convidado",
     "jogadores_completo": "ALICE ALMEIDA PEREIRA, carlos silva (Convidado)",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-09T21:59:49.802Z",
+    "dataLocal": "09/11/2026, 18:59:49",
+    "autor": "ALICE ALMEIDA PEREIRA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "A edição da reserva diminuiu os participantes e o total ficou inferior ao quórum exigido (2 jogadores).",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Convidado": true
+    },
+    "jogadores": "Alice Pereira, Convidado",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, carlos silva (Convidado)",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 7
+      }
+    ]
   }
 ]
