@@ -6156,5 +6156,26 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-09T16:13:44.628Z",
+    "dataLocal": "09/11/2026, 13:13:44",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true
+    },
+    "jogadores": "Alice Pereira",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": []
   }
 ]
