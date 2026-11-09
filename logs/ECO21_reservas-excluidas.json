@@ -6038,5 +6038,35 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "acao": "EDICAO_AGENDAMENTO",
+    "autor": "ALICE ALMEIDA PEREIRA",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": false,
+      "Alice Pereira": true,
+      "Ana Julia": false,
+      "Convidado": false
+    },
+    "data": "10-11-2026",
+    "dataLocal": "09/11/2026, 11:38:02",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Alice Pereira, Alex, Convidado, Ana Julia",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ALEX SOUZA, Vania Taborda (Convidado), ANA JULIA MARTINS",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "origem": "manual",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 6,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-11-09T14:38:02.032Z"
   }
 ]
