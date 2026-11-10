@@ -2219,7 +2219,7 @@ function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, status
             }
 
             // Injeta o traço divisor antes da opção de convidado
-            const linhaDivisoria = (window.innerWidth <= 767) ? '────────────' : '──────────────────────────────';
+            const linhaDivisoria = (window.innerWidth <= 767) ? '────────' : '──────────────────────────────';
             sel.innerHTML += `<option value="" disabled data-divisor="convidado" style="color: #94a3b8;">${linhaDivisoria}</option>`;
             sel.innerHTML += `<option value="convidado" ${isSlotConvidadoExistente ? 'selected' : ''}>${textoOpcaoConvidado}</option>`;
         }
