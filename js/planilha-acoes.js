@@ -128,11 +128,13 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
 		}
 	}
 
-    // 3. Vincula o botão "Excluir" (Apenas quem pode alterar E se não houver placar lançado)
+    // 3. Vincula o botão "Excluir" (Gestor/God Mode pode sempre; Organizador só pode em reservas futuras)
     const btnExcluir = document.getElementById('btn-saas-excluir-reserva');
     const temPlacarLancado = !!(dadosReserva.dadosPlacar || (dadosReserva.statusPlacar && dadosReserva.statusPlacar !== 'sem_placar'));
+    const isGestorOuGodMode = (isGestorLogado === true) || (ehAdmin === true) || !!localStorage.getItem('god_mode_clube');
+    const podeExcluir = isGestorOuGodMode || (isOProprioOrganizador && !isPassado);
 
-    if (podeAlterar && !temPlacarLancado) {
+    if (podeExcluir && !temPlacarLancado) {
         modal.classList.remove('saas-modo-leitura');
         if (btnExcluir) {
             btnExcluir.style.removeProperty('display');
@@ -152,8 +154,8 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
             };
         }
     } else {
-        if (!podeAlterar) modal.classList.add('saas-modo-leitura');
-        if (btnExcluir && temPlacarLancado) {
+        modal.classList.add('saas-modo-leitura');
+        if (btnExcluir) {
             btnExcluir.style.setProperty('display', 'none', 'important');
         }
     }
@@ -1875,7 +1877,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
             reserva2.hora = hora + 1;
             delete reserva2.borda;
             
-            database.ref(caminhoKey2).set(reserva2);
+            database.ref(caminhoKey2).set(reserva2); 
         }
 
         if (idOrg) {
@@ -2217,7 +2219,8 @@ function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, status
             }
 
             // Injeta o traço divisor antes da opção de convidado
-            sel.innerHTML += `<option value="" disabled data-divisor="convidado" style="color: #94a3b8;">──────────────────────────────</option>`;
+            const linhaDivisoria = (window.innerWidth <= 767) ? '────────────' : '──────────────────────────────';
+            sel.innerHTML += `<option value="" disabled data-divisor="convidado" style="color: #94a3b8;">${linhaDivisoria}</option>`;
             sel.innerHTML += `<option value="convidado" ${isSlotConvidadoExistente ? 'selected' : ''}>${textoOpcaoConvidado}</option>`;
         }
     }
