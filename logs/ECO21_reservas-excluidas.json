@@ -7271,5 +7271,37 @@
     "jogadores": "Alex, Alice Pereira, Convidado",
     "jogadores_completo": "ALEX SOUZA, ALICE ALMEIDA PEREIRA, Carlos silva (Convidado)",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-10T00:58:49.954Z",
+    "dataLocal": "09/11/2026, 21:58:49",
+    "autor": "ALEX SOUZA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 10:00",
+    "duracao": "2 Horas",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true,
+      "Convidado": true
+    },
+    "jogadores": "Alex, Alice Pereira, Convidado",
+    "jogadores_completo": "ALEX SOUZA, ALICE ALMEIDA PEREIRA, Carlos silva (Convidado)",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 8
+      },
+      {
+        "dia": 2,
+        "hora": 9
+      }
+    ]
   }
 ]
