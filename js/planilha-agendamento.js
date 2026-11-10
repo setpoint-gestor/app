@@ -1051,7 +1051,8 @@ function adicionarJogadorSaaS() {
 
         // 👥 Injeta separador e Convidado no final se a quadra e o horário permitirem
         if (typeof podeIncluirConvidadoSaaS === 'function' && podeIncluirConvidadoSaaS()) {
-            sel.innerHTML += '<option value="" disabled data-divisor="convidado" style="color: #94a3b8;">──────────────────────────────</option>';
+            const linhaDivisoria = isMobile ? '────────────' : '──────────────────────────────';
+            sel.innerHTML += `<option value="" disabled data-divisor="convidado" style="color: #94a3b8;">${linhaDivisoria}</option>`;
             sel.innerHTML += '<option value="convidado">Convidado / Avulso</option>';
         }
         
@@ -2431,12 +2432,13 @@ function atualizarOpcoesConvidadosNosSelectsSaaS() {
 
         if (pode) {
             if (!optDivisor) {
+                const linhaDivisoria = (window.innerWidth <= 767) ? '────────────' : '──────────────────────────────';
                 optDivisor = document.createElement('option');
                 optDivisor.value = '';
                 optDivisor.disabled = true;
                 optDivisor.dataset.divisor = 'convidado';
                 optDivisor.style.color = '#94a3b8';
-                optDivisor.textContent = '──────────────────────────────';
+                optDivisor.textContent = linhaDivisoria;
                 sel.appendChild(optDivisor);
             }
             if (!optConvidado) {
