@@ -7527,5 +7527,33 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-10T11:40:19.859Z",
+    "dataLocal": "10/11/2026, 08:40:19",
+    "autor": "JUAN MARTIN DEL POTRO",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "08:00 - 09:00",
+    "duracao": "1 Hora",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Del Potro": true,
+      "Convidado": false
+    },
+    "jogadores": "Del Potro, Convidado, Convidado",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, carlos silva (Convidado), Jose maria (Convidado)",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 4",
+        "dia": 2,
+        "hora": 8
+      }
+    ]
   }
 ]
