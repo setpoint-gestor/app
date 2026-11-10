@@ -3024,8 +3024,9 @@ function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
     const hIni = String(r.hora).padStart(2, '0') + ":00";
     const hFim = String(r.hora + duracao).padStart(2, '0') + ":00";
 
+    const mesesCurto = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-    let horarioTexto = `${hIni} às ${hFim}`;
+    let horarioTexto = `${r.hora}h`;
     let dataResumo = "Data a confirmar";
 
     if (r.dataCompleta) {
@@ -3033,8 +3034,9 @@ function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
         if (partes.length === 3) {
             const dt = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
             const diaSemanaNome = diasSemana[dt.getDay()] || '';
-            horarioTexto = `${diaSemanaNome}, ${partes[2]}/${partes[1]}/${partes[0]} • ${hIni} às ${hFim}`;
-            dataResumo = `${diaSemanaNome}, ${partes[2]}/${partes[1]}`;
+            const mesNome = mesesCurto[dt.getMonth()] || '';
+            horarioTexto = `${diaSemanaNome}, ${partes[2]} ${mesNome} • ${r.hora}h`;
+            dataResumo = `${diaSemanaNome}, ${partes[2]} ${mesNome}`;
         }
     }
 
@@ -3045,8 +3047,13 @@ function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
     let nomeConv = (convidadoItem.nomeCompleto || 'Convidado').replace(/\s*\(.*?\)\s*/g, '').trim();
     nomeConv = nomeConv.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
 
-    // 7. Parâmetros Financeiros Individuais
-    const taxaUnitStr = dadosConfigQ.Taxa || "0,00";
+    // 7. Parâmetros Financeiros Individuais (sem centavos desnecessários para não ativar o WhatsApp Pay)
+    const taxaUnitStr = dadosConfigQ.Taxa || "0";
+    const taxaNum = parseFloat(taxaUnitStr.replace(/\./g, '').replace(',', '.')) || 0;
+    const taxaFormatada = (taxaNum % 1 === 0) 
+        ? `${taxaNum}` 
+        : taxaNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     const chavePix = dadosConfigQ.ChavePix || "Chave PIX não configurada";
     const recebedor = dadosConfigQ.Recebedor || "Arena / Secretaria";
 
@@ -3070,19 +3077,19 @@ function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
 *Convite de Jogo & Taxa de Convidado*
 
 Olá, *${nomeConv}*!
-*${titularFormatado}* agendou uma partida com você:
+*${titularFormatado}* convidou você:
 
 📍 *Local:* ${nomeQuadraVisual}
 📅 *Horário:* ${horarioTexto}
-💰 *Taxa Individual:* R$ ${taxaUnitStr}
+💰 *Taxa Individual:* R$ ${taxaFormatada}
 
 🔑 *Chave PIX da Arena:* ${chavePix}
 👤 *Titular PIX:* ${recebedor}
 
 ⚠️ *Para confirmar sua vaga:*
-Faça o PIX e envie o comprovante para a Secretaria:
-📲 ${whatsSecFormatado}
-informe: Convidado • ${nomeConv} • ${dataResumo}
+Faça o PIX e envie o comprovante para:
+📲 ${whatsSecFormatado} Secretaria
+informe: Convidado • Nome • Data
 
 Nos vemos na quadra!`;
 
