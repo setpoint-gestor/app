@@ -7647,5 +7647,33 @@
     "jogadores": "Del Potro",
     "jogadores_completo": "JUAN MARTIN DEL POTRO",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-10T14:08:12.604Z",
+    "dataLocal": "10/11/2026, 11:08:12",
+    "autor": "Administração (Gestor)",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 10:00",
+    "duracao": "2 Horas",
+    "data": "13-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "RONALDO TABORDA",
+    "confirmacoes": {
+      "Taborda": true,
+      "Convidado": false
+    },
+    "jogadores": "Taborda, Convidado, Convidado",
+    "jogadores_completo": "RONALDO TABORDA, Rafael Martins (Convidado), José Carlos (Convidado)",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 8
+      }
+    ]
   }
 ]
