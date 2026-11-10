@@ -21,11 +21,11 @@
 #modal-config-ranking .header-painel {
     background: #ffffff !important;
     padding: 15px 20px !important;
-    border-bottom: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid #e2e8f0 !important; 
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.03) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03) !important; 
     flex-shrink: 0 !important;
 }
 
@@ -3064,12 +3064,6 @@ body.dark-mode .badge-pix.pendente { background: #78350f; color: #fde047; border
     right: -4px;
 }
 
-@media (max-width: 768px) {
-    .bracket-nav-btn {
-        display: none !important;
-    }
-}
-
 /* Modo Escuro */
 body.dark-mode .column-header {
     background: #262626;
@@ -3093,54 +3087,6 @@ body.dark-mode .match-player {
 
 body.dark-mode .match-player.winner {
     color: #f8fafc !important;
-}
-
-/* ======================================================== */
-/* AJUSTES EXCLUSIVOS DE MOBILE (DOTS & GESTOS)    */
-/* ======================================================== */
-.dots-bar-saas {
-    display: none;
-}
-
-@media (max-width: 768px) {
-    /* Oculta o dropdown de jogos no celular */
-    .bracket-quadrante-row {
-        display: none !important;
-    }
-
-    /* Exibe a barra de dots no rodapé centralizado no celular */
-    .dots-bar-saas {
-        display: flex !important;
-        justify-content: center;
-        align-items: center;
-        gap: 6px;
-        position: absolute;
-        bottom: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 190;
-        background: rgba(255, 255, 255, 0.92);
-        backdrop-filter: blur(4px);
-        padding: 5px 12px;
-        border-radius: 20px;
-        border: 1px solid #ddd6fe;
-        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
-    }
-
-    .dots-bar-saas .dot-item {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: #cbd5e1;
-        transition: all 0.25s ease;
-        cursor: pointer;
-    }
-
-    .dots-bar-saas .dot-item.active {
-        background: #8b5cf6;
-        width: 18px;
-        border-radius: 10px;
-    }
 }
 
 /* ======================================================== */

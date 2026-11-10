@@ -554,10 +554,11 @@ body.dark-mode .tabela-premium-config tr.linha-dia-fechada input[type="time"] { 
     white-space: nowrap;
     transition: all 0.2s;
 }
+
 .quadra-pill.ativa {
-    background-color: #10b981; 
+    background-color: var(--cor-primaria); 
     color: white;
-    border-color: #10b981;
+    border-color: var(--cor-primaria);
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
@@ -565,7 +566,7 @@ body.dark-mode .tabela-premium-config tr.linha-dia-fechada input[type="time"] { 
 .painel-controle-grade {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-between; 
     background-color: #f8fafc;
     padding: 10px 12px;
     border-radius: 10px;
@@ -703,7 +704,7 @@ body.dark-mode .tabela-premium-config tr.linha-dia-fechada input[type="time"] { 
 /* ESTADO 4: Apagada pelo Filtro de Consulta */
 .tabela-grade-interativa .celula-apagada-filtro {
     opacity: 0.3 !important;
-    filter: grayscale(100%) !important;
+    filter: grayscale(100%) !important; 
 }
 
 /* ESTADO 5: Torneio/Ranking Atribuído */
@@ -717,6 +718,14 @@ body.dark-mode .tabela-premium-config tr.linha-dia-fechada input[type="time"] { 
 /* ESTADO 6: Dupla Atribuída */
 .tabela-grade-interativa .celula-duplas-atribuida {
     background-color: var(--bg-celula-dupla) !important; 
+    color: rgba(0, 0, 0, 0.50) !important; 
+    border-color: #e2e8f0 !important; 
+    font-weight: normal !important; 
+}
+
+/* ESTADO 7: Aula Informativa / Bloqueio (Marca d'água 50%) */
+.tabela-grade-interativa .celula-aula {
+    background-color: var(--bg-celula-aula, lightcoral) !important; 
     color: rgba(0, 0, 0, 0.50) !important; 
     border-color: #e2e8f0 !important; 
     font-weight: normal !important; 
@@ -1230,4 +1239,45 @@ body.dark-mode .modal-config-janela-fullscreen .header-painel.tema-torneios {
     margin-top: 4px;
     font-family: 'Roboto', sans-serif;
     text-align: center; /* Garante a simetria centralizada abaixo do clube */
+}
+
+/* ======================================================== */
+/* 13. MÓDULO CONVIDADOS: GAVETA FINANCEIRA & VALIDAÇÕES     */
+/* ======================================================== */
+#gaveta-taxas-convidados {
+    transition: all 0.25s ease-in-out;
+}
+
+/* Borda vermelha de destaque para validação impeditiva */
+.input-app.campo-obrigatorio-pendente {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Suporte da validação ao Modo Escuro */
+body.dark-mode .input-app.campo-obrigatorio-pendente {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    border-color: #f87171 !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Suporte geral da Gaveta de Convidados ao Modo Escuro */
+body.dark-mode #gaveta-taxas-convidados {
+    background-color: #1e1e1e !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode #gaveta-taxas-convidados h4 {
+    color: #f8fafc !important;
+}
+
+body.dark-mode #gaveta-taxas-convidados label {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode #select-recebedor-convidado {
+    background-color: #262626 !important;
+    color: #f8fafc !important;
+    border-color: #444444 !important;
 }

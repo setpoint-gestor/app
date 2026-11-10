@@ -16,7 +16,7 @@
 	/* 🎨 Gradientes Inteligentes para a Tela "Ver Detalhes" */
     --gradiente-1-hora-detalhes: linear-gradient(135deg, #36b359 0%, #50c870 100%);
     --gradiente-2-horas-detalhes: linear-gradient(135deg, #2b95c6 0%, #4eb2de 100%);
-    --gradiente-ranking-detalhes: linear-gradient(135deg, #f0ac0e 0%, #f9d85c 100%);  
+    --gradiente-ranking-detalhes: linear-gradient(135deg, #f0ac0e 0%, #f9d85c 100%);   
 	
 }
 
@@ -43,7 +43,7 @@ body {
 }
 
 /* ======================================================== */
-/* TRUQUE ANTI PISCA-PISCA (FOUT) DOS ÍCONES                */
+/* 1. TRUQUE ANTI PISCA-PISCA (FOUT) DOS ÍCONES                */
 /* ======================================================== */
 .material-icons {
     font-family: 'Material Icons'; 
@@ -62,7 +62,7 @@ body {
 }
 
 /* ======================================================== */
-/* ESTRUTURA SPA E ACESSO                                   */
+/* 2. ESTRUTURA SPA E ACESSO                                   */
 /* ======================================================== */
 .tela-app { 
     display: none; 
@@ -237,7 +237,7 @@ select.input-app:focus {
 
 
 /* ==================================================================== */
-/* 💊 PÍLULAS DINÂMICAS DE NOTIFICAÇÃO (TOASTS PREMIUM)                 */
+/* 💊 3. PÍLULAS DINÂMICAS DE NOTIFICAÇÃO (TOASTS PREMIUM)                 */
 /* ==================================================================== */
 
 .toast-container {
@@ -392,7 +392,7 @@ select.input-app:focus {
 
 
 /* ========================================== */
-/* COMPONENTE: BOTTOM SHEET (iOS STYLE)       */
+/* 4. COMPONENTE: BOTTOM SHEET (iOS STYLE)       */
 /* ========================================== */
 .bottom-sheet-overlay {
     position: fixed;
@@ -699,7 +699,7 @@ body.dark-mode .btn-prompt-cancel {
 }
 
 /* ======================================================== */
-/* 🌓 AJUSTE PREMIUM: BOTÕES DO PERFIL NO MODO ESCURO       */
+/* 🌓 5. AJUSTE PREMIUM: BOTÕES DO PERFIL NO MODO ESCURO       */
 /* ======================================================== */
 
 /* 🔴 Botão "Sair da Conta" Adaptado para o Modo Dark */
@@ -743,7 +743,7 @@ body.dark-mode #tela-manutencao .btn-cinza {
 
 
 /* ======================================================== */
-/* 🌓 UNIFICAÇÃO CARBONO: DIRETRIZES DE MODO ESCURO GESTOR  */
+/* 🌓 6. UNIFICAÇÃO CARBONO: DIRETRIZES DE MODO ESCURO GESTOR  */
 /* ======================================================== */
 .dark-mode #tela-gestor-dashboard {
     background-color: #121212 !important; /* Ajustado para o Preto Carbono oficial da planilha */
@@ -780,7 +780,7 @@ body.dark-mode #tela-manutencao .btn-cinza {
 }
 
 /* ======================================================== */
-/* 🌓 COBERTURA GLOBAL: TELAS INICIAIS, BOAS-VINDAS E LOGIN */
+/* 🌓 7. COBERTURA GLOBAL: TELAS INICIAIS, BOAS-VINDAS E LOGIN */
 /* ======================================================== */
 body.dark-mode, 
 .dark-mode .tela-app {
@@ -831,7 +831,7 @@ body.dark-mode,
 
 
 /* ======================================================== */
-/* 🚨 COBERTURA DASHBOARD: ALERTA DE MANUTENÇÃO GESTOR      */
+/* 🚨 8. COBERTURA DASHBOARD: ALERTA DE MANUTENÇÃO GESTOR      */
 /* ======================================================== */
 .faixa-manutencao-SaaS {
     background-color: rgba(239, 68, 68, 0.12) !important; /* Vermelho Translúcido Alarme */
@@ -869,7 +869,7 @@ body.dark-mode .faixa-manutencao-SaaS {
 }
 
 /* ======================================================== */
-/* PÍLULA GOD MODE NO DASHBOARD DE GESTOR                   */
+/* 9. PÍLULA GOD MODE NO DASHBOARD DE GESTOR                   */
 /* ======================================================== */
 #badge-godmode-dash {
     margin-top: 4px;
@@ -887,7 +887,7 @@ body.dark-mode .faixa-manutencao-SaaS {
 }
 
 /* ======================================================== */
-/* BANNER DE DICA DE INSTALAÇÃO SAFARI/IOS                  */
+/* 10. BANNER DE DICA DE INSTALAÇÃO SAFARI/IOS                  */
 /* ======================================================== */
 .banner-dica-ios {
     position: fixed;
@@ -926,7 +926,7 @@ body.dark-mode .faixa-manutencao-SaaS {
 
 
 /* ======================================================== */
-/* CANVAS DA ANIMAÇÃO DE FUMAÇA (SISTEMA EM MANUTENÇÃO)     */
+/* 11. CANVAS DA ANIMAÇÃO DE FUMAÇA (SISTEMA EM MANUTENÇÃO)     */
 /* ======================================================== */
 .canvas-fumaca-saas {
     position: fixed;
@@ -939,7 +939,7 @@ body.dark-mode .faixa-manutencao-SaaS {
 }
 
 /* ======================================================== */
-/* ESPAÇAMENTO DE LEITURA DAS PÍLULAS DE TOAST              */
+/* 12. ESPAÇAMENTO DE LEITURA DAS PÍLULAS DE TOAST              */
 /* ======================================================== */
 .toast span {
     letter-spacing: 0.3px;
@@ -951,8 +951,8 @@ body.dark-mode #btn-tema-gestor {
 }
 
 /* ==========================================
-   ABAS DE LOGIN E SUPORTE WHATSAPP
-   ========================================== */
+/*  13. ABAS DE LOGIN E SUPORTE WHATSAPP
+/*  ========================================== */
 .tabs-login {
     display: flex;
     background: #f1f5f9;
@@ -1024,7 +1024,7 @@ body.dark-mode .card-ajuda-whats p {
 }
 
 /* ======================================================== */
-/* 🔔 MODAL CENTRAL DE NOTIFICAÇÕES (SÓCIO / SISTEMA)       */
+/* 🔔 14. MODAL CENTRAL DE NOTIFICAÇÕES (SÓCIO / SISTEMA)       */
 /* ======================================================== */
 
 .modal-overlay-notif {
@@ -1220,3 +1220,258 @@ body.dark-mode .card-notif-item { background: #1e1e1e !important; border-color: 
 body.dark-mode .card-notif-item.ranking { background: #2a2012 !important; }
 body.dark-mode .notif-titulo { color: #f8fafc !important; }
 body.dark-mode .notif-desc { color: #cbd5e1 !important; }
+
+/* ======================================================== */
+/* 15. CENTRAL DE BAIXAS: POPOVER TOPO (TAXAS DE CONVIDADOS) */
+/* ======================================================== */
+
+/* Container do Ícone $ no Cabeçalho */
+.container-btn-baixas {
+    position: relative;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #15803d; /* Verde dinheiro elegante */
+    transition: transform 0.15s ease;
+    user-select: none;
+}
+
+.container-btn-baixas:active {
+    transform: scale(0.92);
+}
+
+.container-btn-baixas .material-icons {
+    font-size: 24px;
+}
+
+/* Badge Numérico Alarme Vermelho do $ */
+.badge-baixas-alerta {
+    position: absolute;
+    top: -5px;
+    right: -7px;
+    background-color: #ef4444;
+    color: #ffffff;
+    font-size: 9.5px;
+    font-weight: 800;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.35);
+}
+
+/* Balão Popover Flutuante Suspenso */
+#popover-central-baixas {
+    position: fixed;
+    top: 42px;
+    right: 15px;
+    width: 340px;
+    max-width: 92vw;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 25000;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    animation: popoverSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes popoverSlideIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Topo do Popover */
+.popover-baixas-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.popover-baixas-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.popover-baixas-header .material-icons {
+    font-size: 18px;
+    color: #15803d;
+}
+
+.btn-fechar-popover {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 50%;
+}
+.btn-fechar-popover:hover { color: #475569; }
+
+/* Lista de Taxas Rolável */
+.popover-baixas-body {
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+/* Cartão Individual de Cada Reserva com Convidado Pendente */
+.card-baixa-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.baixa-linha-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.baixa-nome-org {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 190px;
+}
+
+.baixa-valor-tag {
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid #bbf7d0;
+}
+
+.baixa-linha-info {
+    font-size: 12px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.baixa-timer-tag {
+    color: #d97706;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+}
+
+.baixa-timer-tag .material-icons {
+    font-size: 13px;
+}
+
+/* Botões de Ação do Gestor (Confirmar vs Recusar) */
+.baixa-botoes-grupo {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.btn-baixa-acao {
+    flex: 1;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: transform 0.1s ease, opacity 0.15s;
+}
+
+.btn-baixa-acao:active { transform: scale(0.96); }
+
+.btn-baixa-confirmar {
+    background: #16a34a;
+    color: #ffffff;
+}
+.btn-baixa-confirmar:hover { background: #15803d; }
+
+.btn-baixa-recusar {
+    background: #f1f5f9;
+    color: #ef4444;
+    border: 1px solid #cbd5e1;
+}
+.btn-baixa-recusar:hover { background: #fee2e2; }
+
+/* Estado Vazio (Sem pendências) */
+.baixas-vazio {
+    padding: 24px 12px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* 🌓 Compatibilidade Integral com Modo Escuro */
+body.dark-mode .container-btn-baixas { color: #4ade80; }
+body.dark-mode .badge-baixas-alerta { border-color: #1e1e1e; }
+body.dark-mode #popover-central-baixas {
+    background: #1e1e1e !important;
+    border-color: #333333 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+body.dark-mode .popover-baixas-header {
+    background: #252525 !important;
+    border-bottom-color: #333333 !important;
+}
+body.dark-mode .popover-baixas-header h4 { color: #f8fafc !important; }
+body.dark-mode .popover-baixas-body { background: #1e1e1e !important; }
+body.dark-mode .card-baixa-item {
+    background: #252525 !important;
+    border-color: #333333 !important;
+}
+body.dark-mode .baixa-nome-org { color: #f8fafc !important; }
+body.dark-mode .baixa-linha-info { color: #94a3b8 !important; }
+body.dark-mode .baixa-valor-tag {
+    background: rgba(34, 197, 94, 0.18) !important;
+    color: #4ade80 !important;
+    border-color: rgba(34, 197, 94, 0.4) !important;
+}
+body.dark-mode .btn-baixa-recusar {
+    background: #2d2d2d !important;
+    color: #f87171 !important;
+    border-color: #444444 !important;
+}
+body.dark-mode .baixas-vazio { color: #64748b; }
