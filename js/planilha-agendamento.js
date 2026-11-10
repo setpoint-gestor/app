@@ -1051,7 +1051,7 @@ function adicionarJogadorSaaS() {
 
         // 👥 Injeta separador e Convidado no final se a quadra e o horário permitirem
         if (typeof podeIncluirConvidadoSaaS === 'function' && podeIncluirConvidadoSaaS()) {
-            const linhaDivisoria = isMobile ? '────────────' : '──────────────────────────────';
+            const linhaDivisoria = isMobile ? '────────' : '──────────────────────────────';
             sel.innerHTML += `<option value="" disabled data-divisor="convidado" style="color: #94a3b8;">${linhaDivisoria}</option>`;
             sel.innerHTML += '<option value="convidado">Convidado / Avulso</option>';
         }
@@ -2432,7 +2432,7 @@ function atualizarOpcoesConvidadosNosSelectsSaaS() {
 
         if (pode) {
             if (!optDivisor) {
-                const linhaDivisoria = (window.innerWidth <= 767) ? '────────────' : '──────────────────────────────';
+                const linhaDivisoria = (window.innerWidth <= 767) ? '────────' : '──────────────────────────────';
                 optDivisor = document.createElement('option');
                 optDivisor.value = '';
                 optDivisor.disabled = true;
