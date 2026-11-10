@@ -853,9 +853,22 @@ function solicitarExclusaoReservaSaaS(dia, hora, dadosReserva) {
     const organizadorReserva = (dadosReserva.organizador || "").trim().toUpperCase();
     const usuarioAtivoNome = nomeLogado.trim().toUpperCase();
 
-    const podeExcluir = (isGestorLogado === true) || (ehAdmin === true) || 
-                        (organizadorReserva === usuarioAtivoNome) || 
-                        (organizadorReserva === apelidoLogado);
+    // MÁGICA TEMPORAL: Calcula se a partida já encerrou (Hora do Fim < Agora)
+    const duracaoReal = dadosReserva.duracao_calculada || parseInt(dadosReserva.duracao) || 1;
+    let isPassado = false;
+    if (dadosReserva.dataCompleta) {
+        const partesData = dadosReserva.dataCompleta.split('-');
+        if (partesData.length === 3) {
+            const dataFimPartida = new Date(parseInt(partesData[0]), parseInt(partesData[1]) - 1, parseInt(partesData[2]), hora + duracaoReal, 0, 0, 0);
+            if (dataFimPartida.getTime() < Date.now()) {
+                isPassado = true;
+            }
+        }
+    }
+
+    const isGestorOuGodMode = (isGestorLogado === true) || !!localStorage.getItem('god_mode_clube');
+    const isOProprioOrganizador = (organizadorReserva === usuarioAtivoNome) || (organizadorReserva === apelidoLogado);
+    const podeExcluir = isGestorOuGodMode || ((isOProprioOrganizador || ehAdmin === true) && !isPassado);
 
     const ehAula = (dadosReserva.tipo === 'aula' || (dadosReserva.jogadores && dadosReserva.jogadores.toLowerCase() === 'aula'));
     const ehManutencao = (dadosReserva.tipo === 'manutencao' || (dadosReserva.jogadores && dadosReserva.jogadores.includes('Manutenção')));
@@ -865,8 +878,10 @@ function solicitarExclusaoReservaSaaS(dia, hora, dadosReserva) {
             showToast("Apenas o Professor responsável ou um administrador pode cancelar esta aula.", "error");
         } else if (ehManutencao) {
             showToast("Apenas o responsável ou um administrador pode cancelar esta manutenção.", "error");
+        } else if (isPassado && !isGestorOuGodMode) {
+            showToast("Partidas passadas só podem ser excluídas pelo Gestor.", "error");
         } else {
-            showToast("Apenas o organizador da reserva ou um administrador pode excluir este agendamento.", "error");
+            showToast("Apenas o organizador da reserva ou a administração pode excluir este agendamento.", "error");
         }
         return;
     }

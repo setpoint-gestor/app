@@ -2424,7 +2424,7 @@ function atualizarOpcoesConvidadosNosSelectsSaaS() {
     if (!container) return;
 
     const pode = podeIncluirConvidadoSaaS();
-    const selects = container.querySelectorAll('select.saas-field-atleta');
+    const selects = container.querySelectorAll('select.saas-field-atleta'); 
 
     selects.forEach(sel => {
         let optConvidado = sel.querySelector('option[value="convidado"]');
@@ -3026,6 +3026,7 @@ function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
 
     const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
     let horarioTexto = `${hIni} às ${hFim}`;
+    let dataResumo = "Data a confirmar";
 
     if (r.dataCompleta) {
         const partes = r.dataCompleta.split('-');
@@ -3033,6 +3034,7 @@ function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
             const dt = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
             const diaSemanaNome = diasSemana[dt.getDay()] || '';
             horarioTexto = `${diaSemanaNome}, ${partes[2]}/${partes[1]}/${partes[0]} • ${hIni} às ${hFim}`;
+            dataResumo = `${diaSemanaNome}, ${partes[2]}/${partes[1]}`;
         }
     }
 
@@ -3048,10 +3050,19 @@ function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
     const chavePix = dadosConfigQ.ChavePix || "Chave PIX não configurada";
     const recebedor = dadosConfigQ.Recebedor || "Arena / Secretaria";
 
-    // 8. Link para envio do comprovante à Secretaria
-    const linkSecretaria = whatsSecretaria 
-        ? `https://wa.me/${whatsSecretaria}?text=${encodeURIComponent("Olá, segue o comprovante da taxa de convidado de " + nomeConv)}` 
-        : `wa.me/secretaria`;
+    // 8. Formatação do WhatsApp da Secretaria para exibição direta
+    const whatsSecRaw = (dadosConfigQ.Whatsapp || dadosConfigQ.WhatsApp || dadosConfigQ.whatsapp || confGeral.Whatsapp || confGeral.WhatsApp || '').replace(/\D/g, '');
+    let whatsSecFormatado = dadosConfigQ.Whatsapp || confGeral.Whatsapp || '';
+
+    if (whatsSecRaw.length === 11) {
+        whatsSecFormatado = `(${whatsSecRaw.substring(0, 2)}) ${whatsSecRaw.substring(2, 7)}-${whatsSecRaw.substring(7)}`;
+    } else if (whatsSecRaw.length === 10) {
+        whatsSecFormatado = `(${whatsSecRaw.substring(0, 2)}) ${whatsSecRaw.substring(2, 6)}-${whatsSecRaw.substring(6)}`;
+    } else if (whatsSecRaw.length === 13 && whatsSecRaw.startsWith('55')) {
+        whatsSecFormatado = `(${whatsSecRaw.substring(2, 4)}) ${whatsSecRaw.substring(4, 9)}-${whatsSecRaw.substring(9)}`;
+    } else if (whatsSecRaw.length === 12 && whatsSecRaw.startsWith('55')) {
+        whatsSecFormatado = `(${whatsSecRaw.substring(2, 4)}) ${whatsSecRaw.substring(4, 8)}-${whatsSecRaw.substring(8)}`;
+    }
 
     // 9. Mensagem de cobrança e convite para o Visitante
     const textoMensagemConvidado = 
@@ -3069,10 +3080,11 @@ Olá, *${nomeConv}*!
 👤 *Titular PIX:* ${recebedor}
 
 ⚠️ *Para confirmar sua vaga:*
-Faça o PIX de R$ ${taxaUnitStr} e envie o comprovante diretamente para a secretaria da arena no link:
-👉 ${linkSecretaria}
+Faça o PIX e envie o comprovante para a Secretaria:
+📲 ${whatsSecFormatado}
+informe: Convidado • ${nomeConv} • ${dataResumo}
 
-_Nos vemos na quadra!_`;
+Nos vemos na quadra!`;
 
     // 10. Abertura do WhatsApp do Convidado
     const url = `https://api.whatsapp.com/send?phone=${whatsDestinoConvidado}&text=${encodeURIComponent(textoMensagemConvidado)}`;
