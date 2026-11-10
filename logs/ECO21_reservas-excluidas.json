@@ -7468,5 +7468,36 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-10T10:59:39.720Z",
+    "dataLocal": "10/11/2026, 07:59:39",
+    "autor": "ALEX SOUZA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Alex, Alice Pereira",
+    "jogadores_completo": "ALEX SOUZA, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 7
+      },
+      {
+        "dia": 2,
+        "hora": 8
+      }
+    ]
   }
 ]
