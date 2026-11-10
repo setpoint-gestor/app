@@ -24,7 +24,7 @@ let contAtletas = 1;
 
 // Controles de sincronização para a trava da tela de carregamento (UX Premium)
 window.saasFaxinaPronta = false;
-window.saasSnapshotInicialRecebido = false;      
+window.saasSnapshotInicialRecebido = false;       
 
 
 // ==========================================
@@ -809,7 +809,7 @@ function plotarReservasAtivas(reservas) {
         const confs = r.confirmacoes || {};
 
         const formatarNomeAtleta = (nomeBruto, index) => {
-            const nomeStr = nomeBruto.trim();
+            let nomeStr = nomeBruto.trim();
             const nomeUpper = nomeStr.toUpperCase();
             
             if (nomeUpper === 'AULA' || nomeUpper === 'DUPLA') return nomeStr;
@@ -821,11 +821,29 @@ function plotarReservasAtivas(reservas) {
             }
             
             let isPendente = false;
-            Object.keys(confs).forEach(k => {
-                if (confs[k] === false && k.toUpperCase() === nomeUpper) {
-                    isPendente = true;
+
+            if (nomeUpper.includes('CONVIDADO')) {
+                nomeStr = "Convidado";
+                if (r.dadosConvidados) {
+                    const listaCompletos = (r.jogadores_completo || '').split(',').map(s => s.trim());
+                    const nomeCompletoDeste = listaCompletos[index] || '';
+                    const cLimpo = nomeCompletoDeste.replace(/\s*\(convidado\)/i, '').trim().toLowerCase();
+                    const chaveMatch = Object.keys(r.dadosConvidados).find(k => k.trim().toLowerCase() === cLimpo);
+                    if (chaveMatch) {
+                        isPendente = (r.dadosConvidados[chaveMatch].statusTaxa !== 'pago');
+                    } else {
+                        isPendente = (confs['Convidado'] === false);
+                    }
+                } else {
+                    isPendente = (confs['Convidado'] === false);
                 }
-            });
+            } else {
+                Object.keys(confs).forEach(k => {
+                    if (confs[k] === false && k.toUpperCase() === nomeUpper) {
+                        isPendente = true;
+                    }
+                });
+            }
 
             if (isPendente) {
                 classes.push("nome-pendente-grade");
@@ -1242,7 +1260,7 @@ function abrirMapaQuadrasMobile() {
                             btnNome.style.color = 'white'; 
                             btnNome.style.borderColor = 'var(--cor-primaria)';
                         }
-                    }
+                    } // linha 1250
                     grid.appendChild(btnNum);
                     grid.appendChild(btnNome);
                 }
@@ -1628,7 +1646,13 @@ function renderizarAgendaPessoalSaaS() {
             if (ehRanking) {
                 badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px;">🏆 Ranking</span>`;
             } else if (statusReserva === 'pendente' || stPlacar === 'pendente_validacao') {
-                badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #d97706; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px;">Pendente</span>`;
+                const temConvidado = (r.dadosConvidados && Object.keys(r.dadosConvidados).length > 0) || 
+                                     (r.jogadores_completo || r.jogadores || '').toLowerCase().includes('convidado');
+                if (temConvidado && statusReserva === 'pendente') {
+                    badgeStatusHtml = `<span onclick="abrirCheckoutPelaAgendaSaaS('${quadraKey}', '${slotKey}')" style="font-size: 9.5px; font-weight: 800; color: #d97706; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px; cursor: pointer; text-decoration: underline;" title="Clique para abrir o pagamento da taxa de convidado">Pendente $</span>`;
+                } else {
+                    badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #d97706; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px;">Pendente</span>`;
+                }
             } else {
                 badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #15803d; background: #dcfce7; border: 1px solid #86efac; padding: 2px 6px; border-radius: 6px;">Confirmado</span>`;
             }
@@ -1691,6 +1715,21 @@ function renderizarAgendaPessoalSaaS() {
     htmlCards += `</div>`;
 
     container.innerHTML = htmlCards;
+}
+
+function abrirCheckoutPelaAgendaSaaS(quadraKey, slotKey) {
+    if (!reservasGeralGlobal || !reservasGeralGlobal[quadraKey] || !reservasGeralGlobal[quadraKey][slotKey]) return;
+    const r = reservasGeralGlobal[quadraKey][slotKey];
+    const reservaPayload = { ...r, dia: r.dia, hora: r.hora };
+    if (typeof toggleAgendaVisual === 'function') {
+        const bloco = document.getElementById('agenda-conteudo');
+        if (bloco && bloco.style.display === 'block') {
+            toggleAgendaVisual();
+        }
+    }
+    if (typeof abrirCheckoutConvidadoSaaS === 'function') {
+        abrirCheckoutConvidadoSaaS(reservaPayload, quadraKey);
+    }
 }
 
 function sairDaVisaoQuadras() {
@@ -2385,3 +2424,580 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
     }
 	
 }
+
+
+// ========================================================
+// 12. CENTRAL DE BAIXAS: POPOVER TOPO (TAXAS DE CONVIDADOS)
+// ========================================================
+
+let intervaloTimerBaixasSaaS = null;
+
+/**
+ * Atualiza a visibilidade dos botões $ e a contagem de taxas pendentes
+ * (Sincronizado tanto no Dashboard do Gestor quanto na Visão das Quadras)
+ */
+function atualizarBadgeBaixasSaaS(todasAsReservasParam) {
+    const btnContainer = document.getElementById('container-btn-baixas');
+    const badgeContador = document.getElementById('badge-baixas-contador');
+    const btnContainerDash = document.getElementById('container-btn-baixas-dash');
+    const badgeContadorDash = document.getElementById('badge-baixas-contador-dash');
+
+    // 1. Portaria: Visível apenas para o Gestor Mestre ou perfil Administrador
+    let ehAdmin = false;
+    try {
+        const perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}');
+        ehAdmin = perfis['Admin'] === true;
+    } catch (e) {}
+
+    const temPermissao = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || ehAdmin;
+
+    if (!temPermissao) {
+        if (btnContainer) btnContainer.style.display = 'none';
+        if (btnContainerDash) btnContainerDash.style.display = 'none';
+        fecharPopoverBaixasSaaS();
+        return;
+    }
+
+    // Exibe os botões para quem tem permissão
+    if (btnContainer) btnContainer.style.display = 'inline-flex';
+    if (btnContainerDash) btnContainerDash.style.display = 'inline-flex';
+
+    // 2. Identificação das reservas com convidados pendentes
+    const fonteReservas = todasAsReservasParam || (typeof reservasGeralGlobal !== 'undefined' ? reservasGeralGlobal : reservasLocaisCache) || {};
+    const pendencias = obterListaReservasComConvidadosPendentesSaaS(fonteReservas);
+
+    const total = pendencias.length;
+
+    // Atualiza o crachá na Visão das Quadras
+    if (badgeContador) {
+        badgeContador.textContent = String(total);
+        badgeContador.style.display = total > 0 ? 'flex' : 'none';
+    }
+
+    // Atualiza o crachá no Dashboard do Gestor
+    if (badgeContadorDash) {
+        badgeContadorDash.textContent = String(total);
+        badgeContadorDash.style.display = total > 0 ? 'flex' : 'none';
+    }
+
+    // Se o Popover estiver aberto na tela, repinta a lista em tempo real
+    const popover = document.getElementById('popover-central-baixas');
+    if (popover && popover.style.display === 'flex') {
+        renderizarListaBaixasPopoverSaaS(pendencias);
+    }
+}
+
+/**
+ * Varre a matriz de reservas e retorna os itens elegíveis para baixa financeira
+ */
+function obterListaReservasComConvidadosPendentesSaaS(todasAsReservas) {
+    const lista = [];
+    const agora = Date.now();
+
+    Object.keys(todasAsReservas || {}).forEach(quadraKey => {
+        const slots = todasAsReservas[quadraKey] || {};
+        Object.keys(slots).forEach(slotKey => {
+            const r = slots[slotKey];
+            if (!r || r.status === 'aula_cancelada') return;
+            if (r.borda === undefined && parseInt(r.duracao) === 2) return; // Evita duplicidade no bloco de 2h
+
+            const stringJogadores = (r.jogadores_completo || r.jogadores || '').toLowerCase();
+            const temConvidadoNaLista = stringJogadores.includes('convidado');
+
+            if (!temConvidadoNaLista) return;
+
+            // Filtro rigoroso: mapeia estritamente os convidados cujo statusTaxa ainda não seja 'pago'
+            const dadosC = r.dadosConvidados || {};
+            const confs = r.confirmacoes || {};
+            const pendentesNomes = [];
+
+            if (Object.keys(dadosC).length > 0) {
+                Object.keys(dadosC).forEach(cNome => {
+                    if (dadosC[cNome].statusTaxa !== 'pago') {
+                        pendentesNomes.push(cNome);
+                    }
+                });
+            } else {
+                // Fallback para reservas legadas que não tenham o nó dadosConvidados
+                Object.keys(confs).forEach(nome => {
+                    if (confs[nome] === false && nome.toLowerCase().includes('convidado')) {
+                        pendentesNomes.push(nome);
+                    }
+                });
+            }
+
+            const qtdPendentes = pendentesNomes.length;
+
+            // Só entra na lista do gestor se houver convidados com taxa pendente dentro do prazo
+            if (qtdPendentes > 0 && r.expiraEm && r.expiraEm > agora) {
+                lista.push({
+                    quadraKey: quadraKey,
+                    slotKey: slotKey,
+                    dados: r,
+                    qtdConvidados: qtdPendentes,
+                    convidadosPendentes: pendentesNomes
+                });
+            }
+        });
+    });
+
+    // Ordenação por tempo restante de expiração (os mais urgentes no topo)
+    lista.sort((a, b) => (a.dados.expiraEm || 0) - (b.dados.expiraEm || 0));
+    return lista;
+}
+
+/**
+ * Alterna a exibição do balão Popover da Central de Baixas
+ */
+function alternarPopoverBaixasSaaS() {
+    const popover = document.getElementById('popover-central-baixas');
+    if (!popover) return;
+
+    if (popover.style.display === 'flex') {
+        fecharPopoverBaixasSaaS();
+    } else {
+        if (navigator.vibrate) navigator.vibrate(25);
+        popover.style.display = 'flex';
+        renderizarListaBaixasPopoverSaaS();
+    }
+}
+
+/**
+ * Fecha o balão Popover
+ */
+function fecharPopoverBaixasSaaS() {
+    const popover = document.getElementById('popover-central-baixas');
+    if (popover) popover.style.display = 'none';
+
+    if (intervaloTimerBaixasSaaS) {
+        clearInterval(intervaloTimerBaixasSaaS);
+        intervaloTimerBaixasSaaS = null;
+    }
+}
+
+/**
+ * Renderiza os cartões de confirmação de taxa dentro do Popover
+ */
+function renderizarListaBaixasPopoverSaaS(listaItensParam) {
+    const container = document.getElementById('lista-baixas-popover');
+    if (!container) return;
+
+    const fonte = (typeof reservasGeralGlobal !== 'undefined' ? reservasGeralGlobal : reservasLocaisCache) || {};
+    const itens = listaItensParam || obterListaReservasComConvidadosPendentesSaaS(fonte);
+
+    if (itens.length === 0) {
+        container.innerHTML = '<div class="baixas-vazio">Nenhuma taxa de convidado pendente.</div>';
+        if (intervaloTimerBaixasSaaS) {
+            clearInterval(intervaloTimerBaixasSaaS);
+            intervaloTimerBaixasSaaS = null;
+        }
+        return;
+    }
+
+    const diasCurto = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    let html = '';
+
+    itens.forEach(item => {
+        const r = item.dados;
+        const duracao = parseInt(r.duracao) || 1;
+
+        // Formatação da data
+        let dataTexto = '';
+        if (r.dataCompleta) {
+            const partes = r.dataCompleta.split('-');
+            if (partes.length === 3) {
+                const dt = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+                dataTexto = `${diasCurto[dt.getDay()]}, ${partes[2]}/${partes[1]}`;
+            }
+        }
+
+        const hIni = String(r.hora).padStart(2, '0') + ':00';
+        const hFim = String(r.hora + duracao).padStart(2, '0') + ':00';
+
+        // Nome da quadra amigável
+        let nomeQuadra = item.quadraKey;
+        const numQ = item.quadraKey.match(/\d+/);
+        if (numQ && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+            const dq = configQuadrasGlobal.nomes[numQ[0]];
+            if (dq) nomeQuadra = typeof dq === 'object' ? (dq.nome || `Quadra ${numQ[0]}`) : dq;
+        }
+
+        // Cálculo da taxa unitária e multiplicativa
+        let taxaUnitStr = '0,00';
+        if (numQ && typeof configConvidadosGlobal !== 'undefined' && configConvidadosGlobal[`Quadra${numQ[0]}`]?.Taxa) {
+            taxaUnitStr = configConvidadosGlobal[`Quadra${numQ[0]}`].Taxa;
+        } else if (typeof configConvidadosGlobal !== 'undefined' && configConvidadosGlobal?.Taxa) {
+            taxaUnitStr = configConvidadosGlobal.Taxa;
+        }
+
+        const taxaUnitNum = parseFloat(taxaUnitStr.replace(/\./g, '').replace(',', '.')) || 0;
+        const taxaTotalNum = taxaUnitNum * item.qtdConvidados;
+        const taxaTotalFmt = taxaTotalNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const rotuloValorTop = `R$ ${taxaTotalFmt}`;
+
+        const orgNomeExibicao = r.organizador ? r.organizador.replace(/\s*\(.*?\)\s*/g, '').trim().toUpperCase() : 'ORGANIZADOR';
+        const rotuloConvidado = item.qtdConvidados > 1 ? "Convidados:" : "Convidado:";
+
+        // Montagem da Lista de Checkboxes (apenas convidados com taxa pendente)
+        let listaConvidadosHtml = '';
+        const convidadosChaves = item.convidadosPendentes || Object.keys(r.dadosConvidados || {});
+        
+        if (convidadosChaves.length === 0) {
+            listaConvidadosHtml = `
+                <label class="check-row">
+                    <input type="checkbox">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <span class="texto-convidado-baixa">Convidado Avulso</span>
+                        <span style="font-size: 13px; font-weight: 700; color: #475569;">R$ ${taxaUnitStr}</span>
+                    </div>
+                </label>
+            `;
+        } else {
+            convidadosChaves.forEach(c => {
+                const nomeBruto = r.dadosConvidados[c].nomeCompleto || c;
+                const nomeTitleCase = nomeBruto.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+                
+                listaConvidadosHtml += `
+                    <label class="check-row">
+                        <input type="checkbox" data-nome="${c}">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span class="texto-convidado-baixa">${nomeTitleCase}</span>
+                            <span style="font-size: 13px; font-weight: 700; color: #475569;">R$ ${taxaUnitStr}</span>
+                        </div>
+                    </label>
+                `;
+            });
+        }
+
+        const nomeUnicoConvidado = convidadosChaves.length > 0 
+            ? ((r.dadosConvidados && r.dadosConvidados[convidadosChaves[0]] && r.dadosConvidados[convidadosChaves[0]].nomeCompleto) || convidadosChaves[0]).toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()) 
+            : 'Convidado Avulso';
+
+        html += `
+            <div class="card-baixa-item" id="card-baixa-${item.quadraKey}-${item.slotKey}" style="border: none !important; padding: 0 !important; background: transparent !important; box-shadow: none !important;">
+                <fieldset class="prompt-saas-fieldset" style="margin: 0 0 10px 0; padding: 12px 14px; text-align: left; background-color: #ffffff;">
+                    <legend class="prompt-saas-legend">${nomeQuadra}</legend>
+                    
+                    <div class="conteudo-interno-caixa">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="display: flex; flex-direction: column;">
+                                ${item.qtdConvidados === 1 ? `
+                                <div class="texto-convidado-baixa">
+                                    <span class="rotulo-convidado">${rotuloConvidado}</span> ${nomeUnicoConvidado}
+                                </div>
+                                ` : ''}
+                                <div class="texto-org-baixa" style="${item.qtdConvidados > 1 ? 'margin-bottom: 4px;' : 'margin-top: 2px;'}">
+                                    Org: <b>${orgNomeExibicao}</b>
+                                </div>
+                                ${item.qtdConvidados > 1 ? `
+                                <div class="texto-data-baixa">
+                                    ${dataTexto} • ${hIni} - ${hFim}
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="coluna-direita-baixa">
+                                <span class="baixa-valor-tag">${rotuloValorTop}</span>
+                                <span class="baixa-timer-tag">
+                                    <i class="material-icons" style="font-size: 13px;">timer</i>
+                                    <span class="timer-baixa-item" data-expira="${r.expiraEm}">--:--</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        ${item.qtdConvidados === 1 ? `
+                        <div class="linha-divisoria-baixa">
+                            <div class="texto-data-baixa">
+                                ${dataTexto} • ${hIni} - ${hFim}
+                            </div>
+                            <div></div>
+                        </div>
+                        ` : ''}
+
+                        ${item.qtdConvidados > 1 ? `<div class="linha-divisoria-baixa" style="padding-top: 8px; margin-top: 8px;"></div><div class="texto-org-baixa" style="color: #1e293b;">Selecione os pagamentos recebidos:</div>` : ''}
+
+                        <div class="check-list-container" id="check-list-${item.quadraKey}-${item.slotKey}" ${item.qtdConvidados === 1 ? 'style="display:none;"' : ''}>
+                            ${listaConvidadosHtml}
+                        </div>
+                    </div>
+                </fieldset>
+                
+                <div class="baixa-botoes-grupo" style="margin-top: 0;">
+                    <button type="button" class="btn-baixa-acao btn-baixa-confirmar btn-full" style="${item.qtdConvidados > 1 ? 'opacity: 0.5; pointer-events: none;' : ''}" onclick="confirmarBaixaTaxaConvidadoSaaS('${item.quadraKey}', '${item.slotKey}')">
+                        <i class="material-icons" style="font-size: 16px;">${item.qtdConvidados > 1 ? 'playlist_add_check' : 'check'}</i> <span id="lbl-btn-confirma-${item.quadraKey}-${item.slotKey}">${item.qtdConvidados > 1 ? 'Selecione ao menos 1' : 'Confirmar Pagamento'}</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+    iniciarContadorRegressivoBaixasSaaS();
+
+    // 🧠 Lógica Reativa: Atualiza o botão conforme os checkboxes marcados
+    itens.forEach(item => {
+        if (item.qtdConvidados <= 1) return;
+        
+        const checkContainer = document.getElementById(`check-list-${item.quadraKey}-${item.slotKey}`);
+        const btnLbl = document.getElementById(`lbl-btn-confirma-${item.quadraKey}-${item.slotKey}`);
+        
+        if (checkContainer && btnLbl) {
+            const checkboxes = checkContainer.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(chk => {
+                chk.addEventListener('change', () => {
+                    const marcados = checkContainer.querySelectorAll('input[type="checkbox"]:checked').length;
+                    
+                    if (marcados === 0) {
+                        btnLbl.textContent = 'Selecione ao menos 1';
+                        btnLbl.parentElement.style.opacity = '0.5';
+                        btnLbl.parentElement.style.pointerEvents = 'none';
+                    } else {
+                        btnLbl.textContent = `Confirmar (${marcados})`;
+                        btnLbl.parentElement.style.opacity = '1';
+                        btnLbl.parentElement.style.pointerEvents = 'auto';
+                    }
+                });
+            });
+        }
+    });
+}
+
+/**
+ * Atualiza o cronômetro de expiração de cada item no Popover
+ */
+function iniciarContadorRegressivoBaixasSaaS() {
+    if (intervaloTimerBaixasSaaS) clearInterval(intervaloTimerBaixasSaaS);
+
+    const atualizar = () => {
+        const agora = Date.now();
+        const timers = document.querySelectorAll('.timer-baixa-item');
+
+        timers.forEach(t => {
+            const expiraEm = parseInt(t.getAttribute('data-expira'), 10) || 0;
+            const diff = expiraEm - agora;
+
+            if (diff <= 0) {
+                t.textContent = 'Expirado';
+                const card = t.closest('.card-baixa-item');
+                if (card) card.style.opacity = '0.5';
+            } else {
+                const horas = Math.floor(diff / (1000 * 60 * 60));
+                const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const segundos = Math.floor((diff % (1000 * 60)) / 1000);
+
+                t.textContent = `${String(horas).padStart(2, '0')}h ${String(minutos).padStart(2, '0')}m ${String(segundos).padStart(2, '0')}s`;
+            }
+        });
+    };
+
+    atualizar();
+    intervaloTimerBaixasSaaS = setInterval(atualizar, 1000);
+}
+
+/**
+ * Dá baixa financeira nos convidados selecionados (Múltiplos ou Único)
+ */
+function confirmarBaixaTaxaConvidadoSaaS(quadraKey, slotKey) {
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    // 1. Identifica quem o gestor selecionou no HTML
+    const checkContainer = document.getElementById(`check-list-${quadraKey}-${slotKey}`);
+    const nomesConfirmadosPelaUI = [];
+    
+    if (checkContainer && checkContainer.style.display !== 'none') {
+        const checkboxesMarcados = checkContainer.querySelectorAll('input[type="checkbox"]:checked');
+        checkboxesMarcados.forEach(chk => {
+            if (chk.dataset.nome) nomesConfirmadosPelaUI.push(chk.dataset.nome.toLowerCase());
+        });
+    }
+
+    const path1 = `${raizBanco}/reservas/${quadraKey}/${slotKey}`;
+
+    database.ref(path1).transaction(reserva => {
+        if (!reserva) return null;
+
+        const confs = reserva.confirmacoes || {};
+        const dadosC = reserva.dadosConvidados || {};
+        let mudou = false;
+
+        // Se for card de 1 convidado (caixas ocultas), aprova o convidado pendente
+        const aprovarTodos = nomesConfirmadosPelaUI.length === 0;
+
+        // Atualiza statusTaxa nos dadosConvidados
+        Object.keys(dadosC).forEach(cNome => {
+            if (dadosC[cNome].statusTaxa !== 'pago') {
+                if (aprovarTodos || nomesConfirmadosPelaUI.includes(cNome.trim().toLowerCase())) {
+                    dadosC[cNome].statusTaxa = 'pago';
+                    mudou = true;
+                }
+            }
+        });
+
+        // Atualiza confirmações nominais caso existam
+        Object.keys(confs).forEach(nome => {
+            const chaveConvidado = Object.keys(dadosC).find(k => k.trim().toLowerCase() === nome.trim().toLowerCase());
+            if (chaveConvidado && dadosC[chaveConvidado].statusTaxa === 'pago') {
+                if (confs[nome] === false) {
+                    confs[nome] = true;
+                    mudou = true;
+                }
+            } else if (!chaveConvidado && nome.toLowerCase().includes('convidado') && aprovarTodos) {
+                if (confs[nome] === false) {
+                    confs[nome] = true;
+                    mudou = true;
+                }
+            }
+        });
+
+        // Se todos os convidados em dadosConvidados estão pagos:
+        const todosConvidadosPagos = Object.keys(dadosC).length === 0 || 
+            Object.values(dadosC).every(g => g.statusTaxa === 'pago');
+
+        if (todosConvidadosPagos) {
+            Object.keys(confs).forEach(k => {
+                if (k.toLowerCase().includes('convidado') && confs[k] === false) {
+                    confs[k] = true;
+                    mudou = true;
+                }
+            });
+        }
+
+        if (!mudou) return reserva;
+
+        reserva.confirmacoes = confs;
+        reserva.dadosConvidados = dadosC;
+
+        // Verifica se todas as pendências da reserva foram sanadas
+        const todasConfirmadas = Object.values(confs).every(v => v === true) && todosConvidadosPagos;
+
+        if (todasConfirmadas) {
+            reserva.status = 'confirmada';
+            delete reserva.expiraEm;
+        }
+
+        return reserva;
+    }).then(res => {
+        if (!res.committed) return;
+
+        const rAtualizada = res.snapshot.val();
+        if (rAtualizada && parseInt(rAtualizada.duracao) === 2) {
+            const partes = slotKey.split('_');
+            const proxSlot = `${partes[0]}_${parseInt(partes[1], 10) + 1}`;
+            const path2 = `${raizBanco}/reservas/${quadraKey}/${proxSlot}`;
+
+            const r2 = JSON.parse(JSON.stringify(rAtualizada));
+            r2.hora = parseInt(partes[1], 10) + 1;
+            delete r2.borda;
+
+            database.ref(path2).set(r2);
+        }
+
+        // 🛡️ Auditoria: Gera o recibo no GitHub
+        if (rAtualizada) {
+            const autorLogado = (typeof isGestorLogado !== 'undefined' && isGestorLogado) ? "Administração (Gestor)" : (localStorage.getItem('jogadorLogadoNome') || "Sócio");
+            const duracao = parseInt(rAtualizada.duracao) || 1;
+            
+            let nomeQuadraAmigavel = quadraKey;
+            const numQ = quadraKey.match(/\d+/);
+            if (numQ && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+                const dq = configQuadrasGlobal.nomes[numQ[0]];
+                if (dq) nomeQuadraAmigavel = typeof dq === 'object' ? (dq.nome || `Quadra ${numQ[0]}`) : dq;
+            }
+
+            const logConfirmacao = {
+                origem: "manual",
+                timestamp: new Date().toISOString(),
+                dataLocal: new Date().toLocaleString('pt-BR'),
+                autor: autorLogado,
+                acao: "CONFIRMACAO_TAXA_CONVIDADO",
+                motivo: `A taxa de convidado foi confirmada pela administração.`,
+                clube: typeof clubeAtivoId !== 'undefined' ? clubeAtivoId : "",
+                quadra: nomeQuadraAmigavel,
+                horario: `${String(rAtualizada.hora).padStart(2, '0')}:00 - ${String(rAtualizada.hora + duracao).padStart(2, '0')}:00`,
+                duracao: duracao === 1 ? "1 Hora" : "2 Horas",
+                data: rAtualizada.dataCompleta ? rAtualizada.dataCompleta.split('-').reverse().join('-') : "",
+                statusNoMomentoDaExclusao: rAtualizada.status || "confirmada",
+                organizadorDaReserva: rAtualizada.organizador || "Não Informado",
+                confirmacoes: rAtualizada.confirmacoes || {},
+                jogadores: rAtualizada.jogadores || "",
+                jogadores_completo: rAtualizada.jogadores_completo || "",
+                slotsExcluidos: []
+            };
+
+            if (typeof enviarFilaLogsAoGitHubSaaS === 'function') {
+                enviarFilaLogsAoGitHubSaaS([logConfirmacao]);
+            }
+        }
+
+        showToast('Taxa confirmada com sucesso!', 'success');
+        atualizarBadgeBaixasSaaS();
+    }).catch(err => {
+        console.error('Erro ao dar baixa na taxa:', err);
+        showToast('Erro ao confirmar taxa no banco.', 'error');
+    });
+}
+
+/**
+ * Rejeita o convidado pendente e cancela a reserva se o quórum for violado
+ */
+function recusarBaixaTaxaConvidadoSaaS(quadraKey, slotKey) {
+    if (navigator.vibrate) navigator.vibrate(25);
+
+    const path = `${raizBanco}/reservas/${quadraKey}/${slotKey}`;
+
+    database.ref(path).once('value').then(snap => {
+        const r = snap.val();
+        if (!r) return;
+
+        showPrompt(
+            'Recusar Convidado?',
+            'Tem certeza de que deseja rejeitar a taxa deste convidado? Se o quórum mínimo for insuficiente, a reserva será cancelada.',
+            () => {
+                const partes = slotKey.split('_');
+                const dia = parseInt(partes[0], 10);
+                const hora = parseInt(partes[1], 10);
+                const duracao = parseInt(r.duracao) || 1;
+
+                const slotsExcluidos = [{ quadra: quadraKey, dia: dia, hora: hora }];
+                if (duracao === 2) {
+                    slotsExcluidos.push({ quadra: quadraKey, dia: dia, hora: hora + 1 });
+                }
+
+                if (typeof executarPipelineExclusaoSaaS === 'function') {
+                    executarPipelineExclusaoSaaS(
+                        slotsExcluidos,
+                        r,
+                        'Taxa de convidado recusada pela administração',
+                        'Reserva cancelada devido à recusa do convidado.',
+                        'warning'
+                    );
+                }
+
+                atualizarBadgeBaixasSaaS();
+            }
+        );
+    });
+}
+
+// Fechamento automático do Popover ao clicar fora
+document.addEventListener('click', e => {
+    const popover = document.getElementById('popover-central-baixas');
+    const btn = document.getElementById('container-btn-baixas');
+    const btnDash = document.getElementById('container-btn-baixas-dash');
+    if (!popover || popover.style.display !== 'flex') return;
+
+    if (!popover.contains(e.target) && !btn?.contains(e.target) && !btnDash?.contains(e.target)) {
+        fecharPopoverBaixasSaaS();
+    }
+});
+
+// Auto-arranque do Radar de Baixas
+setInterval(() => {
+    if (typeof raizBanco !== 'undefined' && raizBanco && !window.radarBaixasAtivo) {
+        window.radarBaixasAtivo = true;
+        database.ref(`${raizBanco}/reservas`).on('value', snap => {
+            atualizarBadgeBaixasSaaS(snap.val() || {});
+        });
+    }
+}, 1000);

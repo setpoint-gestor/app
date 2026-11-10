@@ -13,7 +13,7 @@
 function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
     const modal = document.getElementById('modal-acoes-reserva');
     const txtDetalhes = document.getElementById('txt-acoes-detalhes');
-    const content = modal ? modal.querySelector('.modal-acoes-content') : null; 
+    const content = modal ? modal.querySelector('.modal-acoes-content') : null;  
 
     if (!modal || !dadosReserva) return;
 
@@ -722,21 +722,37 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
             let statusClasseDot = "confirmed-dot"; 
             let statusClasseTxt = "txt-confirmed";
 
+            const isConvidado = jNome.toLowerCase().includes('convidado') || apelidoDesteJogador.toLowerCase().includes('convidado');
             let isPendente = false;
-            if (dadosReserva.confirmacoes) {
+            let isConvidadoPendente = false;
+
+            if (isConvidado && dadosReserva.dadosConvidados) {
+                // Valida o status individual de cada convidado em dadosConvidados
+                const nomeLimpo = jNome.replace(/\s*\(convidado\)/i, '').trim().toLowerCase();
+                const chaveMatch = Object.keys(dadosReserva.dadosConvidados).find(k => k.trim().toLowerCase() === nomeLimpo);
+                
+                if (chaveMatch && dadosReserva.dadosConvidados[chaveMatch].statusTaxa !== 'pago') {
+                    isPendente = true;
+                    isConvidadoPendente = true;
+                    temPendente = true;
+                }
+            } else if (dadosReserva.confirmacoes) {
+                // Validação regular para sócios
                 Object.keys(dadosReserva.confirmacoes).forEach(chaveNoBanco => {
                     if (dadosReserva.confirmacoes[chaveNoBanco] === false) {
                         if (chaveNoBanco.toUpperCase() === apelidoDesteJogador.toUpperCase() || 
-                            chaveNoBanco.toUpperCase() === jNome.toUpperCase()) {
+                            chaveNoBanco.toUpperCase() === jNome.toUpperCase() ||
+                            (isConvidado && chaveNoBanco.toLowerCase().includes('convidado'))) {
                             isPendente = true;
                             temPendente = true; 
+                            if (isConvidado) isConvidadoPendente = true;
                         }
                     }
                 });
             }
 
             if (isPendente) {
-                statusTexto = "Pendente";
+                statusTexto = isConvidadoPendente ? "Pendente $" : "Pendente";
                 statusClasseDot = "pending-dot";
                 statusClasseTxt = "txt-pending";
             }
@@ -747,6 +763,25 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                 <span><span class="status-dot-detalhes ${statusClasseDot}"></span>${nomeFormatado}</span>
                 <span class="${statusClasseTxt}">${statusTexto}</span>
             `;
+
+            // Torna o "Pendente $" clicável como atalho para reabrir o Check-out
+            if (isConvidadoPendente) {
+                const spanPendente = row.querySelector('.txt-pending');
+                if (spanPendente) {
+                    spanPendente.style.cursor = 'pointer';
+                    spanPendente.style.textDecoration = 'underline';
+                    spanPendente.title = 'Clique para abrir o pagamento da taxa de convidado';
+                    spanPendente.onclick = () => {
+                        fecharModalVerDetalhesSaaS();
+                        const reservaPayload = { ...dadosReserva, dia: dadosReserva.dia || dia, hora: dadosReserva.hora || hora };
+                        const qAlvo = dadosReserva.quadra || quadraSelecionadaSaaS || "Quadra 1";
+                        if (typeof abrirCheckoutConvidadoSaaS === 'function') {
+                            abrirCheckoutConvidadoSaaS(reservaPayload, qAlvo);
+                        }
+                    };
+                }
+            }
+
             containerJogadores.appendChild(row);
         });
 
@@ -1334,6 +1369,19 @@ function executarFaxinaAutomaticaSaaS() {
                         rAtualizada.jogadores_completo = novosCompletos;
                         rAtualizada.confirmacoes = newConfs;
                         delete rAtualizada.expiraEm; 
+
+                        // 🧹 FAXINA CIRÚRGICA: Remove dados de convidados que foram expurgados por falta de pagamento
+                        if (rAtualizada.dadosConvidados) {
+                            Object.keys(rAtualizada.dadosConvidados).forEach(k => {
+                                if (!novosCompletos.toLowerCase().includes(k.toLowerCase())) {
+                                    delete rAtualizada.dadosConvidados[k];
+                                }
+                            });
+                            // Se o nó ficar vazio, remove ele por completo
+                            if (Object.keys(rAtualizada.dadosConvidados).length === 0) {
+                                delete rAtualizada.dadosConvidados;
+                            }
+                        }
 
                         updatePayload[pathNode1] = rAtualizada;
                         chavesPuladas.add(slotKey);
@@ -2019,7 +2067,33 @@ function abrirModalEdicaoSaaS(dia, hora, dadosReserva) {
             statusClasse = "sub-confirmado";
         }
 
-        gerarCardAtletaEditavelSaaS(containerJogadores, apelido, statusTexto, statusClasse, false);
+        // 👥 Localiza os dados reais do Convidado já registrado na reserva (Nome e WhatsApp)
+        let dadosConvidadoItem = null;
+        const nomeCompletoSlot = listaCompletos[idx] || '';
+        const isConvidadoSlot = (apelido.toLowerCase() === 'convidado') || nomeCompletoSlot.toLowerCase().includes('convidado');
+
+        if (isConvidadoSlot) {
+            const nomeSemSufixo = nomeCompletoSlot.replace(/\s*\(convidado\)/i, '').trim();
+            
+            // 🧠 AJUSTE CIRÚRGICO: Lê o banco com fallback para garantir os dados
+            if (dadosReserva.dadosConvidados) {
+                if (dadosReserva.dadosConvidados[nomeSemSufixo]) {
+                    dadosConvidadoItem = { ...dadosReserva.dadosConvidados[nomeSemSufixo] };
+                } else {
+                    const chaveMatch = Object.keys(dadosReserva.dadosConvidados).find(k => k.trim().toLowerCase() === nomeSemSufixo.toLowerCase());
+                    if (chaveMatch) {
+                        dadosConvidadoItem = { ...dadosReserva.dadosConvidados[chaveMatch] };
+                    }
+                }
+            }
+            
+            if (!dadosConvidadoItem && nomeSemSufixo) {
+                dadosConvidadoItem = { nomeCompleto: nomeSemSufixo, whatsapp: "00000000000" }; // Preenchimento mínimo obrigatório
+            }
+        }
+
+        // Passa o objeto do convidado rico (com nome e whats) para ser impresso no dataset
+        gerarCardAtletaEditavelSaaS(containerJogadores, apelido, statusTexto, statusClasse, false, dadosConvidadoItem);
         countInjetados++;
     });
 
@@ -2057,7 +2131,7 @@ function abrirModalEdicaoSaaS(dia, hora, dadosReserva) {
     if (modal) modal.style.display = 'flex';
 }
 
-function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, statusCss, isVazio) {
+function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, statusCss, isVazio, dadosConvidado = null) {
     const card = document.createElement('div');
     card.className = isVazio ? 'card-atleta vazio' : 'card-atleta';
     
@@ -2067,7 +2141,14 @@ function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, status
 
     const sel = document.createElement('select');
     sel.className = 'saas-select';
+    sel.id = `edicao-atleta-sel-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     if (isVazio) sel.classList.add('select-placeholder');
+
+    // 👥 Preserva Nome e WhatsApp no dataset caso o slot já pertença a um Convidado
+    if (dadosConvidado) {
+        if (dadosConvidado.nomeCompleto) sel.dataset.convidadoNome = dadosConvidado.nomeCompleto;
+        if (dadosConvidado.whatsapp) sel.dataset.convidadoWhats = dadosConvidado.whatsapp;
+    }
     
     // Alimenta o Select com os atletas ativos listados de A a Z
     sel.innerHTML = '<option value="">+ Adicionar jogador...</option>';
@@ -2084,18 +2165,15 @@ function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, status
         atletasOrdenadosSaaS.forEach(atleta => {
             if (atleta && atleta.ativo !== false && atleta.id !== idOrganizadorEmEdicao) {
                 
-                // NOME COMPLETO EM TITLE CASE: Usa a função do sistema para capitalizar todas as palavras sem abreviar
                 let nomeParaExibir = atleta.nomeCompleto;
                 if (typeof capitalizarNome === 'function') {
                     nomeParaExibir = capitalizarNome(atleta.nomeCompleto);
                 } else {
-                    // Fallback de segurança 
                     nomeParaExibir = atleta.nomeCompleto.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
                 }
                 
                 let selected = false;
                 if (!isVazio && apelidoAtleta) {
-                    // Normaliza para comparação ignorando maiúsculas e minúsculas
                     const alvo = apelidoAtleta.trim().toUpperCase();
                     const compNome = (atleta.nomeCompleto || "").trim().toUpperCase();
                     const compApel = (atleta.apelido || "").trim().toUpperCase();
@@ -2109,7 +2187,33 @@ function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, status
             }
         });
         
-        sel.innerHTML += `<option value="convidado" ${!isVazio && apelidoAtleta && apelidoAtleta.toLowerCase().includes('convidado') ? 'selected' : ''}>Convidado / Avulso</option>`;
+        // 🛡️ Trava de Quadra e Horário: avalia se a reserva permite convidados
+        let deveMostrarConvidado = true;
+        if (typeof podeIncluirConvidadoSaaS === 'function' && dadosReservaEmEdicao) {
+            deveMostrarConvidado = podeIncluirConvidadoSaaS(
+                quadraSelecionadaSaaS,
+                dadosReservaEmEdicao.dia,
+                dadosReservaEmEdicao.hora,
+                dadosReservaEmEdicao.duracao_calculada || dadosReservaEmEdicao.duracao || 1
+            );
+        }
+
+        const isSlotConvidadoExistente = !isVazio && apelidoAtleta && apelidoAtleta.toLowerCase().includes('convidado');
+
+        if (isSlotConvidadoExistente || deveMostrarConvidado) {
+            let textoOpcaoConvidado = "Convidado / Avulso";
+            if (isSlotConvidadoExistente && dadosConvidado && dadosConvidado.nomeCompleto) {
+                let nomeFormatado = dadosConvidado.nomeCompleto;
+                if (typeof formatarNomeExibicaoDetalhes === 'function') {
+                    nomeFormatado = formatarNomeExibicaoDetalhes(dadosConvidado.nomeCompleto);
+                }
+                textoOpcaoConvidado = `${nomeFormatado} (Convidado)`;
+            }
+
+            // Injeta o traço divisor antes da opção de convidado
+            sel.innerHTML += `<option value="" disabled data-divisor="convidado" style="color: #94a3b8;">──────────────────────────────</option>`;
+            sel.innerHTML += `<option value="convidado" ${isSlotConvidadoExistente ? 'selected' : ''}>${textoOpcaoConvidado}</option>`;
+        }
     }
 
     divLeft.appendChild(sel);
@@ -2148,6 +2252,24 @@ function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, status
     sel.onchange = () => {
         const selectedVal = sel.value;
         if (selectedVal !== "") {
+            // Se o usuário selecionou o Convidado na Edição
+            if (selectedVal === "convidado") {
+                if (typeof abrirModalIdentificacaoConvidadoSaaS === 'function') {
+                    // Abre a caixinha exigindo Nome Completo e WhatsApp do convidado
+                    abrirModalIdentificacaoConvidadoSaaS(sel);
+                } else {
+                    showToast("Módulo de convidados indisponível.", "error");
+                    sel.value = "";
+                    return;
+                }
+            } else {
+                // Se era convidado e virou sócio, limpa os dados do dataset
+                delete sel.dataset.convidadoNome;
+                delete sel.dataset.convidadoWhats;
+                const optConvidado = sel.querySelector('option[value="convidado"]');
+                if (optConvidado) optConvidado.textContent = 'Convidado / Avulso';
+            }
+
             // Preencheu um slot vazio
             card.classList.remove('vazio');
             sel.classList.remove('select-placeholder');
@@ -2162,9 +2284,11 @@ function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, status
                 btnDel.title = 'Remover';
                 btnDel.innerHTML = '<i class="material-icons" style="font-size: 20px;">close</i>';
                 btnDel.onclick = () => {
-                    // Ao invés de esvaziar, no sistema elástico a lixeira DESTROI a div e cria um vazio lá no final
+                    // Limpa os dados do convidado se for removido na lixeira
+                    delete sel.dataset.convidadoNome;
+                    delete sel.dataset.convidadoWhats;
+
                     card.remove();
-                    // Avalia se o último card do container é vazio. Se não for e couber mais um, desenha o "+ Adicionar".
                     const maxPermitidos = 3;
                     const cardsAtuais = container.querySelectorAll('.card-atleta');
                     const oUltimoEhVazio = cardsAtuais.length > 0 && cardsAtuais[cardsAtuais.length - 1].classList.contains('vazio');
@@ -2187,6 +2311,11 @@ function gerarCardAtletaEditavelSaaS(container, apelidoAtleta, statusTxt, status
 
         } else {
             // O usuário voltou para a opção "Vazia" no select
+            delete sel.dataset.convidadoNome;
+            delete sel.dataset.convidadoWhats;
+            const optConvidado = sel.querySelector('option[value="convidado"]');
+            if (optConvidado) optConvidado.textContent = 'Convidado / Avulso';
+
             card.classList.add('vazio');
             sel.classList.add('select-placeholder');
             divStatus.textContent = "";
@@ -2216,6 +2345,8 @@ function salvarEdicaoReservaSaaS() {
 
     const { dia, hora, duracao_calculada, duracao } = dadosReservaEmEdicao;
     const duracaoReal = duracao_calculada || parseInt(duracao) || 1; 
+    const antigaReserva = { ...dadosReservaEmEdicao };
+    const antigasConfirmacoes = antigaReserva.confirmacoes || {};
     
     // 1. COLETA DOS NOMES E TRATAMENTO DE EXIBIÇÃO
     const orgBruto = dadosReservaEmEdicao.organizador || "";
@@ -2229,7 +2360,6 @@ function salvarEdicaoReservaSaaS() {
         const jOrg = jogadoresGlobal[idOrganizadorEmEdicao];
         orgCompleto = jOrg.nomeCompleto || orgBruto;
         
-        // Se tiver apelido cadastrado usa, senão aplica a mesma formatação do agendamento
         if (jOrg.apelido && jOrg.apelido.trim() !== "") {
             orgApelidoOuFormatado = jOrg.apelido;
         } else if (typeof expurgarEAbreviarNomeSaaS === 'function') {
@@ -2237,23 +2367,60 @@ function salvarEdicaoReservaSaaS() {
         }
     }
 
-    let listaApelidosNova = [orgApelidoOuFormatado]; // Agora começa com o apelido/nome bonito
+    let listaApelidosNova = [orgApelidoOuFormatado];
     let listaCompletosNova = [orgCompleto];
+    const novosDadosConvidadosMap = {};
+    let temNovoConvidadoParaCobrar = false;
 
     const containerJogadores = document.getElementById('edicao-lista-jogadores');
     const selects = containerJogadores.querySelectorAll('select.saas-select');
     
     let encontrouRepetido = false;
     let controleDuplicatas = new Set();
-    controleDuplicatas.add(idOrganizadorEmEdicao); // Impede de se adicionar
+    controleDuplicatas.add(idOrganizadorEmEdicao);
 
     selects.forEach(sel => {
         const valId = sel.value;
         if (valId && valId !== "") {
-            // Se for convidado genérico
             if (valId === "convidado") {
-                listaApelidosNova.push("Convidado / Avulso");
-                listaCompletosNova.push("Convidado / Avulso");
+                const cNome = (sel.dataset.convidadoNome || '').trim();
+                const cWhats = (sel.dataset.convidadoWhats || '').trim();
+                const nomeExibir = cNome ? `${cNome} (Convidado)` : "Convidado";
+
+                listaApelidosNova.push("Convidado");
+                listaCompletosNova.push(nomeExibir);
+
+                if (cNome) {
+                    // 🧠 AJUSTE CIRÚRGICO: Busca à prova de case sensitive no histórico da reserva
+                    let statusTaxaAntigo = null;
+                    if (antigaReserva.dadosConvidados) {
+                        if (antigaReserva.dadosConvidados[cNome]) {
+                            statusTaxaAntigo = antigaReserva.dadosConvidados[cNome].statusTaxa;
+                        } else {
+                            // Procura ignorando maiúsculas e minúsculas
+                            const chaveBanco = Object.keys(antigaReserva.dadosConvidados).find(k => k.trim().toLowerCase() === cNome.toLowerCase());
+                            if (chaveBanco) {
+                                statusTaxaAntigo = antigaReserva.dadosConvidados[chaveBanco].statusTaxa;
+                            }
+                        }
+                    }
+                    
+                    // Um convidado só é considerado pago se ele próprio já constava como pago
+                    const jaEstavaPago = (statusTaxaAntigo === 'pago');
+
+                    novosDadosConvidadosMap[cNome] = {
+                        nomeCompleto: cNome,
+                        whatsapp: cWhats,
+                        statusTaxa: jaEstavaPago ? "pago" : "pendente"
+                    };
+
+                    // Se for um convidado inédito (não existia na reserva), obriga a cobrança da taxa
+                    if (statusTaxaAntigo === null) {
+                        temNovoConvidadoParaCobrar = true;
+                    }
+                } else {
+                    temNovoConvidadoParaCobrar = true;
+                }
             } else if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[valId]) {
                 if (controleDuplicatas.has(valId)) {
                     encontrouRepetido = true;
@@ -2263,7 +2430,6 @@ function salvarEdicaoReservaSaaS() {
                     listaApelidosNova.push(j.apelido || j.nomeCompleto);
                     listaCompletosNova.push(j.nomeCompleto);
                     
-                    // Se a label do status diz NOVO, precisa checar as regras restritivas
                     const lblStatus = sel.parentElement.querySelector('.sub-status');
                     if (lblStatus && lblStatus.textContent === "Novo") {
                         nomesParaValidacaoMonopolio.push(j.nomeCompleto);
@@ -2287,12 +2453,10 @@ function salvarEdicaoReservaSaaS() {
         quadraChaveFixa = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
     }
 
-    // Normalização da chave da quadra para o banco de duplas (Ex: "Quadra 3 - Coberta" -> "Quadra3")
     let quadraIndex = "Quadra1";
     const matchQ = quadraSelecionadaSaaS.match(/\d+/);
     if (matchQ) quadraIndex = `Quadra${matchQ[0]}`;
 
-    // Leitura precisa da Grade de Duplas na memória RAM
     const isDuplaSlot = typeof configDuplasGlobal !== 'undefined' && 
                         configDuplasGlobal && 
                         configDuplasGlobal[quadraIndex] && 
@@ -2310,19 +2474,10 @@ function salvarEdicaoReservaSaaS() {
         }
     }
 
-    // 🚨 BIFURCAÇÃO INTELIGENTE DE QUÓRUM (Auto-exclusão usando o Pipeline)
     if (listaApelidosNova.length < quorumExigido) {
         const txtJogador = quorumExigido === 1 ? 'jogador' : 'jogadores';
-        
         if (btnSalvar) btnSalvar.textContent = "Excluindo...";
 
-        let quadraChaveFixa = "Quadra - 1";
-        if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
-            const match = quadraSelecionadaSaaS.match(/\d+/);
-            quadraChaveFixa = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
-        }
-
-        // Notifica apenas os convidados que foram removidos E QUE ESTAVAM CONFIRMADOS
         const velhosNomes = (dadosReservaEmEdicao.jogadores_completo || dadosReservaEmEdicao.jogadores || "").split(',').map(s => s.trim().toUpperCase());
         if (velhosNomes.length > 0 && typeof jogadoresGlobal !== 'undefined') {
             const anoAtual = new Date().getFullYear();
@@ -2337,7 +2492,6 @@ function salvarEdicaoReservaSaaS() {
             const nomesNotificar = velhosNomes.filter(velho => velho !== orgCompleto.toUpperCase() && velho !== orgApelidoOuFormatado.toUpperCase());
             
             nomesNotificar.forEach(nomeAfetado => {
-                // 1. Identifica o jogador no cadastro global para obter Apelido e Nome Completo
                 const idJogadorAfetado = Object.keys(jogadoresGlobal).find(k => {
                     const nj = jogadoresGlobal[k];
                     return (nj.nomeCompleto || "").toUpperCase() === nomeAfetado || (nj.apelido || "").toUpperCase() === nomeAfetado;
@@ -2348,7 +2502,6 @@ function salvarEdicaoReservaSaaS() {
                     const apelidoUpper = (atleta.apelido || "").trim().toUpperCase();
                     const completoUpper = (atleta.nomeCompleto || "").trim().toUpperCase();
 
-                    // 2. Trava de compromisso: checa se a chave do banco (apelido ou nome completo) tem valor true
                     let estavaConfirmado = false;
                     Object.keys(antigasConfirmacoes).forEach(k => {
                         const chaveBancoUpper = k.trim().toUpperCase();
@@ -2357,7 +2510,6 @@ function salvarEdicaoReservaSaaS() {
                         }
                     });
 
-                    // 3. Se confirmado, dispara a notificação limpa
                     if (estavaConfirmado) {
                         const keyNotif = database.ref().push().key;
                         const payloadNotif = {
@@ -2371,7 +2523,6 @@ function salvarEdicaoReservaSaaS() {
             });
         }
 
-        // Monta os slots afetados e reutiliza o pipeline oficial de exclusão
         const listaDeSlots = [];
         for (let i = 0; i < duracaoReal; i++) {
             listaDeSlots.push({ quadra: quadraChaveFixa, dia: dia, hora: hora + i });
@@ -2380,13 +2531,10 @@ function salvarEdicaoReservaSaaS() {
         const motivoAcao = `A edição da reserva diminuiu os participantes e o total ficou inferior ao quórum exigido (${quorumExigido} ${txtJogador}).`;
         const fraseAlerta = `A reserva foi excluída por não ter o quórum mínimo de ${quorumExigido} ${txtJogador}.`;
 
-        // Passa os slots, a reserva, o motivo, a FRASE e a COR DO ALERTA
         executarPipelineExclusaoSaaS(listaDeSlots, dadosReservaEmEdicao, motivoAcao, fraseAlerta, "warning");
-        
         fecharModalEdicaoSaaS();
-        return; // Retorno crucial que impede a continuação da gravação da edição!
+        return;
     }
-    
     
     // 3. A ALFÂNDEGA DE REGRAS VIVAS (MONOPÓLIO E CONFLITO) - APENAS PARA OS ATLETAS NOVOS
     if (nomesParaValidacaoMonopolio.length > 0) {
@@ -2415,9 +2563,6 @@ function salvarEdicaoReservaSaaS() {
     // 4. MONTAGEM DO PAYLOAD ATUALIZADO
     if (btnSalvar) btnSalvar.textContent = "Agendando...";
 
-    const antigaReserva = { ...dadosReservaEmEdicao };
-    const antigasConfirmacoes = antigaReserva.confirmacoes || {};
-    
     let novasConfirmacoes = {};
     const exigenciaAtiva = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.ReservasPorConfirmacao !== false);
     const prazoHoras = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.horasParaExpirar !== undefined) ? parseInt(configRegrasGlobal.horasParaExpirar) : 2;
@@ -2425,10 +2570,22 @@ function salvarEdicaoReservaSaaS() {
     let todasAsNovasSaoConfirmadas = true;
     let novaExpiracao = antigaReserva.expiraEm || null;
     let alguemNovoFicouPendente = false;
+    const temConvidadoNaLista = listaApelidosNova.some(a => a === "Convidado");
 
     listaApelidosNova.forEach(apelido => {
-        if (apelido === orgBruto || apelido === "Convidado / Avulso") {
+        if (apelido === orgBruto) {
             novasConfirmacoes[apelido] = true;
+        } else if (apelido === "Convidado") {
+            if (temNovoConvidadoParaCobrar) {
+                novasConfirmacoes["Convidado"] = false;
+                todasAsNovasSaoConfirmadas = false;
+                alguemNovoFicouPendente = true;
+            } else {
+                novasConfirmacoes["Convidado"] = (antigasConfirmacoes["Convidado"] === true);
+                if (novasConfirmacoes["Convidado"] === false) {
+                    todasAsNovasSaoConfirmadas = false;
+                }
+            }
         } else {
             let stVelho = antigasConfirmacoes[apelido];
             if (stVelho === undefined) {
@@ -2469,6 +2626,17 @@ function salvarEdicaoReservaSaaS() {
         jogadores_completo: listaCompletosNova.join(', '),
         confirmacoes: novasConfirmacoes
     };
+
+    if (temConvidadoNaLista) {
+        payloadAtualizacao.dadosConvidados = novosDadosConvidadosMap;
+        if (temNovoConvidadoParaCobrar) {
+            novoStatusDaReserva = "pendente";
+            payloadAtualizacao.status = "pendente";
+            novaExpiracao = Date.now() + (prazoHoras * 60 * 60 * 1000);
+        }
+    } else {
+        delete payloadAtualizacao.dadosConvidados;
+    }
     
     if (novaExpiracao) payloadAtualizacao.expiraEm = novaExpiracao;
     else delete payloadAtualizacao.expiraEm;
@@ -2482,7 +2650,6 @@ function salvarEdicaoReservaSaaS() {
 
     database.ref(caminhoKey1).transaction((currentData) => {
         if (currentData === null || currentData.status === 'aula_cancelada') return payloadAtualizacao;
-        // Permite salvar se a reserva ainda existir na grade e não tiver sido deletada por concorrência
         return payloadAtualizacao;
     })
     .then((result1) => {
@@ -2521,7 +2688,6 @@ function salvarEdicaoReservaSaaS() {
             const antigasConfirmacoes = antigaReserva.confirmacoes || {};
             
             nomesRemovidos.forEach(nomeRem => {
-                // 1. Identifica o jogador no cadastro global para obter Apelido e Nome Completo
                 const idJogadorAfetado = Object.keys(jogadoresGlobal).find(k => {
                     const nj = jogadoresGlobal[k];
                     return (nj.nomeCompleto || "").toUpperCase() === nomeRem || (nj.apelido || "").toUpperCase() === nomeRem;
@@ -2532,7 +2698,6 @@ function salvarEdicaoReservaSaaS() {
                     const apelidoUpper = (atleta.apelido || "").trim().toUpperCase();
                     const completoUpper = (atleta.nomeCompleto || "").trim().toUpperCase();
 
-                    // 2. Trava de compromisso: checa se a chave do banco (apelido ou nome completo) tem valor true
                     let estavaConfirmado = false;
                     Object.keys(antigasConfirmacoes).forEach(k => {
                         const chaveBancoUpper = k.trim().toUpperCase();
@@ -2541,7 +2706,6 @@ function salvarEdicaoReservaSaaS() {
                         }
                     });
 
-                    // 3. Se confirmado, dispara a notificação
                     if (estavaConfirmado) {
                         const keyNotif = database.ref().push().key;
                         const payloadNotif = {
@@ -2581,11 +2745,18 @@ function salvarEdicaoReservaSaaS() {
             enviarFilaLogsAoGitHubSaaS([logDeEdicao]);
         }
 
-        showToast("Edição salva e jogadores alterados com sucesso!", "success");
         fecharModalEdicaoSaaS();
+
+        if (temNovoConvidadoParaCobrar) {
+            showToast("Reserva atualizada! Conclua a taxa do novo convidado.", "info", 3500);
+            if (typeof abrirCheckoutConvidadoSaaS === 'function') {
+                abrirCheckoutConvidadoSaaS(payloadAtualizacao, quadraSelecionadaSaaS);
+            }
+        } else {
+            showToast("Edição salva e jogadores alterados com sucesso!", "success");
+        }
         
     }).catch(err => {
-        // Rollback Seguro: Se a 1ª hora salvou mas a 2ª hora falhou/colidiu, remove a 1ª hora
         if (key1Committed && duracaoReal === 2) {
             database.ref(caminhoKey1).transaction((currentData) => { return antigaReserva; });
             console.log("🧹 [Rollback de Edição] Alterações desfeitas por falha na segunda hora.");

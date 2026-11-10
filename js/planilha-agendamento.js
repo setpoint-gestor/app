@@ -592,9 +592,12 @@ function abrirAgendamentoSaaS(dia, hora) {
 					btnAddInterno.style.opacity = '0.3'; 
 				}
 			}
+
+			// 👥 Reavalia a permissão de convidados em todos os selects abertos
+			if (typeof atualizarOpcoesConvidadosNosSelectsSaaS === 'function') {
+				atualizarOpcoesConvidadosNosSelectsSaaS();
+			}
 		}; 
-		
-		
 
 		// 💉 INJEÇÃO: Registra a função na memória global para a planilha de fundo poder chamá-la
 		window.atualizarHorariosModalSaaS = atualizarHorariosDisponiveisSaaS;
@@ -933,7 +936,7 @@ function obterListaProibidosSaaS(selAtual) {
     const container = document.getElementById('jogadoresContainerSaaS');
     if (container) {
         container.querySelectorAll('select').forEach(s => {
-            if (s !== selAtual && s.value) {
+            if (s !== selAtual && s.value && s.value !== 'convidado') {
                 proibidos.push(s.value);
             }
         });
@@ -954,50 +957,11 @@ function alternarTextoOpcoesSaaS(sel, exibirCompleto) {
     }
     
     const proibidos = obterListaProibidosSaaS(sel);
-    
-    Array.from(sel.options).forEach(opt => {
-        const id = opt.value;
-        if (!id || id === "") return;
-        
-        if (proibidos.includes(id) && id !== sel.value) {
-            opt.disabled = true;
-            opt.style.display = 'none';
-            return;
-        } else {
-            opt.disabled = false;
-            opt.style.display = 'block';
-        }
-        
-        const atleta = jogadoresGlobal[id];
-        if (atleta) {
-            if (exibirCompleto) {
-                const apelidoTxt = atleta.apelido ? ' (' + atleta.apelido + ')' : '';
-                opt.textContent = atleta.nomeCompleto + apelidoTxt;
-            } else {
-                opt.textContent = expurgarEAbreviarNomeSaaS(atleta.nomeCompleto, atleta.apelido);
-            }
-        }
-    });
-}
-
-/**
- * MOTOR ELÁSTICO DE ATLETAS: Constrói as linhas, ordena de A a Z e amarra os gatilhos
- */
-function alternarTextoOpcoesSaaS(sel, exibirCompleto) {
-    if (!jogadoresGlobal || Object.keys(jogadoresGlobal).length === 0) return;
-
-    // 🛡️ TRAVA DO RANKING: Se for o modo de duelo, aborta a formatação camaleão para preservar a numeração ("1º - ")
-    const campoDuracao = document.getElementById('saas-duracao') || document.getElementById('saas-duracao-reserva');
-    if (campoDuracao && campoDuracao.value === 'ranking') {
-        return; 
-    }
-    
-    const proibidos = obterListaProibidosSaaS(sel);
     const isMobile = window.innerWidth <= 767;
     
     Array.from(sel.options).forEach(opt => {
         const id = opt.value;
-        if (!id || id === "") return;
+        if (!id || id === "" || id === "convidado") return;
         
         if (proibidos.includes(id) && id !== sel.value) {
             opt.disabled = true;
@@ -1083,7 +1047,11 @@ function adicionarJogadorSaaS() {
                     }
                 }
             });
-        } else {
+        }
+
+        // 👥 Injeta separador e Convidado no final se a quadra e o horário permitirem
+        if (typeof podeIncluirConvidadoSaaS === 'function' && podeIncluirConvidadoSaaS()) {
+            sel.innerHTML += '<option value="" disabled data-divisor="convidado" style="color: #94a3b8;">──────────────────────────────</option>';
             sel.innerHTML += '<option value="convidado">Convidado / Avulso</option>';
         }
         
@@ -1103,7 +1071,10 @@ function adicionarJogadorSaaS() {
         
         sel.addEventListener('mousedown', () => alternarTextoOpcoesSaaS(sel, true));
         sel.addEventListener('focus', () => alternarTextoOpcoesSaaS(sel, true));
-        sel.addEventListener('change', () => alternarTextoOpcoesSaaS(sel, false));
+        sel.addEventListener('change', () => {
+            alternarTextoOpcoesSaaS(sel, false);
+            handleConvidadoSelectSaaS(sel);
+        });
         
         sel.addEventListener('blur', () => {
             setTimeout(() => {
@@ -1157,7 +1128,6 @@ window.fecharModalConfig = function(idModal) {
     }
 };
 
-function handleConvidadoSelectSaaS(el) {}
 
 // ====================================================================
 // 🏆 MOTOR DE RANKING: FILTRO INTELIGENTE E EXIBIÇÃO DE ADVERSÁRIOS
@@ -1210,7 +1180,7 @@ async function aplicarFiltroRankingModalSaaS() {
             const emFaseMataMata = (modeloAtivo === 'grupos' && ((emMataMataDireto && faseAtualRanking >= 3) || (!emMataMataDireto && faseAtualRanking >= 4)));
 
             // 🎯 CONSOLIDAÇÃO DE ATLETAS VÁLIDOS: Filtra apenas quem está competindo ativamente na rodada atual
-            const atletasValidosNaTabela = new Set();
+            const atletasValidosNaTabela = new Set(); 
 
             if (modeloAtivo === 'grupos' && emFaseMataMata) {
                 // 🏆 NO MATA-MATA DE GRUPOS: Filtra exclusivamente os atletas com confronto ativo e não finalizado na rodada atual das chaves
@@ -1805,6 +1775,10 @@ function validarConflitoHorarioAtletaSaaS(listaNomesCompletos, listaApelidos, pa
 // 🎼 MOTOR ORQUESTRADOR: O MAESTRO DE AGENDAMENTOS (Fase Refatorada)
 // ====================================================================
 
+// ====================================================================
+// 🎼 MOTOR ORQUESTRADOR: O MAESTRO DE AGENDAMENTOS (Fase Refatorada)
+// ====================================================================
+
 function validarEAgendarPartidaSaas() {
     if (navigator.vibrate) navigator.vibrate(40);   
 
@@ -1840,7 +1814,6 @@ function validarEAgendarPartidaSaas() {
         dia: selectDia ? parseInt(selectDia.value) : 1,
         hora: selectHora ? parseInt(selectHora.value) : 6,
         quadraAlvo: "Quadra - 1",
-        listaCamposBrutos: [],
         dataCompletaFormato: new Date().toISOString().split('T')[0]
     };
 
@@ -1950,11 +1923,11 @@ function validarEAgendarPartidaSaas() {
             if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = "Confirmar Agendamento"; }
         });
 
-        return; // 🛑 ABORTA O FLUXO NORMAL (Para não exigir a validação do campo Jogadores)
+        return;
     }
 
     // ====================================================================
-    // FLUXO PADRÃO (JOGOS E RANKING) - CONTINUA INTACTO
+    // FLUXO PADRÃO (JOGOS E RANKING)
     // ====================================================================
     const celAlvo1 = document.getElementById(`cel-${pacote.hora}-${pacote.dia}`);
     const celAlvo2 = (pacote.duracao === 2) ? document.getElementById(`cel-${pacote.hora + 1}-${pacote.dia}`) : null;
@@ -1967,23 +1940,48 @@ function validarEAgendarPartidaSaas() {
     }
 
     // ----------------------------------------------------
-    // 🚨 TRAVA DE SEGURANÇA: VALIDAÇÃO DE CAMPOS ABERTOS / EMBRANCO
+    // 🚨 CAPTURA ESTRUTURADA DE ATLETAS E CONVIDADOS
     // ----------------------------------------------------
     const j1Select = document.getElementById('saas-jogador1');
     if (!j1Select || !j1Select.value || j1Select.value === "") {
         showToast("Por favor, selecione o organizador/atleta 1.", "warning");
         return;
     }
-    pacote.listaCamposBrutos.push(j1Select.value);
+
+    const slotsAgendamento = [];
+    slotsAgendamento.push({
+        tipo: 'socio',
+        valorBruto: j1Select.value
+    });
 
     let temCampoAbertoEmBranco = false;
     for (let i = 2; i <= 4; i++) {
         const campoDinamico = document.getElementById(`saas-jogador${i}`);
         if (campoDinamico) {
-            if (!campoDinamico.value || campoDinamico.value === "") {
+            const val = campoDinamico.value;
+            if (!val || val === "") {
                 temCampoAbertoEmBranco = true;
+            } else if (val === 'convidado') {
+                const cNome = (campoDinamico.dataset.convidadoNome || '').trim();
+                const cWhats = (campoDinamico.dataset.convidadoWhats || '').trim();
+
+                if (!cNome || cWhats.length !== 11) {
+                    showToast(`Por favor, identifique os dados do Convidado no campo ${i}.`, "warning");
+                    abrirModalIdentificacaoConvidadoSaaS(campoDinamico);
+                    return;
+                }
+
+                slotsAgendamento.push({
+                    tipo: 'convidado',
+                    valorBruto: 'convidado',
+                    nomeCompleto: cNome,
+                    whatsapp: cWhats
+                });
             } else {
-                pacote.listaCamposBrutos.push(campoDinamico.value);
+                slotsAgendamento.push({
+                    tipo: 'socio',
+                    valorBruto: val
+                });
             }
         }
     }
@@ -1998,7 +1996,7 @@ function validarEAgendarPartidaSaas() {
     }
 
     // ----------------------------------------------------
-    // 1.5. ALFÂNDEGA DO QUÓRUM MÍNIMO (Barreira de Entrada)
+    // 1.5. ALFÂNDEGA DO QUÓRUM MÍNIMO
     // ----------------------------------------------------
     let quorumExigido = 1;
     if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal) {
@@ -2009,24 +2007,31 @@ function validarEAgendarPartidaSaas() {
         }
     }
 
-    // Conta quantos jogadores foram preenchidos no formulário
-    const qtdJogadoresPreenchidos = pacote.listaCamposBrutos.length;
-
+    const qtdJogadoresPreenchidos = slotsAgendamento.length;
     if (qtdJogadoresPreenchidos < quorumExigido) {
         const txtHora = pacote.duracao === 1 ? 'hora' : 'horas';
         const txtJogador = quorumExigido === 1 ? 'jogador' : 'jogadores';
-        
         showToast(`O quórum mínimo para ${pacote.duracao} ${txtHora} é de ${quorumExigido} ${txtJogador}. Adicione mais pessoas.`, "warning");
         return;
     }
 
     // ----------------------------------------------------
-    // 2. ALFÂNDEGA SÍNCRONA (Validações imediatas sem banco)
+    // 2. ALFÂNDEGA SÍNCRONA
     // ----------------------------------------------------
     const erroDuplas = validarRegraDuplasSaaS(pacote.isDupla, qtdJogadoresPreenchidos);
     if (erroDuplas) {
         showToast(erroDuplas, "error");
         return;
+    }
+
+    // 🛡️ Dupla Checagem Backend: Garante que o convidado é permitido na quadra/horário
+    const temConvidadoValidacao = slotsAgendamento.some(s => s.tipo === 'convidado');
+    if (temConvidadoValidacao && typeof podeIncluirConvidadoSaaS === 'function') {
+        const permiteConvidado = podeIncluirConvidadoSaaS(pacote.quadraAlvo, pacote.dia, pacote.hora, pacote.duracao);
+        if (!permiteConvidado) {
+            showToast("O horário ou quadra selecionada não permite a inclusão de convidados.", "error");
+            return;
+        }
     }
 
     // Trava a UI para processamento
@@ -2037,7 +2042,7 @@ function validarEAgendarPartidaSaas() {
     }
 
     // ----------------------------------------------------
-    // 3. A GRANDE LEITURA (Snapshot Fotográfico + Captura SSOT do temporadaId)
+    // 3. A GRANDE LEITURA (Snapshot + Resolução de Nomes)
     // ----------------------------------------------------
     const limiteAtivo = (configRegrasGlobal && configRegrasGlobal.LimiteReservas !== undefined) ? parseInt(configRegrasGlobal.LimiteReservas) : 3;
 
@@ -2052,44 +2057,68 @@ function validarEAgendarPartidaSaas() {
 
         let listaApelidos = [];
         let listaNomesCompletosReais = [];
+        const dadosConvidadosMap = {};
 
-        // Converte as identidades brutas da UI em nomes reais
-        pacote.listaCamposBrutos.forEach(valorCampo => {
-            if (bancoJogadores[valorCampo]) {
-                listaApelidos.push(bancoJogadores[valorCampo].apelido || "Sócio");
-                listaNomesCompletosReais.push(bancoJogadores[valorCampo].nomeCompleto || "Sócio");
+        // Resolução individual de Sócios vs Convidados
+        slotsAgendamento.forEach(slot => {
+            if (slot.tipo === 'convidado') {
+                const apelidoConvidado = "Convidado";
+                const nomeCompletoConvidado = `${slot.nomeCompleto} (Convidado)`;
+
+                listaApelidos.push(apelidoConvidado);
+                listaNomesCompletosReais.push(nomeCompletoConvidado);
+
+                dadosConvidadosMap[slot.nomeCompleto] = {
+                    nomeCompleto: slot.nomeCompleto,
+                    whatsapp: slot.whatsapp,
+                    statusTaxa: "pendente"
+                };
             } else {
-                const idEncontrado = Object.keys(bancoJogadores).find(key => 
-                    bancoJogadores[key].nomeCompleto && bancoJogadores[key].nomeCompleto.toUpperCase() === valorCampo.toUpperCase()
-                );
-                if (idEncontrado) {
-                    listaApelidos.push(bancoJogadores[idEncontrado].apelido);
-                    listaNomesCompletosReais.push(bancoJogadores[idEncontrado].nomeCompleto);
+                const valorCampo = slot.valorBruto;
+                if (bancoJogadores[valorCampo]) {
+                    listaApelidos.push(bancoJogadores[valorCampo].apelido || "Sócio");
+                    listaNomesCompletosReais.push(bancoJogadores[valorCampo].nomeCompleto || "Sócio");
                 } else {
-                    listaApelidos.push(valorCampo);
-                    listaNomesCompletosReais.push(valorCampo);
+                    const idEncontrado = Object.keys(bancoJogadores).find(key => 
+                        bancoJogadores[key].nomeCompleto && bancoJogadores[key].nomeCompleto.toUpperCase() === valorCampo.toUpperCase()
+                    );
+                    if (idEncontrado) {
+                        listaApelidos.push(bancoJogadores[idEncontrado].apelido);
+                        listaNomesCompletosReais.push(bancoJogadores[idEncontrado].nomeCompleto);
+                    } else {
+                        listaApelidos.push(valorCampo);
+                        listaNomesCompletosReais.push(valorCampo);
+                    }
                 }
             }
         });
 
         // ----------------------------------------------------
-        // 4. ALFÂNDEGA ASSÍNCRONA (Validações usando os dados)
+        // 4. ALFÂNDEGA ASSÍNCRONA (Apenas para Sócios)
         // ----------------------------------------------------
-        const erroMonopolio = validarAntiMonopolioSaaS(listaNomesCompletosReais, listaApelidos, todasReservas, limiteAtivo);
+        const sociosNomesCompletos = [];
+        const sociosApelidos = [];
+        slotsAgendamento.forEach((s, idx) => {
+            if (s.tipo === 'socio') {
+                sociosNomesCompletos.push(listaNomesCompletosReais[idx]);
+                sociosApelidos.push(listaApelidos[idx]);
+            }
+        });
+
+        const erroMonopolio = validarAntiMonopolioSaaS(sociosNomesCompletos, sociosApelidos, todasReservas, limiteAtivo);
         if (erroMonopolio) {
             showToast(erroMonopolio, "error", 4500);
             throw new Error("VALIDACAO_FALHOU");
         }
 
-        // 🛑 TRAVA DE DUPLO AGENDAMENTO
-        const erroConflitoHorario = validarConflitoHorarioAtletaSaaS(listaNomesCompletosReais, listaApelidos, pacote, todasReservas);
+        const erroConflitoHorario = validarConflitoHorarioAtletaSaaS(sociosNomesCompletos, sociosApelidos, pacote, todasReservas);
         if (erroConflitoHorario) {
             showToast(erroConflitoHorario, "error", 4500);
             throw new Error("VALIDACAO_FALHOU");
         }
 
         // ----------------------------------------------------
-        // 5. A GRAVAÇÃO (Transação Atômica no Firebase)
+        // 5. A GRAVAÇÃO ATÓMICA
         // ----------------------------------------------------
         if (btnSubmit) btnSubmit.textContent = "Agendando...";
 
@@ -2097,8 +2126,6 @@ function validarEAgendarPartidaSaas() {
         const stringCompletosExibicao = listaNomesCompletosReais.join(', ');
         
         let organizadorPrincipal = listaNomesCompletosReais[0] || "Sócio";
-
-        // 🌟 LÓGICA DO ORGANIZADOR: IDENTIFICA SE FOI UMA OPERAÇÃO EXTERNA DA QUADRA
         let isOperadorExterno = false;
 
         if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
@@ -2108,8 +2135,6 @@ function validarEAgendarPartidaSaas() {
             const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim().toUpperCase();
             const nomeJ1 = (listaNomesCompletosReais[0] || '').trim().toUpperCase();
             
-            // O Sócio que está agendando é Admin, MAS NÃO colocou ele mesmo no Jogador 1. 
-            // Ele está agindo como a Secretaria.
             if (nomeLogado !== "" && nomeLogado !== nomeJ1) {
                 let perfis = {};
                 try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
@@ -2125,6 +2150,7 @@ function validarEAgendarPartidaSaas() {
             }
         }
 
+        const temConvidado = slotsAgendamento.some(s => s.tipo === 'convidado');
         const exigenciaAtiva = (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao !== false);
         const prazoHoras = (configRegrasGlobal && configRegrasGlobal.horasParaExpirar !== undefined) ? parseInt(configRegrasGlobal.horasParaExpirar) : 2;
         
@@ -2136,13 +2162,30 @@ function validarEAgendarPartidaSaas() {
         const strHoje = `${hojeObj.getFullYear()}-${String(hojeObj.getMonth() + 1).padStart(2, '0')}-${String(hojeObj.getDate()).padStart(2, '0')}`;
         const reservaParaHoje = (pacote.dataCompletaFormato === strHoje);
 
-        if (exigenciaAtiva && listaApelidos.length > 1 && !reservaParaHoje && !pacote.isRanking) {
+        // 🚨 REGRA DE OURO DO MÓDULO CONVIDADOS: Se tiver convidado, a reserva nasce SEMPRE pendente
+        if (temConvidado) {
+            statusFinal = "pendente";
+            timestampExpiracao = Date.now() + (prazoHoras * 60 * 60 * 1000);
+
+            slotsAgendamento.forEach((slot, i) => {
+                const apelido = listaApelidos[i];
+                if (slot.tipo === 'convidado') {
+                    objetoConfirmacoes[apelido] = false; // Convidado nasce não confirmado até quitação da taxa
+                } else {
+                    if (i === 0 && !isOperadorExterno) {
+                        objetoConfirmacoes[apelido] = true; 
+                    } else if (!exigenciaAtiva || reservaParaHoje) {
+                        objetoConfirmacoes[apelido] = true;
+                    } else {
+                        objetoConfirmacoes[apelido] = false;
+                    }
+                }
+            });
+        } else if (exigenciaAtiva && listaApelidos.length > 1 && !reservaParaHoje && !pacote.isRanking) {
             statusFinal = "pendente";
             timestampExpiracao = Date.now() + (prazoHoras * 60 * 60 * 1000);
             
             for (let i = 0; i < listaApelidos.length; i++) {
-                // Se a reserva foi criada por um Operador Externo (Gestor ou Admin para outros), 
-                // NINGUÉM entra confirmado na quadra. Todos ficam pendentes.
                 if (i === 0 && !isOperadorExterno) {
                     objetoConfirmacoes[listaApelidos[i]] = true; 
                 } else {
@@ -2171,12 +2214,18 @@ function validarEAgendarPartidaSaas() {
             confirmacoes: objetoConfirmacoes            
         };
 
-        // PASSO 1: CONGELAMENTO HISTÓRICO DE POSIÇÕES, TAGS E CARIMBO MESTRE DE TEMPORADA
+        if (temConvidado) {
+            objetoReservaReferencia.dadosConvidados = dadosConvidadosMap;
+        }
+
+        if (timestampExpiracao) {
+            objetoReservaReferencia.expiraEm = timestampExpiracao;
+        }
+
+        // Configurações do Ranking (mantidas integralmente)
         if (pacote.isRanking) {
             const confRanking = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
             const faseAtualRanking = parseInt(confRanking.faseAtual, 10) || 1;
-
-            // 🎯 SSOT: Lê estritamente o modelo oficial cadastrado no contrato do torneio (calendario.formatoTorneio)
             const modeloDisputaOficial = confRanking.calendario?.formatoTorneio;
             
             if (!modeloDisputaOficial) {
@@ -2184,21 +2233,16 @@ function validarEAgendarPartidaSaas() {
                 throw new Error("VALIDACAO_FALHOU");
             }
 
-            // 🎯 GRAVAÇÃO IMUTÁVEL DO MODELO NA RESERVA
             objetoReservaReferencia.modelo = modeloDisputaOficial;
-
-            // 🎯 CARIMBO MESTRE DA TEMPORADA ATIVA
             if (temporadaIdMestre) {
                 objetoReservaReferencia.temporadaId = temporadaIdMestre;
             } else if (window.dadosTemporadaRankingAtiva && window.dadosTemporadaRankingAtiva.temporadaId) {
                 objetoReservaReferencia.temporadaId = window.dadosTemporadaRankingAtiva.temporadaId;
             }
 
-            // 🎯 SSOT UNIFICADO: Congela as posições de ranking dos atletas em TODOS os modelos (Pirâmide, Barragem e Grupos)
             objetoReservaReferencia.posicaoP1 = obterPosicaoTextoRankingSaaS(listaApelidos[0]);
             objetoReservaReferencia.posicaoP2 = obterPosicaoTextoRankingSaaS(listaApelidos[1]);
 
-            // 🎯 IDENTIFICAÇÃO E GRAVAÇÃO IMUTÁVEL DA CATEGORIA NA RESERVA
             const idAtleta1 = Object.keys(bancoJogadores).find(key => 
                 bancoJogadores[key] && bancoJogadores[key].nomeCompleto && 
                 bancoJogadores[key].nomeCompleto.toUpperCase() === listaNomesCompletosReais[0].toUpperCase()
@@ -2239,10 +2283,6 @@ function validarEAgendarPartidaSaas() {
             }
         }
 
-        if (timestampExpiracao) {
-            objetoReservaReferencia.expiraEm = timestampExpiracao;
-        }
-
         const chaveReservaLimpa = `${pacote.dia}_${pacote.hora}`;
         const caminhoKey1 = `${raizBanco}/reservas/${pacote.quadraAlvo}/${chaveReservaLimpa}`;
         const caminhoKey2 = `${raizBanco}/reservas/${pacote.quadraAlvo}/${pacote.dia}_${pacote.hora + 1}`;
@@ -2255,7 +2295,6 @@ function validarEAgendarPartidaSaas() {
         })
         .then(result1 => {
             if (!result1.committed) throw new Error("COLISAO_HORARIO_MESTRE");
-            
             key1Committed = true;
 
             if (pacote.duracao === 1) return true;
@@ -2268,17 +2307,22 @@ function validarEAgendarPartidaSaas() {
                 return;
             })
             .then(result2 => {
-                if (!result2.committed) {
-                    throw new Error("COLISAO_HORARIO_SEQUENCIAL");
-                }
+                if (!result2.committed) throw new Error("COLISAO_HORARIO_SEQUENCIAL");
                 return true;
             });
         })
         .then(() => {
-            showToast("Agendamento confirmado com sucesso!", "success");
-            if (typeof fecharModalConfig === 'function') fecharModalConfig('modal-agendamento'); 
+            if (typeof fecharModalConfig === 'function') fecharModalConfig('modal-agendamento');
+
+            // 🎯 BIFURCAÇÃO PÓS-GRAVAÇÃO: Check-out vs Confirmação Regular
+            if (temConvidado) {
+                showToast("Horário pré-agendado! Conclua a taxa do convidado.", "info", 3500);
+                abrirCheckoutConvidadoSaaS(objetoReservaReferencia, pacote.quadraAlvo);
+            } else {
+                showToast("Agendamento confirmado com sucesso!", "success");
+            }
             
-            // 🔔 GATILHO DE NOTIFICAÇÃO PUSH (EVENTO 1)
+            // Push Notification para outros atletas
             if (!pacote.isRanking && statusFinal === "pendente") {
                 const nomeOrgPuro = organizadorPrincipal.replace(/\s*\(.*?\)\s*/g, "").trim();
                 if (typeof processarGatilhoPushSaaS === 'function') {
@@ -2291,14 +2335,14 @@ function validarEAgendarPartidaSaas() {
         if (typeof key1Committed !== 'undefined' && key1Committed && pacote.duracao === 2) {
             try {
                 await database.ref(caminhoKey1).remove();
-                console.log("🧹 [Rollback] 1ª hora removida com sucesso para evitar reserva pela metade.");
+                console.log("🧹 [Rollback] 1ª hora removida para evitar reserva pela metade.");
             } catch (e) {
-                console.error("Erro ao executar rollback no banco:", e);
+                console.error("Erro no rollback:", e);
             }
         }
 
         if (err.message === "VALIDACAO_FALHOU") {
-            // Toast emitido previamente
+            // Toast já emitido
         } else if (err.message === "COLISAO_HORARIO_MESTRE") {
             showToast("Ops! Este horário acabou de ser preenchido por outro utilizador.", "error");
         } else if (err.message === "COLISAO_HORARIO_SEQUENCIAL") {
@@ -2314,4 +2358,721 @@ function validarEAgendarPartidaSaas() {
             btnSubmit.textContent = "Confirmar Agendamento";
         }
     });
+}
+
+
+// ====================================================================
+// 👥 MÓDULO CONVIDADOS: REATIVIDADE, IDENTIFICAÇÃO E MÁSCARA ESTREITA
+// ====================================================================
+
+/**
+ * Avalia se a quadra e o horário selecionados permitem a inclusão de convidados
+ */
+function podeIncluirConvidadoSaaS(quadraNome, dia, hora, duracao) {
+    // 1. Bloqueios de Tipo / Duração Especial
+    const campoDuracao = document.getElementById('saas-duracao') || document.getElementById('saas-duracao-reserva');
+    if (campoDuracao && (campoDuracao.value === 'ranking' || campoDuracao.value === '3-piramide')) {
+        return false;
+    }
+    const selTipo = document.getElementById('saas-tipo-reserva');
+    if (selTipo && (selTipo.value === 'aula' || selTipo.value === 'manutencao')) {
+        return false;
+    }
+
+    // 2. Chave Mestra da Quadra
+    const qNome = quadraNome || document.getElementById('saas-quadra')?.value || quadraSelecionadaSaaS || "Quadra 1";
+    const match = qNome.match(/\d+/);
+    const chaveQuadra = match ? `Quadra${match[0]}` : "Quadra1";
+
+    const confConv = (typeof configConvidadosGlobal !== 'undefined' && configConvidadosGlobal) ? configConvidadosGlobal : {};
+    const dadosQuadra = confConv[chaveQuadra];
+    
+    if (!dadosQuadra || dadosQuadra.Ativo !== true) {
+        return false; // Chave Mestra OFF
+    }
+
+    // 3. Verificação de Horário 'Exceto' na Grade
+    const campoDia = document.getElementById('saas-dia') || document.getElementById('saas-dia-reserva');
+    const campoHora = document.getElementById('saas-hora') || document.getElementById('saas-hora-reserva');
+
+    const d = dia !== undefined ? parseInt(dia, 10) : (campoDia ? parseInt(campoDia.value, 10) : 1);
+    const h = hora !== undefined ? parseInt(hora, 10) : (campoHora && campoHora.value !== "" ? parseInt(campoHora.value, 10) : null);
+    const durVal = duracao !== undefined ? parseInt(duracao, 10) : (campoDuracao ? parseInt(campoDuracao.value, 10) : 1);
+    const dur = isNaN(durVal) ? 1 : durVal;
+
+    if (h === null || isNaN(h)) {
+        return true; // Se a hora ainda não foi fixada no livre, permite manter
+    }
+
+    const grade = dadosQuadra.Grade || {};
+    if (grade[`${d}_${h}`] === true) {
+        return false;
+    }
+    if (dur === 2 && grade[`${d}_${h + 1}`] === true) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Atualiza dinamicamente as opções de Convidado em todos os seletores abertos
+ */
+function atualizarOpcoesConvidadosNosSelectsSaaS() {
+    const container = document.getElementById('jogadoresContainerSaaS');
+    if (!container) return;
+
+    const pode = podeIncluirConvidadoSaaS();
+    const selects = container.querySelectorAll('select.saas-field-atleta');
+
+    selects.forEach(sel => {
+        let optConvidado = sel.querySelector('option[value="convidado"]');
+        let optDivisor = sel.querySelector('option[data-divisor="convidado"]');
+
+        if (pode) {
+            if (!optDivisor) {
+                optDivisor = document.createElement('option');
+                optDivisor.value = '';
+                optDivisor.disabled = true;
+                optDivisor.dataset.divisor = 'convidado';
+                optDivisor.style.color = '#94a3b8';
+                optDivisor.textContent = '──────────────────────────────';
+                sel.appendChild(optDivisor);
+            }
+            if (!optConvidado) {
+                optConvidado = document.createElement('option');
+                optConvidado.value = 'convidado';
+                optConvidado.textContent = sel.dataset.convidadoNome 
+                    ? `${formatarNomeJogador1GestorSaaS(sel.dataset.convidadoNome)} (Convidado)` 
+                    : 'Convidado / Avulso';
+                sel.appendChild(optConvidado);
+            }
+        } else {
+            if (optConvidado) {
+                if (sel.value === 'convidado') {
+                    sel.value = '';
+                    delete sel.dataset.convidadoNome;
+                    delete sel.dataset.convidadoWhats;
+                    showToast("O horário ou quadra selecionada não permite convidados. Campo resetado.", "warning");
+                }
+                optConvidado.remove();
+            }
+            if (optDivisor) {
+                optDivisor.remove();
+            }
+        }
+    });
+}
+
+/**
+ * Trata a seleção do item "Convidado / Avulso" no dropdown
+ */
+function handleConvidadoSelectSaaS(el) {
+    if (!el) return;
+    if (el.value === 'convidado') {
+        abrirModalIdentificacaoConvidadoSaaS(el);
+    } else {
+        delete el.dataset.convidadoNome;
+        delete el.dataset.convidadoWhats;
+        const opt = el.querySelector('option[value="convidado"]');
+        if (opt) opt.textContent = 'Convidado / Avulso';
+    }
+}
+
+/**
+ * Abre o modal para coleta de Nome e WhatsApp do Convidado
+ */
+function abrirModalIdentificacaoConvidadoSaaS(selectEl) {
+    if (!selectEl) return;
+    if (navigator.vibrate) navigator.vibrate(25);
+
+    document.getElementById('convidado-select-target-id').value = selectEl.id;
+    const inpNome = document.getElementById('inp-convidado-nome');
+    const inpWhats = document.getElementById('inp-convidado-whats');
+
+    if (inpNome) inpNome.value = selectEl.dataset.convidadoNome || '';
+    if (inpWhats) {
+        inpWhats.value = selectEl.dataset.convidadoWhats || '';
+        mascaraTelefoneConvidadoSaaS(inpWhats);
+    }
+
+    const modal = document.getElementById('modal-dados-convidado');
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            if (inpNome) inpNome.focus();
+        }, 150);
+    }
+}
+
+/**
+ * Cancela a identificação e reseta o select se não houver dados salvos
+ */
+function cancelarModalDadosConvidadoSaaS() {
+    const targetId = document.getElementById('convidado-select-target-id')?.value;
+    const sel = document.getElementById(targetId);
+
+    if (sel && !sel.dataset.convidadoNome) {
+        sel.value = '';
+        const opt = sel.querySelector('option[value="convidado"]');
+        if (opt) opt.textContent = 'Convidado / Avulso';
+    }
+
+    const modal = document.getElementById('modal-dados-convidado');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Validação e confirmação de Nome e WhatsApp do Convidado
+ */
+function confirmarDadosConvidadoSaaS() {
+    const targetId = document.getElementById('convidado-select-target-id')?.value;
+    const sel = document.getElementById(targetId);
+    if (!sel) return;
+
+    const nome = (document.getElementById('inp-convidado-nome')?.value || '').trim();
+    const whats = (document.getElementById('inp-convidado-whats')?.value || '').trim();
+    const whatsLimpo = whats.replace(/\D/g, '');
+
+    if (!nome || nome.length < 3) {
+        showToast("Informe o nome completo do convidado.", "warning");
+        return;
+    }
+
+    if (whatsLimpo.length !== 11) {
+        showToast("Digite um WhatsApp válido com DDD (ex: 41999998888).", "warning");
+        return;
+    }
+
+    sel.dataset.convidadoNome = nome;
+    sel.dataset.convidadoWhats = whatsLimpo;
+
+    let optConvidado = sel.querySelector('option[value="convidado"]');
+    if (!optConvidado) {
+        optConvidado = document.createElement('option');
+        optConvidado.value = 'convidado';
+        sel.appendChild(optConvidado);
+    }
+
+    optConvidado.textContent = `${formatarNomeJogador1GestorSaaS(nome)} (Convidado)`;
+    sel.value = 'convidado';
+
+    const modal = document.getElementById('modal-dados-convidado');
+    if (modal) modal.style.display = 'none';
+
+    showToast(`Convidado ${nome.split(' ')[0]} confirmado!`, "success");
+}
+
+/**
+ * Máscara estrita de telefone (DDD + 9 dígitos)
+ */
+function mascaraTelefoneConvidadoSaaS(el) {
+    if (!el) return;
+    let valor = el.value.replace(/\D/g, "");
+    if (valor.length > 11) valor = valor.substring(0, 11);
+    if (valor.length > 10) {
+        valor = valor.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+    } else if (valor.length > 5) {
+        valor = valor.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+    } else if (valor.length > 2) {
+        valor = valor.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
+    } else if (valor.length > 0) {
+        valor = valor.replace(/^(\d*)$/, "($1");
+    }
+    el.value = valor;
+}
+
+
+// ====================================================================
+// 💳 MÓDULO CONVIDADOS: MOTOR DO CHECK-OUT PROVISÓRIO & WHATSAPP
+// ====================================================================
+
+let timerCheckoutIntervaloSaaS = null;
+let dadosReservaCheckoutAtiva = null;
+let modoPagadorCheckoutAtivo = 'titular';
+
+/**
+ * Abre o Modal de Check-out Provisório logo após salvar a reserva com convidados
+ */
+function abrirCheckoutConvidadoSaaS(reserva, quadraAlvo) {
+    if (!reserva) return;
+    if (navigator.vibrate) navigator.vibrate(35);
+
+    dadosReservaCheckoutAtiva = {
+        reserva: reserva,
+        quadra: quadraAlvo
+    };
+
+    const numQuadra = (quadraAlvo || '').match(/\d+/);
+    const chaveQuadra = numQuadra ? `Quadra${numQuadra[0]}` : "Quadra1";
+    const confGeral = (typeof configConvidadosGlobal !== 'undefined' && configConvidadosGlobal) ? configConvidadosGlobal : {};
+    const dadosConfigQ = confGeral[chaveQuadra] || confGeral;
+
+    // 1. Identificação da quantidade de convidados
+    const convidados = Object.keys(reserva.dadosConvidados || {});
+    const qtdConvidados = convidados.length > 0 ? convidados.length : 1;
+
+    // 2. Parâmetros Financeiros
+    const taxaUnitStr = dadosConfigQ.Taxa || "0,00";
+    const taxaUnitNum = parseFloat(taxaUnitStr.replace(/\./g, '').replace(',', '.')) || 0;
+    const taxaTotalNum = taxaUnitNum * qtdConvidados;
+    const taxaTotalFmt = taxaTotalNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const chavePix = dadosConfigQ.ChavePix || "Chave PIX não configurada";
+    const recebedor = dadosConfigQ.Recebedor || "Arena / Secretaria";
+
+    // 3. Formatação da Data e Horários
+    const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+    let dataTexto = "";
+    if (reserva.dataCompleta) {
+        const partes = reserva.dataCompleta.split('-');
+        if (partes.length === 3) {
+            const dt = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+            dataTexto = `${diasSemana[dt.getDay()]}, ${partes[2]}/${partes[1]}`;
+        }
+    }
+
+    const duracao = parseInt(reserva.duracao) || 1;
+    const hIni = String(reserva.hora).padStart(2, '0') + ":00";
+    const hFim = String(reserva.hora + duracao).padStart(2, '0') + ":00";
+
+    let nomeQuadraVisual = quadraAlvo;
+    if (numQuadra && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+        const dq = configQuadrasGlobal.nomes[numQuadra[0]];
+        if (dq) nomeQuadraVisual = typeof dq === 'object' ? (dq.nome || `Quadra ${numQuadra[0]}`) : dq;
+    }
+
+    // 4. Injeção no DOM
+    const elResumo = document.getElementById('checkout-resumo-texto');
+    if (elResumo) {
+        // Formatação inteligente (Title Case) para múltiplos nomes
+        const nomesConvidadosList = convidados.map(c => {
+            const nomeBruto = reserva.dadosConvidados[c].nomeCompleto || 'Avulso';
+            return nomeBruto.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+        }).join(', ');
+        
+        // Rótulo Dinâmico: Singular ou Plural
+        const rotuloConvidado = qtdConvidados > 1 ? "Convidados:" : "Convidado:";
+        
+        elResumo.innerHTML = `
+            <fieldset class="prompt-saas-fieldset" style="margin: 0 0 12px 0; padding: 12px 14px; text-align: left; background-color: #f8fafc;">
+                <legend class="prompt-saas-legend">${nomeQuadraVisual}</legend>
+                <div style="font-size: 13px; color: #475569; line-height: 1.6;">
+                    ${dataTexto} (${hIni} - ${hFim})<br>
+                    <span>${rotuloConvidado} <b style="color: #1e293b;">${nomesConvidadosList || 'Avulso'}</b></span>
+                </div>
+            </fieldset>
+        `;
+        
+        elResumo.style.background = 'transparent';
+        elResumo.style.border = 'none';
+        elResumo.style.padding = '0';
+    }
+
+    const elTotal = document.getElementById('checkout-valor-total');
+    if (elTotal) {
+        elTotal.textContent = qtdConvidados > 1 
+            ? `${qtdConvidados} x ${taxaUnitNum} = R$ ${taxaTotalFmt}` 
+            : `R$ ${taxaTotalFmt}`;
+    }
+
+    const elTitularPix = document.getElementById('checkout-titular-pix');
+    if (elTitularPix) elTitularPix.textContent = recebedor;
+
+    const elInputPix = document.getElementById('checkout-input-chave-pix');
+    if (elInputPix) elInputPix.value = chavePix;
+
+    const feedback = document.getElementById('checkout-feedback-copia');
+    if (feedback) feedback.style.display = 'none';
+
+    // 5. Inicialização da Chave Seletora no modo "titular" (Padrão)
+    selecionarPagadorCheckoutSaaS('titular');
+
+    // 6. Início do Contador Regressivo
+    iniciarTimerCheckoutSaaS(reserva.expiraEm);
+
+    const modal = document.getElementById('modal-checkout-convidado');
+    if (modal) modal.style.display = 'flex';
+}
+
+/**
+ * Fecha o Modal de Check-out Provisório
+ */
+function fecharCheckoutConvidadoSaaS() {
+    const modal = document.getElementById('modal-checkout-convidado');
+    if (modal) modal.style.display = 'none';
+
+    if (timerCheckoutIntervaloSaaS) {
+        clearInterval(timerCheckoutIntervaloSaaS);
+        timerCheckoutIntervaloSaaS = null;
+    }
+}
+
+/**
+ * Contador regressivo com atualização segundo a segundo
+ */
+function iniciarTimerCheckoutSaaS(expiraEm) {
+    if (timerCheckoutIntervaloSaaS) clearInterval(timerCheckoutIntervaloSaaS);
+
+    const elTimer = document.getElementById('checkout-timer-regressivo');
+    if (!elTimer || !expiraEm) return;
+
+    const atualizar = () => {
+        const agora = Date.now();
+        const diff = expiraEm - agora;
+
+        if (diff <= 0) {
+            elTimer.textContent = "Expirado";
+            clearInterval(timerCheckoutIntervaloSaaS);
+        } else {
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            elTimer.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+    };
+
+    atualizar();
+    timerCheckoutIntervaloSaaS = setInterval(atualizar, 1000);
+}
+
+/**
+ * Copia a Chave PIX para a Área de Transferência
+ */
+function copiarChavePixCheckoutSaaS() {
+    const input = document.getElementById('checkout-input-chave-pix');
+    if (!input || !input.value) return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value);
+    } else {
+        input.select();
+        document.execCommand('copy');
+    }
+
+    if (navigator.vibrate) navigator.vibrate(20);
+
+    const btn = document.getElementById('btn-copiar-pix');
+    const feedback = document.getElementById('checkout-feedback-copia');
+
+    if (btn) btn.classList.add('copiado');
+    if (feedback) feedback.style.display = 'inline';
+
+    setTimeout(() => {
+        if (btn) btn.classList.remove('copiado');
+        if (feedback) feedback.style.display = 'none';
+    }, 2500);
+}
+
+/**
+ * Alterna entre "Eu vou pagar" e "Convidado paga" no modal de Check-out
+ */
+function selecionarPagadorCheckoutSaaS(modo) {
+    modoPagadorCheckoutAtivo = modo;
+
+    const tabTitular = document.getElementById('tab-pagador-titular');
+    const tabConvidado = document.getElementById('tab-pagador-convidado');
+    const containerPix = document.getElementById('container-pix-arena');
+    const btnAcao = document.getElementById('btn-acao-checkout-dinamico');
+    const iconeAcao = document.getElementById('icone-acao-checkout-dinamico');
+    const textoAcao = document.getElementById('texto-acao-checkout-dinamico');
+
+    if (tabTitular) tabTitular.classList.toggle('active', modo === 'titular');
+    if (tabConvidado) tabConvidado.classList.toggle('active', modo === 'convidado');
+
+    if (modo === 'titular') {
+        if (containerPix) containerPix.style.display = 'flex';
+        if (btnAcao) btnAcao.className = 'btn-checkout-acao verde';
+        if (iconeAcao) iconeAcao.textContent = 'receipt_long';
+        if (textoAcao) textoAcao.textContent = 'Enviar Comprovante (Secretaria)';
+    } else {
+        if (containerPix) containerPix.style.display = 'none';
+        if (btnAcao) btnAcao.className = 'btn-checkout-acao azul';
+        if (iconeAcao) iconeAcao.textContent = 'forward_to_inbox';
+
+        const convidados = Object.keys(dadosReservaCheckoutAtiva?.reserva?.dadosConvidados || {});
+        if (textoAcao) {
+            textoAcao.textContent = convidados.length > 1 
+                ? 'Cobrar Convidados (WhatsApp)' 
+                : 'Cobrar Convidado (WhatsApp)';
+        }
+    }
+}
+
+/**
+ * Ponto de entrada do clique no botão único de ação do Check-out
+ */
+function executarAcaoCheckoutSaaS() {
+    if (modoPagadorCheckoutAtivo === 'titular') {
+        enviarComprovanteWhatsAppSaaS();
+    } else {
+        const r = dadosReservaCheckoutAtiva?.reserva;
+        if (!r) return;
+
+        const convidados = Object.keys(r.dadosConvidados || {});
+        if (convidados.length > 1) {
+            abrirSubSeletorConvidadosSaaS();
+        } else if (convidados.length === 1) {
+            cobrarConvidadoWhatsAppSaaS(r.dadosConvidados[convidados[0]]);
+        } else {
+            showToast("Nenhum dado de convidado registrado nesta reserva.", "warning");
+        }
+    }
+}
+
+/**
+ * Abre o sub-seletor para cobrança individual quando houver múltiplos convidados em duplas
+ */
+function abrirSubSeletorConvidadosSaaS() {
+    const r = dadosReservaCheckoutAtiva?.reserva;
+    if (!r) return;
+
+    const container = document.getElementById('lista-botoes-seletor-convidados');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const convidados = Object.keys(r.dadosConvidados || {});
+    convidados.forEach(c => {
+        const item = r.dadosConvidados[c];
+        let nomeConv = (item.nomeCompleto || c).replace(/\s*\(.*?\)\s*/g, '').trim();
+        nomeConv = nomeConv.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-convidado-item';
+        btn.innerHTML = `
+            <span>${nomeConv}</span>
+            <i class="material-icons" style="font-size: 18px; color: #0284c7;">chat</i>
+        `;
+        btn.onclick = () => {
+            fecharSubSeletorConvidadosSaaS();
+            cobrarConvidadoWhatsAppSaaS(item);
+        };
+        container.appendChild(btn);
+    });
+
+    const modal = document.getElementById('modal-seletor-convidados');
+    if (modal) modal.style.display = 'flex';
+}
+
+/**
+ * Fecha o sub-seletor de múltiplos convidados
+ */
+function fecharSubSeletorConvidadosSaaS(event) {
+    if (event && event.target && event.target.id !== 'modal-seletor-convidados') return;
+    const modal = document.getElementById('modal-seletor-convidados');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Monta a mensagem executiva e abre o WhatsApp com os dados da reserva e convidados para a Secretaria
+ */
+function enviarComprovanteWhatsAppSaaS() {
+    if (!dadosReservaCheckoutAtiva) return;
+
+    const r = dadosReservaCheckoutAtiva.reserva;
+    const qAlvo = dadosReservaCheckoutAtiva.quadra;
+
+    const numQuadra = (qAlvo || '').match(/\d+/);
+    const chaveQuadra = numQuadra ? `Quadra${numQuadra[0]}` : "Quadra1";
+    const confGeral = (typeof configConvidadosGlobal !== 'undefined' && configConvidadosGlobal) ? configConvidadosGlobal : {};
+    const dadosConfigQ = confGeral[chaveQuadra] || confGeral;
+
+    // 1. Resolução do WhatsApp da Secretaria
+    let whatsDestino = (dadosConfigQ.Whatsapp || dadosConfigQ.WhatsApp || dadosConfigQ.whatsapp || confGeral.Whatsapp || confGeral.WhatsApp || '').replace(/\D/g, '');
+    if (!whatsDestino) {
+        showToast("WhatsApp da secretaria não configurado.", "warning");
+        return;
+    }
+
+    if (!whatsDestino.startsWith('55') && whatsDestino.length <= 11) {
+        whatsDestino = '55' + whatsDestino;
+    }
+
+    // 2. Nome do Clube (dinâmico em CAIXA ALTA)
+    let nomeClube = "CLUBE OLÍMPICO";
+    const elNomeClube = document.getElementById('txt-nome-clube');
+    if (elNomeClube && elNomeClube.textContent && elNomeClube.textContent.trim() !== "Carregando...") {
+        nomeClube = elNomeClube.textContent.trim().toUpperCase();
+    } else {
+        const salvo = localStorage.getItem('setpoint_jogador_clube_nome');
+        if (salvo && salvo.trim()) nomeClube = salvo.trim().toUpperCase();
+    }
+
+    // 3. Nome da Quadra
+    let nomeQuadraVisual = qAlvo;
+    if (numQuadra && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+        const dq = configQuadrasGlobal.nomes[numQuadra[0]];
+        if (dq) nomeQuadraVisual = typeof dq === 'object' ? (dq.nome || `Quadra ${numQuadra[0]}`) : dq;
+    }
+
+    // 4. Data Completa com Dia da Semana e Horários
+    const duracao = parseInt(r.duracao) || 1;
+    const hIni = String(r.hora).padStart(2, '0') + ":00";
+    const hFim = String(r.hora + duracao).padStart(2, '0') + ":00";
+
+    const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+    let horarioTexto = `${hIni} às ${hFim}`;
+
+    if (r.dataCompleta) {
+        const partes = r.dataCompleta.split('-');
+        if (partes.length === 3) {
+            const dt = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
+            const diaSemanaNome = diasSemana[dt.getDay()] || '';
+            horarioTexto = `${diaSemanaNome}, ${partes[2]}/${partes[1]}/${partes[0]} • ${hIni} às ${hFim}`;
+        }
+    }
+
+    // 5. Titular em Title Case elegante
+    let titularFormatado = (r.organizador || 'Sócio').replace(/\s*\(.*?\)\s*/g, '').trim();
+    titularFormatado = titularFormatado.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+
+    // 6. Lista de Convidados formatada com máscara de telefone
+    const convidados = Object.keys(r.dadosConvidados || {});
+    const listaConvidadosTxt = convidados.map(c => {
+        const item = r.dadosConvidados[c];
+        let nomeConv = (item.nomeCompleto || c).replace(/\s*\(.*?\)\s*/g, '').trim();
+        nomeConv = nomeConv.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+
+        const foneRaw = (item.whatsapp || '').replace(/\D/g, '');
+        let foneFmt = item.whatsapp || '';
+        if (foneRaw.length === 11) {
+            foneFmt = `(${foneRaw.substring(0, 2)}) ${foneRaw.substring(2, 7)}-${foneRaw.substring(7)}`;
+        } else if (foneRaw.length === 10) {
+            foneFmt = `(${foneRaw.substring(0, 2)}) ${foneRaw.substring(2, 6)}-${foneRaw.substring(6)}`;
+        }
+
+        return `• ${nomeConv} - ${foneFmt}`;
+    }).join('\n');
+
+    // 7. Valor Total
+    const totalTxt = document.getElementById('checkout-valor-total')?.textContent || 'R$ 0,00';
+    const valorTotalFmt = totalTxt.includes('=') ? totalTxt.split('=').pop().trim() : totalTxt;
+
+    // 8. Mensagem no formato oficial para a Secretaria
+    const textoMensagem = 
+`🎾 *${nomeClube}*
+*Comprovante - Taxa de Convidado*
+
+📍 *Local:* ${nomeQuadraVisual}
+📅 *Horário:* ${horarioTexto}
+👤 *Titular:* ${titularFormatado}
+
+🎟️ *Convidado(s):*
+${listaConvidadosTxt}
+
+💰 *Valor Total:* ${valorTotalFmt}
+
+_Segue anexo o comprovante do PIX para liberação da reserva na planilha._`;
+
+    // 9. Abertura direta via API WhatsApp
+    const url = `https://api.whatsapp.com/send?phone=${whatsDestino}&text=${encodeURIComponent(textoMensagem)}`;
+    window.open(url, '_blank');
+}
+
+/**
+ * Monta o convite individual e abre o WhatsApp diretamente para o Convidado
+ */
+function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
+    if (!dadosReservaCheckoutAtiva || !convidadoItem) return;
+
+    const r = dadosReservaCheckoutAtiva.reserva;
+    const qAlvo = dadosReservaCheckoutAtiva.quadra;
+
+    const numQuadra = (qAlvo || '').match(/\d+/);
+    const chaveQuadra = numQuadra ? `Quadra${numQuadra[0]}` : "Quadra1";
+    const confGeral = (typeof configConvidadosGlobal !== 'undefined' && configConvidadosGlobal) ? configConvidadosGlobal : {};
+    const dadosConfigQ = confGeral[chaveQuadra] || confGeral;
+
+    // 1. Resolução do WhatsApp do Convidado
+    let whatsDestinoConvidado = (convidadoItem.whatsapp || '').replace(/\D/g, '');
+    if (!whatsDestinoConvidado) {
+        showToast("WhatsApp do convidado não informado.", "warning");
+        return;
+    }
+    if (!whatsDestinoConvidado.startsWith('55') && whatsDestinoConvidado.length <= 11) {
+        whatsDestinoConvidado = '55' + whatsDestinoConvidado;
+    }
+
+    // 2. WhatsApp da Secretaria (para o link dentro da mensagem)
+    let whatsSecretaria = (dadosConfigQ.Whatsapp || dadosConfigQ.WhatsApp || dadosConfigQ.whatsapp || confGeral.Whatsapp || confGeral.WhatsApp || '').replace(/\D/g, '');
+    if (whatsSecretaria && !whatsSecretaria.startsWith('55') && whatsSecretaria.length <= 11) {
+        whatsSecretaria = '55' + whatsSecretaria;
+    }
+
+    // 3. Nome do Clube (dinâmico em CAIXA ALTA)
+    let nomeClube = "CLUBE OLÍMPICO";
+    const elNomeClube = document.getElementById('txt-nome-clube');
+    if (elNomeClube && elNomeClube.textContent && elNomeClube.textContent.trim() !== "Carregando...") {
+        nomeClube = elNomeClube.textContent.trim().toUpperCase();
+    } else {
+        const salvo = localStorage.getItem('setpoint_jogador_clube_nome');
+        if (salvo && salvo.trim()) nomeClube = salvo.trim().toUpperCase();
+    }
+
+    // 4. Nome da Quadra
+    let nomeQuadraVisual = qAlvo;
+    if (numQuadra && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+        const dq = configQuadrasGlobal.nomes[numQuadra[0]];
+        if (dq) nomeQuadraVisual = typeof dq === 'object' ? (dq.nome || `Quadra ${numQuadra[0]}`) : dq;
+    }
+
+    // 5. Data Completa com Horários
+    const duracao = parseInt(r.duracao) || 1;
+    const hIni = String(r.hora).padStart(2, '0') + ":00";
+    const hFim = String(r.hora + duracao).padStart(2, '0') + ":00";
+
+    const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+    let horarioTexto = `${hIni} às ${hFim}`;
+
+    if (r.dataCompleta) {
+        const partes = r.dataCompleta.split('-');
+        if (partes.length === 3) {
+            const dt = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
+            const diaSemanaNome = diasSemana[dt.getDay()] || '';
+            horarioTexto = `${diaSemanaNome}, ${partes[2]}/${partes[1]}/${partes[0]} • ${hIni} às ${hFim}`;
+        }
+    }
+
+    // 6. Nomes Formatados
+    let titularFormatado = (r.organizador || 'Sócio').replace(/\s*\(.*?\)\s*/g, '').trim();
+    titularFormatado = titularFormatado.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+
+    let nomeConv = (convidadoItem.nomeCompleto || 'Convidado').replace(/\s*\(.*?\)\s*/g, '').trim();
+    nomeConv = nomeConv.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+
+    // 7. Parâmetros Financeiros Individuais
+    const taxaUnitStr = dadosConfigQ.Taxa || "0,00";
+    const chavePix = dadosConfigQ.ChavePix || "Chave PIX não configurada";
+    const recebedor = dadosConfigQ.Recebedor || "Arena / Secretaria";
+
+    // 8. Link para envio do comprovante à Secretaria
+    const linkSecretaria = whatsSecretaria 
+        ? `https://wa.me/${whatsSecretaria}?text=${encodeURIComponent("Olá, segue o comprovante da taxa de convidado de " + nomeConv)}` 
+        : `wa.me/secretaria`;
+
+    // 9. Mensagem de cobrança e convite para o Visitante
+    const textoMensagemConvidado = 
+`🎾 *${nomeClube}*
+*Convite de Jogo & Taxa de Convidado*
+
+Olá, *${nomeConv}*!
+*${titularFormatado}* agendou uma partida com você:
+
+📍 *Local:* ${nomeQuadraVisual}
+📅 *Horário:* ${horarioTexto}
+💰 *Taxa Individual:* R$ ${taxaUnitStr}
+
+🔑 *Chave PIX da Arena:* ${chavePix}
+👤 *Titular PIX:* ${recebedor}
+
+⚠️ *Para confirmar sua vaga:*
+Faça o PIX de R$ ${taxaUnitStr} e envie o comprovante diretamente para a secretaria da arena no link:
+👉 ${linkSecretaria}
+
+_Nos vemos na quadra!_`;
+
+    // 10. Abertura do WhatsApp do Convidado
+    const url = `https://api.whatsapp.com/send?phone=${whatsDestinoConvidado}&text=${encodeURIComponent(textoMensagemConvidado)}`;
+    window.open(url, '_blank');
 }

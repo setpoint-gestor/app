@@ -1023,6 +1023,10 @@ function renderizarGradeAulas() {
             } else {
                 const profNome = grade[key];
 
+                // 1. Escudo de Duplas e Ranking (quando não houver professor atribuído)
+                const duplaExistente = !profNome && (configDuplasGlobal[quadraAulaAtual] && configDuplasGlobal[quadraAulaAtual].Grade && configDuplasGlobal[quadraAulaAtual].Grade[key] === true);
+                const rankingExistente = !profNome && (configTorneiosGlobal[quadraAulaAtual] && configTorneiosGlobal[quadraAulaAtual].Grade && configTorneiosGlobal[quadraAulaAtual].Grade[key] === true);
+
                 if (profNome) {
                     td.className = 'celula-aula-atribuida';
                     td.textContent = profNome;
@@ -1030,21 +1034,46 @@ function renderizarGradeAulas() {
                     if (filtroProf !== 'todos' && profNome !== filtroProf) {
                         td.classList.add('celula-apagada-filtro');
                     }
+                    td.onclick = () => alternarSelecaoLote(key, td);
+                    td.oncontextmenu = (e) => { 
+                        e.preventDefault(); 
+                        if(Object.keys(selecaoLoteAulas).length > 0) abrirModalAtribuicaoProfessor(); 
+                    };
+                } else if (duplaExistente) {
+                    td.className = 'celula-duplas-atribuida';
+                    td.textContent = 'Dupla';
+                    td.style.cursor = 'not-allowed';
+                    td.style.setProperty('pointer-events', 'auto', 'important');
+                    td.onclick = () => {
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        showToast(`Horário indisponível: Reservado para Treino de Duplas`, 'warning');
+                    };
+                } else if (rankingExistente) {
+                    td.className = 'celula-torneios-atribuida';
+                    td.textContent = 'Ranking';
+                    td.style.cursor = 'not-allowed';
+                    td.style.setProperty('pointer-events', 'auto', 'important');
+                    td.onclick = () => {
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        showToast(`Horário indisponível: Reservado para Ranking / Torneios`, 'warning');
+                    };
                 } else if (selecaoLoteAulas[key] === true) {
-                    // CORRIGIDO: Usa a variável certa (selecaoLoteAulas) e sintaxe de Objeto
                     td.className = 'celula-selecionada-lote';
                     td.textContent = ''; 
+                    td.onclick = () => alternarSelecaoLote(key, td);
+                    td.oncontextmenu = (e) => { 
+                        e.preventDefault(); 
+                        if(Object.keys(selecaoLoteAulas).length > 0) abrirModalAtribuicaoProfessor(); 
+                    };
                 } else {
                     td.className = 'celula-livre';
                     td.textContent = '';
+                    td.onclick = () => alternarSelecaoLote(key, td);
+                    td.oncontextmenu = (e) => { 
+                        e.preventDefault(); 
+                        if(Object.keys(selecaoLoteAulas).length > 0) abrirModalAtribuicaoProfessor(); 
+                    };
                 }
-
-                td.onclick = () => alternarSelecaoLote(key, td);
-                td.oncontextmenu = (e) => { 
-                    e.preventDefault(); 
-                    // CORRIGIDO: Valida o tamanho do Objeto em vez de usar .size do Set
-                    if(Object.keys(selecaoLoteAulas).length > 0) abrirModalAtribuicaoProfessor(); 
-                };
             }
             tr.appendChild(td);
         }
@@ -1496,9 +1525,12 @@ function renderizarGradeDuplas() {
                 // 2. INOVAÇÃO: ESCUDO ANTICONFLITO DA GRADE DE AULAS
                 const aulaExistente = (configAulasGlobal[quadraDuplaAtual] && configAulasGlobal[quadraDuplaAtual].Grade) ? configAulasGlobal[quadraDuplaAtual].Grade[key] : null;
 
+                // 2.5. ESCUDO ANTICONFLITO DE HORÁRIO DE RANKING / TORNEIOS
+                const rankingExistente = (configTorneiosGlobal[quadraDuplaAtual] && configTorneiosGlobal[quadraDuplaAtual].Grade && configTorneiosGlobal[quadraDuplaAtual].Grade[key] === true);
+
                 if (aulaExistente) {
-                    td.className = 'celula-bloqueada-padrao';
-                    td.textContent = ''; 
+                    td.className = 'celula-aula';
+                    td.textContent = 'Aula'; 
                     td.style.cursor = 'not-allowed';
                     
                     // FORÇA O NAVEGADOR A ESCUTAR O CLICK EXCLUSIVAMENTE NESSA CÉLULA DE AULA
@@ -1507,6 +1539,16 @@ function renderizarGradeDuplas() {
                     td.onclick = () => {
                         if (navigator.vibrate) navigator.vibrate(30);
                         showToast(`Horário indisponível: Aula com o Professor ${aulaExistente}`, 'warning');
+                    };
+                } else if (rankingExistente) {
+                    td.className = 'celula-torneios-atribuida';
+                    td.textContent = 'Ranking'; 
+                    td.style.cursor = 'not-allowed';
+                    td.style.setProperty('pointer-events', 'auto', 'important');
+
+                    td.onclick = () => {
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        showToast(`Horário indisponível: Reservado para Ranking / Torneios`, 'warning');
                     };
                 } else {
                     // 3. ESTADO NORMAL DA CÉLULA (LIVRE OU ATIVA PARA DUPLAS)
@@ -1529,7 +1571,7 @@ function renderizarGradeDuplas() {
                         if (carrinhoDuplas[quadraDuplaAtual].Grade[key] === true) {
                             delete carrinhoDuplas[quadraDuplaAtual].Grade[key];
                         } else {
-                            carrinhoDuplas[quadraDuplaAtual].Grade[key] = true;
+                            carrinhoDuplas[quadraDuplaAtual].Grade[key] = true; 
                         }
                         renderizarGradeDuplas();
                     };
@@ -1808,15 +1850,28 @@ function renderizarGradeTorneios() {
                 // 2. ESCUDO ANTICONFLITO DA GRADE DE AULAS
                 const aulaExistente = (configAulasGlobal[quadraTorneiosAtual] && configAulasGlobal[quadraTorneiosAtual].Grade) ? configAulasGlobal[quadraTorneiosAtual].Grade[key] : null;
 
+                // 2.5. ESCUDO ANTICONFLITO DE TREINO DE DUPLAS
+                const duplaExistente = (configDuplasGlobal[quadraTorneiosAtual] && configDuplasGlobal[quadraTorneiosAtual].Grade && configDuplasGlobal[quadraTorneiosAtual].Grade[key] === true);
+
                 if (aulaExistente) {
-                    td.className = 'celula-bloqueada-padrao';
-                    td.textContent = ''; 
+                    td.className = 'celula-aula';
+                    td.textContent = 'Aula'; 
                     td.style.cursor = 'not-allowed';
                     td.style.setProperty('pointer-events', 'auto', 'important');
 
                     td.onclick = () => {
                         if (navigator.vibrate) navigator.vibrate(30);
                         showToast(`Horário indisponível: Aula com o Professor ${aulaExistente}`, 'warning');
+                    };
+                } else if (duplaExistente) {
+                    td.className = 'celula-duplas-atribuida';
+                    td.textContent = 'Dupla'; 
+                    td.style.cursor = 'not-allowed';
+                    td.style.setProperty('pointer-events', 'auto', 'important');
+
+                    td.onclick = () => {
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        showToast(`Horário indisponível: Reservado para Treino de Duplas`, 'warning');
                     };
                 } else {
                     // 3. ESTADO NORMAL DA CÉLULA (LIVRE OU ATIVA PARA RANKING)
@@ -1982,24 +2037,6 @@ function inicializarModuloConvidados() {
         configConvidadosGlobal = snapConvidados.val() || {};
         carrinhoConvidados = JSON.parse(JSON.stringify(configConvidadosGlobal));
 
-        // Popula os parâmetros financeiros gerais nas caixas de input automaticamente
-        document.getElementById('txt-taxa-convidado').value = configConvidadosGlobal.Taxa || '';
-        document.getElementById('txt-chave-pix-convidado').value = configConvidadosGlobal.ChavePix || '';
-        document.getElementById('txt-whatsapp-convidado').value = configConvidadosGlobal.Whatsapp || '';
-        
-        const selectRecebedor = document.getElementById('select-recebedor-convidado');
-        if (selectRecebedor) {
-            selectRecebedor.innerHTML = '<option value="Arena">Secretaria / Arena</option>';
-            if (configConvidadosGlobal.Recebedor && configConvidadosGlobal.Recebedor !== 'Arena') {
-                const opt = document.createElement('option');
-                opt.value = configConvidadosGlobal.Recebedor;
-                opt.textContent = configConvidadosGlobal.Recebedor;
-                selectRecebedor.appendChild(opt);
-            }
-            selectRecebedor.value = configConvidadosGlobal.Recebedor || 'Arena';
-        }
-
-        // Renderiza os botões e a grade inicial pacificamente
         renderizarAbasQuadrasConvidados(qtdQuadras, nomesQuadras);
 
     }).catch(err => {
@@ -2008,15 +2045,12 @@ function inicializarModuloConvidados() {
     });
 }
 
-
-
 function renderizarAbasQuadrasConvidados(qtd, nomes) {
     const containerPC = document.getElementById('convidados-tabs-quadras-desktop');
     if (containerPC) containerPC.innerHTML = '';
     let primeiraQuadra = '';
 
     for (let i = 1; i <= qtd; i++) {
-        // Extração rica e segura do nome da quadra
         const nomeDaQuadra = typeof nomes[i] === 'object' ? (nomes[i].nome || `Quadra ${i}`) : (nomes[i] || `Quadra ${i}`);
         const quadraKey = `Quadra${i}`;
         if (i === 1) primeiraQuadra = quadraKey;
@@ -2030,25 +2064,36 @@ function renderizarAbasQuadrasConvidados(qtd, nomes) {
         if (containerPC) containerPC.appendChild(btn);
     }
     
-    // 🛡️ LAPIDAÇÃO PREMIUM UX: Ajuste visual cirúrgico para 1 quadra
     const btnMapaConvidados = document.querySelector('#quadras-visao-convidados .container-titulo-central button');
     
     if (parseInt(qtd) === 1) {
-        if(containerPC) containerPC.style.setProperty('display', 'none', 'important');
-        if(btnMapaConvidados) btnMapaConvidados.style.setProperty('display', 'none', 'important');
+        if (containerPC) containerPC.style.setProperty('display', 'none', 'important');
+        if (btnMapaConvidados) btnMapaConvidados.style.setProperty('display', 'none', 'important');
     } else {
-        if(containerPC) containerPC.style.removeProperty('display');
-        if(btnMapaConvidados) btnMapaConvidados.style.removeProperty('display');
+        if (containerPC) containerPC.style.removeProperty('display');
+        if (btnMapaConvidados) btnMapaConvidados.style.removeProperty('display');
     }
     
-    // Passagem protegida para a quadra inicial
     const nomeInicial = typeof nomes[1] === 'object' ? (nomes[1].nome || 'Quadra 1') : (nomes[1] || 'Quadra 1');
     selecionarQuadraConvidadosConfig(primeiraQuadra, nomeInicial);
 }
 
-
 function selecionarQuadraConvidadosConfig(quadraKey, nomeExibicao) {
     if (navigator.vibrate) navigator.vibrate(20);
+
+    // Persiste em memória os dados digitados na quadra antes de comutar
+    if (quadraConvidadosAtual && carrinhoConvidados[quadraConvidadosAtual]) {
+        const inpTaxaAnt = document.getElementById('txt-taxa-convidado');
+        const inpPixAnt = document.getElementById('txt-chave-pix-convidado');
+        const inpWhatsAnt = document.getElementById('txt-whatsapp-convidado');
+        const selRecAnt = document.getElementById('select-recebedor-convidado');
+
+        if (inpTaxaAnt) carrinhoConvidados[quadraConvidadosAtual].Taxa = inpTaxaAnt.value.trim();
+        if (inpPixAnt) carrinhoConvidados[quadraConvidadosAtual].ChavePix = inpPixAnt.value.trim();
+        if (inpWhatsAnt) carrinhoConvidados[quadraConvidadosAtual].Whatsapp = inpWhatsAnt.value.trim();
+        if (selRecAnt) carrinhoConvidados[quadraConvidadosAtual].Recebedor = selRecAnt.value;
+    }
+
     quadraConvidadosAtual = quadraKey;
 
     document.querySelectorAll('#convidados-tabs-quadras-desktop .quadra-pill').forEach(btn => btn.classList.remove('ativa'));
@@ -2069,7 +2114,48 @@ function selecionarQuadraConvidadosConfig(quadraKey, nomeExibicao) {
     }
 
     document.getElementById('chk-convidados-ativos').checked = carrinhoConvidados[quadraKey].Ativo === true;
-    
+
+    // Herança Sugestiva de PIX e WhatsApp: se a quadra atual estiver em branco, busca da primeira quadra preenchida
+    let pixCarregar = carrinhoConvidados[quadraKey].ChavePix || '';
+    let whatsCarregar = carrinhoConvidados[quadraKey].Whatsapp || '';
+    let recebedorCarregar = carrinhoConvidados[quadraKey].Recebedor || '';
+    let taxaCarregar = carrinhoConvidados[quadraKey].Taxa || '';
+
+    if (!pixCarregar || !whatsCarregar) {
+        for (const k of Object.keys(carrinhoConvidados)) {
+            if (k.startsWith('Quadra') && carrinhoConvidados[k]?.ChavePix) {
+                if (!pixCarregar) pixCarregar = carrinhoConvidados[k].ChavePix;
+                if (!whatsCarregar) whatsCarregar = carrinhoConvidados[k].Whatsapp;
+                if (!recebedorCarregar) recebedorCarregar = carrinhoConvidados[k].Recebedor;
+                break;
+            }
+        }
+        if (!pixCarregar && carrinhoConvidados.ChavePix) pixCarregar = carrinhoConvidados.ChavePix;
+        if (!whatsCarregar && carrinhoConvidados.Whatsapp) whatsCarregar = carrinhoConvidados.Whatsapp;
+        if (!recebedorCarregar && carrinhoConvidados.Recebedor) recebedorCarregar = carrinhoConvidados.Recebedor;
+    }
+
+    const inpTaxa = document.getElementById('txt-taxa-convidado');
+    const inpPix = document.getElementById('txt-chave-pix-convidado');
+    const inpWhats = document.getElementById('txt-whatsapp-convidado');
+    const selRecebedor = document.getElementById('select-recebedor-convidado');
+
+    if (inpTaxa) {
+        inpTaxa.value = taxaCarregar;
+        inpTaxa.classList.remove('campo-obrigatorio-pendente');
+    }
+    if (inpPix) {
+        inpPix.value = pixCarregar;
+        inpPix.classList.remove('campo-obrigatorio-pendente');
+    }
+    if (inpWhats) {
+        inpWhats.value = whatsCarregar;
+        inpWhats.classList.remove('campo-obrigatorio-pendente');
+    }
+    if (selRecebedor) {
+        selRecebedor.value = recebedorCarregar || 'Arena';
+    }
+
     renderizarGradeConvidados();
 }
 
@@ -2078,21 +2164,37 @@ function toggleChaveMestraConvidados(isAtivo) {
         carrinhoConvidados[quadraConvidadosAtual] = { Ativo: false, Grade: {} };
     }
     carrinhoConvidados[quadraConvidadosAtual].Ativo = isAtivo;
+
+    // Abertura Contextual: ao ligar sem parâmetros, abre a gaveta e foca na taxa
+    if (isAtivo) {
+        const inpTaxa = document.getElementById('txt-taxa-convidado');
+        const inpPix = document.getElementById('txt-chave-pix-convidado');
+        const inpWhats = document.getElementById('txt-whatsapp-convidado');
+        const gaveta = document.getElementById('gaveta-taxas-convidados');
+
+        const taxaVal = inpTaxa ? inpTaxa.value.trim() : '';
+        const pixVal = inpPix ? inpPix.value.trim() : '';
+        const whatsVal = inpWhats ? inpWhats.value.trim() : '';
+
+        if ((!taxaVal || !pixVal || !whatsVal) && gaveta) {
+            gaveta.style.display = 'block';
+            if (inpTaxa && !taxaVal) {
+                setTimeout(() => inpTaxa.focus(), 150);
+            }
+        }
+    }
+
     renderizarGradeConvidados();
 }
 
 function toggleGavetaTaxasConvidados() {
     const gaveta = document.getElementById('gaveta-taxas-convidados');
     if (!gaveta) return;
-    if (gaveta.style.display === 'none') {
-        gaveta.style.display = 'block';
-    } else {
-        gaveta.style.display = 'none';
-    }
+    gaveta.style.display = (gaveta.style.display === 'none' || !gaveta.style.display) ? 'block' : 'none';
 }
 
-/* Restante das funções auxiliares mantidas intactas */
 function mascaraMoedaRealSaaS(el) {
+    el.classList.remove('campo-obrigatorio-pendente');
     let valor = el.value.replace(/\D/g, "");
     valor = (valor / 100).toFixed(2) + "";
     valor = valor.replace(".", ",");
@@ -2102,6 +2204,7 @@ function mascaraMoedaRealSaaS(el) {
 }
 
 function mascaraTelefoneSaaS(el) {
+    el.classList.remove('campo-obrigatorio-pendente');
     let valor = el.value.replace(/\D/g, "");
     if (valor.length > 11) valor = valor.substring(0, 11);
     if (valor.length > 10) {
@@ -2144,7 +2247,7 @@ function renderizarGradeConvidados() {
             const td = document.createElement('td');
             const key = `${d}_${h}`;
 
-            // 1. ESCUDO DO HORÁRIO PADRÃO (FUNCIONAMENTO DA ARENA)
+            // 1. Escudo do Horário Padrão da Arena
             let bloqueadoPorHorario = false;
             if (typeof regrasHorariosSaaS !== 'undefined' && regrasHorariosSaaS[d]) {
                 const regraDia = regrasHorariosSaaS[d];
@@ -2160,15 +2263,14 @@ function renderizarGradeConvidados() {
             if (bloqueadoPorHorario) {
                 td.className = 'celula-bloqueada-padrao';
             } else {
-                // 2. ESCUDO ANTICONFLITO DA GRADE DE AULAS
+                // 2. Escudos Anticonflito: Aulas, Duplas e Ranking
                 const aulaExistente = (configAulasGlobal[quadraConvidadosAtual] && configAulasGlobal[quadraConvidadosAtual].Grade) ? configAulasGlobal[quadraConvidadosAtual].Grade[key] : null;
-                
-                // 3. ESCUDO ANTICONFLITO DE TREINO DE DUPLAS
                 const duplaExistente = (configDuplasGlobal[quadraConvidadosAtual] && configDuplasGlobal[quadraConvidadosAtual].Grade && configDuplasGlobal[quadraConvidadosAtual].Grade[key] === true);
+                const rankingExistente = (configTorneiosGlobal[quadraConvidadosAtual] && configTorneiosGlobal[quadraConvidadosAtual].Grade && configTorneiosGlobal[quadraConvidadosAtual].Grade[key] === true);
 
                 if (aulaExistente) {
-                    td.className = 'celula-bloqueada-padrao';
-                    td.textContent = ''; 
+                    td.className = 'celula-aula';
+                    td.textContent = 'Aula'; 
                     td.style.cursor = 'not-allowed';
                     td.style.setProperty('pointer-events', 'auto', 'important');
                     td.onclick = () => {
@@ -2176,16 +2278,25 @@ function renderizarGradeConvidados() {
                         showToast(`Horário indisponível: Aula com o Professor ${aulaExistente}`, 'warning');
                     };
                 } else if (duplaExistente) {
-                    td.className = 'celula-bloqueada-padrao';
-                    td.textContent = ''; 
+                    td.className = 'celula-duplas-atribuida';
+                    td.textContent = 'Dupla'; 
                     td.style.cursor = 'not-allowed';
                     td.style.setProperty('pointer-events', 'auto', 'important');
                     td.onclick = () => {
                         if (navigator.vibrate) navigator.vibrate(30);
                         showToast(`Horário indisponível: Reservado para Treino de Duplas`, 'warning');
                     };
+                } else if (rankingExistente) {
+                    td.className = 'celula-torneios-atribuida';
+                    td.textContent = 'Ranking'; 
+                    td.style.cursor = 'not-allowed';
+                    td.style.setProperty('pointer-events', 'auto', 'important');
+                    td.onclick = () => {
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        showToast(`Horário indisponível: Reservado para Ranking / Torneios`, 'warning');
+                    };
                 } else {
-                    // 4. ESTADO NORMAL DA CÉLULA (LIVRE OU "EXCETO" TRAVADO)
+                    // 3. Célula Livre ou 'Exceto'
                     if (grade[key] === true) {
                         td.className = 'celula-aula-atribuida'; 
                         td.style.backgroundColor = '#ef4444'; 
@@ -2199,12 +2310,10 @@ function renderizarGradeConvidados() {
                         td.textContent = '';
                     }
 
-                    // CLIQUE DIRETO (TOGGLE LIGA/DESLIGA REGRA "EXCETO")
                     td.onclick = () => {
                         if (!carrinhoConvidados[quadraConvidadosAtual].Ativo) return;
                         if (navigator.vibrate) navigator.vibrate(25);
 
-                        // 🛡️ A LINHA MÁGICA: Se a Grade não existe, recria ela vazia na memória antes de clicar!
                         if (!carrinhoConvidados[quadraConvidadosAtual].Grade) carrinhoConvidados[quadraConvidadosAtual].Grade = {};
 
                         if (carrinhoConvidados[quadraConvidadosAtual].Grade[key] === true) {
@@ -2228,12 +2337,9 @@ function renderizarGradeConvidados() {
     }
 }
 
-
-
 function selecionarTudoConvidados() {
     if (!carrinhoConvidados[quadraConvidadosAtual] || !carrinhoConvidados[quadraConvidadosAtual].Ativo) return;
     
-    // 🛡️ PROTEÇÃO: Recria a Grade se o Firebase tiver apagado
     if (!carrinhoConvidados[quadraConvidadosAtual].Grade) carrinhoConvidados[quadraConvidadosAtual].Grade = {};
     
     const tbody = document.getElementById('tbodyGradeConvidados');
@@ -2260,107 +2366,137 @@ function limparTudoConvidados() {
 
 /**
  * ========================================================
- * SALVAR NO FIREBASE COM EXTRATO DE CONVIDADOS PREMIUM
+ * SALVAR NO FIREBASE COM VALIDAÇÃO IMPEDITIVA E EXTRATO
  * ========================================================
  */
 function salvarGradeConvidadosSaas() {
     if (navigator.vibrate) navigator.vibrate(50);
 
+    // 1. Sincroniza a tela atual para o carrinho da quadra ativa
+    if (quadraConvidadosAtual && carrinhoConvidados[quadraConvidadosAtual]) {
+        const inpTaxaAtiva = document.getElementById('txt-taxa-convidado');
+        const inpPixAtiva = document.getElementById('txt-chave-pix-convidado');
+        const inpWhatsAtiva = document.getElementById('txt-whatsapp-convidado');
+        const selRecAtiva = document.getElementById('select-recebedor-convidado');
+
+        if (inpTaxaAtiva) carrinhoConvidados[quadraConvidadosAtual].Taxa = inpTaxaAtiva.value.trim();
+        if (inpPixAtiva) carrinhoConvidados[quadraConvidadosAtual].ChavePix = inpPixAtiva.value.trim();
+        if (inpWhatsAtiva) carrinhoConvidados[quadraConvidadosAtual].Whatsapp = inpWhatsAtiva.value.trim();
+        if (selRecAtiva) carrinhoConvidados[quadraConvidadosAtual].Recebedor = selRecAtiva.value;
+    }
+
+    // 2. Barreira de Validação Impeditiva em todas as quadras onde a Chave Mestra está ON
+    const quadrasKeys = Object.keys(carrinhoConvidados).filter(k => k.startsWith('Quadra'));
+    
+    for (const qKey of quadrasKeys) {
+        const qData = carrinhoConvidados[qKey];
+        if (qData && qData.Ativo === true) {
+            const taxa = (qData.Taxa || '').trim();
+            const pix = (qData.ChavePix || '').trim();
+            const whats = (qData.Whatsapp || '').trim();
+            const whatsNumeros = whats.replace(/\D/g, '');
+
+            const taxaInvalida = !taxa || taxa === '0,00';
+            const pixInvalido = !pix;
+            const whatsInvalido = whatsNumeros.length !== 11;
+
+            if (taxaInvalida || pixInvalido || whatsInvalido) {
+                const nomeQuadraAlerta = qKey.replace('Quadra', 'Quadra ');
+                
+                // Se a quadra com erro não for a que está aberta, comuta para ela
+                if (quadraConvidadosAtual !== qKey) {
+                    selecionarQuadraConvidadosConfig(qKey, nomeQuadraAlerta);
+                }
+
+                // Abre a gaveta de taxas obrigatoriamente
+                const gaveta = document.getElementById('gaveta-taxas-convidados');
+                if (gaveta) gaveta.style.display = 'block';
+
+                // Aplica a borda vermelha (.campo-obrigatorio-pendente)
+                const inpTaxa = document.getElementById('txt-taxa-convidado');
+                const inpPix = document.getElementById('txt-chave-pix-convidado');
+                const inpWhats = document.getElementById('txt-whatsapp-convidado');
+
+                if (inpTaxa) inpTaxa.classList.toggle('campo-obrigatorio-pendente', taxaInvalida);
+                if (inpPix) inpPix.classList.toggle('campo-obrigatorio-pendente', pixInvalido);
+                if (inpWhats) inpWhats.classList.toggle('campo-obrigatorio-pendente', whatsInvalido);
+
+                let motivoErro = `Para liberar convidados na ${nomeQuadraAlerta}, preencha a Taxa, a Chave PIX e o WhatsApp de Comprovantes.`;
+                if (!taxaInvalida && !pixInvalido && whatsInvalido) {
+                    motivoErro = `WhatsApp inválido na ${nomeQuadraAlerta}. Informe DDD + 9 dígitos (ex: 41999998888).`;
+                }
+
+                showToast(motivoErro, "warning");
+                return; // Aborta gravação
+            }
+        }
+    }
+
+    // Limpa qualquer resquício visual de erro
+    document.querySelectorAll('.campo-obrigatorio-pendente').forEach(el => el.classList.remove('campo-obrigatorio-pendente'));
+
+    // Sincroniza raiz de Convidados para retrocompatibilidade
+    const quadraRef = carrinhoConvidados[quadraConvidadosAtual] || {};
+    carrinhoConvidados.Taxa = quadraRef.Taxa || carrinhoConvidados.Taxa || '';
+    carrinhoConvidados.ChavePix = quadraRef.ChavePix || carrinhoConvidados.ChavePix || '';
+    carrinhoConvidados.Whatsapp = quadraRef.Whatsapp || carrinhoConvidados.Whatsapp || '';
+    carrinhoConvidados.Recebedor = quadraRef.Recebedor || carrinhoConvidados.Recebedor || 'Arena';
+
+    // 3. Monta o Extrato de Alterações
     const diasNome = { 1: 'Segunda-feira', 2: 'Terça-feira', 3: 'Quarta-feira', 4: 'Quinta-feira', 5: 'Sexta-feira', 6: 'Sábado', 7: 'Domingo' };
     let blocosHTML = [];
     let totalMudancas = 0;
 
-    // Captura os valores em tela antes de comparar
-    const nTaxa = document.getElementById('txt-taxa-convidado').value;
-    const nRecebedor = document.getElementById('select-recebedor-convidado').value;
-    const nChavePix = document.getElementById('txt-chave-pix-convidado').value;
-    const nWhatsapp = document.getElementById('txt-whatsapp-convidado').value;
-	// Validação estrita do WhatsApp de Convidados (DDD + 9 dígitos)
-    const whatsLimpo = nWhatsapp.replace(/\D/g, '');
-    if (nWhatsapp.trim() !== "" && whatsLimpo.length !== 11) {
-        return showToast("Digite um WhatsApp válido com DDD (ex: 41999998888).", "warning");
-    }
+    quadrasKeys.forEach(qKey => {
+        const gradeNova = carrinhoConvidados[qKey].Grade || {};
+        const gradeVelha = (configConvidadosGlobal[qKey] && configConvidadosGlobal[qKey].Grade) ? configConvidadosGlobal[qKey].Grade : {};
+        
+        const ativoNovo = carrinhoConvidados[qKey].Ativo === true;
+        const ativoVelho = (configConvidadosGlobal[qKey] && configConvidadosGlobal[qKey].Ativo === true);
+        
+        const nomeQuadraFormatado = qKey.replace('Quadra', 'Quadra ');
+        let subMudancas = [];
 
-    // Sincroniza os dados textuais para dentro do carrinho local
-    carrinhoConvidados.Taxa = nTaxa;
-    carrinhoConvidados.Recebedor = nRecebedor;
-    carrinhoConvidados.ChavePix = nChavePix;
-    carrinhoConvidados.Whatsapp = nWhatsapp;
-
-    // --- 🛠️ Bloco A: Varre Alterações nos Inputs de Texto ---
-    let subMeta = [];
-    const verificarMeta = (label, vNovo, vVelho) => {
-        if (vNovo !== vVelho) {
-            subMeta.push(`• <b>${label}:</b> de <i>${vVelho || 'Vazio'}</i> para <span style="color: #10b981; font-weight: bold;">${vNovo || 'Vazio'}</span>`);
+        if (ativoNovo !== ativoVelho) {
+            subMudancas.push(`• <b>Chave Mestra:</b> de <i>${ativoVelho ? 'Ativada' : 'Desativada'}</i> para <span style="color: #10b981; font-weight: bold;">${ativoNovo ? 'Ativada' : 'Desativada'}</span>`);
             totalMudancas++;
         }
-    };
 
-    verificarMeta('Taxa Unitária', nTaxa, configConvidadosGlobal.Taxa || '');
-    verificarMeta('Recebedor Financeiro', nRecebedor, configConvidadosGlobal.Recebedor || '');
-    verificarMeta('Chave PIX', nChavePix, configConvidadosGlobal.ChavePix || '');
-    verificarMeta('WhatsApp Concierge', nWhatsapp, configConvidadosGlobal.Whatsapp || '');
+        // Alterações financeiras específicas por quadra
+        const taxaNova = carrinhoConvidados[qKey].Taxa || '';
+        const taxaVelha = configConvidadosGlobal[qKey]?.Taxa || '';
+        if (taxaNova !== taxaVelha) {
+            subMudancas.push(`• <b>Taxa:</b> de <i>${taxaVelha || '0,00'}</i> para <span style="color: #10b981; font-weight: bold;">R$ ${taxaNova}</span>`);
+            totalMudancas++;
+        }
 
-    // Se houve mudança nos inputs, encapsula no retângulo de parâmetros gerais
-    if (subMeta.length > 0) {
-        blocosHTML.push(`
-            <fieldset style="border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 0 12px 10px 12px; margin: 12px 0 4px 0; background: rgba(0, 0, 0, 0.02); text-align: left; box-sizing: border-box;">
-                <legend style="padding: 0 8px; font-size: 11px; font-weight: 900; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; margin: 0 auto;">
-                    Parâmetros Gerais
-                </legend>
-                <div style="max-height: 120px; overflow-y: auto; padding-top: 8px; font-size: 13px; line-height: 1.6; color: var(--txt-padrao, #475569);">
-                    ${subMeta.join('<br>')}
-                </div>
-            </fieldset>
-        `);
-    }
+        for (let d = 1; d <= 7; d++) {
+            for (let h = 6; h <= 22; h++) {
+                const key = `${d}_${h}`;
+                const vNovo = gradeNova[key] === true;
+                const vVelho = gradeVelha[key] === true;
 
-    // --- 🏟️ Bloco B: Varre Alterações nas Grades Interativas ---
-    Object.keys(carrinhoConvidados).forEach(qKey => {
-        if (qKey.startsWith('Quadra')) {
-            const gradeNova = carrinhoConvidados[qKey].Grade || {};
-            const gradeVelha = (configConvidadosGlobal[qKey] && configConvidadosGlobal[qKey].Grade) ? configConvidadosGlobal[qKey].Grade : {};
-            
-            const ativoNovo = carrinhoConvidados[qKey].Ativo === true;
-            const ativoVelho = (configConvidadosGlobal[qKey] && configConvidadosGlobal[qKey].Ativo === true);
-            
-            const nomeQuadraFormatado = qKey.replace('Quadra', 'Quadra ');
-            let subMudancas = [];
-
-            if (ativoNovo !== ativoVelho) {
-                subMudancas.push(`• <b>Chave Mestra:</b> de <i>${ativoVelho ? 'Ativada' : 'Desativada'}</i> para <span style="color: #10b981; font-weight: bold;">${ativoNovo ? 'Ativada' : 'Desativada'}</span>`);
-                totalMudancas++;
-            }
-
-            for (let d = 1; d <= 7; d++) {
-                for (let h = 6; h <= 22; h++) {
-                    const key = `${d}_${h}`;
-                    const vNovo = gradeNova[key] === true;
-                    const vVelho = gradeVelha[key] === true;
-
-                    if (vNovo !== vVelho) {
-                        const diaTxt = diasNome[d];
-                        const horaTxt = `${String(h).padStart(2, '0')}:00`;
-                        
-                        subMudancas.push(`• <b>${diaTxt} às ${horaTxt}:</b> de <i>${vVelho ? 'Bloqueado' : 'Livre'}</i> para <span style="color: #10b981; font-weight: bold;">${vNovo ? 'Bloqueado' : 'Livre'}</span>`);
-                        totalMudancas++;
-                    }
+                if (vNovo !== vVelho) {
+                    const diaTxt = diasNome[d];
+                    const horaTxt = `${String(h).padStart(2, '0')}:00`;
+                    
+                    subMudancas.push(`• <b>${diaTxt} às ${horaTxt}:</b> de <i>${vVelho ? 'Bloqueado' : 'Livre'}</i> para <span style="color: #10b981; font-weight: bold;">${vNovo ? 'Bloqueado' : 'Livre'}</span>`);
+                    totalMudancas++;
                 }
             }
+        }
 
-            // 💎 O RETÂNGULO INTELIGENTE: Corta a linha superior para o nome da respectiva quadra
-            if (subMudancas.length > 0) {
-                blocosHTML.push(`
-                    <fieldset style="border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 0 12px 10px 12px; margin: 15px 0 4px 0; background: rgba(0, 0, 0, 0.02); text-align: left; box-sizing: border-box;">
-                        <legend style="padding: 0 8px; font-size: 11px; font-weight: 900; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; margin: 0 auto;">
-                            ${nomeQuadraFormatado}
-                        </legend>
-                        <div style="max-height: 120px; overflow-y: auto; padding-top: 8px; font-size: 13px; line-height: 1.6; color: var(--txt-padrao, #475569);">
-                            ${subMudancas.join('<br>')}
-                        </div>
-                    </fieldset>
-                `);
-            }
+        if (subMudancas.length > 0) {
+            blocosHTML.push(`
+                <fieldset style="border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 0 12px 10px 12px; margin: 15px 0 4px 0; background: rgba(0, 0, 0, 0.02); text-align: left; box-sizing: border-box;">
+                    <legend style="padding: 0 8px; font-size: 11px; font-weight: 900; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; margin: 0 auto;">
+                        ${nomeQuadraFormatado}
+                    </legend>
+                    <div style="max-height: 120px; overflow-y: auto; padding-top: 8px; font-size: 13px; line-height: 1.6; color: var(--txt-padrao, #475569);">
+                        ${subMudancas.join('<br>')}
+                    </div>
+                </fieldset>
+            `);
         }
     });
 
@@ -2368,11 +2504,10 @@ function salvarGradeConvidadosSaas() {
         return showToast("Nenhum parâmetro de convidados foi alterado.", "info");
     }
 
-    // Despacha o pacote unificado via set na rota dinâmica SaaS do Firebase
+    // 4. Gravação atômica no nó Horarios/Convidados
     database.ref(`${raizBanco}/config/Horarios/Convidados`).set(carrinhoConvidados).then(() => {
         configConvidadosGlobal = JSON.parse(JSON.stringify(carrinhoConvidados));
 
-        // 💎 Renderização do Toast com suporte adaptativo total Claro/Escuro
         let msgExtrato = `
             <div style="background: var(--bg-painel, #ffffff); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border-left: 6px solid #10b981; padding: 20px; width: 100%; text-align: left; position: relative; box-sizing: border-box;">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -2388,7 +2523,6 @@ function salvarGradeConvidadosSaas() {
             </div>
         `;
         
-        // Métrica de tempo dinâmica oficial
         const tempoCalculado = 3000 + (totalMudancas * 1000); 
         showToast(msgExtrato, "premium", tempoCalculado);
 
