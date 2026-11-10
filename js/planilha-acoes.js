@@ -128,11 +128,11 @@ function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
 		}
 	}
 
-    // 3. Vincula o botão "Excluir" (Gestor/God Mode pode sempre; Organizador só pode em reservas futuras)
+    // 3. Vincula o botão "Excluir" (Gestor/God Mode pode sempre; Organizador e Admin só podem em reservas futuras)
     const btnExcluir = document.getElementById('btn-saas-excluir-reserva');
     const temPlacarLancado = !!(dadosReserva.dadosPlacar || (dadosReserva.statusPlacar && dadosReserva.statusPlacar !== 'sem_placar'));
-    const isGestorOuGodMode = (isGestorLogado === true) || (ehAdmin === true) || !!localStorage.getItem('god_mode_clube');
-    const podeExcluir = isGestorOuGodMode || (isOProprioOrganizador && !isPassado);
+    const isGestorOuGodMode = (isGestorLogado === true) || !!localStorage.getItem('god_mode_clube');
+    const podeExcluir = isGestorOuGodMode || ((isOProprioOrganizador || ehAdmin === true) && !isPassado);
 
     if (podeExcluir && !temPlacarLancado) {
         modal.classList.remove('saas-modo-leitura');
