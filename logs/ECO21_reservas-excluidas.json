@@ -7701,5 +7701,60 @@
         "hora": 11
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-10T15:24:00.283Z",
+    "dataLocal": "10/11/2026, 12:24:00",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "08:00 - 10:00",
+    "duracao": "2 Horas",
+    "data": "13-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "RONALDO TABORDA",
+    "confirmacoes": {
+      "Convidado": false,
+      "Taborda": true
+    },
+    "jogadores": "Taborda, Convidado, Convidado",
+    "jogadores_completo": "RONALDO TABORDA, Rafael Martins (Convidado), José Carlos (Convidado)",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 8
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 5,
+        "hora": 9
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-10T15:24:00.284Z",
+    "dataLocal": "10/11/2026, 12:24:00",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (2 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Del Potro": true,
+      "Alex": true
+    },
+    "jogadores": "Del Potro, Alex",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, ALEX SOUZA",
+    "slotsExcluidos": []
   }
 ]
