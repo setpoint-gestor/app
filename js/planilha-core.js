@@ -2422,6 +2422,30 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
             }
         });
     }
+
+    // ----------------------------------------------------
+    // EVENTO 8: PARTIDA CONFIRMADA (QUÓRUM 100% ATINGIDO)
+    // ----------------------------------------------------
+    if (tipoEvento === "PARTIDA_CONFIRMADA") {
+        const tituloPush = "🎾 Partida Confirmada!";
+        const msgPush = `Todos os jogadores confirmaram presença para a partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}).`;
+
+        const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+        const orgLimpo = (organizadorFormatado || dadosReserva.organizador || "").replace(/\s*\(.*?\)\s*/g, "").trim();
+        const orgNorm = norm(orgLimpo);
+
+        const idOrgTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+            const j = jogadoresGlobal[id];
+            return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
+        });
+
+        if (idOrgTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+            enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { 
+                tipo: "PARTIDA_CONFIRMADA",
+                categoria: "partida_confirmada"
+            });
+        }
+    }
 	
 }
 
@@ -2627,7 +2651,7 @@ function renderizarListaBaixasPopoverSaaS(listaItensParam) {
         if (numQ && typeof configConvidadosGlobal !== 'undefined' && configConvidadosGlobal[`Quadra${numQ[0]}`]?.Taxa) {
             taxaUnitStr = configConvidadosGlobal[`Quadra${numQ[0]}`].Taxa;
         } else if (typeof configConvidadosGlobal !== 'undefined' && configConvidadosGlobal?.Taxa) {
-            taxaUnitStr = configConvidadosGlobal.Taxa;
+            taxaUnitStr = configConvidadosGlobal.Taxa; 
         }
 
         const taxaUnitNum = parseFloat(taxaUnitStr.replace(/\./g, '').replace(',', '.')) || 0;
@@ -2872,6 +2896,9 @@ function confirmarBaixaTaxaConvidadoSaaS(quadraKey, slotKey) {
         const todasConfirmadas = Object.values(confs).every(v => v === true) && todosConvidadosPagos;
 
         if (todasConfirmadas) {
+            if (reserva.status === 'pendente') {
+                reserva.acabouDeConfirmarPorBaixa = true;
+            }
             reserva.status = 'confirmada';
             delete reserva.expiraEm;
         }
@@ -2927,6 +2954,43 @@ function confirmarBaixaTaxaConvidadoSaaS(quadraKey, slotKey) {
 
             if (typeof enviarFilaLogsAoGitHubSaaS === 'function') {
                 enviarFilaLogsAoGitHubSaaS([logConfirmacao]);
+            }
+
+            // 🔔 NOTIFICAÇÃO NO APP E PUSH PARA O ORGANIZADOR AO SANAR ÚLTIMA PENDÊNCIA
+            if (rAtualizada.acabouDeConfirmarPorBaixa && rAtualizada.organizador) {
+                // Remove a flag temporária do banco
+                database.ref(`${path1}/acabouDeConfirmarPorBaixa`).remove();
+
+                const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+                const orgLimpo = (rAtualizada.organizador || "").replace(/\s*\(.*?\)\s*/g, "").trim();
+                const orgNorm = norm(orgLimpo);
+
+                const idOrgTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+                    const j = jogadoresGlobal[id];
+                    return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
+                });
+
+                if (idOrgTarget) {
+                    const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+                    const nomeDia = diasSemana[rAtualizada.dia] || "Dia";
+                    const hInicio = String(rAtualizada.hora).padStart(2, '0') + ":00";
+                    const hFim = String(rAtualizada.hora + duracao).padStart(2, '0') + ":00";
+                    const quadraTexto = nomeQuadraAmigavel.toLowerCase().startsWith('quadra') ? nomeQuadraAmigavel.toLowerCase() : `quadra ${nomeQuadraAmigavel}`;
+                    const detalheFormatado = `${nomeDia}, das ${hInicio} às ${hFim} hs, na ${quadraTexto}`;
+
+                    // 1. Notificação interna do app (Sininho)
+                    const payloadNotif = {
+                        categoria: "partida_confirmada",
+                        detalhe: detalheFormatado,
+                        timestamp: Date.now()
+                    };
+                    database.ref(`${raizBanco}/jogadores/${idOrgTarget}/notificacoes`).push(payloadNotif);
+
+                    // 2. Notificação Push Nativa (FCM)
+                    if (typeof processarGatilhoPushSaaS === 'function') {
+                        processarGatilhoPushSaaS(rAtualizada, orgLimpo, nomeQuadraAmigavel, "PARTIDA_CONFIRMADA");
+                    }
+                }
             }
         }
 

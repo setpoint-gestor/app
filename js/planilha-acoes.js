@@ -733,7 +733,7 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                 
                 if (chaveMatch && dadosReserva.dadosConvidados[chaveMatch].statusTaxa !== 'pago') {
                     isPendente = true;
-                    isConvidadoPendente = true;
+                    isConvidadoPendente = true; 
                     temPendente = true;
                 }
             } else if (dadosReserva.confirmacoes) {
@@ -1894,6 +1894,12 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                     timestamp: Date.now()
                 };
                 database.ref(`${raizBanco}/jogadores/${idOrg}/notificacoes`).push(payloadNotif);
+
+                // 🔔 DISPARO PUSH SAAS (EVENTO 8: PARTIDA CONFIRMADA)
+                if (typeof processarGatilhoPushSaaS === 'function') {
+                    const nomeOrgPuro = (dadosReservaAntes.organizador || "Organizador").replace(/\s*\(.*?\)\s*/g, "").trim();
+                    processarGatilhoPushSaaS({ ...reservaAtualizada, dia, hora }, nomeOrgPuro, nomeQuadraAmigavel, "PARTIDA_CONFIRMADA");
+                }
             }
         }
 
