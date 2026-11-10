@@ -7675,5 +7675,31 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-10T14:22:48.076Z",
+    "dataLocal": "10/11/2026, 11:22:48",
+    "autor": "JUAN MARTIN DEL POTRO",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 4 - Roger Federer",
+    "horario": "11:00 - 12:00",
+    "duracao": "1 Hora",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Del Potro": true
+    },
+    "jogadores": "Del Potro",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO",
+    "slotsExcluidos": [
+      {
+        "dia": 2,
+        "hora": 11
+      }
+    ]
   }
 ]
