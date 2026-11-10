@@ -7366,5 +7366,28 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-10T01:37:28.666Z",
+    "dataLocal": "09/11/2026, 22:37:28",
+    "autor": "Administração (Gestor)",
+    "acao": "CONFIRMACAO_TAXA_CONVIDADO",
+    "motivo": "A taxa de convidado foi confirmada pela administração.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "11-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alex": true,
+      "Convidado": true
+    },
+    "jogadores": "Alex, Adriano Feitosa, Convidado",
+    "jogadores_completo": "ALEX SOUZA, ADRIANO GOMES FEITOSA, Carlos silva (Convidado)",
+    "slotsExcluidos": []
   }
 ]
