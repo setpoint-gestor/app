@@ -7604,5 +7604,27 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-10T12:38:00.887Z",
+    "dataLocal": "10/11/2026, 09:38:00",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "CONFIRMACAO_TAXA_CONVIDADO",
+    "motivo": "A taxa de convidado foi confirmada pela administração.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "09:00 - 10:00",
+    "duracao": "1 Hora",
+    "data": "10-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Convidado": true
+    },
+    "jogadores": "Adriano Feitosa, Convidado",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA, carlos silva (Convidado)",
+    "slotsExcluidos": []
   }
 ]
