@@ -23,7 +23,7 @@ let quadraConvidadosAtual = '';  // Armazena a string da quadra ativa em ediçã
  * Altera de escopo entre as abas originais da tela mestre (Arena / Quadras)
  */
 function mudarEscopoConfig(escopoTarget) {
-    if (navigator.vibrate) navigator.vibrate(30);   
+    if (navigator.vibrate) navigator.vibrate(30);    
 
     document.getElementById('btn-escopo-arena').classList.remove('ativa');
     document.getElementById('btn-escopo-quadras').classList.remove('ativa');
@@ -399,28 +399,64 @@ function voltarAoMenuHubGeral() {
     const visaoConvidados = document.getElementById('quadras-visao-convidados');
     if (visaoConvidados && visaoConvidados.classList.contains('ativa')) {
         let blocosHTML = [];
-        let metaMudancas = [];
 
-        const verificarMeta = (idDOM, label, chaveObjeto) => {
-            const el = document.getElementById(idDOM);
-            const vNovo = el ? el.value : (carrinhoConvidados[chaveObjeto] || '');
-            const vVelho = configConvidadosGlobal[chaveObjeto] || '';
-            if (vNovo !== vVelho) {
-                metaMudancas.push(`• <b>${label}:</b> de <i>${vVelho || 'Vazio'}</i> para <b style="color:#dc3545;">${vNovo || 'Vazio'}</b>`);
+        // 1. Sincroniza o que está digitado na tela da quadra ativa para o rascunho com a regra de exceções
+        if (quadraConvidadosAtual && carrinhoConvidados[quadraConvidadosAtual]) {
+            const inpTaxa = document.getElementById('txt-taxa-convidado');
+            const inpPix = document.getElementById('txt-chave-pix-convidado');
+            const inpWhats = document.getElementById('txt-whatsapp-convidado');
+            const selRec = document.getElementById('select-recebedor-convidado');
+
+            const vTaxa = inpTaxa ? inpTaxa.value.trim() : '';
+            const vPix = inpPix ? inpPix.value.trim() : '';
+            const vWhats = inpWhats ? inpWhats.value.trim() : '';
+            const vRec = selRec ? selRec.value : 'Arena';
+
+            if (vTaxa && vTaxa !== carrinhoConvidados.Taxa) {
+                carrinhoConvidados[quadraConvidadosAtual].Taxa = vTaxa;
+            } else {
+                delete carrinhoConvidados[quadraConvidadosAtual].Taxa;
             }
-        };
 
-        verificarMeta('txt-taxa-convidado', 'Taxa por Convidado', 'Taxa');
-        verificarMeta('select-recebedor-convidado', 'Destinatário Financeiro', 'Recebedor');
-        verificarMeta('txt-chave-pix-convidado', 'Chave PIX', 'ChavePix');
-        verificarMeta('txt-whatsapp-convidado', 'WhatsApp Concierge', 'Whatsapp');
+            if (vPix && vPix !== carrinhoConvidados.ChavePix) {
+                carrinhoConvidados[quadraConvidadosAtual].ChavePix = vPix;
+            } else {
+                delete carrinhoConvidados[quadraConvidadosAtual].ChavePix;
+            }
 
-        // Se alterou alguma configuração financeira mestre, joga no retângulo de Parâmetros
+            if (vWhats && vWhats !== carrinhoConvidados.Whatsapp) {
+                carrinhoConvidados[quadraConvidadosAtual].Whatsapp = vWhats;
+            } else {
+                delete carrinhoConvidados[quadraConvidadosAtual].Whatsapp;
+            }
+
+            if (vRec && vRec !== carrinhoConvidados.Recebedor) {
+                carrinhoConvidados[quadraConvidadosAtual].Recebedor = vRec;
+            } else {
+                delete carrinhoConvidados[quadraConvidadosAtual].Recebedor;
+            }
+        }
+
+        // 2. Avalia alterações nos Parâmetros Globais da Arena (definidos via 3 pontinhos)
+        let metaMudancas = [];
+        if ((carrinhoConvidados.Taxa || '') !== (configConvidadosGlobal.Taxa || '')) {
+            metaMudancas.push(`• <b>Taxa Padrão:</b> de <i>R$ ${configConvidadosGlobal.Taxa || '0,00'}</i> para <b style="color:#dc3545;">R$ ${carrinhoConvidados.Taxa || '0,00'}</b>`);
+        }
+        if ((carrinhoConvidados.Recebedor || 'Arena') !== (configConvidadosGlobal.Recebedor || 'Arena')) {
+            metaMudancas.push(`• <b>Recebedor Oficial:</b> de <i>${configConvidadosGlobal.Recebedor || 'Arena'}</i> para <b style="color:#dc3545;">${carrinhoConvidados.Recebedor || 'Arena'}</b>`);
+        }
+        if ((carrinhoConvidados.ChavePix || '') !== (configConvidadosGlobal.ChavePix || '')) {
+            metaMudancas.push(`• <b>Chave PIX da Arena:</b> de <i>${configConvidadosGlobal.ChavePix || 'Vazio'}</i> para <b style="color:#dc3545;">${carrinhoConvidados.ChavePix || 'Vazio'}</b>`);
+        }
+        if ((carrinhoConvidados.Whatsapp || '') !== (configConvidadosGlobal.Whatsapp || '')) {
+            metaMudancas.push(`• <b>WhatsApp Comprovantes:</b> de <i>${configConvidadosGlobal.Whatsapp || 'Vazio'}</i> para <b style="color:#dc3545;">${carrinhoConvidados.Whatsapp || 'Vazio'}</b>`);
+        }
+
         if (metaMudancas.length > 0) {
             blocosHTML.push(`
                 <fieldset style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px 10px 12px; margin: 10px 0 5px 0; background: #f8fafc; text-align: left;">
-                    <legend style="padding: 0 8px; font-size: 11px; font-weight: 900; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; margin: 0 auto;">
-                        Parâmetros Gerais
+                    <legend style="padding: 0 8px; font-size: 11px; font-weight: 900; color: #0284c7; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; margin: 0 auto;">
+                        Padrão Global da Arena
                     </legend>
                     <div style="max-height: 110px; overflow-y: auto; padding-top: 8px; font-size: 13px; line-height: 1.6; color: #475569;">
                         ${metaMudancas.join('<br>')}
@@ -429,6 +465,7 @@ function voltarAoMenuHubGeral() {
             `);
         }
 
+        // 3. Avalia alterações nas Quadras individuais (Status, Exceções Financeiras e Grade)
         Object.keys(carrinhoConvidados).forEach(qKey => {
             if (qKey.startsWith('Quadra')) {
                 const nomeQuadra = qKey.replace('Quadra', 'Quadra ');
@@ -436,9 +473,40 @@ function voltarAoMenuHubGeral() {
 
                 const novoAtivo = carrinhoConvidados[qKey].Ativo === true;
                 const velhoAtivo = configConvidadosGlobal[qKey]?.Ativo === true;
-
                 if (novoAtivo !== velhoAtivo) {
                     subMudancas.push(`• <b>Status Geral:</b> de <i>${velhoAtivo ? 'Ativada' : 'Desativada'}</i> para <b style="color:#dc3545;">${novoAtivo ? 'Ativada' : 'Desativada'}</b>`);
+                }
+
+                const taxaNova = carrinhoConvidados[qKey].Taxa || '';
+                const taxaVelha = configConvidadosGlobal[qKey]?.Taxa || '';
+                if (taxaNova !== taxaVelha) {
+                    const rotuloNova = taxaNova ? `R$ ${taxaNova} (Exceção)` : `Padrão da Arena`;
+                    const rotuloVelha = taxaVelha ? `R$ ${taxaVelha}` : `Padrão da Arena`;
+                    subMudancas.push(`• <b>Taxa:</b> de <i>${rotuloVelha}</i> para <b style="color:#dc3545;">${rotuloNova}</b>`);
+                }
+
+                const pixNova = carrinhoConvidados[qKey].ChavePix || '';
+                const pixVelha = configConvidadosGlobal[qKey]?.ChavePix || '';
+                if (pixNova !== pixVelha) {
+                    const rotuloNova = pixNova ? `${pixNova} (Exceção)` : `Padrão da Arena`;
+                    const rotuloVelha = pixVelha ? `${pixVelha}` : `Padrão da Arena`;
+                    subMudancas.push(`• <b>Chave PIX:</b> de <i>${rotuloVelha}</i> para <b style="color:#dc3545;">${rotuloNova}</b>`);
+                }
+
+                const whatsNova = carrinhoConvidados[qKey].Whatsapp || '';
+                const whatsVelha = configConvidadosGlobal[qKey]?.Whatsapp || '';
+                if (whatsNova !== whatsVelha) {
+                    const rotuloNova = whatsNova ? `${whatsNova} (Exceção)` : `Padrão da Arena`;
+                    const rotuloVelha = whatsVelha ? `${whatsVelha}` : `Padrão da Arena`;
+                    subMudancas.push(`• <b>WhatsApp:</b> de <i>${rotuloVelha}</i> para <b style="color:#dc3545;">${rotuloNova}</b>`);
+                }
+
+                const recNova = carrinhoConvidados[qKey].Recebedor || '';
+                const recVelha = configConvidadosGlobal[qKey]?.Recebedor || '';
+                if (recNova !== recVelha) {
+                    const rotuloNova = recNova ? `${recNova} (Exceção)` : `Padrão da Arena`;
+                    const rotuloVelha = recVelha ? `${recVelha}` : `Padrão da Arena`;
+                    subMudancas.push(`• <b>Recebedor:</b> de <i>${rotuloVelha}</i> para <b style="color:#dc3545;">${rotuloNova}</b>`);
                 }
 
                 const novaGrade = carrinhoConvidados[qKey].Grade || {};
@@ -2037,6 +2105,21 @@ function inicializarModuloConvidados() {
         configConvidadosGlobal = snapConvidados.val() || {};
         carrinhoConvidados = JSON.parse(JSON.stringify(configConvidadosGlobal));
 
+        // Retrocompatibilidade: se a raiz de Convidados não possuir os campos mestres,
+        // realiza o harvest da primeira quadra que tiver dados para compor o padrão da arena.
+        if (!carrinhoConvidados.Taxa || !carrinhoConvidados.ChavePix || !carrinhoConvidados.Whatsapp) {
+            for (const k of Object.keys(carrinhoConvidados)) {
+                if (k.startsWith('Quadra')) {
+                    const qItem = carrinhoConvidados[k];
+                    if (!carrinhoConvidados.Taxa && qItem?.Taxa) carrinhoConvidados.Taxa = qItem.Taxa;
+                    if (!carrinhoConvidados.ChavePix && qItem?.ChavePix) carrinhoConvidados.ChavePix = qItem.ChavePix;
+                    if (!carrinhoConvidados.Whatsapp && qItem?.Whatsapp) carrinhoConvidados.Whatsapp = qItem.Whatsapp;
+                    if (!carrinhoConvidados.Recebedor && qItem?.Recebedor) carrinhoConvidados.Recebedor = qItem.Recebedor;
+                }
+            }
+            if (!carrinhoConvidados.Recebedor) carrinhoConvidados.Recebedor = 'Arena';
+        }
+
         renderizarAbasQuadrasConvidados(qtdQuadras, nomesQuadras);
 
     }).catch(err => {
@@ -2078,20 +2161,96 @@ function renderizarAbasQuadrasConvidados(qtd, nomes) {
     selecionarQuadraConvidadosConfig(primeiraQuadra, nomeInicial);
 }
 
+// 🏛️ ABERTURA DO MODAL 3 PONTINHOS: PARÂMETROS PADRÃO DA ARENA
+function abrirModalPadraoArenaConvidados() {
+    if (navigator.vibrate) navigator.vibrate(20);
+
+    const inpTaxaGlobal = document.getElementById('txt-taxa-convidado-global');
+    const selRecGlobal = document.getElementById('select-recebedor-convidado-global');
+    const inpPixGlobal = document.getElementById('txt-chave-pix-convidado-global');
+    const inpWhatsGlobal = document.getElementById('txt-whatsapp-convidado-global');
+
+    if (inpTaxaGlobal) inpTaxaGlobal.value = carrinhoConvidados.Taxa || '';
+    if (selRecGlobal) selRecGlobal.value = carrinhoConvidados.Recebedor || 'Arena';
+    if (inpPixGlobal) inpPixGlobal.value = carrinhoConvidados.ChavePix || '';
+    if (inpWhatsGlobal) inpWhatsGlobal.value = carrinhoConvidados.Whatsapp || '';
+
+    abrirModalConfig('modal-padrao-arena-convidados');
+}
+
+// 💾 GRAVAÇÃO DOS DADOS GLOBAIS NO RASCUNHO (MEMÓRIA RAM)
+function salvarPadraoArenaConvidadosSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const inpTaxaGlobal = document.getElementById('txt-taxa-convidado-global');
+    const selRecGlobal = document.getElementById('select-recebedor-convidado-global');
+    const inpPixGlobal = document.getElementById('txt-chave-pix-convidado-global');
+    const inpWhatsGlobal = document.getElementById('txt-whatsapp-convidado-global');
+
+    carrinhoConvidados.Taxa = inpTaxaGlobal ? inpTaxaGlobal.value.trim() : '';
+    carrinhoConvidados.Recebedor = selRecGlobal ? selRecGlobal.value : 'Arena';
+    carrinhoConvidados.ChavePix = inpPixGlobal ? inpPixGlobal.value.trim() : '';
+    carrinhoConvidados.Whatsapp = inpWhatsGlobal ? inpWhatsGlobal.value.trim() : '';
+
+    // Se a quadra atualmente em exibição na tela estiver utilizando valores herdados,
+    // atualiza imediatamente os campos dela para refletir o novo padrão da arena
+    if (quadraConvidadosAtual && carrinhoConvidados[quadraConvidadosAtual]) {
+        const qData = carrinhoConvidados[quadraConvidadosAtual];
+        const inpTaxa = document.getElementById('txt-taxa-convidado');
+        const inpPix = document.getElementById('txt-chave-pix-convidado');
+        const inpWhats = document.getElementById('txt-whatsapp-convidado');
+        const selRec = document.getElementById('select-recebedor-convidado');
+
+        if (inpTaxa) inpTaxa.value = qData.Taxa || carrinhoConvidados.Taxa || '';
+        if (inpPix) inpPix.value = qData.ChavePix || carrinhoConvidados.ChavePix || '';
+        if (inpWhats) inpWhats.value = qData.Whatsapp || carrinhoConvidados.Whatsapp || '';
+        if (selRec) selRec.value = qData.Recebedor || carrinhoConvidados.Recebedor || 'Arena';
+    }
+
+    fecharModalConfig('modal-padrao-arena-convidados');
+    showToast("Padrão Global da Arena atualizado no rascunho!", "success");
+}
+
 function selecionarQuadraConvidadosConfig(quadraKey, nomeExibicao) {
     if (navigator.vibrate) navigator.vibrate(20);
 
-    // Persiste em memória os dados digitados na quadra antes de comutar
+    // 1. Salva os dados em edição da quadra anterior com regra de Herança com Exceção Preservada:
+    // Se o valor digitado for preenchido E diferente do padrão global da arena, grava como exceção exclusiva.
+    // Se estiver vazio ou for idêntico ao padrão, remove a chave para herdar automaticamente!
     if (quadraConvidadosAtual && carrinhoConvidados[quadraConvidadosAtual]) {
         const inpTaxaAnt = document.getElementById('txt-taxa-convidado');
         const inpPixAnt = document.getElementById('txt-chave-pix-convidado');
         const inpWhatsAnt = document.getElementById('txt-whatsapp-convidado');
         const selRecAnt = document.getElementById('select-recebedor-convidado');
 
-        if (inpTaxaAnt) carrinhoConvidados[quadraConvidadosAtual].Taxa = inpTaxaAnt.value.trim();
-        if (inpPixAnt) carrinhoConvidados[quadraConvidadosAtual].ChavePix = inpPixAnt.value.trim();
-        if (inpWhatsAnt) carrinhoConvidados[quadraConvidadosAtual].Whatsapp = inpWhatsAnt.value.trim();
-        if (selRecAnt) carrinhoConvidados[quadraConvidadosAtual].Recebedor = selRecAnt.value;
+        const vTaxa = inpTaxaAnt ? inpTaxaAnt.value.trim() : '';
+        const vPix = inpPixAnt ? inpPixAnt.value.trim() : '';
+        const vWhats = inpWhatsAnt ? inpWhatsAnt.value.trim() : '';
+        const vRec = selRecAnt ? selRecAnt.value : 'Arena';
+
+        if (vTaxa && vTaxa !== carrinhoConvidados.Taxa) {
+            carrinhoConvidados[quadraConvidadosAtual].Taxa = vTaxa;
+        } else {
+            delete carrinhoConvidados[quadraConvidadosAtual].Taxa;
+        }
+
+        if (vPix && vPix !== carrinhoConvidados.ChavePix) {
+            carrinhoConvidados[quadraConvidadosAtual].ChavePix = vPix;
+        } else {
+            delete carrinhoConvidados[quadraConvidadosAtual].ChavePix;
+        }
+
+        if (vWhats && vWhats !== carrinhoConvidados.Whatsapp) {
+            carrinhoConvidados[quadraConvidadosAtual].Whatsapp = vWhats;
+        } else {
+            delete carrinhoConvidados[quadraConvidadosAtual].Whatsapp;
+        }
+
+        if (vRec && vRec !== carrinhoConvidados.Recebedor) {
+            carrinhoConvidados[quadraConvidadosAtual].Recebedor = vRec;
+        } else {
+            delete carrinhoConvidados[quadraConvidadosAtual].Recebedor;
+        }
     }
 
     quadraConvidadosAtual = quadraKey;
@@ -2115,25 +2274,11 @@ function selecionarQuadraConvidadosConfig(quadraKey, nomeExibicao) {
 
     document.getElementById('chk-convidados-ativos').checked = carrinhoConvidados[quadraKey].Ativo === true;
 
-    // Herança Sugestiva de PIX e WhatsApp: se a quadra atual estiver em branco, busca da primeira quadra preenchida
-    let pixCarregar = carrinhoConvidados[quadraKey].ChavePix || '';
-    let whatsCarregar = carrinhoConvidados[quadraKey].Whatsapp || '';
-    let recebedorCarregar = carrinhoConvidados[quadraKey].Recebedor || '';
-    let taxaCarregar = carrinhoConvidados[quadraKey].Taxa || '';
-
-    if (!pixCarregar || !whatsCarregar) {
-        for (const k of Object.keys(carrinhoConvidados)) {
-            if (k.startsWith('Quadra') && carrinhoConvidados[k]?.ChavePix) {
-                if (!pixCarregar) pixCarregar = carrinhoConvidados[k].ChavePix;
-                if (!whatsCarregar) whatsCarregar = carrinhoConvidados[k].Whatsapp;
-                if (!recebedorCarregar) recebedorCarregar = carrinhoConvidados[k].Recebedor;
-                break;
-            }
-        }
-        if (!pixCarregar && carrinhoConvidados.ChavePix) pixCarregar = carrinhoConvidados.ChavePix;
-        if (!whatsCarregar && carrinhoConvidados.Whatsapp) whatsCarregar = carrinhoConvidados.Whatsapp;
-        if (!recebedorCarregar && carrinhoConvidados.Recebedor) recebedorCarregar = carrinhoConvidados.Recebedor;
-    }
+    // 2. Carrega para exibição: se a quadra tiver exceção customizada, exibe ela; senão, herda o padrão global
+    const taxaCarregar = carrinhoConvidados[quadraKey].Taxa || carrinhoConvidados.Taxa || '';
+    const pixCarregar = carrinhoConvidados[quadraKey].ChavePix || carrinhoConvidados.ChavePix || '';
+    const whatsCarregar = carrinhoConvidados[quadraKey].Whatsapp || carrinhoConvidados.Whatsapp || '';
+    const recebedorCarregar = carrinhoConvidados[quadraKey].Recebedor || carrinhoConvidados.Recebedor || 'Arena';
 
     const inpTaxa = document.getElementById('txt-taxa-convidado');
     const inpPix = document.getElementById('txt-chave-pix-convidado');
@@ -2153,7 +2298,7 @@ function selecionarQuadraConvidadosConfig(quadraKey, nomeExibicao) {
         inpWhats.classList.remove('campo-obrigatorio-pendente');
     }
     if (selRecebedor) {
-        selRecebedor.value = recebedorCarregar || 'Arena';
+        selRecebedor.value = recebedorCarregar;
     }
 
     renderizarGradeConvidados();
@@ -2372,47 +2517,74 @@ function limparTudoConvidados() {
 function salvarGradeConvidadosSaas() {
     if (navigator.vibrate) navigator.vibrate(50);
 
-    // 1. Sincroniza a tela atual para o carrinho da quadra ativa
+    // 1. Sincroniza os inputs da quadra ativa na tela com a regra de Herança com Exceção Preservada
     if (quadraConvidadosAtual && carrinhoConvidados[quadraConvidadosAtual]) {
         const inpTaxaAtiva = document.getElementById('txt-taxa-convidado');
         const inpPixAtiva = document.getElementById('txt-chave-pix-convidado');
         const inpWhatsAtiva = document.getElementById('txt-whatsapp-convidado');
         const selRecAtiva = document.getElementById('select-recebedor-convidado');
 
-        if (inpTaxaAtiva) carrinhoConvidados[quadraConvidadosAtual].Taxa = inpTaxaAtiva.value.trim();
-        if (inpPixAtiva) carrinhoConvidados[quadraConvidadosAtual].ChavePix = inpPixAtiva.value.trim();
-        if (inpWhatsAtiva) carrinhoConvidados[quadraConvidadosAtual].Whatsapp = inpWhatsAtiva.value.trim();
-        if (selRecAtiva) carrinhoConvidados[quadraConvidadosAtual].Recebedor = selRecAtiva.value;
+        const vTaxa = inpTaxaAtiva ? inpTaxaAtiva.value.trim() : '';
+        const vPix = inpPixAtiva ? inpPixAtiva.value.trim() : '';
+        const vWhats = inpWhatsAtiva ? inpWhatsAtiva.value.trim() : '';
+        const vRec = selRecAtiva ? selRecAtiva.value : 'Arena';
+
+        // Taxa: se preenchida e diferente do padrão da arena, salva exceção; senão, remove para herdar
+        if (vTaxa && vTaxa !== carrinhoConvidados.Taxa) {
+            carrinhoConvidados[quadraConvidadosAtual].Taxa = vTaxa;
+        } else {
+            delete carrinhoConvidados[quadraConvidadosAtual].Taxa;
+        }
+
+        // PIX: se preenchido e diferente do padrão da arena, salva exceção; senão, herda
+        if (vPix && vPix !== carrinhoConvidados.ChavePix) {
+            carrinhoConvidados[quadraConvidadosAtual].ChavePix = vPix;
+        } else {
+            delete carrinhoConvidados[quadraConvidadosAtual].ChavePix;
+        }
+
+        // WhatsApp: se preenchido e diferente do padrão da arena, salva exceção; senão, herda
+        if (vWhats && vWhats !== carrinhoConvidados.Whatsapp) {
+            carrinhoConvidados[quadraConvidadosAtual].Whatsapp = vWhats;
+        } else {
+            delete carrinhoConvidados[quadraConvidadosAtual].Whatsapp;
+        }
+
+        // Recebedor: se diferente do padrão da arena, salva exceção; senão, herda
+        if (vRec && vRec !== carrinhoConvidados.Recebedor) {
+            carrinhoConvidados[quadraConvidadosAtual].Recebedor = vRec;
+        } else {
+            delete carrinhoConvidados[quadraConvidadosAtual].Recebedor;
+        }
     }
 
-    // 2. Barreira de Validação Impeditiva em todas as quadras onde a Chave Mestra está ON
+    // 2. Barreira de Validação com Herança: avalia o valor efetivo (exceção da quadra OU padrão da arena)
     const quadrasKeys = Object.keys(carrinhoConvidados).filter(k => k.startsWith('Quadra'));
     
     for (const qKey of quadrasKeys) {
         const qData = carrinhoConvidados[qKey];
         if (qData && qData.Ativo === true) {
-            const taxa = (qData.Taxa || '').trim();
-            const pix = (qData.ChavePix || '').trim();
-            const whats = (qData.Whatsapp || '').trim();
-            const whatsNumeros = whats.replace(/\D/g, '');
+            // Leitura efetiva: busca da quadra; se não tiver, herda da raiz da Arena
+            const taxaEfetiva = (qData.Taxa || carrinhoConvidados.Taxa || '').trim();
+            const pixEfetivo = (qData.ChavePix || carrinhoConvidados.ChavePix || '').trim();
+            const whatsEfetivo = (qData.Whatsapp || carrinhoConvidados.Whatsapp || '').trim();
+            const whatsNumeros = whatsEfetivo.replace(/\D/g, '');
 
-            const taxaInvalida = !taxa || taxa === '0,00';
-            const pixInvalido = !pix;
+            const taxaInvalida = !taxaEfetiva || taxaEfetiva === '0,00';
+            const pixInvalido = !pixEfetivo;
             const whatsInvalido = whatsNumeros.length !== 11;
 
             if (taxaInvalida || pixInvalido || whatsInvalido) {
                 const nomeQuadraAlerta = qKey.replace('Quadra', 'Quadra ');
                 
-                // Se a quadra com erro não for a que está aberta, comuta para ela
+                // Comuta para a quadra pendente se for diferente da que está aberta
                 if (quadraConvidadosAtual !== qKey) {
                     selecionarQuadraConvidadosConfig(qKey, nomeQuadraAlerta);
                 }
 
-                // Abre a gaveta de taxas obrigatoriamente
                 const gaveta = document.getElementById('gaveta-taxas-convidados');
                 if (gaveta) gaveta.style.display = 'block';
 
-                // Aplica a borda vermelha (.campo-obrigatorio-pendente)
                 const inpTaxa = document.getElementById('txt-taxa-convidado');
                 const inpPix = document.getElementById('txt-chave-pix-convidado');
                 const inpWhats = document.getElementById('txt-whatsapp-convidado');
@@ -2427,26 +2599,52 @@ function salvarGradeConvidadosSaas() {
                 }
 
                 showToast(motivoErro, "warning");
-                return; // Aborta gravação
+                return; // Interrompe o salvamento
             }
         }
     }
 
-    // Limpa qualquer resquício visual de erro
+    // Limpa marcações visuais de erro
     document.querySelectorAll('.campo-obrigatorio-pendente').forEach(el => el.classList.remove('campo-obrigatorio-pendente'));
 
-    // Sincroniza raiz de Convidados para retrocompatibilidade
-    const quadraRef = carrinhoConvidados[quadraConvidadosAtual] || {};
-    carrinhoConvidados.Taxa = quadraRef.Taxa || carrinhoConvidados.Taxa || '';
-    carrinhoConvidados.ChavePix = quadraRef.ChavePix || carrinhoConvidados.ChavePix || '';
-    carrinhoConvidados.Whatsapp = quadraRef.Whatsapp || carrinhoConvidados.Whatsapp || '';
-    carrinhoConvidados.Recebedor = quadraRef.Recebedor || carrinhoConvidados.Recebedor || 'Arena';
-
-    // 3. Monta o Extrato de Alterações
+    // 3. Monta o Extrato de Alterações Comparativo
     const diasNome = { 1: 'Segunda-feira', 2: 'Terça-feira', 3: 'Quarta-feira', 4: 'Quinta-feira', 5: 'Sexta-feira', 6: 'Sábado', 7: 'Domingo' };
     let blocosHTML = [];
     let totalMudancas = 0;
 
+    // Detecta alterações nos Parâmetros Padrão Globais da Arena
+    let mudancasGlobais = [];
+    if ((carrinhoConvidados.Taxa || '') !== (configConvidadosGlobal.Taxa || '')) {
+        mudancasGlobais.push(`• <b>Taxa Padrão:</b> de <i>R$ ${configConvidadosGlobal.Taxa || '0,00'}</i> para <span style="color: #10b981; font-weight: bold;">R$ ${carrinhoConvidados.Taxa || '0,00'}</span>`);
+        totalMudancas++;
+    }
+    if ((carrinhoConvidados.ChavePix || '') !== (configConvidadosGlobal.ChavePix || '')) {
+        mudancasGlobais.push(`• <b>Chave PIX da Arena:</b> <span style="color: #10b981; font-weight: bold;">${carrinhoConvidados.ChavePix || 'Vazio'}</span>`);
+        totalMudancas++;
+    }
+    if ((carrinhoConvidados.Whatsapp || '') !== (configConvidadosGlobal.Whatsapp || '')) {
+        mudancasGlobais.push(`• <b>WhatsApp Comprovantes:</b> <span style="color: #10b981; font-weight: bold;">${carrinhoConvidados.Whatsapp || 'Vazio'}</span>`);
+        totalMudancas++;
+    }
+    if ((carrinhoConvidados.Recebedor || 'Arena') !== (configConvidadosGlobal.Recebedor || 'Arena')) {
+        mudancasGlobais.push(`• <b>Recebedor Oficial:</b> <span style="color: #10b981; font-weight: bold;">${carrinhoConvidados.Recebedor}</span>`);
+        totalMudancas++;
+    }
+
+    if (mudancasGlobais.length > 0) {
+        blocosHTML.push(`
+            <fieldset style="border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 0 12px 10px 12px; margin: 10px 0 4px 0; background: rgba(0, 0, 0, 0.02); text-align: left; box-sizing: border-box;">
+                <legend style="padding: 0 8px; font-size: 11px; font-weight: 900; color: #0284c7; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; margin: 0 auto;">
+                    PADRÃO GLOBAL DA ARENA
+                </legend>
+                <div style="max-height: 120px; overflow-y: auto; padding-top: 8px; font-size: 13px; line-height: 1.6; color: var(--txt-padrao, #475569);">
+                    ${mudancasGlobais.join('<br>')}
+                </div>
+            </fieldset>
+        `);
+    }
+
+    // Detecta alterações individuais por Quadra
     quadrasKeys.forEach(qKey => {
         const gradeNova = carrinhoConvidados[qKey].Grade || {};
         const gradeVelha = (configConvidadosGlobal[qKey] && configConvidadosGlobal[qKey].Grade) ? configConvidadosGlobal[qKey].Grade : {};
@@ -2462,11 +2660,39 @@ function salvarGradeConvidadosSaas() {
             totalMudancas++;
         }
 
-        // Alterações financeiras específicas por quadra
         const taxaNova = carrinhoConvidados[qKey].Taxa || '';
         const taxaVelha = configConvidadosGlobal[qKey]?.Taxa || '';
         if (taxaNova !== taxaVelha) {
-            subMudancas.push(`• <b>Taxa:</b> de <i>${taxaVelha || '0,00'}</i> para <span style="color: #10b981; font-weight: bold;">R$ ${taxaNova}</span>`);
+            const rotuloNova = taxaNova ? `R$ ${taxaNova} (Exceção)` : `Padrão da Arena`;
+            const rotuloVelha = taxaVelha ? `R$ ${taxaVelha}` : `Padrão da Arena`;
+            subMudancas.push(`• <b>Taxa da Quadra:</b> de <i>${rotuloVelha}</i> para <span style="color: #10b981; font-weight: bold;">${rotuloNova}</span>`);
+            totalMudancas++;
+        }
+
+        const pixNova = carrinhoConvidados[qKey].ChavePix || '';
+        const pixVelha = configConvidadosGlobal[qKey]?.ChavePix || '';
+        if (pixNova !== pixVelha) {
+            const rotuloNova = pixNova ? `${pixNova} (Exceção)` : `Padrão da Arena`;
+            const rotuloVelha = pixVelha ? `${pixVelha}` : `Padrão da Arena`;
+            subMudancas.push(`• <b>Chave PIX:</b> de <i>${rotuloVelha}</i> para <span style="color: #10b981; font-weight: bold;">${rotuloNova}</span>`);
+            totalMudancas++;
+        }
+
+        const whatsNova = carrinhoConvidados[qKey].Whatsapp || '';
+        const whatsVelha = configConvidadosGlobal[qKey]?.Whatsapp || '';
+        if (whatsNova !== whatsVelha) {
+            const rotuloNova = whatsNova ? `${whatsNova} (Exceção)` : `Padrão da Arena`;
+            const rotuloVelha = whatsVelha ? `${whatsVelha}` : `Padrão da Arena`;
+            subMudancas.push(`• <b>WhatsApp:</b> de <i>${rotuloVelha}</i> para <span style="color: #10b981; font-weight: bold;">${rotuloNova}</span>`);
+            totalMudancas++;
+        }
+
+        const recNova = carrinhoConvidados[qKey].Recebedor || '';
+        const recVelha = configConvidadosGlobal[qKey]?.Recebedor || '';
+        if (recNova !== recVelha) {
+            const rotuloNova = recNova ? `${recNova} (Exceção)` : `Padrão da Arena`;
+            const rotuloVelha = recVelha ? `${recVelha}` : `Padrão da Arena`;
+            subMudancas.push(`• <b>Recebedor:</b> de <i>${rotuloVelha}</i> para <span style="color: #10b981; font-weight: bold;">${rotuloNova}</span>`);
             totalMudancas++;
         }
 
@@ -2504,7 +2730,7 @@ function salvarGradeConvidadosSaas() {
         return showToast("Nenhum parâmetro de convidados foi alterado.", "info");
     }
 
-    // 4. Gravação atômica no nó Horarios/Convidados
+    // 4. Gravação atômica da estrutura higienizada no Firebase
     database.ref(`${raizBanco}/config/Horarios/Convidados`).set(carrinhoConvidados).then(() => {
         configConvidadosGlobal = JSON.parse(JSON.stringify(carrinhoConvidados));
 

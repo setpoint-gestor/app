@@ -3054,8 +3054,8 @@ function cobrarConvidadoWhatsAppSaaS(convidadoItem) {
         ? `${taxaNum}` 
         : taxaNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    const chavePix = dadosConfigQ.ChavePix || "Chave PIX não configurada";
-    const recebedor = dadosConfigQ.Recebedor || "Arena / Secretaria";
+    const chavePix = dadosConfigQ.ChavePix || confGeral.ChavePix || "Chave PIX não configurada";
+    const recebedor = (dadosConfigQ.Recebedor || confGeral.Recebedor || "Secretaria").trim();
 
     // 8. Formatação do WhatsApp da Secretaria para exibição direta
     const whatsSecRaw = (dadosConfigQ.Whatsapp || dadosConfigQ.WhatsApp || dadosConfigQ.whatsapp || confGeral.Whatsapp || confGeral.WhatsApp || '').replace(/\D/g, '');
@@ -3088,7 +3088,7 @@ Olá, *${nomeConv}*!
 
 ⚠️ *Para confirmar sua vaga:*
 Faça o PIX e envie o comprovante para:
-📲 ${whatsSecFormatado} Secretaria
+📲 ${whatsSecFormatado} (${recebedor})
 informe: Convidado • Nome • Data
 
 Nos vemos na quadra!`;
