@@ -1560,17 +1560,22 @@
 									</tbody>
 								</table>
 							</div>
-						</div>
+						</div> 
 
 						<div id="quadras-visao-convidados" class="visao-painel-config" style="position: relative; height: 100%; display: none; flex-direction: column;">
 							<div style="border-bottom: 1px solid #e2e8f0; padding: 10px 0; margin-bottom: 10px;">
 								<div id="convidados-tabs-quadras-desktop" class="config-tabs-quadras" style="border:none; margin:0; padding:0 15px;"></div>
 								
-								<div class="container-titulo-central" style="padding: 0 15px;">
+								<div class="container-titulo-central" style="padding: 0 15px; position: relative; display: flex; align-items: center; justify-content: center;">
 									<button style="background:none; border:none; color: #1e293b; padding:0; cursor:pointer;" onclick="abrirMapaUniversal('convidados')">
 										<i class="material-icons" style="font-size: 24px;">grid_view</i>
 									</button>
 									<h2 id="lbl-quadra-titulo-convidados" style="margin:0; font-size: 18px; color:#333;">Quadra 1</h2>
+									
+									<!-- 🔘 BOTÃO 3 PONTINHOS (PADRÃO GLOBAL DA ARENA) -->
+									<button type="button" id="btn-kebab-convidados-global" onclick="event.stopPropagation(); abrirModalPadraoArenaConvidados()" title="Parâmetros Padrão da Arena" style="position: absolute; right: 15px; background: none; border: none; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
+										<i class="material-icons" style="font-size: 24px;">more_vert</i>
+									</button>
 								</div>
 							</div>
 
@@ -1597,7 +1602,10 @@
 
 							<div id="gaveta-taxas-convidados" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin: 0 15px 12px 15px; box-sizing: border-box;">
 								<h4 style="margin: 0 0 12px 0; color: var(--cor-escura); display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700;">
-									<span class="material-icons" style="font-size: 18px; color: var(--cor-primaria);">currency_exchange</span> Parâmetros Financeiros & Automação PIX
+									<span class="material-icons" style="font-size: 18px; color: var(--cor-primaria);">currency_exchange</span> 
+									<span>Parâmetros Financeiros & Automação PIX</span>
+									<!-- ❓ ÍCONE DE AJUDA EXPLICATIVO -->
+									<span onclick="if(typeof mostrarAjudaIconeSaaS === 'function'){ mostrarAjudaIconeSaaS(event, this, 'Preenchido com o padrão da arena. Altere apenas se esta quadra tiver dados específicos.'); } else { showToast('Preenchido com o padrão da arena. Altere apenas se esta quadra tiver dados específicos.', 'info'); }" title="Ajuda" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; font-size: 11px; font-weight: 800; user-select: none; margin-left: 2px;">?</span>
 								</h4>
 								<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
 									<div style="display: flex; flex-direction: column; gap: 4px;">
@@ -1606,9 +1614,7 @@
 									</div>
 									<div style="display: flex; flex-direction: column; gap: 4px;">
 										<label style="font-size: 12px; font-weight: bold; color: #64748b;">Recebedor Oficial</label>
-										<select id="select-recebedor-convidado" class="input-app" style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; background: white; height: 40px;">
-											<option value="Arena">Secretaria / Arena</option>
-										</select>
+										<input type="text" id="select-recebedor-convidado" class="input-app" placeholder="Ex: Secretaria, Arena, Gestor..." style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; background: white; height: 40px;">
 									</div>
 									<div style="display: flex; flex-direction: column; gap: 4px;">
 										<label style="font-size: 12px; font-weight: bold; color: #64748b;">Chave PIX da Arena</label>
@@ -1621,7 +1627,7 @@
 								</div>
 							</div>
 
-							<div class="tabela-config-scroll tabela-grade-scroll" style="margin: 0 15px;">
+							<div class="tabela-config-scroll tabela-grade-scroll" style="margin: 0 15px;"> 
 								<table class="tabela-premium-config tabela-grade-interativa" id="tabela-convidados-matriz">
 									<thead>
 										<tr>
@@ -1634,6 +1640,7 @@
 									</tbody>
 								</table>
 							</div>
+
 						</div>
 
 					</div>
@@ -1884,9 +1891,51 @@
             </div>
         </div>
     </div>
+	
+	<!-- 🏛️ MODAL: PARÂMETROS PADRÃO DA ARENA (GLOBAL) -->
+    <div id="modal-padrao-arena-convidados" class="modal-prompt-overlay" style="display: none; z-index: 35000;">
+        <div class="modal-prompt-content" style="max-width: 440px; text-align: left; padding: 20px; border-radius: 14px; box-sizing: border-box; background: #ffffff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 15px;">
+                <div>
+                    <h3 style="margin: 0; color: #1e293b; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                        <i class="material-icons" style="color: var(--cor-primaria);">business</i> Padrão Global da Arena
+                    </h3>
+                    <span style="font-size: 12px; color: #64748b;">Valores herdados por todas as quadras</span>
+                </div>
+                <button type="button" class="btn-voltar-icon" onclick="fecharModalConfig('modal-padrao-arena-convidados')" title="Fechar">
+                    <i class="material-icons">close</i>
+                </button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 12px; font-weight: bold; color: #64748b;">Taxa Padrão por Convidado (R$)</label>
+                    <input type="text" id="txt-taxa-convidado-global" class="input-app" placeholder="0,00" style="margin: 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px;" oninput="mascaraMoedaRealSaaS(this)">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 12px; font-weight: bold; color: #64748b;">Recebedor Oficial Padrão</label>
+                    <input type="text" id="select-recebedor-convidado-global" class="input-app" placeholder="Ex: Secretaria, Arena, Gestor..." style="margin: 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; height: 40px;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 12px; font-weight: bold; color: #64748b;">Chave PIX Padrão da Arena</label>
+                    <input type="text" id="txt-chave-pix-convidado-global" class="input-app" placeholder="CNPJ, E-mail, Celular..." style="margin: 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 12px; font-weight: bold; color: #64748b;">WhatsApp Padrão Comprovantes</label>
+                    <input type="tel" id="txt-whatsapp-convidado-global" class="input-app" placeholder="(00) 00000-0000" maxlength="15" style="margin: 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px;" oninput="mascaraTelefoneSaaS(this)">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn-app btn-cinza" style="margin: 0; flex: 1; padding: 10px;" onclick="fecharModalConfig('modal-padrao-arena-convidados')">Cancelar</button>
+                <button type="button" class="btn-app btn-gestor" style="margin: 0; flex: 1; padding: 10px; background-color: var(--cor-primaria); color: white;" onclick="salvarPadraoArenaConvidadosSaaS()">Salvar Padrão</button>
+            </div>
+        </div>
+    </div>
     
     <div id="modal-mapa-quadras" class="modal-overlay">
-		<div class="modal-content" style="max-width: 90%; width: 340px; padding: 20px; border-radius: 16px;">
+	
+	    <div class="modal-content" style="max-width: 90%; width: 340px; padding: 20px; border-radius: 16px;">
 			<h3 style="margin-top: 0; margin-bottom: 5px;">🎯 Selecionar Quadra</h3>
 			<p style="color: #666; font-size: 13px; margin-bottom: 20px;">Clique no número para alternar a planilha</p>
 			
