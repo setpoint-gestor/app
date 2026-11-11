@@ -6597,5 +6597,28 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-11T14:51:24.020Z",
+    "dataLocal": "11/11/2026, 11:51:24",
+    "autor": "Administração (Gestor)",
+    "acao": "CONFIRMACAO_TAXA_CONVIDADO",
+    "motivo": "A taxa de convidado foi confirmada pela administração.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "12-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Convidado": true,
+      "Del Potro": true
+    },
+    "jogadores": "Alex, Del Potro, Convidado",
+    "jogadores_completo": "ALEX SOUZA, JUAN MARTIN DEL POTRO, Carlos silva (Convidado)",
+    "slotsExcluidos": []
   }
 ]
