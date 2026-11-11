@@ -749,7 +749,7 @@ function iniciarOuvinteMestreSaaS() {
                 const switchNotif = document.getElementById('saas-switch-notificacoes');
                 if (switchNotif) {
                     switchNotif.checked = isNotifAtiva;
-                }
+                } 
 
                 // Sincroniza a visibilidade do Sininho no cabeçalho
                 const badge = document.getElementById('notificacao-badge');
@@ -1784,12 +1784,100 @@ function iniciarRadarConviteRankingSilenciosoSaaS(forcar = false) {
 }
 
 // ==========================================
-// 15. MOTOR DE PUSH NOTIFICATIONS NATIVAS (FCM)
+// 15. MOTOR DE PUSH NOTIFICATIONS HÍBRIDO (CAPACITOR + WEB PWA / SAFARI)
 // ==========================================
+
+/**
+ * Inicializa e subscreve o Web Push no ecossistema PWA / Safari iOS (16.4+)
+ */
+async function inicializarWebPushPwaSaaS() {
+    // 1. Avalia se o navegador suporta Service Worker e Notificações
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+        console.log("[Push Web] Ambiente sem suporte a Web Push ou Service Worker.");
+        return;
+    }
+
+    // 2. Trava específica da Apple: No iOS, a Apple exige que o app esteja adicionado à Tela de Início
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    if (isIos && !isStandalone) {
+        console.log("[Push Web] iPhone detectado em aba comum do Safari. Notificações push requerem 'Adicionar à Tela de Início'.");
+        return;
+    }
+
+    try {
+        // 3. Solicitação de permissão nativa do Safari / Navegador
+        let permission = Notification.permission;
+        if (permission === 'default') {
+            permission = await Notification.requestPermission();
+        }
+
+        if (permission !== 'granted') {
+            console.warn("[Push Web] Permissão de notificação negada pelo utilizador.");
+            return;
+        }
+
+        // 4. Garante que o Service Worker está registado e pronto
+        let registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) {
+            registration = await navigator.serviceWorker.register('./sw.js');
+        }
+        await navigator.serviceWorker.ready;
+
+        if (typeof firebase === 'undefined' || typeof firebase.messaging !== 'function') {
+            console.warn("[Push Web] SDK firebase-messaging-compat não carregado no cabeçalho.");
+            return;
+        }
+
+        // 5. Gera o Token FCM exclusivo deste Safari PWA utilizando a chave VAPID
+        const messaging = firebase.messaging();
+        const vapidKey = "BHaLjyn8U5KBVDmx0T_OVXm7g0UqqNEfP5A12fAbm956ZrkGZ1TSnF8oOHuIbkQlD3GFwpdZh0eOq45agY-WkaI";
+
+        const currentToken = await messaging.getToken({
+            vapidKey: vapidKey,
+            serviceWorkerRegistration: registration
+        });
+
+        if (currentToken) {
+            console.log("[Push Web] Token Web Push obtido com sucesso:", currentToken);
+            localStorage.setItem('setpoint_aparelho_fcm_token', currentToken);
+
+            const idLogado = localStorage.getItem('jogadorLogadoId');
+            if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
+                const updates = {};
+                updates[`${raizBanco}/jogadores/${idLogado}/fcmToken`] = currentToken;
+                updates[`${raizBanco}/jogadores/${idLogado}/fcmTokens/${currentToken}`] = true;
+
+                database.ref().update(updates)
+                    .then(() => console.log("[Push Web] Carteira de Dispositivos sincronizada no Firebase (Web/iOS)."))
+                    .catch(err => console.error("[Push Web] Erro ao gravar Token Web FCM no Firebase:", err));
+            }
+        }
+
+        // 6. Ouvinte para mensagens que cheguem enquanto o PWA estiver com a tela aberta
+        if (!window.ouvinteWebPushForegroundRegistrado) {
+            window.ouvinteWebPushForegroundRegistrado = true;
+            messaging.onMessage((payload) => {
+                console.log("[Push Web] Mensagem recebida em 1º plano:", payload);
+                const titulo = payload?.notification?.title || payload?.data?.titulo || "SetPoint Gestor";
+                const corpo = payload?.notification?.body || payload?.data?.mensagem || "Nova notificação da arena.";
+                if (typeof showToast === 'function') {
+                    showToast(`🔔 ${titulo}: ${corpo}`, 'info', 5000);
+                }
+            });
+        }
+
+    } catch (err) {
+        console.error("[Push Web] Erro na inicialização de Web Push:", err);
+    }
+}
+
 async function inicializarPushNotificationsSaaS() {
-    // 1. Blindagem de Plataforma: só executa se estiver rodando no app nativo (Android/iOS)
+    // 1. Rota Web / PWA (Safari iOS 16.4+ e navegadores desktop)
     if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
-        console.log("[Push] Ambiente Web/PWA detectado. Notificações nativas ignoradas.");
+        console.log("[Push] Ambiente Web/PWA detectado. Acionando inicializador Web Push...");
+        await inicializarWebPushPwaSaaS();
         return;
     }
 
