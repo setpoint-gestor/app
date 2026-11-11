@@ -6521,5 +6521,27 @@
         "hora": 12
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-11T14:27:54.656Z",
+    "dataLocal": "11/11/2026, 11:27:54",
+    "autor": "Administração (Gestor)",
+    "acao": "CONFIRMACAO_TAXA_CONVIDADO",
+    "motivo": "A taxa de convidado foi confirmada pela administração.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "11:00 - 12:00",
+    "duracao": "1 Hora",
+    "data": "11-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "confirmacoes": {
+      "Convidado": true,
+      "Del Potro": true
+    },
+    "jogadores": "Del Potro, Convidado",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO, Carlos Silva (Convidado)",
+    "slotsExcluidos": []
   }
 ]
