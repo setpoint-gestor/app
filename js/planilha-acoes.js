@@ -708,6 +708,24 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
         document.getElementById('detalhes-txt-org-nome').textContent = orgNomeFormatado;
         document.getElementById('detalhes-txt-org-sub').textContent = `Organizador • ${orgVinculo}`;
 
+        // 🛡️ Permissão de gestão da taxa: apenas Organizador, Admin ou Gestor Mestre
+        const nomeUsuarioLogado = (localStorage.getItem('jogadorLogadoNome') || "").trim().toUpperCase(); 
+        const idUsuarioLogado = localStorage.getItem('jogadorLogadoId') || ""; 
+        let perfisUsuarioLogado = {};
+        try { perfisUsuarioLogado = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
+        const ehAdminLogado = perfisUsuarioLogado['Admin'] === true;
+
+        const orgReservaNorm = orgNomeBruto.trim().toUpperCase();
+        let apelidoUsuarioLogado = nomeUsuarioLogado;
+        if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idUsuarioLogado]) {
+            apelidoUsuarioLogado = (jogadoresGlobal[idUsuarioLogado].apelido || "").trim().toUpperCase();
+        }
+
+        const podeGerenciarTaxaConvidado = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || 
+                                           ehAdminLogado || 
+                                           (orgReservaNorm === nomeUsuarioLogado) || 
+                                           (orgReservaNorm === apelidoUsuarioLogado);
+
         containerJogadores.innerHTML = '';
 
         const stringJogadores = dadosReserva.jogadores_completo || dadosReserva.jogadores || "";
@@ -766,8 +784,8 @@ function abrirModalVerDetalhesSaaS(dia, hora, dadosReserva) {
                 <span class="${statusClasseTxt}">${statusTexto}</span>
             `;
 
-            // Torna o "Pendente $" clicável como atalho para reabrir o Check-out
-            if (isConvidadoPendente) {
+            // Torna o "Pendente $" clicável como atalho para reabrir o Check-out apenas para quem tem permissão (Organizador/Admin/Gestor)
+            if (isConvidadoPendente && podeGerenciarTaxaConvidado) {
                 const spanPendente = row.querySelector('.txt-pending');
                 if (spanPendente) {
                     spanPendente.style.cursor = 'pointer';

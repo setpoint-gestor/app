@@ -1649,7 +1649,25 @@ function renderizarAgendaPessoalSaaS() {
                 const temConvidado = (r.dadosConvidados && Object.keys(r.dadosConvidados).length > 0) || 
                                      (r.jogadores_completo || r.jogadores || '').toLowerCase().includes('convidado');
                 if (temConvidado && statusReserva === 'pendente') {
-                    badgeStatusHtml = `<span onclick="abrirCheckoutPelaAgendaSaaS('${quadraKey}', '${slotKey}')" style="font-size: 9.5px; font-weight: 800; color: #d97706; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px; cursor: pointer; text-decoration: underline;" title="Clique para abrir o pagamento da taxa de convidado">Pendente $</span>`;
+                    // 🛡️ Permissão de gestão da taxa na agenda: apenas Organizador, Admin ou Gestor
+                    const idUsuarioLogado = localStorage.getItem('jogadorLogadoId') || "";
+                    let perfisUsuarioLogado = {};
+                    try { perfisUsuarioLogado = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch (e) {}
+                    const ehAdminLogado = perfisUsuarioLogado['Admin'] === true;
+                    const isGestor = typeof isGestorLogado !== 'undefined' && isGestorLogado;
+
+                    let apelidoUsuarioLogado = normNomeLogado;
+                    if (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idUsuarioLogado]) {
+                        apelidoUsuarioLogado = norm(jogadoresGlobal[idUsuarioLogado].apelido);
+                    }
+                    const ehOrganizador = (org === normNomeLogado || org === apelidoUsuarioLogado);
+                    const podeGerenciarTaxa = isGestor || ehAdminLogado || ehOrganizador;
+
+                    if (podeGerenciarTaxa) {
+                        badgeStatusHtml = `<span onclick="abrirCheckoutPelaAgendaSaaS('${quadraKey}', '${slotKey}')" style="font-size: 9.5px; font-weight: 800; color: #d97706; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px; cursor: pointer; text-decoration: underline;" title="Clique para abrir o pagamento da taxa de convidado">Pendente $</span>`;
+                    } else {
+                        badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #d97706; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px;" title="Aguardando confirmação da taxa do convidado">Pendente $</span>`;
+                    }
                 } else {
                     badgeStatusHtml = `<span style="font-size: 9.5px; font-weight: 800; color: #d97706; background: #fef3c7; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px;">Pendente</span>`;
                 }
@@ -2440,9 +2458,22 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
         });
 
         if (idOrgTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+            // 📦 DADOS ESTRUTURADOS DO CARD (CARGA INSTANTÂNEA 0MS NO APP)
+            const duracao = parseInt(dadosReserva.duracao) || 1;
+            const hFimCalc = dadosReserva.hora + duracao;
+            const horaFimFmt = String(hFimCalc).padStart(2, '0') + ":00";
+            const diasSemanaCompleto = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+            const diaSemanaNome = diasSemanaCompleto[dadosReserva.dia] || diaNome;
+            const detalhePushFmt = `${diaSemanaNome}, das ${horaIniFmt} às ${horaFimFmt} hs, na ${txtQuadraFmt}`;
+            const keyNotifConfirmada = `partida_confirmada_${dadosReserva.dia}_${dadosReserva.hora}`;
+            const agoraDisparo = Date.now();
+
             enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { 
                 tipo: "PARTIDA_CONFIRMADA",
-                categoria: "partida_confirmada"
+                keyNotif: keyNotifConfirmada,
+                categoria: "partida_confirmada",
+                detalhe: detalhePushFmt,
+                timestamp: String(agoraDisparo)
             });
         }
     }
