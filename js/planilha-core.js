@@ -2520,14 +2520,9 @@ function atualizarBadgeBaixasSaaS(todasAsReservasParam) {
     const btnContainerDash = document.getElementById('container-btn-baixas-dash');
     const badgeContadorDash = document.getElementById('badge-baixas-contador-dash');
 
-    // 1. Portaria: Visível apenas para o Gestor Mestre ou perfil Administrador
-    let ehAdmin = false;
-    try {
-        const perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}');
-        ehAdmin = perfis['Admin'] === true;
-    } catch (e) {}
-
-    const temPermissao = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || ehAdmin;
+    // 1. Portaria: Visível exclusivamente para o Gestor Mestre ou God Mode
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    const temPermissao = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode;
 
     if (!temPermissao) {
         if (btnContainer) btnContainer.style.display = 'none';
