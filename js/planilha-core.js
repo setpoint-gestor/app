@@ -202,6 +202,14 @@ function abrirVisaoQuadras() {
             atualizarCrachasCabecalhoSocioSaaS();
         }
     }
+
+    // 🔕 Controle do Sininho no Boot: Se o Sócio silenciou as notificações, acorda oculto sem piscar
+    const notificacoesAtivasBoot = localStorage.getItem('setpoint_notificacoes_ativas') !== 'false';
+    const badgeNotifBoot = document.getElementById('notificacao-badge');
+    const containerNotifBoot = badgeNotifBoot ? badgeNotifBoot.closest('.notificacao-container') : null;
+    if (containerNotifBoot) {
+        containerNotifBoot.style.display = (!isGestorLogado && notificacoesAtivasBoot) ? 'flex' : 'none';
+    }
 	
 	// 🚪 Controle de Visibilidade: Ícone de saída visível apenas para Gestor ou God Mode
         const btnSairHeader = document.getElementById('btn-fechar-planilha');
@@ -1650,7 +1658,7 @@ function renderizarAgendaPessoalSaaS() {
                                      (r.jogadores_completo || r.jogadores || '').toLowerCase().includes('convidado');
                 if (temConvidado && statusReserva === 'pendente') {
                     // 🛡️ Permissão de gestão da taxa na agenda: apenas Organizador, Admin ou Gestor
-                    const idUsuarioLogado = localStorage.getItem('jogadorLogadoId') || "";
+                    const idUsuarioLogado = localStorage.getItem('jogadorLogadoId') || ""; 
                     let perfisUsuarioLogado = {};
                     try { perfisUsuarioLogado = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch (e) {}
                     const ehAdminLogado = perfisUsuarioLogado['Admin'] === true;
@@ -1963,8 +1971,23 @@ function alternarNotificacoesSaaS(isLigado) {
     
     // 1. Salva imediatamente no aparelho (localStorage)
     localStorage.setItem('setpoint_notificacoes_ativas', isLigado ? 'true' : 'false');
+
+    // 2. 🔕 Controla imediatamente a visibilidade do Sininho no cabeçalho
+    const badge = document.getElementById('notificacao-badge');
+    const containerBadge = badge ? badge.closest('.notificacao-container') : null;
+    if (containerBadge) {
+        containerBadge.style.display = isLigado ? 'flex' : 'none';
+    }
+    if (!isLigado && badge) {
+        badge.style.display = 'none';
+    }
+
+    // 3. Re-sincroniza o ouvinte em tempo real
+    if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
+        iniciarOuvinteNotificacoesJogadorSaaS();
+    }
     
-    // 2. Tenta salvar na Nuvem (Firebase) se o atleta estiver logado
+    // 4. Salva na Nuvem (Firebase) se o atleta estiver logado
     const idLogado = localStorage.getItem('jogadorLogadoId');
     if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
         database.ref(`${raizBanco}/jogadores/${idLogado}/receber_notificacoes`).set(isLigado)

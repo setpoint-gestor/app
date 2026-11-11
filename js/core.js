@@ -119,7 +119,7 @@ const acionarChecagemDeVersaoSaaS = () => {
 // 1. Escuta padrão para Web / PWA (Troca de abas no navegador)
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-        acionarChecagemDeVersaoSaaS(); 
+        acionarChecagemDeVersaoSaaS();  
     }
 }); 
 
@@ -554,7 +554,7 @@ function fecharModalConfig(idModal) {
     const modal = document.getElementById(idModal);
     if (modal) {
         modal.style.display = 'none';
-        modal.classList.remove('ativa');
+        modal.classList.remove('ativa'); 
     }
 }
 
@@ -1615,6 +1615,16 @@ function iniciarOuvinteNotificacoesJogadorSaaS() {
     const idLogado = localStorage.getItem('jogadorLogadoId');
     if (!idLogado || (typeof isGestorLogado !== 'undefined' && isGestorLogado)) return;
 
+    // 🛡️ Avaliação imediata do interruptor no carregamento da tela
+    const notificacoesAtivas = localStorage.getItem('setpoint_notificacoes_ativas') !== 'false';
+    const badgeInicial = document.getElementById('notificacao-badge');
+    const containerBadgeInicial = badgeInicial ? badgeInicial.parentElement : null;
+
+    if (!notificacoesAtivas) {
+        if (containerBadgeInicial) containerBadgeInicial.style.display = "none";
+        if (badgeInicial) badgeInicial.style.display = "none";
+    }
+
     if (listenerNotificacoesCallback) {
         database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).off('value', listenerNotificacoesCallback);
         listenerNotificacoesCallback = null;
@@ -1632,21 +1642,41 @@ function iniciarOuvinteNotificacoesJogadorSaaS() {
             jogadoresGlobal[idAtual].notificacoes = notifs;
         }
 
+        const notificacoesLigadas = localStorage.getItem('setpoint_notificacoes_ativas') !== 'false';
+        const badge = document.getElementById('notificacao-badge');
+        const containerBadge = badge ? badge.parentElement : null;
+
+        // 🔕 SILENCIAMENTO TOTAL (Abordagem 2): Se estiver em OFF, oculta o sininho e aborta avisos
+        if (!notificacoesLigadas) {
+            if (badge) {
+                badge.textContent = "0";
+                badge.style.display = "none";
+            }
+            if (containerBadge) containerBadge.style.display = "none";
+
+            qtdNotificacoesAnterior = Object.keys(notifs).length;
+
+            const modal = document.getElementById('modal-central-notificacoes');
+            if (modal && modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            }
+            return;
+        }
+
+        // 🔔 Se notificações estiverem ativas, garante a visibilidade do Sininho
+        if (containerBadge) containerBadge.style.display = "flex";
+
         const qtdNotifs = Object.keys(notifs).length;
         const temRanking = window.temConviteRankingPendenteSocio === true ? 1 : 0;
 
         // O total é a soma real das notificações no banco + o convite do ranking pendente
         const total = qtdNotifs + temRanking;
 
-        const badge = document.getElementById('notificacao-badge');
-        const containerBadge = badge ? badge.parentElement : null;
-
         if (total > 0) {
             if (badge) {
                 badge.textContent = String(total);
                 badge.style.display = "flex";
             }
-            if (containerBadge) containerBadge.style.display = "flex";
 
             // 1. Dispara o Toast no boot ao abrir o app
             if (qtdNotificacoesAnterior === null) {
@@ -1688,7 +1718,6 @@ function iniciarOuvinteNotificacoesJogadorSaaS() {
 
     database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).on('value', listenerNotificacoesCallback);
 }
-
 
 // ==========================================
 // 14. RADAR SILENCIOSO DO RANKING (SAAS)
