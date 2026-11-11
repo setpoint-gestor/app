@@ -19,9 +19,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"></script>
     <script src="capacitor.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+	
+	<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 	
     <link rel="stylesheet" href="css/global.css?v=4">
     <link rel="stylesheet" href="css/cadastro.css?v=4"> 
@@ -1924,7 +1925,7 @@
                     <label style="font-size: 12px; font-weight: bold; color: #64748b;">WhatsApp Padrão Comprovantes</label>
                     <input type="tel" id="txt-whatsapp-convidado-global" class="input-app" placeholder="(00) 00000-0000" maxlength="15" style="margin: 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px;" oninput="mascaraTelefoneSaaS(this)">
                 </div>
-            </div>
+            </div> 
 
             <div style="display: flex; gap: 10px;">
                 <button type="button" class="btn-app btn-cinza" style="margin: 0; flex: 1; padding: 10px;" onclick="fecharModalConfig('modal-padrao-arena-convidados')">Cancelar</button>

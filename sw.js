@@ -1,4 +1,4 @@
-const CACHE_NAME = 'setpoint-gestor-v6'; // 🔄 Subimos para v6 para incluir o sorteio por potes
+const CACHE_NAME = 'setpoint-gestor-v7'; // 🔄 Atualizado para v7 para ativar Web Push no PWA
 
 const urlsToCache = [
   './',
@@ -25,7 +25,7 @@ const urlsToCache = [
   './js/logs.js?v=4',
   './js/ranking-core.js?v=4',
   './js/ranking-torneio.js?v=4',
-  './js/ranking-ui-pdf.js?v=4',
+  './js/ranking-ui-pdf.js?v=4', 
   './js/piramide.js?v=4',
   './js/grupos.js?v=4',
   './js/sorteio-potes.js?v=4'
@@ -73,5 +73,59 @@ self.addEventListener('fetch', event => {
         // 2. A internet caiu ou falhou! Usa o cache como plano B (Modo Offline).
         return caches.match(event.request);
       })
+  );
+});
+
+// ==========================================
+// 📲 RECEBIMENTO DE PUSH NOTIFICATIONS (WEB PWA / SAFARI IOS)
+// ==========================================
+self.addEventListener('push', event => {
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      payload = { notification: { body: event.data.text() } };
+    }
+  }
+
+  const notif = payload.notification || {};
+  const dados = payload.data || {};
+
+  const titulo = notif.title || dados.titulo || dados.title || 'SetPoint Gestor';
+  const corpo = notif.body || dados.mensagem || dados.message || dados.body || 'Nova notificação da arena.';
+
+  const options = {
+    body: corpo,
+    icon: 'img/icone-192.png',
+    badge: 'img/icone-192.png',
+    data: dados,
+    vibrate: [100, 50, 100]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(titulo, options)
+  );
+});
+
+// ==========================================
+// 👆 CLIQUE NA NOTIFICAÇÃO NATIVA (WEB PWA / SAFARI IOS)
+// ==========================================
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      // Se houver uma janela/aba do SetPoint aberta, foca nela
+      for (let client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
+      }
+      // Se o app estiver fechado no iPhone/Desktop, abre a aplicação
+      if (clients.openWindow) {
+        return clients.openWindow('./');
+      }
+    })
   );
 });
