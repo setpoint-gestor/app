@@ -739,6 +739,28 @@ function iniciarOuvinteMestreSaaS() {
             if (typeof atualizarCrachasCabecalhoSocioSaaS === 'function') {
                 atualizarCrachasCabecalhoSocioSaaS();
             }
+
+            // 🔔 Sincronização em tempo real da preferência de notificações (SSOT Nuvem -> Aparelho)
+            if (jogadoresGlobal[idLogado].receber_notificacoes !== undefined) {
+                const isNotifAtiva = jogadoresGlobal[idLogado].receber_notificacoes === true;
+                localStorage.setItem('setpoint_notificacoes_ativas', isNotifAtiva ? 'true' : 'false');
+
+                // Sincroniza o interruptor caso a gaveta de perfil esteja aberta ou montada
+                const switchNotif = document.getElementById('saas-switch-notificacoes');
+                if (switchNotif) {
+                    switchNotif.checked = isNotifAtiva;
+                }
+
+                // Sincroniza a visibilidade do Sininho no cabeçalho
+                const badge = document.getElementById('notificacao-badge');
+                const containerBadge = badge ? badge.closest('.notificacao-container') : null;
+                if (containerBadge) {
+                    containerBadge.style.display = isNotifAtiva ? 'flex' : 'none';
+                }
+                if (!isNotifAtiva && badge) {
+                    badge.style.display = 'none';
+                }
+            }
         }
         
         console.log(`✓ [Core] ${Object.keys(jogadoresGlobal).length} jogadores sincronizados na memória RAM.`);
