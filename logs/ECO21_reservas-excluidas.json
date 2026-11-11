@@ -6418,5 +6418,32 @@
     "jogadores": "Del Potro",
     "jogadores_completo": "JUAN MARTIN DEL POTRO",
     "slotsExcluidos": []
+  },
+  {
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Del Potro": true
+    },
+    "data": "07-11-2026",
+    "dataLocal": "11/11/2026, 07:39:52",
+    "duracao": "1 Hora",
+    "horario": "22:00 - 23:00",
+    "jogadores": "Del Potro",
+    "jogadores_completo": "JUAN MARTIN DEL POTRO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "organizadorDaReserva": "JUAN MARTIN DEL POTRO",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 22,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-11-11T10:39:52.567Z"
   }
 ]
