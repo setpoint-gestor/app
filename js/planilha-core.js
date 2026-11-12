@@ -2089,7 +2089,7 @@ function renderizarListaUsuariosOnlineSaaS() {
  * @param {string} mensagem - Corpo da notificação
  * @param {object} dadosExtras - (Opcional) Dados JSON para ações no app ao clicar
  */
-async function dispararPushCloudflare(token, titulo, mensagem, dadosExtras = {}) {
+async function dispararPushCloudflare(token, titulo, mensagem, dadosExtras = {}, idJogador = null) {
   // Ignora o disparo se o token for falso, vazio ou o placeholder "fcm_pendente"
   if (!token || token === "fcm_pendente") {
       console.warn("FCM Token inválido ou não definido. Disparo abortado.");
@@ -2118,6 +2118,17 @@ async function dispararPushCloudflare(token, titulo, mensagem, dadosExtras = {})
       
       if (!response.ok) {
           console.error("Erro na nuvem Cloudflare:", result);
+
+          // 🧹 AUTO-FAXINA DE TOKENS FANTASMAS: Remove do Firebase se o FCM/Apple acusar 404 (Token expirado/inválido)
+          if (response.status === 404 && idJogador && typeof raizBanco !== 'undefined' && raizBanco) {
+              console.warn(`🧹 [Auto-Faxina Push] Removendo token inválido (404) do atleta ${idJogador}...`);
+              database.ref(`${raizBanco}/jogadores/${idJogador}/fcmTokens/${token}`).remove().catch(() => {});
+              database.ref(`${raizBanco}/jogadores/${idJogador}/fcmToken`).once('value').then(snapLegacy => {
+                  if (snapLegacy.val() === token) {
+                      database.ref(`${raizBanco}/jogadores/${idJogador}/fcmToken`).remove().catch(() => {});
+                  }
+              }).catch(() => {});
+          }
       } else {
           console.log("Notificação Push despachada com sucesso!", result);
       }
@@ -2163,9 +2174,6 @@ async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras
         
         const tokensArray = Object.keys(carteiraTokens);
 
-        // 🔍 DEBUG 1: Quantos tokens o atleta tem?
-        console.log(`🔍 [DEBUG PUSH] Destinatário: ${atleta.apelido || atleta.nomeCompleto} | Total de Tokens encontrados: ${tokensArray.length}`, tokensArray);
-
         if (tokensArray.length === 0) {
             console.log(`[Push SaaS] Atleta ${atleta.nome || atleta.nomeCompleto || idJogador} ainda não possui token FCM ativo.`);
             return;
@@ -2176,11 +2184,7 @@ async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras
         for (const tokenDestino of tokensArray) {
             if (!window.tokensPushProcessadosSaaS.has(tokenDestino)) {
                 window.tokensPushProcessadosSaaS.add(tokenDestino);
-                // 🔍 DEBUG 2: Cada disparo real para a Cloudflare
-                console.log(`🚀 [DEBUG PUSH] Despachando para Cloudflare -> Token: ${tokenDestino.substring(0, 15)}... | Título: ${titulo}`);
-                dispararPushCloudflare(tokenDestino, titulo, mensagem, dadosExtras);
-            } else {
-                console.warn(`⚠️ [DEBUG PUSH] Token repetido bloqueado no lote: ${tokenDestino.substring(0, 15)}...`);
+                dispararPushCloudflare(tokenDestino, titulo, mensagem, dadosExtras, idJogador);
             }
         }
 
