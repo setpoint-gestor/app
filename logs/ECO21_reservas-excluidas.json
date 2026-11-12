@@ -7771,5 +7771,36 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-12T15:27:15.495Z",
+    "dataLocal": "12/11/2026, 12:27:15",
+    "autor": "ALICE ALMEIDA PEREIRA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "18:00 - 20:00",
+    "duracao": "2 Horas",
+    "data": "12-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Alice Pereira, Adriano Feitosa",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 18
+      },
+      {
+        "dia": 4,
+        "hora": 19
+      }
+    ]
   }
 ]
