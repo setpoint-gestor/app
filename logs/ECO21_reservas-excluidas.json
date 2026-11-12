@@ -7835,5 +7835,33 @@
         "hora": 10
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-12T15:29:10.605Z",
+    "dataLocal": "12/11/2026, 12:29:10",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Quadra interditada. Reserva cancelada compulsoriamente para manutenção.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Adriano Feitosa": true,
+      "Alice Pereira": true
+    },
+    "jogadores": "Alice Pereira, Adriano Feitosa",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ADRIANO GOMES FEITOSA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 10
+      }
+    ]
   }
 ]
