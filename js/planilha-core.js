@@ -2152,7 +2152,11 @@ async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras
     }
 
     try {
-        const snapshot = await database.ref(`${raizBanco}/jogadores/${idJogador}`).once('value');
+        const [snapshot, snapPresenca] = await Promise.all([
+            database.ref(`${raizBanco}/jogadores/${idJogador}`).once('value'),
+            database.ref(`${raizBanco}/usuariosOnline/${idJogador}`).once('value')
+        ]);
+
         const atleta = snapshot.val();
 
         if (!atleta) {
@@ -2179,9 +2183,20 @@ async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras
             return;
         }
 
+        // 🔕 Suprime o envio apenas para o dispositivo que já está com o app aberto e visível na tela
+        const presenca = snapPresenca.val();
+        const TOLERANCIA_GHOST_MS = 5 * 60 * 1000;
+        const presencaAtivaValida = presenca && (!presenca.lastSeen || (Date.now() - presenca.lastSeen < TOLERANCIA_GHOST_MS));
+        const tokenEmPrimeiroPlano = presencaAtivaValida ? (presenca.activePushToken || "") : "";
+
         if (!window.tokensPushProcessadosSaaS) window.tokensPushProcessadosSaaS = new Set();
         
         for (const tokenDestino of tokensArray) {
+            if (tokenEmPrimeiroPlano && tokenDestino === tokenEmPrimeiroPlano) {
+                console.log(`[Push SaaS] Disparo suprimido na origem: atleta já está com o app aberto neste aparelho.`);
+                continue;
+            }
+
             if (!window.tokensPushProcessadosSaaS.has(tokenDestino)) {
                 window.tokensPushProcessadosSaaS.add(tokenDestino);
                 dispararPushCloudflare(tokenDestino, titulo, mensagem, dadosExtras, idJogador);
