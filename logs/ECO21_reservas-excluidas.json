@@ -7724,5 +7724,26 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-12T15:25:55.318Z",
+    "dataLocal": "12/11/2026, 12:25:55",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "acao": "RECUSA_CONVITE_PARCIAL",
+    "motivo": "Convite recusado por Adriano Feitosa. O atleta foi removido e a reserva foi MANTIDA para os demais jogadores.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "09:00 - 10:00",
+    "duracao": "1 Hora",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true
+    },
+    "jogadores": "Alice Pereira",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": []
   }
 ]
