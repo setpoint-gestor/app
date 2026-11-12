@@ -7667,5 +7667,34 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-12T15:24:03.739Z",
+    "dataLocal": "12/11/2026, 12:24:03",
+    "autor": "ALICE ALMEIDA PEREIRA",
+    "acao": "EDICAO_AGENDAMENTO",
+    "motivo": "Reserva editada. Atletas alterados com sucesso.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Adriano Feitosa": true,
+      "Alice Duck": false
+    },
+    "jogadores": "Alice Pereira, Adriano Feitosa, Alice Duck",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ADRIANO GOMES FEITOSA, ALICE DUCK",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 6
+      }
+    ]
   }
 ]
