@@ -3988,7 +3988,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 // Ao forçar o sw.js?v=8, quebramos o cache do próprio Service Worker
-                navigator.serviceWorker.register('sw.js?v=8')
+                navigator.serviceWorker.register('sw.js?v=9')
                     .then(reg => {
                         console.log('✅ PWA: Service Worker ativado!', reg.scope);
                         
