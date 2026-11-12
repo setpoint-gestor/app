@@ -119,11 +119,23 @@ self.addEventListener('push', event => {
     renotify: true
   };
 
-  event.waitUntil(
-    self.registration.showNotification(titulo, options).catch(err => {
+  event.waitUntil((async () => {
+    try {
+      const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const appEmPrimeiroPlano = clientList.some(
+        client => client.visibilityState === 'visible' || client.focused === true
+      );
+
+      // 🔕 Se o PWA já estiver aberto e visível na tela do iPhone, não exibe o banner externo
+      if (appEmPrimeiroPlano) {
+        return;
+      }
+    } catch (e) {}
+
+    return self.registration.showNotification(titulo, options).catch(err => {
       console.error("[SW] Erro ao renderizar notificação nativa no iOS:", err);
-    })
-  );
+    });
+  })());
 });
 
 // ==========================================
