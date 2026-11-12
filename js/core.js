@@ -1787,52 +1787,147 @@ function iniciarRadarConviteRankingSilenciosoSaaS(forcar = false) {
 // 15. MOTOR DE PUSH NOTIFICATIONS HÍBRIDO (CAPACITOR + WEB PWA / SAFARI)
 // ==========================================
 
+window.ultimoRaioXPushSaaS = window.ultimoRaioXPushSaaS || {};
+
+function salvarTelemetriaPushIosSaaS(dadosDiag) {
+    window.ultimoRaioXPushSaaS = {
+        ...window.ultimoRaioXPushSaaS,
+        ...dadosDiag,
+        atualizadoEm: new Date().toLocaleString('pt-BR'),
+        timestamp: Date.now()
+    };
+
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIos && typeof raizBanco !== 'undefined' && raizBanco && typeof database !== 'undefined') {
+        const idJog = localStorage.getItem('jogadorLogadoId') || 'nao_logado';
+        database.ref(`${raizBanco}/debug_push_ios/${idJog}`).set(window.ultimoRaioXPushSaaS).catch(() => {});
+    }
+}
+
+function abrirPainelRaioXPushSaaS() {
+    let modal = document.getElementById('modal-raiox-push-saas');
+    if (modal) modal.remove();
+
+    const d = window.ultimoRaioXPushSaaS || {};
+    modal = document.createElement('div');
+    modal.id = 'modal-raiox-push-saas';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+    modal.innerHTML = `
+        <div style="background:#fff;color:#1e293b;width:100%;max-width:420px;border-radius:16px;padding:18px;font-family:sans-serif;max-height:85vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.4);">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-bottom:12px;">
+                <strong style="font-size:16px;">🔬 Raio-X Web Push (iOS)</strong>
+                <button onclick="document.getElementById('modal-raiox-push-saas').remove()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-weight:bold;">Fechar</button>
+            </div>
+            <div style="font-size:12px;line-height:1.6;background:#f8fafc;padding:10px;border-radius:10px;border:1px solid #cbd5e1;word-break:break-all;">
+                <div><b>Etapa alcançada:</b> ${d.etapa || 'Não iniciado'}</div>
+                <div><b>iOS / Standalone PWA:</b> ${d.isIos ? 'Sim' : 'Não'} / ${d.isStandalone ? 'Sim (Tela Início)' : 'Não (Aba Safari)'}</div>
+                <div><b>Permissão iOS:</b> ${d.permission || 'desconhecida'}</div>
+                <div><b>Service Worker:</b> ${d.swState || 'nenhum'} (${d.swScript || '-'})</div>
+                <div><b>PushManager Apple:</b> ${d.appleEndpoint || 'sem assinatura'}</div>
+                <div><b>Jogador Logado ID:</b> ${d.idLogado || 'vazio'}</div>
+                <div><b>Token FCM:</b> ${d.token ? d.token.substring(0, 32) + '...' : 'NENHUM'}</div>
+                ${d.erro ? `<div style="color:#dc2626;margin-top:6px;"><b>Erro:</b> ${d.erro}</div>` : ''}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">
+                <button id="btn-raiox-reexecutar" style="background:#0284c7;color:#fff;border:none;border-radius:10px;padding:12px;font-weight:bold;font-size:13px;">1. Forçar Registro de Token Agora</button>
+                <button id="btn-raiox-notif-local" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:12px;font-weight:bold;font-size:13px;">2. Testar Alerta Local no iPhone</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('btn-raiox-reexecutar').onclick = async () => {
+        await inicializarWebPushPwaSaaS();
+        abrirPainelRaioXPushSaaS();
+    };
+
+    document.getElementById('btn-raiox-notif-local').onclick = async () => {
+        try {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (!reg) {
+                alert('Erro: Nenhum Service Worker registrado neste aparelho.');
+                return;
+            }
+            await reg.showNotification('🎾 Teste Local SetPoint', {
+                body: 'Se este banner apareceu, o iPhone está liberado para alertas!'
+            });
+        } catch (e) {
+            alert('Falha no alerta local iOS: ' + (e.message || e));
+        }
+    };
+}
+
 /**
  * Inicializa e subscreve o Web Push no ecossistema PWA / Safari iOS (16.4+)
+ * Inclui telemetria de diagnóstico em tempo real no Firebase e painel visual no aparelho.
  */
 async function inicializarWebPushPwaSaaS() {
-    // 1. Avalia se o navegador suporta Service Worker e Notificações
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = Boolean(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
+    const idLogado = localStorage.getItem('jogadorLogadoId') || '';
+
+    salvarTelemetriaPushIosSaaS({
+        etapa: '1. Iniciando',
+        isIos,
+        isStandalone,
+        idLogado,
+        userAgent: navigator.userAgent
+    });
+
     if (!('serviceWorker' in navigator) || !('Notification' in window)) {
-        console.log("[Push Web] Ambiente sem suporte a Web Push ou Service Worker.");
+        salvarTelemetriaPushIosSaaS({ etapa: 'Bloqueado: API ausente', erro: 'serviceWorker ou Notification indisponível' });
         return;
     }
 
-    // 2. Trava específica da Apple: No iOS, a Apple exige que o app esteja adicionado à Tela de Início
-    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
     if (isIos && !isStandalone) {
-        console.log("[Push Web] iPhone detectado em aba comum do Safari. Notificações push requerem 'Adicionar à Tela de Início'.");
+        salvarTelemetriaPushIosSaaS({ etapa: 'Bloqueado: Fora da Tela de Início', erro: 'App aberto na aba comum do Safari, não no ícone PWA' });
         return;
     }
 
     try {
-        // 3. Solicitação de permissão nativa do Safari / Navegador
         let permission = Notification.permission;
         if (permission === 'default') {
             permission = await Notification.requestPermission();
         }
+        salvarTelemetriaPushIosSaaS({ etapa: '2. Permissão verificada', permission });
 
         if (permission !== 'granted') {
-            console.warn("[Push Web] Permissão de notificação negada pelo utilizador.");
+            salvarTelemetriaPushIosSaaS({ etapa: 'Bloqueado: Permissão negada', erro: 'Notification.permission = ' + permission });
             return;
         }
 
-        // 4. Garante que o Service Worker está registado e pronto
         let registration = await navigator.serviceWorker.getRegistration();
         if (!registration) {
-            registration = await navigator.serviceWorker.register('./sw.js');
+            registration = await navigator.serviceWorker.register('./sw.js?v=9');
         }
         await navigator.serviceWorker.ready;
 
+        const swAtivo = registration.active || registration.installing || registration.waiting;
+        let appleEndpoint = 'nenhum';
+        try {
+            const sub = await registration.pushManager.getSubscription();
+            if (sub && sub.endpoint) appleEndpoint = sub.endpoint.substring(0, 45) + '...';
+        } catch (subErr) {
+            appleEndpoint = 'erro: ' + subErr.message;
+        }
+
+        salvarTelemetriaPushIosSaaS({
+            etapa: '3. Service Worker pronto',
+            swState: swAtivo ? swAtivo.state : 'sem_worker',
+            swScript: swAtivo ? swAtivo.scriptURL : 'nenhum',
+            appleEndpoint
+        });
+
         if (typeof firebase === 'undefined' || typeof firebase.messaging !== 'function') {
-            console.warn("[Push Web] SDK firebase-messaging-compat não carregado no cabeçalho.");
+            salvarTelemetriaPushIosSaaS({ etapa: 'Bloqueado: SDK FCM ausente', erro: 'firebase.messaging não carregado' });
             return;
         }
 
-        // 5. Gera o Token FCM exclusivo deste Safari PWA utilizando a chave VAPID
         const messaging = firebase.messaging();
         const vapidKey = "BHaLjyn8U5KBVDmx0T_OVXm7g0UqqNEfP5A12fAbm956ZrkGZ1TSnF8oOHuIbkQlD3GFwpdZh0eOq45agY-WkaI";
+
+        salvarTelemetriaPushIosSaaS({ etapa: '4. Solicitando token VAPID ao FCM/Apple...' });
 
         const currentToken = await messaging.getToken({
             vapidKey: vapidKey,
@@ -1844,25 +1939,28 @@ async function inicializarWebPushPwaSaaS() {
             const tokenAnteriorAparelho = localStorage.getItem('setpoint_aparelho_fcm_token');
             localStorage.setItem('setpoint_aparelho_fcm_token', currentToken);
 
-            const idLogado = localStorage.getItem('jogadorLogadoId');
-            if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
+            const idAtual = localStorage.getItem('jogadorLogadoId');
+            salvarTelemetriaPushIosSaaS({
+                etapa: '5. Token gerado com sucesso',
+                token: currentToken,
+                idLogado: idAtual || 'vazio'
+            });
+
+            if (idAtual && typeof raizBanco !== 'undefined' && raizBanco) {
                 const updates = {};
-
-                // 🧹 Remove automaticamente o token antigo deste mesmo aparelho caso tenha sido renovado
                 if (tokenAnteriorAparelho && tokenAnteriorAparelho !== currentToken) {
-                    updates[`${raizBanco}/jogadores/${idLogado}/fcmTokens/${tokenAnteriorAparelho}`] = null;
+                    updates[`${raizBanco}/jogadores/${idAtual}/fcmTokens/${tokenAnteriorAparelho}`] = null;
                 }
+                updates[`${raizBanco}/jogadores/${idAtual}/fcmToken`] = currentToken;
+                updates[`${raizBanco}/jogadores/${idAtual}/fcmTokens/${currentToken}`] = true;
 
-                updates[`${raizBanco}/jogadores/${idLogado}/fcmToken`] = currentToken;
-                updates[`${raizBanco}/jogadores/${idLogado}/fcmTokens/${currentToken}`] = true;
-
-                database.ref().update(updates)
-                    .then(() => console.log("[Push Web] Carteira de Dispositivos sincronizada no Firebase (Web/iOS)."))
-                    .catch(err => console.error("[Push Web] Erro ao gravar Token Web FCM no Firebase:", err));
+                await database.ref().update(updates);
+                salvarTelemetriaPushIosSaaS({ etapa: '6. Gravado no Firebase com sucesso!', erro: '' });
             }
+        } else {
+            salvarTelemetriaPushIosSaaS({ etapa: 'Falha: Token vazio', erro: 'messaging.getToken() retornou vazio' });
         }
 
-        // 6. Ouvinte para mensagens que cheguem enquanto o PWA estiver com a tela aberta
         if (!window.ouvinteWebPushForegroundRegistrado) {
             window.ouvinteWebPushForegroundRegistrado = true;
             messaging.onMessage((payload) => {
@@ -1877,6 +1975,130 @@ async function inicializarWebPushPwaSaaS() {
 
     } catch (err) {
         console.error("[Push Web] Erro na inicialização de Web Push:", err);
+        salvarTelemetriaPushIosSaaS({
+            etapa: 'EXCEÇÃO CAPTURADA',
+            erro: `${err.code || ''} - ${err.message || String(err)}`
+        });
+    }
+}
+
+async function inicializarWebPushPwaSaaS() {
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = Boolean(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
+    const idLogado = localStorage.getItem('jogadorLogadoId') || '';
+
+    salvarTelemetriaPushIosSaaS({
+        etapa: '1. Iniciando',
+        isIos,
+        isStandalone,
+        idLogado,
+        userAgent: navigator.userAgent
+    });
+
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+        salvarTelemetriaPushIosSaaS({ etapa: 'Bloqueado: API ausente', erro: 'serviceWorker ou Notification indisponível' });
+        return;
+    }
+
+    if (isIos && !isStandalone) {
+        salvarTelemetriaPushIosSaaS({ etapa: 'Bloqueado: Fora da Tela de Início', erro: 'App aberto na aba comum do Safari, não no ícone PWA' });
+        return;
+    }
+
+    try {
+        let permission = Notification.permission;
+        if (permission === 'default') {
+            permission = await Notification.requestPermission();
+        }
+        salvarTelemetriaPushIosSaaS({ etapa: '2. Permissão verificada', permission });
+
+        if (permission !== 'granted') {
+            salvarTelemetriaPushIosSaaS({ etapa: 'Bloqueado: Permissão negada', erro: 'Notification.permission = ' + permission });
+            return;
+        }
+
+        let registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) {
+            registration = await navigator.serviceWorker.register('./sw.js?v=9');
+        }
+        await navigator.serviceWorker.ready;
+
+        const swAtivo = registration.active || registration.installing || registration.waiting;
+        let appleEndpoint = 'nenhum';
+        try {
+            const sub = await registration.pushManager.getSubscription();
+            if (sub && sub.endpoint) appleEndpoint = sub.endpoint.substring(0, 45) + '...';
+        } catch (subErr) {
+            appleEndpoint = 'erro: ' + subErr.message;
+        }
+
+        salvarTelemetriaPushIosSaaS({
+            etapa: '3. Service Worker pronto',
+            swState: swAtivo ? swAtivo.state : 'sem_worker',
+            swScript: swAtivo ? swAtivo.scriptURL : 'nenhum',
+            appleEndpoint
+        });
+
+        if (typeof firebase === 'undefined' || typeof firebase.messaging !== 'function') {
+            salvarTelemetriaPushIosSaaS({ etapa: 'Bloqueado: SDK FCM ausente', erro: 'firebase.messaging não carregado' });
+            return;
+        }
+
+        const messaging = firebase.messaging();
+        const vapidKey = "BHaLjyn8U5KBVDmx0T_OVXm7g0UqqNEfP5A12fAbm956ZrkGZ1TSnF8oOHuIbkQlD3GFwpdZh0eOq45agY-WkaI";
+
+        salvarTelemetriaPushIosSaaS({ etapa: '4. Solicitando token VAPID ao FCM/Apple...' });
+
+        const currentToken = await messaging.getToken({
+            vapidKey: vapidKey,
+            serviceWorkerRegistration: registration
+        });
+
+        if (currentToken) {
+            console.log("[Push Web] Token Web Push obtido com sucesso:", currentToken);
+            const tokenAnteriorAparelho = localStorage.getItem('setpoint_aparelho_fcm_token');
+            localStorage.setItem('setpoint_aparelho_fcm_token', currentToken);
+
+            const idAtual = localStorage.getItem('jogadorLogadoId');
+            salvarTelemetriaPushIosSaaS({
+                etapa: '5. Token gerado com sucesso',
+                token: currentToken,
+                idLogado: idAtual || 'vazio'
+            });
+
+            if (idAtual && typeof raizBanco !== 'undefined' && raizBanco) {
+                const updates = {};
+                if (tokenAnteriorAparelho && tokenAnteriorAparelho !== currentToken) {
+                    updates[`${raizBanco}/jogadores/${idAtual}/fcmTokens/${tokenAnteriorAparelho}`] = null;
+                }
+                updates[`${raizBanco}/jogadores/${idAtual}/fcmToken`] = currentToken;
+                updates[`${raizBanco}/jogadores/${idAtual}/fcmTokens/${currentToken}`] = true;
+
+                await database.ref().update(updates);
+                salvarTelemetriaPushIosSaaS({ etapa: '6. Gravado no Firebase com sucesso!', erro: '' });
+            }
+        } else {
+            salvarTelemetriaPushIosSaaS({ etapa: 'Falha: Token vazio', erro: 'messaging.getToken() retornou vazio' });
+        }
+
+        if (!window.ouvinteWebPushForegroundRegistrado) {
+            window.ouvinteWebPushForegroundRegistrado = true;
+            messaging.onMessage((payload) => {
+                console.log("[Push Web] Mensagem recebida em 1º plano:", payload);
+                const titulo = payload?.notification?.title || payload?.data?.titulo || "SetPoint Gestor";
+                const corpo = payload?.notification?.body || payload?.data?.mensagem || "Nova notificação da arena.";
+                if (typeof showToast === 'function') {
+                    showToast(`🔔 ${titulo}: ${corpo}`, 'info', 5000);
+                }
+            });
+        }
+
+    } catch (err) {
+        console.error("[Push Web] Erro na inicialização de Web Push:", err);
+        salvarTelemetriaPushIosSaaS({
+            etapa: 'EXCEÇÃO CAPTURADA',
+            erro: `${err.code || ''} - ${err.message || String(err)}`
+        });
     }
 }
 
