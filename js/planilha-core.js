@@ -2254,6 +2254,16 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
         const tituloPush = "🚫 Partida Cancelada";
         const msgPush = `${organizadorFormatado} cancelou a partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}).`;
 
+        const duracao = parseInt(dadosReserva.duracao) || 1;
+        const horaFimFmt = String(dadosReserva.hora + duracao).padStart(2, '0') + ":00";
+        const anoAtual = new Date().getFullYear();
+        const strMes = String(new Date().getMonth() + 1).padStart(2, '0');
+        const dataS = dadosReserva.dataCompleta || `${anoAtual}-${strMes}-${String(new Date().getDate()).padStart(2, '0')}`;
+        const formatData = dataS.split('-').reverse().join('/');
+        const detalheCardFmt = `A partida do dia ${formatData}, das ${horaIniFmt} às ${horaFimFmt} na ${txtQuadraFmt}, foi cancelada pelo organizador.`;
+        const keyNotifCancelada = `remocao_jogador_${dadosReserva.dia}_${dadosReserva.hora}`;
+        const agoraDisparo = Date.now();
+
         const listaApelidos = (dadosReserva.jogadores || "").split(',').map(s => s.trim());
         const orgUp = (organizadorFormatado || "").toUpperCase();
 
@@ -2280,7 +2290,13 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
                 });
 
                 if (idTarget && typeof enviarPushParaAtletaSaaS === 'function') {
-                    enviarPushParaAtletaSaaS(idTarget, tituloPush, msgPush, { tipo: "RESERVA_CANCELADA_ORG" });
+                    enviarPushParaAtletaSaaS(idTarget, tituloPush, msgPush, { 
+                        tipo: "RESERVA_CANCELADA_ORG",
+                        keyNotif: keyNotifCancelada,
+                        categoria: "remocao_jogador",
+                        detalhe: detalheCardFmt,
+                        timestamp: String(agoraDisparo)
+                    });
                 }
             }
         });
@@ -2303,7 +2319,22 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
         });
 
         if (idOrgTarget && typeof enviarPushParaAtletaSaaS === 'function') {
-            enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { tipo: "RESERVA_RECUSADA_QUORUM" });
+            const duracao = parseInt(dadosReserva.duracao) || 1;
+            const horaFimFmt = String(dadosReserva.hora + duracao).padStart(2, '0') + ":00";
+            const diasSemanaCompleto = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+            const diaSemanaNome = diasSemanaCompleto[dadosReserva.dia] || diaNome;
+            const detalheCardFmt = `${diaSemanaNome}, das ${horaIniFmt} às ${horaFimFmt} hs, na ${txtQuadraFmt}`;
+            const keyNotifRecusa = `cancelado_quorum_${dadosReserva.dia}_${dadosReserva.hora}`;
+            const agoraDisparo = Date.now();
+
+            enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { 
+                tipo: "RESERVA_RECUSADA_QUORUM",
+                keyNotif: keyNotifRecusa,
+                categoria: "cancelado_quorum",
+                adversario: quemRecusouFmt,
+                detalhe: detalheCardFmt,
+                timestamp: String(agoraDisparo)
+            });
         }
     }
 
@@ -2398,7 +2429,7 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
                         tipo: "QUADRA_INTERDITADA",
                         keyNotif: keyNotifInterdita,
                         categoria: "quadra_interditada",
-                        detalhe: msgPush,
+                        detalhe: `${diaNome}, às ${horaIniFmt}`,
                         timestamp: String(agoraDisparo)
                     });
                 }

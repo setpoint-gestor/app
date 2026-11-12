@@ -1788,6 +1788,150 @@ function iniciarRadarConviteRankingSilenciosoSaaS(forcar = false) {
 // ==========================================
 
 /**
+ * Motor Unificado de Abertura via Toque na Notificação (iOS Web Push + Android Capacitor).
+ * Carrega os metadados do push na RAM em 0ms e abre a Central de Notificações por cima da tela.
+ */
+function processarCliqueNotificacaoPushSaaS(dados = {}) {
+    if (!dados || typeof dados !== 'object') return;
+
+    // Convites de partida e validação de súmula possuem radares próprios que abrem suas gavetas
+    if (dados.tipo === 'NOVO_CONVITE' || dados.tipo === 'RESULTADO_INFORMADO') {
+        return;
+    }
+
+    // 🛡️ COBERTURA IMEDIATA (0MS): Pré-carrega os dados do push na RAM e abre o card pronto
+    window.aberturaViaPushPendente = true;
+    setTimeout(() => {
+        window.aberturaViaPushPendente = false;
+        if (typeof verificarLiberacaoTelaLoadingSaaS === 'function') {
+            verificarLiberacaoTelaLoadingSaaS();
+        }
+    }, 4000);
+
+    // 🏅 TRATAMENTO DO EVENTO 7 (CONVITE DE TORNEIO): Injeta dados na RAM no milissegundo 0
+    if (dados.tipo === 'CONVITE_TORNEIO') {
+        window.temConviteRankingPendenteSocio = true;
+
+        if (typeof configRegrasGlobal === 'undefined' || !configRegrasGlobal) {
+            window.configRegrasGlobal = {};
+        }
+        if (!configRegrasGlobal.ranking) {
+            configRegrasGlobal.ranking = {};
+        }
+        if (!configRegrasGlobal.ranking.calendario) {
+            configRegrasGlobal.ranking.calendario = {};
+        }
+
+        if (dados.nomeTorneio) {
+            configRegrasGlobal.ranking.nomeTorneio = dados.nomeTorneio;
+            configRegrasGlobal.ranking.calendario.nomeTorneio = dados.nomeTorneio;
+        }
+        if (dados.formatoTorneio) {
+            configRegrasGlobal.ranking.modeloAtivo = dados.formatoTorneio;
+            configRegrasGlobal.ranking.calendario.formatoTorneio = dados.formatoTorneio;
+        }
+        if (dados.fimInscricoes) configRegrasGlobal.ranking.calendario.fimInscricoes = dados.fimInscricoes;
+        if (dados.inicioJogos) configRegrasGlobal.ranking.calendario.inicioJogos = dados.inicioJogos;
+        if (dados.fimTorneio) configRegrasGlobal.ranking.calendario.fimTorneio = dados.fimTorneio;
+    }
+
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (idLogado) {
+        if (typeof jogadoresGlobal === 'undefined' || !jogadoresGlobal) {
+            window.jogadoresGlobal = {};
+        }
+        if (!jogadoresGlobal[idLogado]) {
+            jogadoresGlobal[idLogado] = {
+                nomeCompleto: localStorage.getItem('jogadorLogadoNome') || "",
+                classe: localStorage.getItem('jogadorLogadoClasse') || "A",
+                socio: localStorage.getItem('jogadorLogadoSocio') || "titular"
+            };
+        }
+        if (!jogadoresGlobal[idLogado].notificacoes) {
+            jogadoresGlobal[idLogado].notificacoes = {};
+        }
+
+        if (dados.keyNotif && dados.detalhe) {
+            jogadoresGlobal[idLogado].notificacoes[dados.keyNotif] = {
+                categoria: dados.categoria || "reserva_expirada",
+                detalhe: dados.detalhe,
+                adversario: dados.adversario || "",
+                timestamp: Number(dados.timestamp) || Date.now()
+            };
+        }
+    }
+
+    // Abre a Central já com o card oficial desenhado
+    if (typeof abrirModalNotificacoes === 'function') {
+        abrirModalNotificacoes();
+    } else {
+        const modal = document.getElementById('modal-central-notificacoes');
+        if (modal) modal.style.display = 'flex';
+        if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
+            renderizarListaNotificacoesSocioSaaS();
+        }
+    }
+
+    // Sincroniza em segundo plano com o Firebase para carregar outras pendências (se houver)
+    if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
+        iniciarOuvinteNotificacoesJogadorSaaS();
+    }
+}
+
+/**
+ * Lê e consome o cofre temporário gravado pelo Service Worker quando o usuário toca no push no iOS
+ */
+async function verificarPushPendenteBridgeIosSaaS() {
+    if (!('caches' in window)) return;
+
+    try {
+        const cache = await caches.open('setpoint-push-bridge');
+        const req = new Request('./__push_pendente__');
+        const match = await cache.match(req);
+
+        if (match) {
+            await cache.delete(req); // Consome imediatamente para nunca disparar em duplicidade
+            const payload = await match.json();
+
+            // Só processa cliques recentes (até 30 segundos após o toque no banner)
+            if (payload && payload.dados && (!payload.timestamp || (Date.now() - payload.timestamp < 30000))) {
+                processarCliqueNotificacaoPushSaaS(payload.dados);
+            }
+        }
+    } catch (e) {
+        console.warn("[Push Web] Falha ao ler ponte de clique do Service Worker:", e);
+    }
+}
+
+// Ouvintes globais de clique em Push para Safari PWA / iOS (Warm Resume + Cold Start)
+if ('serviceWorker' in navigator && !window.ouvinteWebPushClickRegistrado) {
+    window.ouvinteWebPushClickRegistrado = true;
+
+    // 1. App em segundo plano / minimizado (Warm Resume via postMessage)
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.tipoAcao === 'PUSH_CLICADO_IOS') {
+            if ('caches' in window) {
+                caches.open('setpoint-push-bridge')
+                    .then(cache => cache.delete(new Request('./__push_pendente__')))
+                    .catch(() => {});
+            }
+            processarCliqueNotificacaoPushSaaS(event.data.dados || {});
+        }
+    });
+
+    // 2. App fechado (Cold Start) ou retomada de foco no Safari
+    window.addEventListener('load', () => {
+        setTimeout(verificarPushPendenteBridgeIosSaaS, 150);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            setTimeout(verificarPushPendenteBridgeIosSaaS, 150);
+        }
+    });
+}
+
+/**
  * Inicializa e subscreve o Web Push no ecossistema PWA / Safari iOS (16.4+)
  */
 async function inicializarWebPushPwaSaaS() {
@@ -1821,7 +1965,7 @@ async function inicializarWebPushPwaSaaS() {
         // 4. Garante que o Service Worker está registado e pronto
         let registration = await navigator.serviceWorker.getRegistration();
         if (!registration) {
-            registration = await navigator.serviceWorker.register('./sw.js?v=10');
+            registration = await navigator.serviceWorker.register('./sw.js?v=11');
         }
         await navigator.serviceWorker.ready;
 
@@ -1934,91 +2078,14 @@ async function inicializarPushNotificationsSaaS() {
             console.error("[Push] Erro ao registrar aparelho no FCM:", error);
         });
 
-        // 5. Ouvinte: Usuário clicou na notificação nativa na barra do celular
+        // 5. Ouvinte: Usuário clicou na notificação nativa na barra do celular (Android Capacitor)
         if (!window.ouvintePushAcaoRegistrado) {
             window.ouvintePushAcaoRegistrado = true;
             
             PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
                 console.log("[Push] Usuário tocou na notificação externa:", notification);
-                
                 const dados = notification?.notification?.data || {};
-
-                // Se for convite de partida ou validação de súmula, os radares assumem suas janelas nativas
-                if (dados.tipo === 'NOVO_CONVITE' || dados.tipo === 'RESULTADO_INFORMADO') {
-                    return;
-                }
-
-                // 🛡️ COBERTURA IMEDIATA (0MS): Pré-carrega os dados do push na RAM e abre o card pronto
-                window.aberturaViaPushPendente = true; 
-                setTimeout(() => { window.aberturaViaPushPendente = false; }, 4000);
-				
-                // 🏅 TRATAMENTO DO EVENTO 7 (CONVITE DE TORNEIO): Injeta dados na RAM no milissegundo 0
-                if (dados.tipo === 'CONVITE_TORNEIO') {
-                    window.temConviteRankingPendenteSocio = true;
-
-                    if (typeof configRegrasGlobal === 'undefined' || !configRegrasGlobal) {
-                        window.configRegrasGlobal = {};
-                    }
-                    if (!configRegrasGlobal.ranking) {
-                        configRegrasGlobal.ranking = {};
-                    }
-                    if (!configRegrasGlobal.ranking.calendario) {
-                        configRegrasGlobal.ranking.calendario = {};
-                    }
-
-                    if (dados.nomeTorneio) {
-                        configRegrasGlobal.ranking.nomeTorneio = dados.nomeTorneio;
-                        configRegrasGlobal.ranking.calendario.nomeTorneio = dados.nomeTorneio;
-                    }
-                    if (dados.formatoTorneio) {
-                        configRegrasGlobal.ranking.modeloAtivo = dados.formatoTorneio;
-                        configRegrasGlobal.ranking.calendario.formatoTorneio = dados.formatoTorneio;
-                    }
-                    if (dados.fimInscricoes) configRegrasGlobal.ranking.calendario.fimInscricoes = dados.fimInscricoes;
-                    if (dados.inicioJogos) configRegrasGlobal.ranking.calendario.inicioJogos = dados.inicioJogos;
-                    if (dados.fimTorneio) configRegrasGlobal.ranking.calendario.fimTorneio = dados.fimTorneio;
-                }
-
-                const idLogado = localStorage.getItem('jogadorLogadoId');
-                if (idLogado) {
-                    if (typeof jogadoresGlobal === 'undefined' || !jogadoresGlobal) {
-                        window.jogadoresGlobal = {};
-                    }
-                    if (!jogadoresGlobal[idLogado]) {
-                        jogadoresGlobal[idLogado] = {
-                            nomeCompleto: localStorage.getItem('jogadorLogadoNome') || "",
-                            classe: localStorage.getItem('jogadorLogadoClasse') || "A",
-                            socio: localStorage.getItem('jogadorLogadoSocio') || "titular"
-                        };
-                    }
-                    if (!jogadoresGlobal[idLogado].notificacoes) {
-                        jogadoresGlobal[idLogado].notificacoes = {};
-                    }
-                    
-                    if (dados.keyNotif && dados.detalhe) {
-                        jogadoresGlobal[idLogado].notificacoes[dados.keyNotif] = {
-                            categoria: dados.categoria || "reserva_expirada",
-                            detalhe: dados.detalhe,
-                            timestamp: Number(dados.timestamp) || Date.now()
-                        };
-                    }
-                }
-
-                // Abre a Central já com o card oficial desenhado
-                if (typeof abrirModalNotificacoes === 'function') {
-                    abrirModalNotificacoes();
-                } else {
-                    const modal = document.getElementById('modal-central-notificacoes');
-                    if (modal) modal.style.display = 'flex';
-                    if (typeof renderizarListaNotificacoesSocioSaaS === 'function') {
-                        renderizarListaNotificacoesSocioSaaS();
-                    }
-                }
-
-                // Sincroniza em segundo plano com o Firebase para carregar outras pendências (se houver)
-                if (typeof iniciarOuvinteNotificacoesJogadorSaaS === 'function') {
-                    iniciarOuvinteNotificacoesJogadorSaaS();
-                }
+                processarCliqueNotificacaoPushSaaS(dados);
             });
         }
 
