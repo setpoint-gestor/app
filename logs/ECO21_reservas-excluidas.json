@@ -8724,5 +8724,26 @@
         "hora": 13
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-12T22:12:54.547Z",
+    "dataLocal": "12/11/2026, 19:12:54",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "15:00 - 16:00",
+    "duracao": "1 Hora",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDRE VOJCIECHOVSKI",
+    "confirmacoes": {
+      "Alexandre Voj": true
+    },
+    "jogadores": "Alexandre Voj",
+    "jogadores_completo": "ALEXANDRE VOJCIECHOVSKI",
+    "slotsExcluidos": []
   }
 ]
