@@ -1,11 +1,9 @@
-const CACHE_NAME = 'setpoint-gestor-v9'; // 🔄 Atualizado para v9 (Removido planilha.js inexistente que causava 404)
+const CACHE_NAME = 'setpoint-gestor-v10'; // 🔄 Atualizado para v10 (Instalação resiliente para expulsar sw.js?v=4 no iOS)
 
 const urlsToCache = [
   './',
   './index.html',
-  './painel.html',
   './manifest.json',
-  './manifest-console.json',
   './css/global.css?v=4',
   './css/cadastro.css?v=4',
   './css/quadras.css?v=4',
@@ -15,11 +13,11 @@ const urlsToCache = [
   './css/logs.css?v=4',
   './css/ranking.css?v=4',
   './css/ia-concierge.css?v=4',
-  './js/core.js?v=4',
-  './js/autenticacao.js?v=4', 
+  './js/core.js?v=5',
+  './js/autenticacao.js?v=4',
   './js/cadastro.js?v=4',
   './js/quadras.js?v=4',
-  './js/planilha-core.js?v=4',
+  './js/planilha-core.js?v=5',
   './js/planilha-agendamento.js?v=4',
   './js/planilha-acoes.js?v=4',
   './js/config.js?v=4',
@@ -27,37 +25,21 @@ const urlsToCache = [
   './js/logs.js?v=4',
   './js/ranking-core.js?v=4',
   './js/ranking-torneio.js?v=4',
-  './js/ranking-ui-pdf.js?v=4', 
+  './js/ranking-ui-pdf.js?v=4',
   './js/piramide.js?v=4',
   './js/grupos.js?v=4',
   './js/sorteio-potes.js?v=4',
   './js/ia-jogador.js?v=4'
 ];
-  './css/config.css?v=4',
-  './css/regras.css?v=4',
-  './css/logs.css?v=4',
-  './css/ranking.css?v=4',
-  './js/core.js?v=4',
-  './js/autenticacao.js?v=4', 
-  './js/cadastro.js?v=4',
-  './js/quadras.js?v=4',
-  './js/planilha.js?v=4',
-  './js/config.js?v=4',
-  './js/regras.js?v=4',
-  './js/logs.js?v=4',
-  './js/ranking-core.js?v=4',
-  './js/ranking-torneio.js?v=4',
-  './js/ranking-ui-pdf.js?v=4', 
-  './js/piramide.js?v=4',
-  './js/grupos.js?v=4',
-  './js/sorteio-potes.js?v=4'
-];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then(cache => {
+      return Promise.allSettled(
+        urlsToCache.map(url => cache.add(url).catch(() => {}))
+      );
+    })
   );
 });
 
@@ -135,7 +117,6 @@ self.addEventListener('push', event => {
     })
   );
 });
-
 
 // ==========================================
 // 👆 CLIQUE NA NOTIFICAÇÃO NATIVA (WEB PWA / SAFARI IOS)
