@@ -1,4 +1,5 @@
-const CACHE_NAME = 'setpoint-gestor-v10'; // 🔄 Atualizado para v10 (Instalação resiliente para expulsar sw.js?v=4 no iOS)
+const CACHE_NAME = 'setpoint-gestor-v11'; // 🔄 Atualizado para v11 (Roteamento de clique Web Push no Safari iOS)
+const PUSH_BRIDGE_CACHE = 'setpoint-push-bridge';
 
 const urlsToCache = [
   './',
@@ -13,11 +14,11 @@ const urlsToCache = [
   './css/logs.css?v=4',
   './css/ranking.css?v=4',
   './css/ia-concierge.css?v=4',
-  './js/core.js?v=5',
+  './js/core.js?v=6',
   './js/autenticacao.js?v=4',
   './js/cadastro.js?v=4',
   './js/quadras.js?v=4',
-  './js/planilha-core.js?v=5',
+  './js/planilha-core.js?v=6',
   './js/planilha-agendamento.js?v=4',
   './js/planilha-acoes.js?v=4',
   './js/config.js?v=4',
@@ -48,7 +49,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName !== CACHE_NAME && cacheName !== PUSH_BRIDGE_CACHE) {
             console.log('🧹 [Service Worker] Deletando cache antigo:', cacheName);
             return caches.delete(cacheName);
           }
@@ -60,13 +61,21 @@ self.addEventListener('activate', event => {
 
 // 🔥 Estratégia Network-First (Rede Primeiro) para TUDO
 self.addEventListener('fetch', event => {
-  // Ignora requisições que não sejam GET (ex: salvamentos no Firebase ou GitHub)
   if (event.request.method !== 'GET') return;
+
+  // Ponte interna para leitura de push pendente no Cold Start do iOS
+  if (event.request.url.includes('__push_pendente__')) {
+    event.respondWith(
+      caches.open(PUSH_BRIDGE_CACHE)
+        .then(cache => cache.match(event.request))
+        .then(res => res || new Response('null', { headers: { 'Content-Type': 'application/json' } }))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        // 1. A internet funcionou! Pegamos o arquivo fresquinho do servidor.
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then(cache => {
           cache.put(event.request, responseClone);
@@ -74,7 +83,6 @@ self.addEventListener('fetch', event => {
         return response;
       })
       .catch(() => {
-        // 2. A internet caiu ou falhou! Usa o cache como plano B (Modo Offline).
         return caches.match(event.request);
       })
   );
@@ -123,19 +131,42 @@ self.addEventListener('push', event => {
 // ==========================================
 self.addEventListener('notificationclick', event => {
   event.notification.close();
+  const dadosPush = event.notification.data || {};
 
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      // Se houver uma janela/aba do SetPoint aberta, foca nela
-      for (let client of clientList) {
-        if ('focus' in client) {
-          return client.focus();
-        }
+  event.waitUntil((async () => {
+    // 1. Salva os metadados no cofre temporário para leitura caso o app esteja totalmente fechado (Cold Start)
+    try {
+      const cache = await caches.open(PUSH_BRIDGE_CACHE);
+      await cache.put(
+        new Request('./__push_pendente__'),
+        new Response(JSON.stringify({
+          dados: dadosPush,
+          timestamp: Date.now()
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+    } catch (e) {
+      console.error('[SW] Erro ao gravar dados do push no cofre:', e);
+    }
+
+    // 2. Se o PWA estiver minimizado em segundo plano (Warm Resume), envia postMessage e foca a janela
+    const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clientList) {
+      if ('focus' in client) {
+        try {
+          client.postMessage({
+            tipoAcao: 'PUSH_CLICADO_IOS',
+            dados: dadosPush
+          });
+        } catch (err) {}
+        return client.focus();
       }
-      // Se o app estiver fechado no iPhone/Desktop, abre a aplicação
-      if (clients.openWindow) {
-        return clients.openWindow('./');
-      }
-    })
-  );
+    }
+
+    // 3. Se o PWA estiver fechado no iPhone, abre a aplicação na raiz
+    if (clients.openWindow) {
+      return clients.openWindow('./');
+    }
+  })());
 });
