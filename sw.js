@@ -1,4 +1,4 @@
-const CACHE_NAME = 'setpoint-gestor-v7'; // 🔄 Atualizado para v7 para ativar Web Push no PWA
+const CACHE_NAME = 'setpoint-gestor-v8'; // 🔄 Atualizado para v8 (Compatibilidade estrita WebKit iOS)
 
 const urlsToCache = [
   './',
@@ -80,33 +80,40 @@ self.addEventListener('fetch', event => {
 // 📲 RECEBIMENTO DE PUSH NOTIFICATIONS (WEB PWA / SAFARI IOS)
 // ==========================================
 self.addEventListener('push', event => {
-  let payload = {};
+  let titulo = 'SetPoint Gestor';
+  let corpo = 'Nova notificação da arena.';
+  let dadosExtras = {};
+
   if (event.data) {
     try {
-      payload = event.data.json();
+      const payload = event.data.json();
+      const notif = payload.notification || {};
+      dadosExtras = payload.data || {};
+
+      titulo = notif.title || dadosExtras.titulo || dadosExtras.title || titulo;
+      corpo = notif.body || dadosExtras.mensagem || dadosExtras.message || dadosExtras.body || corpo;
     } catch (e) {
-      payload = { notification: { body: event.data.text() } };
+      try {
+        corpo = event.data.text() || corpo;
+      } catch (err) {}
     }
   }
 
-  const notif = payload.notification || {};
-  const dados = payload.data || {};
-
-  const titulo = notif.title || dados.titulo || dados.title || 'SetPoint Gestor';
-  const corpo = notif.body || dados.mensagem || dados.message || dados.body || 'Nova notificação da arena.';
-
+  // Opções estritas suportadas pelo WebKit do Safari iOS (sem vibrate/badge)
   const options = {
     body: corpo,
-    icon: 'img/icone-192.png',
-    badge: 'img/icone-192.png',
-    data: dados,
-    vibrate: [100, 50, 100]
+    data: dadosExtras,
+    tag: 'setpoint-notif-' + Date.now(),
+    renotify: true
   };
 
   event.waitUntil(
-    self.registration.showNotification(titulo, options)
+    self.registration.showNotification(titulo, options).catch(err => {
+      console.error("[SW] Erro ao renderizar notificação nativa no iOS:", err);
+    })
   );
 });
+
 
 // ==========================================
 // 👆 CLIQUE NA NOTIFICAÇÃO NATIVA (WEB PWA / SAFARI IOS)
