@@ -2006,16 +2006,11 @@ async function inicializarWebPushPwaSaaS() {
             }
         }
 
-        // 6. Ouvinte para mensagens que cheguem enquanto o PWA estiver com a tela aberta
+        // 6. Ouvinte em 1º plano: os radares em tempo real do Firebase já exibem o Toast/card na tela
         if (!window.ouvinteWebPushForegroundRegistrado) {
             window.ouvinteWebPushForegroundRegistrado = true;
             messaging.onMessage((payload) => {
-                console.log("[Push Web] Mensagem recebida em 1º plano:", payload);
-                const titulo = payload?.notification?.title || payload?.data?.titulo || "SetPoint Gestor";
-                const corpo = payload?.notification?.body || payload?.data?.mensagem || "Nova notificação da arena.";
-                if (typeof showToast === 'function') {
-                    showToast(`🔔 ${titulo}: ${corpo}`, 'info', 5000);
-                }
+                console.log("[Push Web] Mensagem recebida em 1º plano (suprimida em favor dos radares):", payload);
             });
         }
 
