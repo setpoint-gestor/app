@@ -1250,8 +1250,14 @@ function sincronizarPresencaOnlineSaaS() {
         const nomeJogadorLogado = localStorage.getItem('jogadorLogadoNome');
         
         if (idJogadorLogado && nomeJogadorLogado) {
+            const tokenAparelhoAtivo = localStorage.getItem('setpoint_aparelho_fcm_token') || "";
             const refPresencaAtleta = database.ref(`${raizBanco}/usuariosOnline/${idJogadorLogado}`);
-            refPresencaAtleta.set({ usuario: nomeJogadorLogado, id: idJogadorLogado, lastSeen: agora });
+            refPresencaAtleta.set({ 
+                usuario: nomeJogadorLogado, 
+                id: idJogadorLogado, 
+                lastSeen: agora,
+                activePushToken: tokenAparelhoAtivo
+            });
             refPresencaAtleta.onDisconnect().remove();
         }
     }
@@ -2001,7 +2007,12 @@ async function inicializarWebPushPwaSaaS() {
                 updates[`${raizBanco}/jogadores/${idLogado}/fcmTokens/${currentToken}`] = true;
 
                 database.ref().update(updates)
-                    .then(() => console.log("[Push Web] Carteira de Dispositivos sincronizada no Firebase (Web/iOS)."))
+                    .then(() => {
+                        console.log("[Push Web] Carteira de Dispositivos sincronizada no Firebase (Web/iOS).");
+                        if (!document.hidden && typeof sincronizarPresencaOnlineSaaS === 'function') {
+                            sincronizarPresencaOnlineSaaS();
+                        }
+                    })
                     .catch(err => console.error("[Push Web] Erro ao gravar Token Web FCM no Firebase:", err));
             }
         }
