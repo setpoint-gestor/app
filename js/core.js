@@ -1841,11 +1841,18 @@ async function inicializarWebPushPwaSaaS() {
 
         if (currentToken) {
             console.log("[Push Web] Token Web Push obtido com sucesso:", currentToken);
+            const tokenAnteriorAparelho = localStorage.getItem('setpoint_aparelho_fcm_token');
             localStorage.setItem('setpoint_aparelho_fcm_token', currentToken);
 
             const idLogado = localStorage.getItem('jogadorLogadoId');
             if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
                 const updates = {};
+
+                // 🧹 Remove automaticamente o token antigo deste mesmo aparelho caso tenha sido renovado
+                if (tokenAnteriorAparelho && tokenAnteriorAparelho !== currentToken) {
+                    updates[`${raizBanco}/jogadores/${idLogado}/fcmTokens/${tokenAnteriorAparelho}`] = null;
+                }
+
                 updates[`${raizBanco}/jogadores/${idLogado}/fcmToken`] = currentToken;
                 updates[`${raizBanco}/jogadores/${idLogado}/fcmTokens/${currentToken}`] = true;
 
