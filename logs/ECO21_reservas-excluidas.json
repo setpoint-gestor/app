@@ -9180,5 +9180,32 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-13T10:10:40.418Z",
+    "dataLocal": "13/11/2026, 07:10:40",
+    "autor": "ALEX SOUZA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Almir": true
+    },
+    "jogadores": "Alex, Almir",
+    "jogadores_completo": "ALEX SOUZA, ALMIR ALVES DA CRUZ",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 6
+      }
+    ]
   }
 ]
