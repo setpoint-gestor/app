@@ -9124,5 +9124,61 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "autor": "Rotina Automática de Sistema",
+    "clube": "ECO21",
+    "confirmacoes": {
+      "Alex": true,
+      "Almir": false
+    },
+    "data": "15-11-2026",
+    "dataLocal": "13/11/2026, 00:59:06",
+    "duracao": "1 Hora",
+    "horario": "09:00 - 10:00",
+    "jogadores": "Alex, Almir",
+    "jogadores_completo": "ALEX SOUZA, ALMIR ALVES DA CRUZ",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "origem": "sistema",
+    "quadra": "Quadra 1 - Coberta",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 9,
+        "quadra": "Quadra - 1"
+      }
+    ],
+    "statusNoMomentoDaExclusao": "pendente",
+    "timestamp": "2026-11-13T03:59:06.986Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-13T09:47:59.924Z",
+    "dataLocal": "13/11/2026, 06:47:59",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "09:00 - 10:00",
+    "duracao": "1 Hora",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Almir": false
+    },
+    "jogadores": "Alex, Almir",
+    "jogadores_completo": "ALEX SOUZA, ALMIR ALVES DA CRUZ",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 9
+      }
+    ]
   }
 ]
