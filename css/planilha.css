@@ -23,7 +23,7 @@
 }
 
 /* ======================================================== */
-/* AJUSTES ANATÔMICOS DE RETICÊNCIAS E BADGES NO CABEÇALHO   */
+/* AJUSTES ANATÔMICOS DE RETICÊNCIAS E BADGES NO CABEÇALHO  */   
 /* ======================================================== */   
 .header-left {
     display: flex;
@@ -2231,6 +2231,111 @@ body.dark-mode .convite-info { color: #cbd5e1 !important; }
     transition: all 0.2s ease !important;
 }
 
+/* ======================================================== */
+/* 22.1. CARD DE RANKING (BADGE OURO + RECUSA COM MOTIVO)   */
+/* ======================================================== */
+
+.badge-ranking-ouro {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #b45309;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    padding: 3px 8px;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+
+/* Gaveta interna obrigatória de motivo da recusa */
+.recusa-box {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px dashed #cbd5e1;
+    animation: slideDownRecusa 0.22s ease-out;
+}
+
+@keyframes slideDownRecusa {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.recusa-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.recusa-select,
+.recusa-input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #1e293b;
+    font-family: 'Roboto', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.recusa-select:focus,
+.recusa-input:focus {
+    border-color: #ef4444;
+}
+
+.recusa-input {
+    display: none;
+}
+
+#modal-convites-entrada .btn-secondary {
+    background: #e2e8f0;
+    color: #334155 !important;
+    box-shadow: none;
+}
+
+#modal-convites-entrada .btn-universal:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Suporte ao Modo Escuro */
+body.dark-mode .badge-ranking-ouro {
+    color: #fcd34d;
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+body.dark-mode .recusa-box {
+    border-top-color: #333333;
+}
+
+body.dark-mode .recusa-label {
+    color: #f87171;
+}
+
+body.dark-mode .recusa-select,
+body.dark-mode .recusa-input {
+    background: #1e1e1e;
+    border-color: #444444;
+    color: #f8fafc;
+}
+
+body.dark-mode #modal-convites-entrada .btn-secondary {
+    background: #333333;
+    color: #f8fafc !important;
+}
 
 /* ======================================================== */
 /* 23. FORMATAÇÃO RICA DOS NOMES NA GRADE (ORGANIZADOR/STATUS) */
