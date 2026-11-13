@@ -9342,5 +9342,32 @@
         "hora": 17
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-13T19:50:49.140Z",
+    "dataLocal": "13/11/2026, 16:50:49",
+    "autor": "ALMIR ALVES DA CRUZ",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 17:00",
+    "duracao": "1 Hora",
+    "data": "13-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALMIR ALVES DA CRUZ",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Almir": true
+    },
+    "jogadores": "Almir, Alice Pereira",
+    "jogadores_completo": "ALMIR ALVES DA CRUZ, ALICE ALMEIDA PEREIRA",
+    "slotsExcluidos": [
+      {
+        "dia": 5,
+        "hora": 16
+      }
+    ]
   }
 ]
