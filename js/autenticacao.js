@@ -474,6 +474,15 @@ function trocarTabJogadorLogin(abaTarget, arenaVazia = false) {
 function solicitarCadastroWhats() {
     if (!clubeAtivoId) return showToast('Clube não identificado.', 'warning');
 
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    // 🍎 No iOS Safari (aba comum), abre a janela de forma síncrona no clique para não ser bloqueada após o Firebase
+    let janelaWhats = null;
+    if (!isIos || !isStandalone) {
+        janelaWhats = window.open('', '_blank');
+    }
+
     database.ref(`Clubes/${clubeAtivoId}/info_clube`).once('value').then(snap => {
         const info = snap.val() || {};
         const whatsRaw = info.whatsapp || '';
@@ -481,20 +490,34 @@ function solicitarCadastroWhats() {
         const numLimpo = whatsRaw.replace(/\D/g, '');
 
         if (!numLimpo) {
+            if (janelaWhats && !janelaWhats.closed) janelaWhats.close();
             return showToast('O WhatsApp da secretaria não foi cadastrado.', 'warning');
         }
 
         const numFinal = numLimpo.startsWith('55') ? numLimpo : '55' + numLimpo;
-        const msg = encodeURIComponent(`Olá! Sou sócio da arena ${nomeClube} e gostaria de solicitar meu primeiro acesso no app SetPoint.`);
-        
-        window.open(`https://wa.me/${numFinal}?text=${msg}`, '_blank');
+        const idLogado = localStorage.getItem('jogadorLogadoId');
+        const nomeAtleta = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+
+        const textoSaudacao = (idLogado && nomeAtleta)
+            ? `Olá! Sou ${nomeAtleta} da arena ${nomeClube} e gostaria de falar com a recepção pelo app SetPoint.`
+            : `Olá! Sou sócio da arena ${nomeClube} e gostaria de solicitar meu primeiro acesso no app SetPoint.`;
+
+        const msg = encodeURIComponent(textoSaudacao);
+        const urlWhats = `https://api.whatsapp.com/send?phone=${numFinal}&text=${msg}`;
+
+        if (isIos && isStandalone) {
+            window.location.href = urlWhats;
+        } else if (janelaWhats && !janelaWhats.closed) {
+            janelaWhats.location.href = urlWhats;
+        } else {
+            window.location.href = urlWhats;
+        }
     }).catch(err => {
+        if (janelaWhats && !janelaWhats.closed) janelaWhats.close();
         console.error("Erro ao buscar WhatsApp do clube:", err);
         showToast("Erro ao conectar com a secretaria.", "error");
     });
 }
-
-
 
 function fazerLoginJogador() { 
     const idJogador = document.getElementById('jogadorSelect').value;
