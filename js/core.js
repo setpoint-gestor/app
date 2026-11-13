@@ -1983,12 +1983,21 @@ function processarCliqueNotificacaoPushSaaS(dados = {}) {
         }
 
         if (dados.keyNotif && dados.detalhe) {
-            jogadoresGlobal[idLogado].notificacoes[dados.keyNotif] = {
+            const notifPreload = {
                 categoria: dados.categoria || "reserva_expirada",
                 detalhe: dados.detalhe,
                 adversario: dados.adversario || "",
                 timestamp: Number(dados.timestamp) || Date.now()
             };
+
+            if (dados.nomeAdversarioPartida) {
+                notifPreload.nomeAdversarioPartida = dados.nomeAdversarioPartida;
+            }
+            if (dados.ehVitoria !== undefined && dados.ehVitoria !== "") {
+                notifPreload.ehVitoria = (dados.ehVitoria === true || dados.ehVitoria === "true");
+            }
+
+            jogadoresGlobal[idLogado].notificacoes[dados.keyNotif] = notifPreload;
         }
     }
 

@@ -2678,6 +2678,98 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
             }
         });
     }
+
+    // ----------------------------------------------------
+    // EVENTO 10: RESULTADO CONFIRMADO PELO ADVERSÁRIO (AUTOR)
+    // ----------------------------------------------------
+    if (tipoEvento === "RESULTADO_CONFIRMADO") {
+        const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+        const quemConfirmouFmt = autorDaAcao || "O adversário";
+        const confirmadorNorm = norm(quemConfirmouFmt);
+
+        const autorBruto = (organizadorFormatado || dadosReserva.dadosPlacar?.autorSumula || "").replace(/\s*\(.*?\)\s*/g, "").trim();
+        const autorNorm = norm(autorBruto);
+        if (!autorNorm) return;
+
+        const idAutorTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+            const j = jogadoresGlobal[id];
+            return j && (norm(j.nomeCompleto) === autorNorm || norm(j.apelido) === autorNorm);
+        });
+
+        const idConfirmador = confirmadorNorm ? Object.keys(jogadoresGlobal || {}).find(id => {
+            const j = jogadoresGlobal[id];
+            return j && (norm(j.nomeCompleto) === confirmadorNorm || norm(j.apelido) === confirmadorNorm);
+        }) : null;
+
+        if (idAutorTarget && idAutorTarget !== idConfirmador && typeof enviarPushParaAtletaSaaS === 'function') {
+            const placarTxt = dadosReserva.dadosPlacar?.placarFormatado || "";
+            const tituloPush = "✅ Resultado Confirmado";
+            const msgPush = `${quemConfirmouFmt} confirmou o resultado${placarTxt ? ` (${placarTxt})` : ""} da partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}).`;
+            const keyNotifConfirmado = `confirmado_${dadosReserva.dia}_${dadosReserva.hora}`;
+            const agoraDisparo = Date.now();
+
+            enviarPushParaAtletaSaaS(idAutorTarget, tituloPush, msgPush, {
+                tipo: "RESULTADO_CONFIRMADO",
+                keyNotif: keyNotifConfirmado,
+                categoria: "confirmado",
+                adversario: quemConfirmouFmt,
+                detalhe: placarTxt || `${diaNome} às ${horaIniFmt}`,
+                timestamp: String(agoraDisparo)
+            });
+        }
+    }
+
+    // ----------------------------------------------------
+    // EVENTO 11: DECISÃO DA ARBITRAGEM OU LANÇAMENTO DIRETO
+    // ----------------------------------------------------
+    if (tipoEvento === "FECHAMENTO_ARBITRAGEM") {
+        const idJ1 = dadosReserva.idJ1;
+        const idJ2 = dadosReserva.idJ2;
+        if (!idJ1 || !idJ2) return;
+
+        const catNotif = dadosReserva.categoriaNotif || "homologado_arb";
+        const detalheNotif = dadosReserva.detalheNotif || "";
+        const venciCod = dadosReserva.venciCod || dadosReserva.dadosPlacar?.vencedorCodigo || "";
+        const responsavelFmt = autorDaAcao || organizadorFormatado || "A arbitragem";
+        const agoraDisparo = Date.now();
+
+        [idJ1, idJ2].forEach(idAtual => {
+            const idAdversario = (idAtual === idJ1) ? idJ2 : idJ1;
+            const atletaAdvObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAdversario]) ? jogadoresGlobal[idAdversario] : {};
+            const nomeAdv = atletaAdvObj.apelido || atletaAdvObj.nomeCompleto || "seu adversário";
+            const ehVitoria = (venciCod === 'J1' && idAtual === idJ1) || (venciCod === 'J2' && idAtual === idJ2);
+
+            let tituloPush = "🏆 Resultado Registrado";
+            let msgPush = "";
+
+            if (catNotif === "homologado_arb") {
+                tituloPush = "⚖️ Placar Homologado";
+                msgPush = `${responsavelFmt} analisou a contestação e manteve o placar${detalheNotif ? ` (${detalheNotif})` : ""} da partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}).`;
+            } else if (catNotif === "ajustado_arb") {
+                tituloPush = "⚖️ Placar Ajustado";
+                msgPush = `${responsavelFmt} analisou a contestação e ajustou o placar${detalheNotif ? ` para ${detalheNotif}` : ""} na partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}).`;
+            } else if (catNotif === "anulado_arb") {
+                tituloPush = "🔴 Súmula Anulada";
+                msgPush = `${responsavelFmt} anulou a partida de Ranking de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}).${detalheNotif ? ` Motivo: ${detalheNotif}` : ""}`;
+            } else {
+                const termoRes = venciCod ? (ehVitoria ? "sua vitória" : "sua derrota") : "a partida";
+                msgPush = `${responsavelFmt} registrou ${termoRes} contra ${nomeAdv}${detalheNotif ? `: ${detalheNotif}` : ""} (${diaNome} às ${horaIniFmt}).`;
+            }
+
+            if (typeof enviarPushParaAtletaSaaS === 'function') {
+                enviarPushParaAtletaSaaS(idAtual, tituloPush, msgPush, {
+                    tipo: "FECHAMENTO_ARBITRAGEM",
+                    keyNotif: `${catNotif}_${dadosReserva.dia}_${dadosReserva.hora}`,
+                    categoria: catNotif,
+                    adversario: responsavelFmt,
+                    nomeAdversarioPartida: nomeAdv,
+                    ehVitoria: String(ehVitoria),
+                    detalhe: detalheNotif || `${diaNome} às ${horaIniFmt}`,
+                    timestamp: String(agoraDisparo)
+                });
+            }
+        });
+    }
 	
 }
 

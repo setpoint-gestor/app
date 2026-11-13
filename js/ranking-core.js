@@ -1008,6 +1008,53 @@ function confirmarPlacarAdversarioSaaS() {
         processarResultadoRankingSaaS(partidaRankingEmFoco);
         notificarAutorSumulaSaaS(partidaRankingEmFoco, 'confirmado');
 
+        // 🔔 DISPARO PUSH SAAS (EVENTO 10: RESULTADO CONFIRMADO PELO ADVERSÁRIO -> AUTOR)
+        if (typeof processarGatilhoPushSaaS === 'function') {
+            const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+            let quemConfirmouFmt = 'O adversário';
+
+            if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+                quemConfirmouFmt = 'O Gestor';
+            } else {
+                let perfis = {};
+                try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch (e) {}
+                const nomeLogadoNorm = norm(localStorage.getItem('jogadorLogadoNome') || '');
+                const atletaConfirmador = Object.values(jogadoresGlobal || {}).find(j =>
+                    j && (norm(j.nomeCompleto) === nomeLogadoNorm || norm(j.apelido) === nomeLogadoNorm)
+                );
+                const nomeBruto = atletaConfirmador
+                    ? (atletaConfirmador.nomeCompleto || atletaConfirmador.apelido)
+                    : (localStorage.getItem('jogadorLogadoNome') || '');
+                const nomeAtleta = (typeof capitalizarNome === 'function' && nomeBruto)
+                    ? capitalizarNome(nomeBruto)
+                    : nomeBruto;
+
+                if ((perfis['Árbitro'] === true || perfis['Arbitro'] === true) && nomeAtleta) {
+                    quemConfirmouFmt = `O Árbitro (${nomeAtleta})`;
+                } else {
+                    quemConfirmouFmt = nomeAtleta || 'O adversário';
+                }
+            }
+
+            let nomeQuadraAmigavel = partidaRankingEmFoco.quadra || quadraKey;
+            const numQuadra = quadraKey.match(/\d+/);
+            if (numQuadra && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+                const dadosQ = configQuadrasGlobal.nomes[numQuadra[0]];
+                if (dadosQ) {
+                    nomeQuadraAmigavel = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${numQuadra[0]}`) : dadosQ;
+                }
+            }
+
+            const autorSumula = (partidaRankingEmFoco.dadosPlacar?.autorSumula || '').trim();
+            processarGatilhoPushSaaS(
+                { ...partidaRankingEmFoco, dia, hora },
+                autorSumula,
+                nomeQuadraAmigavel,
+                "RESULTADO_CONFIRMADO",
+                quemConfirmouFmt
+            );
+        }
+
         fecharModalConfig('modal-validacao-placar');
     })
     .catch(err => {
@@ -2535,7 +2582,7 @@ function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
         }).join(' ');
     }
 
-    // Dispara a notificação personalizada para cada atleta
+    // Dispara a notificação interna (Sininho) personalizada para cada atleta
     idsAtletas.forEach(idAtual => {
         const idAdversario = (idAtual === idJ1) ? idJ2 : idJ1;
         const atletaAdvObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idAdversario]) ? jogadoresGlobal[idAdversario] : {};
@@ -2554,6 +2601,42 @@ function notificarAtletasArbitragemSaaS(reserva, tipoDecisao, detalhe = "") {
 
         database.ref(`${raizBanco}/jogadores/${idAtual}/notificacoes`).push(payloadNotif);
     });
+
+    // 🔔 DISPARO PUSH SAAS (EVENTO 11: DECISÃO DA ARBITRAGEM OU LANÇAMENTO DIRETO -> AMBOS OS ATLETAS)
+    if (typeof processarGatilhoPushSaaS === 'function') {
+        let quadraKey = "Quadra - 1";
+        if (reserva.quadra) {
+            const match = reserva.quadra.match(/\d+/);
+            quadraKey = match ? `Quadra - ${match[0]}` : reserva.quadra;
+        } else if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
+            const match = quadraSelecionadaSaaS.match(/\d+/);
+            quadraKey = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
+        }
+
+        let nomeQuadraAmigavel = reserva.quadra || quadraKey;
+        const numQuadra = quadraKey.match(/\d+/);
+        if (numQuadra && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+            const dadosQ = configQuadrasGlobal.nomes[numQuadra[0]];
+            if (dadosQ) {
+                nomeQuadraAmigavel = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${numQuadra[0]}`) : dadosQ;
+            }
+        }
+
+        processarGatilhoPushSaaS(
+            {
+                ...reserva,
+                idJ1,
+                idJ2,
+                venciCod,
+                categoriaNotif: categoria,
+                detalheNotif: placarVencedor
+            },
+            nomeAutorFormatado,
+            nomeQuadraAmigavel,
+            "FECHAMENTO_ARBITRAGEM",
+            nomeAutorFormatado
+        );
+    }
 }
 
 
