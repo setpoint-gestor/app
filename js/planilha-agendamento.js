@@ -12,7 +12,7 @@ function cliqueCelula(dia, hora) {
     if (linhaDatasTabela) {
         const agora = new Date();
         const diaMes = String(agora.getDate()).padStart(2, '0');
-        const mes = String(agora.getMonth() + 1).padStart(2, '0'); 
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');  
         const ano = agora.getFullYear();
         const stringHoje = `${diaMes}/${mes}/${ano}`;
         const horaAtual = agora.getHours();
@@ -2128,24 +2128,29 @@ function validarEAgendarPartidaSaas() {
         
         let organizadorPrincipal = listaNomesCompletosReais[0] || "Sócio";
         let isOperadorExterno = false;
+        const nomeLogadoAtivo = (localStorage.getItem('jogadorLogadoNome') || '').trim().toUpperCase();
 
         if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
             organizadorPrincipal = "Administração (Gestor)";
             isOperadorExterno = true;
         } else {
-            const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim().toUpperCase();
             const nomeJ1 = (listaNomesCompletosReais[0] || '').trim().toUpperCase();
+            const nomeJ2 = (listaNomesCompletosReais[1] || '').trim().toUpperCase();
             
-            if (nomeLogado !== "" && nomeLogado !== nomeJ1) {
+            if (nomeLogadoAtivo !== "" && nomeLogadoAtivo !== nomeJ1 && nomeLogadoAtivo !== nomeJ2) {
                 let perfis = {};
                 try { perfis = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}'); } catch(e) {}
                 
+                const capitalizarNomeTemp = (str) => {
+                    if (!str) return '';
+                    return str.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+                };
+
                 if (perfis['Admin'] === true) {
-                    const capitalizarNomeTemp = (str) => {
-                        if (!str) return '';
-                        return str.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
-                    };
-                    organizadorPrincipal = capitalizarNomeTemp(nomeLogado) + " (Admin)";
+                    organizadorPrincipal = capitalizarNomeTemp(nomeLogadoAtivo) + " (Admin)";
+                    isOperadorExterno = true;
+                } else if (perfis['Árbitro'] === true || perfis['Arbitro'] === true) {
+                    organizadorPrincipal = capitalizarNomeTemp(nomeLogadoAtivo) + " (Árbitro)";
                     isOperadorExterno = true;
                 }
             }
@@ -2154,6 +2159,10 @@ function validarEAgendarPartidaSaas() {
         const temConvidado = slotsAgendamento.some(s => s.tipo === 'convidado');
         const exigenciaAtiva = (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao !== false);
         const prazoHoras = (configRegrasGlobal && configRegrasGlobal.horasParaExpirar !== undefined) ? parseInt(configRegrasGlobal.horasParaExpirar) : 2;
+
+        const confRankingGeral = (configRegrasGlobal && configRegrasGlobal.ranking) ? configRegrasGlobal.ranking : {};
+        const exigenciaRankingAtiva = (confRankingGeral.confirmacaoObrigatoria === true);
+        const prazoRankingHoras = (confRankingGeral.horasParaExpirar !== undefined) ? parseInt(confRankingGeral.horasParaExpirar, 10) : 2;
         
         let objetoConfirmacoes = {};
         let statusFinal = "confirmada";
@@ -2182,7 +2191,17 @@ function validarEAgendarPartidaSaas() {
                     }
                 }
             });
-        } else if (exigenciaAtiva && listaApelidos.length > 1 && !reservaParaHoje && !pacote.isRanking) {
+        } else if (pacote.isRanking && exigenciaRankingAtiva && listaApelidos.length > 1 && !reservaParaHoje) {
+            // 🏆 RANKING COM CONFIRMAÇÃO OBRIGATÓRIA ATIVA (APENAS PARA DIAS FUTUROS)
+            statusFinal = "pendente";
+            timestampExpiracao = Date.now() + (prazoRankingHoras * 60 * 60 * 1000);
+
+            for (let i = 0; i < listaApelidos.length; i++) {
+                const nomeAtletaSlot = (listaNomesCompletosReais[i] || '').trim().toUpperCase();
+                const souOProprioAutor = !isOperadorExterno && ((nomeLogadoAtivo !== "" && nomeAtletaSlot === nomeLogadoAtivo) || (nomeLogadoAtivo === "" && i === 0));
+                objetoConfirmacoes[listaApelidos[i]] = souOProprioAutor;
+            }
+        } else if (!pacote.isRanking && exigenciaAtiva && listaApelidos.length > 1 && !reservaParaHoje) {
             statusFinal = "pendente";
             timestampExpiracao = Date.now() + (prazoHoras * 60 * 60 * 1000);
             
@@ -2323,8 +2342,8 @@ function validarEAgendarPartidaSaas() {
                 showToast("Agendamento confirmado com sucesso!", "success");
             }
             
-            // Push Notification para outros atletas
-            if (!pacote.isRanking && statusFinal === "pendente") {
+            // Push Notification para outros atletas (Jogos comuns e Partidas de Ranking pendentes)
+            if (statusFinal === "pendente") {
                 const nomeOrgPuro = organizadorPrincipal.replace(/\s*\(.*?\)\s*/g, "").trim();
                 if (typeof processarGatilhoPushSaaS === 'function') {
                     processarGatilhoPushSaaS(objetoReservaReferencia, nomeOrgPuro, pacote.quadraAlvo, "NOVO_CONVITE");
@@ -3083,8 +3102,8 @@ Olá, *${nomeConv}*!
 📅 *Horário:* ${horarioTexto}
 💰 *Taxa Individual:* R$ ${taxaFormatada}
 
-🔑 *Chave PIX da Arena:* ${chavePix}
-👤 *Titular PIX:* ${recebedor}
+🔑 *PIX:* ${chavePix}
+👤 *Titular:* ${recebedor}
 
 ⚠️ *Para confirmar sua vaga:*
 Faça o PIX e envie o comprovante para:

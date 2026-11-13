@@ -13,7 +13,7 @@
 function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
     const modal = document.getElementById('modal-acoes-reserva');
     const txtDetalhes = document.getElementById('txt-acoes-detalhes');
-    const content = modal ? modal.querySelector('.modal-acoes-content') : null;  
+    const content = modal ? modal.querySelector('.modal-acoes-content') : null;   
 
     if (!modal || !dadosReserva) return;
 
@@ -1348,7 +1348,9 @@ function executarFaxinaAutomaticaSaaS() {
                                         configDuplasGlobal[quadraKey].Grade[slotKey] === true;
 
                     let quorumExigido = 1;
-                    if (isDuplaSlot) {
+                    if (ehRanking) {
+                        quorumExigido = 2;
+                    } else if (isDuplaSlot) {
                         quorumExigido = 4;
                     } else if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal) {
                         if (duracaoReserva === 1) {
@@ -1463,14 +1465,31 @@ function executarFaxinaAutomaticaSaaS() {
                             chavesPuladas.add(proximaChave);
                         }
 
-                        if (conviteExpirou && r.organizador) {
+                       if (conviteExpirou && r.organizador) {
                             const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
                             const orgNorm = norm(r.organizador);
 
-                            const idOrg = Object.keys(jogadoresGlobal || {}).find(id => {
+                            let idOrg = Object.keys(jogadoresGlobal || {}).find(id => {
                                 const j = jogadoresGlobal[id];
                                 return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
                             });
+
+                            if (!idOrg && ehRanking) {
+                                for (let i = 0; i < listApelidos.length; i++) {
+                                    const ap = listApelidos[i];
+                                    const comp = listCompleto[i] || ap;
+                                    const confirmou = Object.keys(confs).some(k =>
+                                        (norm(k) === norm(ap) || norm(k) === norm(comp)) && confs[k] === true
+                                    );
+                                    if (confirmou) {
+                                        idOrg = Object.keys(jogadoresGlobal || {}).find(id => {
+                                            const j = jogadoresGlobal[id];
+                                            return j && (norm(j.nomeCompleto) === norm(comp) || norm(j.apelido) === norm(ap));
+                                        });
+                                        if (idOrg) break;
+                                    }
+                                }
+                            }
 
                             if (idOrg) {
                                 const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
@@ -1487,9 +1506,10 @@ function executarFaxinaAutomaticaSaaS() {
                                     timestamp: Date.now()
                                 };
                                 updatePayload[`jogadores/${idOrg}/notificacoes/${keyNotif}`] = payloadNotif;
-								
-								// 🔔 PREPARAÇÃO DO PUSH SAAS (EVENTO 4: Entra na fila de espera)
-                                const nomeOrgPuro = (r.organizador || "Organizador").replace(/\s*\(.*?\)\s*/g, "").trim();
+
+                                // 🔔 PREPARAÇÃO DO PUSH SAAS (EVENTO 4: Entra na fila de espera)
+                                const atletaDestino = jogadoresGlobal[idOrg] || {};
+                                const nomeOrgPuro = (atletaDestino.nomeCompleto || r.organizador || "Organizador").replace(/\s*\(.*?\)\s*/g, "").trim();
                                 filaPushesFaxina.push({
                                     reserva: { ...r, dia: diaReserva, hora: horaReserva },
                                     organizador: nomeOrgPuro,
@@ -1581,7 +1601,12 @@ function renderizarGavetaConvitesSaaS(convites) {
     
     if (!modal || !container || !titulo) return;
 
-    titulo.textContent = convites.length === 1 ? '1 Convite Pendente' : `${convites.length} Convites Pendentes`;
+    const todosSaoRanking = convites.length > 0 && convites.every(c => c.dados?.isRanking === true || c.dados?.tipo === 'ranking');
+    if (todosSaoRanking) {
+        titulo.textContent = convites.length === 1 ? '1 Partida de Ranking Pendente' : `${convites.length} Partidas de Ranking Pendentes`;
+    } else {
+        titulo.textContent = convites.length === 1 ? '1 Convite Pendente' : `${convites.length} Convites Pendentes`;
+    }
     container.innerHTML = '';
 
     const diasCurto = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -1589,6 +1614,8 @@ function renderizarGavetaConvitesSaaS(convites) {
     convites.forEach(item => {
         const r = item.dados;
         const duracao = parseInt(r.duracao) || 1;
+        const ehRanking = (r.isRanking === true || r.tipo === 'ranking');
+        const uidCard = `${item.quadra}_${item.slotKey}`.replace(/[^a-zA-Z0-9_-]/g, '_');
         
         let dataFormatada = "";
         if (r.dataCompleta) {
@@ -1601,20 +1628,6 @@ function renderizarGavetaConvitesSaaS(convites) {
         const hFim = String(r.hora + duracao).padStart(2, '0') + ":00";
         const horarioFormatado = `${hInicio} - ${hFim}`;
         
-        let nomeOrg = r.organizador || "Não Informado";
-        if (typeof jogadoresGlobal !== 'undefined') {
-            for (let id in jogadoresGlobal) {
-                if (jogadoresGlobal[id].nomeCompleto && jogadoresGlobal[id].nomeCompleto.toUpperCase() === nomeOrg.toUpperCase()) {
-                    nomeOrg = jogadoresGlobal[id].apelido || nomeOrg;
-                    break;
-                }
-            }
-        }
-        
-        if (nomeOrg === nomeOrg.toUpperCase()) {
-            nomeOrg = nomeOrg.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
-        }
-        
         let nomeQuadraAmigavel = item.quadra;
         const numQuadra = item.quadra.match(/\d+/);
         if (numQuadra && configQuadrasGlobal && configQuadrasGlobal.nomes) {
@@ -1624,30 +1637,189 @@ function renderizarGavetaConvitesSaaS(convites) {
             }
         }
 
-        const htmlCard = `
-            <div class="convite-item" id="convite-card-${item.quadra}-${item.slotKey}">
-                <div class="convite-header">
-                    <span class="convite-data">${dataFormatada} &bull; ${horarioFormatado}</span>
-                    <span class="txt-expira"><i class="material-icons">timer</i> <span class="timer-countdown" data-expira="${r.expiraEm}">Calculando...</span></span>
+        if (ehRanking) {
+            // 🏷️ Tag dourada da fase/grupo ou modelo
+            const mapaModelos = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
+            let rotuloBadgeRanking = r.tagFaseRanking || (r.tagGrupoRanking ? `Grupos - ${r.tagGrupoRanking}` : '') || mapaModelos[(r.modelo || '').toLowerCase()] || 'Ranking Oficial';
+
+            // 🎾 Rótulo da categoria (ex: Classe B (Masc))
+            let rotuloCategoria = '';
+            if (r.categoria) {
+                const partesCat = r.categoria.replace('CLASSE_', '').split('_');
+                const cls = partesCat[0] || 'B';
+                const gen = (partesCat[1] || 'MASCULINO').toUpperCase();
+                const genTxt = (gen === 'UNIFICADO' || gen === 'MISTO') ? 'Misto' : (gen === 'FEMININO' ? 'Fem' : 'Masc');
+                rotuloCategoria = `Classe ${cls} (${genTxt})`;
+            }
+
+            // ⚔️ Jogadores com posição no ranking
+            const listaAp = (r.jogadores || '').split(',').map(s => s.trim());
+            const listaComp = (r.jogadores_completo || '').split(',').map(s => s.trim());
+
+            const fmtNomeDuelo = (ap, comp) => {
+                return (typeof formatarNomeExibicaoDetalhes === 'function')
+                    ? formatarNomeExibicaoDetalhes(comp || ap || 'Atleta')
+                    : (ap || comp || 'Atleta');
+            };
+
+            const nomeP1 = fmtNomeDuelo(listaAp[0], listaComp[0]);
+            const nomeP2 = fmtNomeDuelo(listaAp[1], listaComp[1]);
+
+            const posP1Raw = r.posicaoP1 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(listaAp[0] || listaComp[0]) : '');
+            const posP2Raw = r.posicaoP2 || (typeof obterPosicaoTextoRankingSaaS === 'function' ? obterPosicaoTextoRankingSaaS(listaAp[1] || listaComp[1]) : '');
+
+            const fmtPosicaoRanking = (pos) => {
+                if (!pos) return '';
+                return pos.endsWith('º') ? `${pos} ` : `${pos}. `;
+            };
+
+            const jogadoresRankingTexto = `${fmtPosicaoRanking(posP1Raw)}${nomeP1}, ${fmtPosicaoRanking(posP2Raw)}${nomeP2}`;
+
+            const htmlCardRanking = `
+                <fieldset class="convite-item prompt-saas-fieldset" data-ranking="true" id="convite-card-${item.quadra}-${item.slotKey}" style="margin: 0 0 12px 0; padding: 14px 16px; text-align: left;">
+                    <legend class="prompt-saas-legend">${nomeQuadraAmigavel.toUpperCase()}</legend>
+
+                    <div class="convite-header">
+                        <span class="convite-data">${dataFormatada} &bull; ${horarioFormatado}</span>
+                        <span class="badge-ranking-ouro">🏆 ${rotuloBadgeRanking}</span>
+                    </div>
+
+                    <div class="convite-info">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                            <span>${rotuloCategoria}</span>
+                            <span class="txt-expira">
+                                <i class="material-icons">timer</i>
+                                <span class="timer-countdown" data-expira="${r.expiraEm}">Calculando...</span>
+                            </span>
+                        </div>
+                        <strong>Jogadores:</strong> ${jogadoresRankingTexto}
+                    </div>
+
+                    <div class="botoes-acao" id="grupo-botoes-${uidCard}">
+                        <button type="button" class="btn-universal btn-danger" onclick="abrirRecusaRankingSaaS('${uidCard}')">Recusar</button>
+                        <button type="button" class="btn-universal btn-success" onclick="responderConviteSaaS('${item.quadra}', '${item.slotKey}', true)">Confirmar</button>
+                    </div>
+
+                    <div class="recusa-box" id="box-motivo-recusa-${uidCard}">
+                        <label class="recusa-label" for="select-motivo-recusa-${uidCard}">
+                            <i class="material-icons" style="font-size: 15px;">error_outline</i>
+                            Informe o motivo da recusa (obrigatório):
+                        </label>
+
+                        <select id="select-motivo-recusa-${uidCard}" class="recusa-select" onchange="verificarMotivoRecusaRankingSaaS('${uidCard}')">
+                            <option value="">Selecione o motivo...</option>
+                            <option value="Imprevisto de trabalho / compromisso">Imprevisto de trabalho / compromisso</option>
+                            <option value="Lesão ou indisposição física">Lesão ou indisposição física</option>
+                            <option value="Viagem / ausência da cidade">Viagem / ausência da cidade</option>
+                            <option value="Horário incompatível">Horário incompatível</option>
+                            <option value="OUTRO">Outro motivo (digitar...)</option>
+                        </select>
+
+                        <input type="text" id="input-motivo-custom-${uidCard}" class="recusa-input" placeholder="Descreva o motivo..." maxlength="120" oninput="verificarMotivoRecusaRankingSaaS('${uidCard}')">
+
+                        <div class="botoes-acao">
+                            <button type="button" class="btn-universal btn-secondary" onclick="fecharRecusaRankingSaaS('${uidCard}')">Voltar</button>
+                            <button type="button" id="btn-confirmar-recusa-${uidCard}" class="btn-universal btn-danger" disabled onclick="confirmarRecusaRankingSaaS('${item.quadra}', '${item.slotKey}', '${uidCard}')">Confirmar Recusa</button>
+                        </div>
+                    </div>
+                </fieldset>
+            `;
+            container.innerHTML += htmlCardRanking;
+        } else {
+            let nomeOrg = r.organizador || "Não Informado";
+            if (typeof jogadoresGlobal !== 'undefined') {
+                for (let id in jogadoresGlobal) {
+                    if (jogadoresGlobal[id].nomeCompleto && jogadoresGlobal[id].nomeCompleto.toUpperCase() === nomeOrg.toUpperCase()) {
+                        nomeOrg = jogadoresGlobal[id].apelido || nomeOrg;
+                        break;
+                    }
+                }
+            }
+            
+            if (nomeOrg === nomeOrg.toUpperCase()) {
+                nomeOrg = nomeOrg.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+            }
+
+            const htmlCard = `
+                <div class="convite-item" id="convite-card-${item.quadra}-${item.slotKey}">
+                    <div class="convite-header">
+                        <span class="convite-data">${dataFormatada} &bull; ${horarioFormatado}</span>
+                        <span class="txt-expira"><i class="material-icons">timer</i> <span class="timer-countdown" data-expira="${r.expiraEm}">Calculando...</span></span>
+                    </div>
+                    
+                    <div class="convite-info">
+                        ${nomeQuadraAmigavel} &bull; Org: ${nomeOrg}<br>
+                        <strong>Jogadores:</strong> ${r.jogadores || 'N/A'}
+                    </div>
+                    
+                    <div class="botoes-acao">
+                        <button class="btn-universal btn-danger" onclick="responderConviteSaaS('${item.quadra}', '${item.slotKey}', false)">Recusar</button>
+                        <button class="btn-universal btn-success" onclick="responderConviteSaaS('${item.quadra}', '${item.slotKey}', true)">Confirmar</button>
+                    </div>
                 </div>
-                
-                <div class="convite-info">
-                    ${nomeQuadraAmigavel} &bull; Org: ${nomeOrg}<br>
-                    <strong>Jogadores:</strong> ${r.jogadores || 'N/A'}
-                </div>
-                
-                <div class="botoes-acao">
-                    <button class="btn-universal btn-danger" onclick="responderConviteSaaS('${item.quadra}', '${item.slotKey}', false)">Recusar</button>
-                    <button class="btn-universal btn-success" onclick="responderConviteSaaS('${item.quadra}', '${item.slotKey}', true)">Confirmar</button>
-                </div>
-            </div>
-        `;
-        container.innerHTML += htmlCard;
+            `;
+            container.innerHTML += htmlCard;
+        }
     });
 
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('ativa'), 20);
     iniciarRelogioConvitesSaaS();
+}
+
+function abrirRecusaRankingSaaS(uidCard) {
+    if (navigator.vibrate) navigator.vibrate(20);
+    const grupoBotoes = document.getElementById(`grupo-botoes-${uidCard}`);
+    const boxRecusa = document.getElementById(`box-motivo-recusa-${uidCard}`);
+    if (grupoBotoes) grupoBotoes.style.display = 'none';
+    if (boxRecusa) boxRecusa.style.display = 'flex';
+}
+
+function fecharRecusaRankingSaaS(uidCard) {
+    if (navigator.vibrate) navigator.vibrate(15);
+    const grupoBotoes = document.getElementById(`grupo-botoes-${uidCard}`);
+    const boxRecusa = document.getElementById(`box-motivo-recusa-${uidCard}`);
+    const sel = document.getElementById(`select-motivo-recusa-${uidCard}`);
+    const inp = document.getElementById(`input-motivo-custom-${uidCard}`);
+    const btn = document.getElementById(`btn-confirmar-recusa-${uidCard}`);
+
+    if (boxRecusa) boxRecusa.style.display = 'none';
+    if (grupoBotoes) grupoBotoes.style.display = 'flex';
+    if (sel) sel.value = '';
+    if (inp) {
+        inp.value = '';
+        inp.style.display = 'none';
+    }
+    if (btn) btn.disabled = true;
+}
+
+function verificarMotivoRecusaRankingSaaS(uidCard) {
+    const sel = document.getElementById(`select-motivo-recusa-${uidCard}`);
+    const inp = document.getElementById(`input-motivo-custom-${uidCard}`);
+    const btn = document.getElementById(`btn-confirmar-recusa-${uidCard}`);
+    if (!sel || !btn) return;
+
+    if (sel.value === 'OUTRO') {
+        if (inp) inp.style.display = 'block';
+        btn.disabled = !inp || inp.value.trim().length < 3;
+    } else {
+        if (inp) inp.style.display = 'none';
+        btn.disabled = sel.value === '';
+    }
+}
+
+function confirmarRecusaRankingSaaS(quadraChave, slotKey, uidCard) {
+    const sel = document.getElementById(`select-motivo-recusa-${uidCard}`);
+    const inp = document.getElementById(`input-motivo-custom-${uidCard}`);
+    if (!sel) return;
+
+    const motivoFinal = (sel.value === 'OUTRO') ? (inp ? inp.value.trim() : '') : sel.value.trim();
+    if (!motivoFinal) {
+        showToast("Informe o motivo da recusa antes de confirmar.", "warning");
+        return;
+    }
+
+    responderConviteSaaS(quadraChave, slotKey, false, motivoFinal);
 }
 
 function iniciarRelogioConvitesSaaS() {
@@ -1716,7 +1888,7 @@ function fecharModalConvitesEntradaSaaS(adiarSessao = false) {
 // ----------------------------------------------------
 // FASE 5: O MOTOR DE TRANSAÇÕES ATÔMICAS (RESPOSTAS COM LOGS)
 // ----------------------------------------------------
-function responderConviteSaaS(quadraChave, slotKey, aceitou) {
+function responderConviteSaaS(quadraChave, slotKey, aceitou, motivoRecusaRanking = "") {
     if (navigator.vibrate) navigator.vibrate(30);
 
     const idLogado = localStorage.getItem('jogadorLogadoId');
@@ -1740,14 +1912,28 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
         if (!reserva) return null; 
 
         dadosReservaAntes = JSON.parse(JSON.stringify(reserva));
+        const ehRanking = (reserva.isRanking === true || reserva.tipo === 'ranking');
 
         if (aceitou) {
-            if (reserva.confirmacoes && reserva.confirmacoes[apelidoBusca] !== undefined) {
-                reserva.confirmacoes[apelidoBusca] = true;
+            if (reserva.confirmacoes) {
+                if (reserva.confirmacoes[apelidoBusca] !== undefined) {
+                    reserva.confirmacoes[apelidoBusca] = true;
+                } else {
+                    const chaveMatch = Object.keys(reserva.confirmacoes).find(k =>
+                        k.toUpperCase() === apelidoBusca.toUpperCase() || k.toUpperCase() === nomeCompletoBusca.toUpperCase()
+                    );
+                    if (chaveMatch) {
+                        reserva.confirmacoes[chaveMatch] = true;
+                    }
+                }
             }
         } else {
             if (reserva.confirmacoes) {
-                delete reserva.confirmacoes[apelidoBusca];
+                Object.keys(reserva.confirmacoes).forEach(k => {
+                    if (k.toUpperCase() === apelidoBusca.toUpperCase() || k.toUpperCase() === nomeCompletoBusca.toUpperCase()) {
+                        delete reserva.confirmacoes[k];
+                    }
+                });
             }
             
             if (reserva.jogadores) {
@@ -1786,7 +1972,9 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
         const duracao = parseInt(reserva.duracao) || 1; 
         let quorumExigido = 1;
         
-        if (isDuplaSlot) {
+        if (ehRanking) {
+            quorumExigido = 2;
+        } else if (isDuplaSlot) {
             quorumExigido = 4;
         } else if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal) {
             if (duracao === 1) {
@@ -1803,6 +1991,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
 
         if (todosConfirmados) {
             reserva.status = "confirmada";
+            delete reserva.expiraEm;
         } else {
             reserva.status = "pendente";
         }
@@ -1812,6 +2001,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
     .then((resultado) => {
         if (!resultado.committed) return;
         const reservaAtualizada = resultado.snapshot.val();
+        const ehRankingAntes = !!(dadosReservaAntes && (dadosReservaAntes.isRanking === true || dadosReservaAntes.tipo === 'ranking'));
         
         let nomeQuadraAmigavel = quadraChave;
         const numQuadra = quadraChave.match(/\d+/);
@@ -1826,17 +2016,37 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
         const dia = parseInt(partes[0]);
         const hora = parseInt(partes[1]); 
 
-        let idOrg = null;
+        let idDestinatarioNotif = null;
         let detalheFormatado = "";
 
-        if (dadosReservaAntes && dadosReservaAntes.organizador) {
+        if (dadosReservaAntes) {
             const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
-            const orgNorm = norm(dadosReservaAntes.organizador);
+            const orgNorm = norm(dadosReservaAntes.organizador || "");
 
-            idOrg = Object.keys(jogadoresGlobal || {}).find(id => {
+            idDestinatarioNotif = Object.keys(jogadoresGlobal || {}).find(id => {
                 const j = jogadoresGlobal[id];
                 return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
             });
+
+            // Se foi agendado por Gestor/Admin/Árbitro (sem jogador organizador), localiza o outro atleta da partida
+            if (!idDestinatarioNotif && ehRankingAntes) {
+                const quemRespondeuApNorm = norm(apelidoBusca);
+                const quemRespondeuCompNorm = norm(nomeCompletoBusca);
+                const listaAp = (dadosReservaAntes.jogadores || '').split(',').map(s => s.trim());
+                const listaComp = (dadosReservaAntes.jogadores_completo || '').split(',').map(s => s.trim());
+
+                for (let i = 0; i < listaAp.length; i++) {
+                    const apN = norm(listaAp[i]);
+                    const compN = norm(listaComp[i]);
+                    if (apN !== quemRespondeuApNorm && compN !== quemRespondeuCompNorm) {
+                        idDestinatarioNotif = Object.keys(jogadoresGlobal || {}).find(id => {
+                            const j = jogadoresGlobal[id];
+                            return j && (norm(j.nomeCompleto) === compN || norm(j.apelido) === apN);
+                        });
+                        if (idDestinatarioNotif) break;
+                    }
+                }
+            }
 
             const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
             const nomeDia = diasSemana[dia] || "Dia";
@@ -1851,19 +2061,25 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
             const caminhoKey2 = `${raizBanco}/reservas/${quadraChave}/${dia}_${hora + 1}`;
             database.ref(caminhoKey2).remove();
 
-            if (idOrg && !aceitou) {
+            if (idDestinatarioNotif && !aceitou) {
                 const payloadNotif = {
                     categoria: "cancelado_quorum",
                     adversario: apelidoBusca,
                     detalhe: detalheFormatado,
                     timestamp: Date.now()
                 };
-                database.ref(`${raizBanco}/jogadores/${idOrg}/notificacoes`).push(payloadNotif);
+                if (ehRankingAntes && motivoRecusaRanking) {
+                    payloadNotif.isRanking = true;
+                    payloadNotif.motivoRecusa = motivoRecusaRanking;
+                }
+                database.ref(`${raizBanco}/jogadores/${idDestinatarioNotif}/notificacoes`).push(payloadNotif);
 
                 // 🔔 DISPARO PUSH SAAS (EVENTO 3: CANCELAMENTO IMEDIATO POR RECUSA DE CONVITE)
                 if (typeof processarGatilhoPushSaaS === 'function') {
                     const nomeOrgPuro = (dadosReservaAntes.organizador || "Organizador").replace(/\s*\(.*?\)\s*/g, "").trim();
-                    processarGatilhoPushSaaS({ ...dadosReservaAntes, dia, hora }, nomeOrgPuro, nomeQuadraAmigavel, "RESERVA_RECUSADA_QUORUM", apelidoBusca);
+                    const dadosPushRecusa = { ...dadosReservaAntes, dia, hora };
+                    if (motivoRecusaRanking) dadosPushRecusa.motivoRecusaRanking = motivoRecusaRanking;
+                    processarGatilhoPushSaaS(dadosPushRecusa, nomeOrgPuro, nomeQuadraAmigavel, "RESERVA_RECUSADA_QUORUM", apelidoBusca);
                 }
             }
 
@@ -1874,13 +2090,17 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                     slotsExcluidos.push({ quadra: quadraChave, dia: dia, hora: hora + 1 });
                 }
 
+                const motivoLog = (ehRankingAntes && motivoRecusaRanking)
+                    ? `Partida de Ranking recusada por ${apelidoBusca}. Motivo: ${motivoRecusaRanking}. Reserva cancelada.`
+                    : `Convite recusado por ${apelidoBusca}. Reserva cancelada por falta de quórum mínimo.`;
+
                 const logRecusaCancelamento = {
                     origem: "sistema",
                     timestamp: new Date().toISOString(),
                     dataLocal: new Date().toLocaleString('pt-BR'),
                     autor: "Rotina Automática de Sistema",
                     acao: "RECUSA_CONVITE_CANCELAMENTO",
-                    motivo: `Convite recusado por ${apelidoBusca}. Reserva cancelada por falta de quórum mínimo.`,
+                    motivo: motivoLog,
                     clube: clubeAtivoId,
                     quadra: nomeQuadraAmigavel,
                     horario: `${String(hora).padStart(2, '0')}:00 - ${String(hora + duracao).padStart(2, '0')}:00`,
@@ -1899,7 +2119,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                 }
             }
 
-            showToast("A reserva foi cancelada por falta de quórum.", "warning");
+            showToast(ehRankingAntes ? "Partida de Ranking recusada e horário liberado." : "A reserva foi cancelada por falta de quórum.", "warning");
             concluirEfeitoCardSaaS(card);
             return;
         }
@@ -1913,7 +2133,7 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
             database.ref(caminhoKey2).set(reserva2); 
         }
 
-        if (idOrg) {
+        if (idDestinatarioNotif) {
             if (!aceitou) {
                 const payloadNotif = {
                     categoria: "convite_recusado",
@@ -1921,14 +2141,14 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                     detalhe: detalheFormatado,
                     timestamp: Date.now()
                 };
-                database.ref(`${raizBanco}/jogadores/${idOrg}/notificacoes`).push(payloadNotif);
+                database.ref(`${raizBanco}/jogadores/${idDestinatarioNotif}/notificacoes`).push(payloadNotif);
             } else if (reservaAtualizada.status === "confirmada" && dadosReservaAntes && dadosReservaAntes.status === "pendente") {
                 const payloadNotif = {
                     categoria: "partida_confirmada",
                     detalhe: detalheFormatado,
                     timestamp: Date.now()
                 };
-                database.ref(`${raizBanco}/jogadores/${idOrg}/notificacoes`).push(payloadNotif);
+                database.ref(`${raizBanco}/jogadores/${idDestinatarioNotif}/notificacoes`).push(payloadNotif);
 
                 // 🔔 DISPARO PUSH SAAS (EVENTO 8: PARTIDA CONFIRMADA)
                 if (typeof processarGatilhoPushSaaS === 'function') {
@@ -1965,6 +2185,10 @@ function responderConviteSaaS(quadraChave, slotKey, aceitou) {
                 enviarFilaLogsAoGitHubSaaS([logRecusaParcial]);
             }
         }
+
+        if (aceitou && ehRankingAntes) {
+            showToast(reservaAtualizada.status === "confirmada" ? "Partida de Ranking confirmada!" : "Sua presença foi confirmada! Aguardando o outro atleta.", "success");
+        }
         
         concluirEfeitoCardSaaS(card);
     })
@@ -1997,8 +2221,14 @@ function avaliarGavetaVaziaSaaS() {
         fecharModalConvitesEntradaSaaS();
         showToast("Você não possui mais convites pendentes.", "success");
     } else if (titulo && container) {
-        const qtd = container.children.length;
-        titulo.textContent = qtd === 1 ? '1 Convite Pendente' : `${qtd} Convites Pendentes`;
+        const cardsRestantes = Array.from(container.children);
+        const qtd = cardsRestantes.length;
+        const todosRanking = cardsRestantes.every(c => c.dataset && c.dataset.ranking === 'true');
+        if (todosRanking) {
+            titulo.textContent = qtd === 1 ? '1 Partida de Ranking Pendente' : `${qtd} Partidas de Ranking Pendentes`;
+        } else {
+            titulo.textContent = qtd === 1 ? '1 Convite Pendente' : `${qtd} Convites Pendentes`;
+        }
     }
 }
 

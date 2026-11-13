@@ -2194,7 +2194,7 @@ async function enviarPushParaAtletaSaaS(idJogador, titulo, mensagem, dadosExtras
         for (const tokenDestino of tokensArray) {
             if (tokenEmPrimeiroPlano && tokenDestino === tokenEmPrimeiroPlano) {
                 console.log(`[Push SaaS] Disparo suprimido na origem: atleta já está com o app aberto neste aparelho.`);
-                continue;
+                continue; 
             }
 
             if (!window.tokensPushProcessadosSaaS.has(tokenDestino)) {
@@ -2234,24 +2234,50 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
     // ----------------------------------------------------
     if (tipoEvento === "NOVO_CONVITE") {
         if (!dadosReserva.confirmacoes) return; // Trava de segurança específica
-        
-        const tituloPush = "🎾 Convite de Partida";
-        const msgPush = `${organizadorFormatado} convidou você para jogar na ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}). Toque para ver.`;
 
-        // Extrai a lista em array ("João, Maria" -> ["João", "Maria"])
+        const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
         const listaApelidos = (dadosReserva.jogadores || "").split(',').map(s => s.trim());
+        const listaCompletos = (dadosReserva.jogadores_completo || "").split(',').map(s => s.trim());
 
-        listaApelidos.forEach(apelidoConvidado => {
-            // Se a confirmação no banco for falsa, ele é um convidado que precisa ser avisado
+        const orgBruto = (dadosReserva.organizador || organizadorFormatado || "").trim();
+        const orgBrutoUp = orgBruto.toUpperCase();
+        const orgPuroUp = (organizadorFormatado || "").replace(/\s*\(.*?\)\s*/g, "").trim().toUpperCase();
+        const ehOperadorExterno = orgBrutoUp.includes("(GESTOR)") ||
+                                  orgBrutoUp.includes("(ADMIN)") ||
+                                  orgBrutoUp.includes("(ÁRBITRO)") ||
+                                  orgBrutoUp.includes("(ARBITRO)") ||
+                                  orgBrutoUp.includes("ADMINISTRAÇÃO") ||
+                                  (!listaApelidos.some(a => a.toUpperCase() === orgPuroUp) && !listaCompletos.some(c => c.toUpperCase() === orgPuroUp));
+
+        listaApelidos.forEach((apelidoConvidado, idx) => {
+            // Se a confirmação no banco for falsa, ele é um convidado/adversário que precisa ser avisado
             if (dadosReserva.confirmacoes[apelidoConvidado] === false) {
                 const apelidoUp = apelidoConvidado.toUpperCase();
-                
+                const completoUp = (listaCompletos[idx] || "").toUpperCase();
+
                 // Localiza o ID desse jogador no banco de dados local da memória RAM
                 const idConvidadoTarget = Object.keys(jogadoresGlobal).find(id => {
                     const j = jogadoresGlobal[id];
-                    return j && ((j.apelido || "").toUpperCase() === apelidoUp || (j.nomeCompleto || "").toUpperCase() === apelidoUp);
+                    if (!j) return false;
+                    const apDb = (j.apelido || "").toUpperCase();
+                    const ncDb = (j.nomeCompleto || "").toUpperCase();
+                    return apDb === apelidoUp || ncDb === apelidoUp || (completoUp !== "" && (ncDb === completoUp || apDb === completoUp));
                 });
-                
+
+                let tituloPush = "🎾 Convite de Partida";
+                let msgPush = `${organizadorFormatado} convidou você para jogar na ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}). Toque para ver.`;
+
+                if (ehRanking) {
+                    if (ehOperadorExterno) {
+                        const adversarioFmt = listaApelidos.find((_, i) => i !== idx) || "seu adversário";
+                        tituloPush = "🏆 Partida Oficial de Ranking";
+                        msgPush = `${orgBruto} agendou sua partida de Ranking contra ${adversarioFmt} na ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}). Toque para confirmar.`;
+                    } else {
+                        tituloPush = "🏆 Desafio de Ranking";
+                        msgPush = `${organizadorFormatado} desafiou você para uma partida de Ranking na ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}). Toque para aceitar ou recusar.`;
+                    }
+                }
+
                 // Despacha para a Cloudflare usando a função central
                 if (idConvidadoTarget && typeof enviarPushParaAtletaSaaS === 'function') {
                     enviarPushParaAtletaSaaS(idConvidadoTarget, tituloPush, msgPush, { tipo: "NOVO_CONVITE" });
@@ -2321,19 +2347,43 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
     // EVENTO 3: CANCELAMENTO IMEDIATO POR RECUSA DE CONVITE
     // ----------------------------------------------------
     if (tipoEvento === "RESERVA_RECUSADA_QUORUM") {
-        const tituloPush = "❌ Reserva Cancelada";
+        const ehRanking = (dadosReserva.isRanking === true || dadosReserva.tipo === 'ranking');
         const quemRecusouFmt = autorDaAcao || "Um jogador";
-        const msgPush = `${quemRecusouFmt} recusou o convite. Sua partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}) foi cancelada por falta de quórum.`;
+        const motivoRecusaTxt = (dadosReserva.motivoRecusaRanking || "").trim();
+
+        const tituloPush = ehRanking ? "🏆 Desafio Recusado" : "❌ Reserva Cancelada";
+        const msgPush = ehRanking
+            ? `${quemRecusouFmt} recusou a partida de Ranking de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}).${motivoRecusaTxt ? ` Motivo: ${motivoRecusaTxt}.` : ""}`
+            : `${quemRecusouFmt} recusou o convite. Sua partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}) foi cancelada por falta de quórum.`;
 
         const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
         const orgNorm = norm(organizadorFormatado || dadosReserva.organizador);
 
-        const idOrgTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+        let idDestinoTarget = Object.keys(jogadoresGlobal || {}).find(id => {
             const j = jogadoresGlobal[id];
             return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
         });
 
-        if (idOrgTarget && typeof enviarPushParaAtletaSaaS === 'function') {
+        // Se foi agendado pelo Gestor (sem ID de jogador), notifica o outro atleta da partida
+        if (!idDestinoTarget && ehRanking) {
+            const quemRecusouNorm = norm(quemRecusouFmt);
+            const listaApelidos = (dadosReserva.jogadores || "").split(',').map(s => s.trim());
+            const listaCompletos = (dadosReserva.jogadores_completo || "").split(',').map(s => s.trim());
+
+            for (let i = 0; i < listaApelidos.length; i++) {
+                const apNorm = norm(listaApelidos[i]);
+                const compNorm = norm(listaCompletos[i]);
+                if (apNorm !== quemRecusouNorm && compNorm !== quemRecusouNorm) {
+                    idDestinoTarget = Object.keys(jogadoresGlobal || {}).find(id => {
+                        const j = jogadoresGlobal[id];
+                        return j && (norm(j.nomeCompleto) === compNorm || norm(j.apelido) === apNorm);
+                    });
+                    if (idDestinoTarget) break;
+                }
+            }
+        }
+
+        if (idDestinoTarget && typeof enviarPushParaAtletaSaaS === 'function') {
             const duracao = parseInt(dadosReserva.duracao) || 1;
             const horaFimFmt = String(dadosReserva.hora + duracao).padStart(2, '0') + ":00";
             const diasSemanaCompleto = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
@@ -2342,11 +2392,12 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
             const keyNotifRecusa = `cancelado_quorum_${dadosReserva.dia}_${dadosReserva.hora}`;
             const agoraDisparo = Date.now();
 
-            enviarPushParaAtletaSaaS(idOrgTarget, tituloPush, msgPush, { 
+            enviarPushParaAtletaSaaS(idDestinoTarget, tituloPush, msgPush, { 
                 tipo: "RESERVA_RECUSADA_QUORUM",
                 keyNotif: keyNotifRecusa,
                 categoria: "cancelado_quorum",
                 adversario: quemRecusouFmt,
+                motivoRecusa: motivoRecusaTxt,
                 detalhe: detalheCardFmt,
                 timestamp: String(agoraDisparo)
             });

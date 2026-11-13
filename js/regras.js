@@ -23,7 +23,7 @@ const dicNomesRegras = {
     PartidasAbertas: "Partidas Abertas",
     PrivacidadeLGPD: "Privacidade (LGPD)",
     LimiteReservas: "Limite de Reservas Ativas",
-    RestricaoNobre: "Restrição de Horário Nobre", 
+    RestricaoNobre: "Restrição de Horário Nobre",  
     PrazoCancelamento: "Prazo de Cancelamento",
     ToleranciaAtraso: "Tolerância de Atraso"
 };
@@ -1293,6 +1293,24 @@ function togglePrazoConfirmacaoSaaS() {
     }
 }
 
+function togglePrazoConfirmacaoRankingSaaS(isChecked) {
+    const switchConf = document.getElementById('regra-ranking-confirmacao-obrig');
+    const selectPrazo = document.getElementById('select-ranking-tempo-expirar');
+    const ativo = (typeof isChecked === 'boolean') ? isChecked : (switchConf ? switchConf.checked : false);
+
+    if (selectPrazo) {
+        if (ativo) {
+            selectPrazo.disabled = false;
+            selectPrazo.style.opacity = '1';
+            selectPrazo.style.cursor = 'pointer';
+        } else {
+            selectPrazo.disabled = true;
+            selectPrazo.style.opacity = '0.5';
+            selectPrazo.style.cursor = 'not-allowed';
+        }
+    }
+}
+
 
 // ========================================================
 // 12. MÓDULO RANKING: PAINEL E CONFIGURAÇÕES DO GESTOR
@@ -1316,6 +1334,9 @@ function abrirModalConfigRanking() {
     document.getElementById('regra-ranking-ativo').checked = conf.ativo !== false;
     document.getElementById('select-ranking-genero').value = conf.divisaoGenero || "separado";
     document.getElementById('saas-ranking-duracao').value = String(conf.duracaoPartida !== undefined ? conf.duracaoPartida : 2);
+    document.getElementById('regra-ranking-confirmacao-obrig').checked = conf.confirmacaoObrigatoria === true;
+    document.getElementById('select-ranking-tempo-expirar').value = String(conf.horasParaExpirar !== undefined ? conf.horasParaExpirar : 2);
+    togglePrazoConfirmacaoRankingSaaS();
 
     // ⚖️ Carrega as permissões de quem pode arbitrar
     const arbitrarObj = conf.permiteArbitrar || {};
@@ -1611,6 +1632,8 @@ function salvarConfigRankingSaas() {
         ativo: document.getElementById('regra-ranking-ativo').checked,
         divisaoGenero: document.getElementById('select-ranking-genero').value,
 		duracaoPartida: parseInt(document.getElementById('saas-ranking-duracao').value) || 2,
+        confirmacaoObrigatoria: document.getElementById('regra-ranking-confirmacao-obrig').checked,
+        horasParaExpirar: parseInt(document.getElementById('select-ranking-tempo-expirar').value) || 2,
         permiteArbitrar: {
             Arbitro: true,
             Gestor: document.getElementById('regra-arbitrar-gestor').checked,

@@ -9,10 +9,10 @@ auth.onAuthStateChanged((user) => {
 
     // 🌟 INJEÇÃO DO "GOD MODE" (PASSE LIVRE DO DESENVOLVEDOR)
     const urlParams = new URLSearchParams(window.location.search);
-	const godModeClube = urlParams.get('god_mode_clube') || localStorage.getItem('god_mode_clube');
+	const godModeClube = urlParams.get('god_mode_clube') || localStorage.getItem('god_mode_clube'); 
 
     if (godModeClube) {
-        localStorage.setItem('god_mode_clube', godModeClube);
+        localStorage.setItem('god_mode_clube', godModeClube); 
         carregamentoInicial = false;
         clubeAtivoId = godModeClube;
         raizBanco = `Clubes/${godModeClube}/sistemas`;   
@@ -1012,15 +1012,30 @@ function renderizarListaNotificacoesSocioSaaS() {
                     break;
 
                 case 'cancelado_quorum':
-                    htmlCards += gerarCardNotificacaoHTML({
-                        classeCard: 'cancelado',
-                        tagTexto: '📅 AGENDAMENTO',
-                        tagClasse: '',
-                        tagEstiloCustom: 'background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;',
-                        titulo: 'Reserva cancelada.',
-                        detalhe: `${n.adversario ? `<b>${n.adversario}</b> recusou o convite.<br><br>` : ''}A sua reserva de <b>${n.detalhe || 'horário pendente'}</b> foi cancelada por falta de quórum.`,
-                        estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
-                    });
+                    if (n.isRanking || n.motivoRecusa) {
+                        const blocoMotivoRecusa = n.motivoRecusa
+                            ? `<div class="box-destaque-resultado"><b>Motivo:</b> ${n.motivoRecusa}</div>`
+                            : '';
+
+                        htmlCards += gerarCardNotificacaoHTML({
+                            classeCard: 'cancelado',
+                            tagTexto: '🏆 RANKING OFICIAL',
+                            tagClasse: 'tag-gold',
+                            titulo: 'Desafio recusado.',
+                            detalhe: `${n.adversario ? `<b>${n.adversario}</b> recusou a partida de Ranking` : 'A partida de Ranking foi recusada'} de <b>${n.detalhe || 'horário pendente'}</b>.${blocoMotivoRecusa}`,
+                            estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
+                        });
+                    } else {
+                        htmlCards += gerarCardNotificacaoHTML({
+                            classeCard: 'cancelado',
+                            tagTexto: '📅 AGENDAMENTO',
+                            tagClasse: '',
+                            tagEstiloCustom: 'background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;',
+                            titulo: 'Reserva cancelada.',
+                            detalhe: `${n.adversario ? `<b>${n.adversario}</b> recusou o convite.<br><br>` : ''}A sua reserva de <b>${n.detalhe || 'horário pendente'}</b> foi cancelada por falta de quórum.`,
+                            estiloCard: 'border-left: 4px solid #ef4444; background: #fef2f2;'
+                        });
+                    }
                     break;
 
                 case 'reserva_expirada':
