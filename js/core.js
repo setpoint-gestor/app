@@ -1375,13 +1375,57 @@ function iniciarMonitorOciosidadeSaaS() {
 // ==========================================
 // VARIAVEL DE SESSÃO: ITENS ADIADOS PELO USUÁRIO
 // ==========================================
-window.ignoradosSessaoSaaS = [];
+let servidorFirebaseConectadoSaaS = false;
+let timestampConexaoServidorSaaS = 0;
+let ultimoSnapshotReservasConvitesSaaS = null;
+let ouvinteConexaoConvitesAtivoSaaS = false;
+
+function obterChaveStorageConvitesAdiadosSaaS() {
+    const clube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) ? clubeAtivoId : (localStorage.getItem('setpoint_jogador_clube_id') || 'default');
+    const jogador = localStorage.getItem('jogadorLogadoId') || 'anon';
+    return `setpoint_convites_adiados_${clube}_${jogador}`;
+}
+
+function sincronizarConvitesAdiadosStorageSaaS(listaKeys = null) {
+    try {
+        const storageKey = obterChaveStorageConvitesAdiadosSaaS();
+        if (Array.isArray(listaKeys)) {
+            localStorage.setItem(storageKey, JSON.stringify(listaKeys));
+            return listaKeys;
+        }
+        const raw = localStorage.getItem(storageKey);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function criarListaIgnoradosPersistenteSaaS(iniciais = []) {
+    const arr = Array.from(new Set(iniciais));
+    arr.push = function (...itens) {
+        const res = Array.prototype.push.apply(this, itens);
+        sincronizarConvitesAdiadosStorageSaaS(this);
+        return res;
+    };
+    return arr;
+}
+
+window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS(sincronizarConvitesAdiadosStorageSaaS());
 
 function desligarTodosRadaresSaaS() {
     if (listenerConvitesCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerConvitesCallback);
     if (listenerSumulasCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerSumulasCallback);
     if (listenerArbitroCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerArbitroCallback);
     if (listenerRankingCallback) database.ref(`${raizBanco}/convites_ranking`).off('value', listenerRankingCallback);
+    if (timerConfirmacaoConvitesSaaS) {
+        clearTimeout(timerConfirmacaoConvitesSaaS);
+        timerConfirmacaoConvitesSaaS = null;
+    }
+
+    try {
+        localStorage.removeItem(obterChaveStorageConvitesAdiadosSaaS());
+    } catch (e) {}
     
     radarConvitesAtivoId = null;
     radarSumulasAtivoId = null;
@@ -1390,7 +1434,8 @@ function desligarTodosRadaresSaaS() {
     listenerSumulasCallback = null;
     listenerArbitroCallback = null;
     listenerRankingCallback = null;
-    window.ignoradosSessaoSaaS = [];
+    ultimoSnapshotReservasConvitesSaaS = null;
+    window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS([]);
 }
 
 // ==========================================
@@ -1398,6 +1443,118 @@ function desligarTodosRadaresSaaS() {
 // ==========================================
 let radarConvitesAtivoId = null;
 let listenerConvitesCallback = null;
+let timerConfirmacaoConvitesSaaS = null;
+
+function avaliarConvitesPendentesSnapshotSaaS(todasAsReservas) {
+    if (timerConfirmacaoConvitesSaaS) {
+        clearTimeout(timerConfirmacaoConvitesSaaS);
+        timerConfirmacaoConvitesSaaS = null;
+    }
+
+    const nomeAtual = localStorage.getItem('jogadorLogadoNome');
+    const idAtual = localStorage.getItem('jogadorLogadoId');
+    if (!nomeAtual || !idAtual || isGestorLogado) return;
+
+    // Restaura adiados salvos no dispositivo caso a página tenha recarregado após bloqueio de tela
+    const adiadosSalvos = sincronizarConvitesAdiadosStorageSaaS();
+    adiadosSalvos.forEach(k => {
+        if (!window.ignoradosSessaoSaaS.includes(k)) {
+            Array.prototype.push.call(window.ignoradosSessaoSaaS, k);
+        }
+    });
+
+    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+    const normNomeLogado = norm(nomeAtual);
+    const meusConvites = [];
+    const chavesAtivasPendentes = new Set();
+    const agora = Date.now();
+
+    Object.keys(todasAsReservas || {}).forEach(quadraKey => {
+        const slots = todasAsReservas[quadraKey];
+        if (!slots) return;
+
+        Object.keys(slots).forEach(slotKey => {
+            const r = slots[slotKey];
+            const chaveUnica = `${quadraKey}_${slotKey}`;
+
+            if (!r || r.status !== 'pendente' || !r.expiraEm) return;
+            if (r.borda === undefined && r.duracao === 2) return;
+            if (r.expiraEm < agora) return;
+
+            const confs = r.confirmacoes || {};
+            let souEuPendente = false;
+
+            const listCompleto = (r.jogadores_completo || "").split(',').map(s => norm(s));
+            const listApelidos = (r.jogadores || "").split(',').map(s => norm(s));
+
+            let idxMatch = listCompleto.findIndex(n => n === normNomeLogado);
+            if (idxMatch === -1) idxMatch = listApelidos.findIndex(a => a === normNomeLogado);
+
+            if (idxMatch !== -1) {
+                const nomeOriginalNoBanco = (r.jogadores || "").split(',')[idxMatch].trim();
+                if (confs[nomeOriginalNoBanco] === false) {
+                    souEuPendente = true;
+                } else {
+                    const chavesConfs = Object.keys(confs);
+                    const chaveCorrespondente = chavesConfs.find(k => norm(k) === norm(nomeOriginalNoBanco));
+                    if (chaveCorrespondente && confs[chaveCorrespondente] === false) souEuPendente = true;
+                }
+            }
+
+            if (souEuPendente) {
+                chavesAtivasPendentes.add(chaveUnica);
+                if (!window.ignoradosSessaoSaaS.includes(chaveUnica)) {
+                    meusConvites.push({ quadra: quadraKey, slotKey: slotKey, dados: r });
+                }
+            }
+        });
+    });
+
+    // 🧹 Limpa do localStorage reservas que já foram excluídas, expiradas ou confirmadas
+    if (servidorFirebaseConectadoSaaS) {
+        const adiadosLimpados = window.ignoradosSessaoSaaS.filter(k => chavesAtivasPendentes.has(k));
+        if (adiadosLimpados.length !== window.ignoradosSessaoSaaS.length) {
+            window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS(adiadosLimpados);
+            sincronizarConvitesAdiadosStorageSaaS(adiadosLimpados);
+        }
+    }
+
+    const modal = document.getElementById('modal-convites-entrada');
+    const modalJaVisivel = modal && modal.style.display === 'flex';
+
+    if (meusConvites.length > 0) {
+        if (modalJaVisivel) {
+            if (typeof renderizarGavetaConvitesSaaS === 'function') renderizarGavetaConvitesSaaS(meusConvites);
+            return;
+        }
+
+        // 🛡️ Bloqueia abertura enquanto o Firebase está lendo apenas o cache offline anterior ao bloqueio de tela
+        if (!servidorFirebaseConectadoSaaS) return;
+
+        const tempoDesdeConexao = Date.now() - timestampConexaoServidorSaaS;
+        const atrasoSyncServidor = tempoDesdeConexao < 500 ? (500 - tempoDesdeConexao) : 0;
+
+        timerConfirmacaoConvitesSaaS = setTimeout(() => {
+            timerConfirmacaoConvitesSaaS = null;
+            if (!servidorFirebaseConectadoSaaS) return;
+
+            const agoraCheck = Date.now();
+            const convitesConfirmados = meusConvites.filter(c =>
+                c.dados &&
+                c.dados.expiraEm > agoraCheck &&
+                !window.ignoradosSessaoSaaS.includes(`${c.quadra}_${c.slotKey}`)
+            );
+
+            if (convitesConfirmados.length > 0 && typeof renderizarGavetaConvitesSaaS === 'function') {
+                renderizarGavetaConvitesSaaS(convitesConfirmados);
+            }
+        }, atrasoSyncServidor);
+    } else {
+        if (modal && modal.style.display !== 'none' && typeof fecharModalConvitesEntradaSaaS === 'function') {
+            fecharModalConvitesEntradaSaaS();
+        }
+    }
+}
 
 function iniciarRadarDeConvitesSaaS(forcar = false) {
     if (configRegrasGlobal && configRegrasGlobal.ReservasPorConfirmacao === false) return;
@@ -1408,69 +1565,36 @@ function iniciarRadarDeConvitesSaaS(forcar = false) {
     if (!nomeLogado || !idLogado || isGestorLogado) return;
     if (!forcar && radarConvitesAtivoId === idLogado) return;
 
+    if (!ouvinteConexaoConvitesAtivoSaaS) {
+        ouvinteConexaoConvitesAtivoSaaS = true;
+        database.ref('.info/connected').on('value', (snapConn) => {
+            const conectado = snapConn.val() === true;
+            servidorFirebaseConectadoSaaS = conectado;
+            if (conectado) {
+                timestampConexaoServidorSaaS = Date.now();
+                if (ultimoSnapshotReservasConvitesSaaS !== null) {
+                    avaliarConvitesPendentesSnapshotSaaS(ultimoSnapshotReservasConvitesSaaS);
+                }
+            } else if (timerConfirmacaoConvitesSaaS) {
+                clearTimeout(timerConfirmacaoConvitesSaaS);
+                timerConfirmacaoConvitesSaaS = null;
+            }
+        });
+    }
+
     if (radarConvitesAtivoId !== null && listenerConvitesCallback) {
         database.ref(`${raizBanco}/reservas`).off('value', listenerConvitesCallback);
     }
+    if (timerConfirmacaoConvitesSaaS) {
+        clearTimeout(timerConfirmacaoConvitesSaaS); 
+        timerConfirmacaoConvitesSaaS = null;
+    }
 
     radarConvitesAtivoId = idLogado;
-    
-    const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
 
     listenerConvitesCallback = snap => {
-        const nomeAtual = localStorage.getItem('jogadorLogadoNome');
-        const idAtual = localStorage.getItem('jogadorLogadoId');
-        if (!nomeAtual || !idAtual || isGestorLogado) return;
-
-        const normNomeLogado = norm(nomeAtual);
-        const todasAsReservas = snap.val() || {};
-        const meusConvites = [];
-        const agora = Date.now();
-
-        Object.keys(todasAsReservas).forEach(quadraKey => {
-            const slots = todasAsReservas[quadraKey];
-            if (!slots) return;
-
-            Object.keys(slots).forEach(slotKey => {
-                const r = slots[slotKey];
-                const chaveUnica = `${quadraKey}_${slotKey}`;
-                
-                if (!r || r.status !== 'pendente' || !r.expiraEm) return;
-                if (r.borda === undefined && r.duracao === 2) return;
-                if (r.expiraEm < agora) return;
-                if (window.ignoradosSessaoSaaS.includes(chaveUnica)) return;
-
-                const confs = r.confirmacoes || {};
-                let souEuPendente = false;
-
-                const listCompleto = (r.jogadores_completo || "").split(',').map(s => norm(s));
-                const listApelidos = (r.jogadores || "").split(',').map(s => norm(s));
-
-                let idxMatch = listCompleto.findIndex(n => n === normNomeLogado);
-                if (idxMatch === -1) idxMatch = listApelidos.findIndex(a => a === normNomeLogado);
-
-                if (idxMatch !== -1) {
-                    const nomeOriginalNoBanco = (r.jogadores || "").split(',')[idxMatch].trim();
-                    if (confs[nomeOriginalNoBanco] === false) {
-                        souEuPendente = true;
-                    } else {
-                        const chavesConfs = Object.keys(confs);
-                        const chaveCorrespondente = chavesConfs.find(k => norm(k) === norm(nomeOriginalNoBanco));
-                        if (chaveCorrespondente && confs[chaveCorrespondente] === false) souEuPendente = true;
-                    }
-                }
-
-                if (souEuPendente) meusConvites.push({ quadra: quadraKey, slotKey: slotKey, dados: r });
-            });
-        });
-
-        if (meusConvites.length > 0) {
-            if (typeof renderizarGavetaConvitesSaaS === 'function') renderizarGavetaConvitesSaaS(meusConvites);
-        } else {
-            const modal = document.getElementById('modal-convites-entrada');
-            if (modal && modal.style.display !== 'none' && typeof fecharModalConvitesEntradaSaaS === 'function') {
-                fecharModalConvitesEntradaSaaS();
-            }
-        }
+        ultimoSnapshotReservasConvitesSaaS = snap.val() || {};
+        avaliarConvitesPendentesSnapshotSaaS(ultimoSnapshotReservasConvitesSaaS);
     };
 
     database.ref(`${raizBanco}/reservas`).on('value', listenerConvitesCallback);
@@ -1799,12 +1923,13 @@ function iniciarRadarConviteRankingSilenciosoSaaS(forcar = false) {
  */
 function processarCliqueNotificacaoPushSaaS(dados = {}) {
     if (!dados || typeof dados !== 'object') return;
-
-    // Convites de partida e validação de súmula possuem radares próprios que abrem suas gavetas
-    if (dados.tipo === 'NOVO_CONVITE' || dados.tipo === 'RESULTADO_INFORMADO') {
+	
+	// Convites de partida, validação de súmula e julgamento de contestação possuem radares próprios que abrem suas gavetas
+    if (dados.tipo === 'NOVO_CONVITE' || dados.tipo === 'RESULTADO_INFORMADO' || dados.tipo === 'SUMULA_CONTESTADA') {
         return;
     }
 
+   
     // 🛡️ COBERTURA IMEDIATA (0MS): Pré-carrega os dados do push na RAM e abre o card pronto
     window.aberturaViaPushPendente = true;
     setTimeout(() => {

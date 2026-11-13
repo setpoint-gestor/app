@@ -2378,7 +2378,7 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
                         const j = jogadoresGlobal[id];
                         return j && (norm(j.nomeCompleto) === compNorm || norm(j.apelido) === apNorm);
                     });
-                    if (idDestinoTarget) break;
+                    if (idDestinoTarget) break; 
                 }
             }
         }
@@ -2601,9 +2601,85 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
             });
         }
     }
+
+    // ----------------------------------------------------
+    // EVENTO 9: SÚMULA CONTESTADA (AUTOR E EQUIPE DE ARBITRAGEM)
+    // ----------------------------------------------------
+    if (tipoEvento === "SUMULA_CONTESTADA") {
+        const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+        const quemContestouFmt = autorDaAcao || "Seu adversário";
+        const contestadorNorm = norm(quemContestouFmt);
+        const agoraDisparo = Date.now();
+
+        const idContestador = contestadorNorm ? Object.keys(jogadoresGlobal || {}).find(id => {
+            const j = jogadoresGlobal[id];
+            return j && (norm(j.nomeCompleto) === contestadorNorm || norm(j.apelido) === contestadorNorm);
+        }) : null;
+
+        // 1. Notifica o Autor que lançou a súmula
+        const autorBruto = (organizadorFormatado || dadosReserva.dadosPlacar?.autorSumula || "").replace(/\s*\(.*?\)\s*/g, "").trim();
+        const autorNorm = norm(autorBruto);
+        const idAutorTarget = autorNorm ? Object.keys(jogadoresGlobal || {}).find(id => {
+            const j = jogadoresGlobal[id];
+            return j && (norm(j.nomeCompleto) === autorNorm || norm(j.apelido) === autorNorm);
+        }) : null;
+
+        if (idAutorTarget && idAutorTarget !== idContestador && typeof enviarPushParaAtletaSaaS === 'function') {
+            const tituloPushAutor = "⚠️ Placar Contestado";
+            const msgPushAutor = `${quemContestouFmt} recusou o placar da partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}). O jogo foi encaminhado para a arbitragem.`;
+            const keyNotifRecusado = `recusado_${dadosReserva.dia}_${dadosReserva.hora}`;
+            const placarDetalhe = dadosReserva.dadosPlacar?.placarFormatado || `${diaNome} às ${horaIniFmt}`;
+
+            enviarPushParaAtletaSaaS(idAutorTarget, tituloPushAutor, msgPushAutor, {
+                tipo: "SUMULA_CONTESTADA_AUTOR",
+                keyNotif: keyNotifRecusado,
+                categoria: "recusado",
+                adversario: quemContestouFmt,
+                detalhe: placarDetalhe,
+                timestamp: String(agoraDisparo)
+            });
+        }
+
+        // 2. Notifica os Árbitros habilitados (excluindo os atletas envolvidos na partida)
+        const confArbitrar = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal?.ranking?.permiteArbitrar)
+            ? configRegrasGlobal.ranking.permiteArbitrar
+            : {};
+
+        const jogadoresCompNorm = norm(dadosReserva.jogadores_completo || "");
+        const jogadoresApNorm = norm(dadosReserva.jogadores || "");
+        const listaApelidosMatch = (dadosReserva.jogadores || "").split(',').map(s => s.trim()).filter(Boolean);
+        const confrontoTxt = listaApelidosMatch.length >= 2 ? `${listaApelidosMatch[0]} x ${listaApelidosMatch[1]}` : (dadosReserva.jogadores || "Ranking");
+
+        const tituloPushArb = "⚖️ Súmula Contestada";
+        const msgPushArb = `${quemContestouFmt} contestou o placar de ${confrontoTxt} (${diaNome} às ${horaIniFmt} • ${txtQuadraFmt}). Toque para julgar.`;
+
+        Object.keys(jogadoresGlobal || {}).forEach(idUsuario => {
+            const u = jogadoresGlobal[idUsuario];
+            if (!u || u.ativo === false || !u.perfis) return;
+
+            const temPermissaoArbitrar = (u.perfis['Árbitro'] === true || u.perfis['Arbitro'] === true) ||
+                                         (confArbitrar.Admin === true && u.perfis['Admin'] === true) ||
+                                         (confArbitrar.Professor === true && (u.perfis['Professor'] === true || u.perfis['Prof'] === true));
+
+            if (!temPermissaoArbitrar) return;
+
+            // Trava de imparcialidade: não notifica árbitro que seja um dos jogadores da partida
+            const nomeU = norm(u.nomeCompleto || "");
+            const apU = norm(u.apelido || "");
+            const ehJogadorDaPartida = (idUsuario === idAutorTarget) ||
+                                       (idUsuario === idContestador) ||
+                                       (nomeU !== "" && (jogadoresCompNorm.includes(nomeU) || jogadoresApNorm.includes(nomeU))) ||
+                                       (apU !== "" && (jogadoresCompNorm.includes(apU) || jogadoresApNorm.includes(apU)));
+
+            if (!ehJogadorDaPartida && typeof enviarPushParaAtletaSaaS === 'function') {
+                enviarPushParaAtletaSaaS(idUsuario, tituloPushArb, msgPushArb, {
+                    tipo: "SUMULA_CONTESTADA"
+                });
+            }
+        });
+    }
 	
 }
-
 
 // ========================================================
 // 12. CENTRAL DE BAIXAS: POPOVER TOPO (TAXAS DE CONVIDADOS)

@@ -26,7 +26,7 @@ let motivoRETSaaS = "";
 let motivoCustomizadoRETSaaS = "";
 
 let eModoArbitroAtivoSumula = false;  
-let intervaloTimerValidacao = null;
+let intervaloTimerValidacao = null; 
 
 /* ======================================================== */
 /* 1. GATILHO DA SÚMULA: REGRAS DE VISIBILIDADE E ESTADOS   */
@@ -1052,6 +1052,37 @@ function recusarPlacarAdversarioSaaS() {
         if (intervaloTimerValidacao) clearInterval(intervaloTimerValidacao);
 		
         notificarAutorSumulaSaaS(partidaRankingEmFoco, 'recusado');
+
+        // 🔔 DISPARO PUSH SAAS (EVENTO 9: SÚMULA CONTESTADA -> AUTOR E EQUIPE DE ARBITRAGEM)
+        if (typeof processarGatilhoPushSaaS === 'function') {
+            const norm = (txt) => (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+            const nomeLogadoNorm = norm(localStorage.getItem('jogadorLogadoNome') || '');
+            const atletaContestador = Object.values(jogadoresGlobal || {}).find(j =>
+                j && (norm(j.nomeCompleto) === nomeLogadoNorm || norm(j.apelido) === nomeLogadoNorm)
+            );
+            const quemContestou = atletaContestador
+                ? (atletaContestador.apelido || atletaContestador.nomeCompleto)
+                : (localStorage.getItem('jogadorLogadoNome') || 'Adversário');
+
+            let nomeQuadraAmigavel = partidaRankingEmFoco.quadra || quadraKey;
+            const numQuadra = quadraKey.match(/\d+/);
+            if (numQuadra && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal.nomes) {
+                const dadosQ = configQuadrasGlobal.nomes[numQuadra[0]];
+                if (dadosQ) {
+                    nomeQuadraAmigavel = typeof dadosQ === 'object' ? (dadosQ.nome || `Quadra ${numQuadra[0]}`) : dadosQ;
+                }
+            }
+
+            const autorSumula = (partidaRankingEmFoco.dadosPlacar?.autorSumula || '').trim();
+            processarGatilhoPushSaaS(
+                { ...partidaRankingEmFoco, dia, hora },
+                autorSumula,
+                nomeQuadraAmigavel,
+                "SUMULA_CONTESTADA",
+                quemContestou
+            );
+        }
+
         fecharModalConfig('modal-validacao-placar');
     })
     .catch(err => {
