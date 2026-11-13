@@ -2475,6 +2475,32 @@
 									</select>
 								</div>
 								
+								<!-- Confirmação Obrigatória no Ranking -->
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Confirmação Obrigatória</span>
+										<span class="ctrl-desc">Exige aceite do adversário ao agendar partida oficial.</span>
+									</div>
+									<label class="switch">
+										<input type="checkbox" id="regra-ranking-confirmacao-obrig" onchange="if(typeof togglePrazoConfirmacaoRankingSaaS === 'function') togglePrazoConfirmacaoRankingSaaS(this.checked)">
+										<span class="slider"></span>
+									</label>
+								</div>
+
+								<!-- Prazo para Confirmação no Ranking -->
+								<div class="ctrl-row">
+									<div class="ctrl-text">
+										<span class="ctrl-title">Prazo para Confirmação</span>
+										<span class="ctrl-desc">Tempo até a reserva cair se ignorarem.</span>
+									</div>
+									<select class="modern-select" id="select-ranking-tempo-expirar" disabled>
+										<option value="1">1 hora</option>
+										<option value="2" selected>2 horas</option>
+										<option value="4">4 horas</option>
+										<option value="12">12 horas</option>
+									</select>
+								</div>
+								
 								<!-- Quem pode arbitrar (Card Envelopado Recolhível) -->
 								<div class="card-agendar-box" id="box-quem-pode-arbitrar">
 									<div class="acordeao-trigger-row" onclick="event.stopPropagation(); toggleGavetaQuemPodeArbitrar();">
