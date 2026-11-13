@@ -8766,5 +8766,33 @@
     "jogadores": "Alex",
     "jogadores_completo": "ALEX SOUZA",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-13T01:09:38.018Z",
+    "dataLocal": "12/11/2026, 22:09:38",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true,
+      "Almir": false
+    },
+    "jogadores": "Alex, Almir",
+    "jogadores_completo": "ALEX SOUZA, ALMIR ALVES DA CRUZ",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 6
+      }
+    ]
   }
 ]
