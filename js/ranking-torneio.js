@@ -13,7 +13,7 @@
 /* ======================================================== */
 
 async function aceitarConviteRankingSocioSaaS() {
-    const idLogado = localStorage.getItem('jogadorLogadoId');  
+    const idLogado = localStorage.getItem('jogadorLogadoId');    
     if (!idLogado || !raizBanco) return;
 
     if (navigator.vibrate) navigator.vibrate(30);
@@ -2820,6 +2820,11 @@ function encerrarInscricoesECriarChavesSaaS() {
                                 configRegrasGlobal.ranking.faseAtual = 3;
                             }
 
+                            // 🔔 DISPARO PUSH SAAS (EVENTO 13: LIBERAÇÃO DAS TABELAS / INÍCIO DA TEMPORADA)
+                            if (typeof processarGatilhoPushSaaS === 'function' && idsParaNotificar.length > 0) {
+                                processarGatilhoPushSaaS(idsParaNotificar, "", nomeTorneio, "INICIO_TEMPORADA", nomeTorneio);
+                            }
+
                             if (btnFinish) {
                                 btnFinish.innerHTML = `🏆 Concluir e Ver Tabelas`;
                                 btnFinish.onclick = () => {
@@ -2878,6 +2883,11 @@ function encerrarInscricoesECriarChavesSaaS() {
 
             if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking) {
                 configRegrasGlobal.ranking.faseAtual = 3;
+            }
+
+            // 🔔 DISPARO PUSH SAAS (EVENTO 13: LIBERAÇÃO DAS TABELAS / INÍCIO DA TEMPORADA)
+            if (typeof processarGatilhoPushSaaS === 'function' && idsParaNotificar.length > 0) {
+                processarGatilhoPushSaaS(idsParaNotificar, "", nomeTorneio, "INICIO_TEMPORADA", nomeTorneio);
             }
 
             showToast("Tabelas congeladas e temporada iniciada com sucesso!", "success");

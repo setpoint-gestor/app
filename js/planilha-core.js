@@ -2770,6 +2770,81 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
             }
         });
     }
+
+    // ----------------------------------------------------
+    // EVENTO 12: AUTO-HOMOLOGAÇÃO POR DECURSO DE PRAZO (FAXINA)
+    // ----------------------------------------------------
+    if (tipoEvento === "AUTO_HOMOLOGACAO") {
+        const idJ1 = dadosReserva.idJ1;
+        const idJ2 = dadosReserva.idJ2;
+        if (!idJ1 || !idJ2) return;
+
+        const placarTxt = dadosReserva.dadosPlacar?.placarFormatado || "";
+        const prazoHoras = dadosReserva.prazoAutoHoras || dadosReserva.dadosPlacar?.prazoAutoHoras || 48;
+
+        // 🔒 Trava atômica compartilhada no Firebase (TTL 60s) para evitar disparo duplicado entre aparelhos
+        const dataRefStr = (dadosReserva.dataCompleta || "").replace(/[^a-zA-Z0-9]/g, "");
+        const quadraRefStr = (quadraAlvo || "quadra").replace(/[^a-zA-Z0-9]/g, "");
+        const chaveTrava = `autohomolog_${quadraRefStr}_${dadosReserva.dia}_${dadosReserva.hora}${dataRefStr ? '_' + dataRefStr : ''}`;
+        const agoraTrava = Date.now();
+
+        database.ref(`${raizBanco}/controle_push/${chaveTrava}`).transaction((atual) => {
+            if (atual && atual.timestamp && (agoraTrava - atual.timestamp < 60000)) {
+                return; // Outro aparelho já despachou recentemente
+            }
+            return { despachado: true, timestamp: agoraTrava };
+        }).then((result) => {
+            if (result && result.committed) {
+                window.tokensPushProcessadosSaaS = new Set();
+                const tituloPush = "⏱️ Placar Auto-Homologado";
+                const msgPush = `O prazo de ${prazoHoras}h expirou sem contestação e o placar${placarTxt ? ` (${placarTxt})` : ""} da partida de ${diaNome} às ${horaIniFmt} (${txtQuadraFmt}) foi confirmado automaticamente.`;
+                const keyNotifAuto = `auto_homologado_${dadosReserva.dia}_${dadosReserva.hora}`;
+
+                [idJ1, idJ2].forEach(idAtual => {
+                    if (typeof enviarPushParaAtletaSaaS === 'function') {
+                        enviarPushParaAtletaSaaS(idAtual, tituloPush, msgPush, {
+                            tipo: "AUTO_HOMOLOGACAO",
+                            keyNotif: keyNotifAuto,
+                            categoria: "auto_homologado",
+                            prazoHoras: String(prazoHoras),
+                            detalhe: placarTxt || `${diaNome} às ${horaIniFmt}`,
+                            timestamp: String(agoraTrava)
+                        });
+                    }
+                });
+            }
+        }).catch((err) => {
+            console.error("Erro na trava atômica de push da auto-homologação:", err);
+        });
+    }
+
+    // ----------------------------------------------------
+    // EVENTO 13: LIBERAÇÃO DAS TABELAS / INÍCIO DA TEMPORADA
+    // ----------------------------------------------------
+    if (tipoEvento === "INICIO_TEMPORADA") {
+        const tituloPush = "🏆 A temporada começou!";
+        const nomeTorneio = autorDaAcao || "Torneio Oficial";
+        const msgPush = `Tabelas do ${nomeTorneio} liberadas. Toque para ver e agendar sua partida.`;
+        const detalheCard = `Tabelas do ${nomeTorneio} liberadas.\nAgende sua partida no app.`;
+        const idsInscritos = Array.isArray(dadosReserva) ? dadosReserva : Object.keys(dadosReserva || {});
+        const agoraDisparo = Date.now();
+
+        idsInscritos.forEach(idAtleta => {
+            const j = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal) ? jogadoresGlobal[idAtleta] : null;
+            if (!j) return;
+
+            if (typeof enviarPushParaAtletaSaaS === 'function') {
+                enviarPushParaAtletaSaaS(idAtleta, tituloPush, msgPush, {
+                    tipo: "INICIO_TEMPORADA",
+                    keyNotif: `inicio_temporada_${agoraDisparo}`,
+                    categoria: "inicio_temporada",
+                    titulo: "A temporada começou!",
+                    detalhe: detalheCard,
+                    timestamp: String(agoraDisparo)
+                });
+            }
+        });
+    }
 	
 }
 

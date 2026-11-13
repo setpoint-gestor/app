@@ -1990,6 +1990,12 @@ function processarCliqueNotificacaoPushSaaS(dados = {}) {
                 timestamp: Number(dados.timestamp) || Date.now()
             };
 
+            if (dados.titulo) {
+                notifPreload.titulo = dados.titulo;
+            }
+            if (dados.prazoHoras !== undefined && dados.prazoHoras !== "") {
+                notifPreload.prazoHoras = Number(dados.prazoHoras) || 48;
+            }
             if (dados.nomeAdversarioPartida) {
                 notifPreload.nomeAdversarioPartida = dados.nomeAdversarioPartida;
             }

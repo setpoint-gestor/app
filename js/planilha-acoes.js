@@ -13,7 +13,7 @@
 function abrirMenuAcoesReservaSaaS(dia, hora, dadosReserva) {
     const modal = document.getElementById('modal-acoes-reserva');
     const txtDetalhes = document.getElementById('txt-acoes-detalhes');
-    const content = modal ? modal.querySelector('.modal-acoes-content') : null;   
+    const content = modal ? modal.querySelector('.modal-acoes-content') : null;    
 
     if (!modal || !dadosReserva) return;
 
@@ -1317,6 +1317,32 @@ function executarFaxinaAutomaticaSaaS() {
                                     dadosPlacar: dpConsolidado
                                 });
                             }
+
+                            // 🔔 REGISTRO NO SININHO E FILA DE PUSH (EVENTO 12: AUTO-HOMOLOGAÇÃO)
+                            const keyNotifAuto = `auto_homologado_${diaReserva}_${horaReserva}`;
+                            const payloadNotifAuto = {
+                                categoria: "auto_homologado",
+                                detalhe: dp.placarFormatado || "",
+                                prazoHoras: horasPartida,
+                                timestamp: Date.now()
+                            };
+                            updatePayload[`jogadores/${idJ1}/notificacoes/${keyNotifAuto}`] = payloadNotifAuto;
+                            updatePayload[`jogadores/${idJ2}/notificacoes/${keyNotifAuto}`] = payloadNotifAuto;
+
+                            filaPushesFaxina.push({
+                                tipoEvento: "AUTO_HOMOLOGACAO",
+                                reserva: {
+                                    ...r,
+                                    dia: diaReserva,
+                                    hora: horaReserva,
+                                    idJ1: idJ1,
+                                    idJ2: idJ2,
+                                    prazoAutoHoras: horasPartida,
+                                    dadosPlacar: dpConsolidado
+                                },
+                                organizador: "",
+                                quadra: nomeQuadraAmigavel
+                            });
                         }
                     }
 
@@ -1559,10 +1585,11 @@ function executarFaxinaAutomaticaSaaS() {
                     enviarFilaLogsAoGitHubSaaS(filaLogsPremium); 
                 }
 
-                // 🔔 DISPARO PUSH SAAS (EVENTO 4: Despacha com segurança após o banco confirmar a gravação)
+                // 🔔 DISPARO PUSH SAAS (EVENTO 4 E EVENTO 12: Despacha com segurança após o banco confirmar a gravação)
                 if (filaPushesFaxina.length > 0 && typeof processarGatilhoPushSaaS === 'function') {
                     filaPushesFaxina.forEach(item => {
-                        processarGatilhoPushSaaS(item.reserva, item.organizador, item.quadra, "RESERVA_EXPIRADA_QUORUM");
+                        const eventoAlvo = item.tipoEvento || "RESERVA_EXPIRADA_QUORUM";
+                        processarGatilhoPushSaaS(item.reserva, item.organizador, item.quadra, eventoAlvo);
                     });
                 }
 

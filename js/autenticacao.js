@@ -12,7 +12,7 @@ auth.onAuthStateChanged((user) => {
 	const godModeClube = urlParams.get('god_mode_clube') || localStorage.getItem('god_mode_clube'); 
 
     if (godModeClube) {
-        localStorage.setItem('god_mode_clube', godModeClube); 
+        localStorage.setItem('god_mode_clube', godModeClube);  
         carregamentoInicial = false;
         clubeAtivoId = godModeClube;
         raizBanco = `Clubes/${godModeClube}/sistemas`;   
@@ -951,6 +951,16 @@ function renderizarListaNotificacoesSocioSaaS() {
                         tagClasse: 'tag-gold',
                         titulo: 'Resultado confirmado.',
                         detalhe: `${n.adversario || 'O adversário'} confirmou o resultado informado por você.`
+                    });
+                    break;
+
+                case 'auto_homologado':
+                    htmlCards += gerarCardNotificacaoHTML({
+                        classeCard: 'confirmado',
+                        tagTexto: '🏆 RANKING OFICIAL',
+                        tagClasse: 'tag-gold',
+                        titulo: 'Placar Auto-Homologado',
+                        detalhe: `O prazo de ${n.prazoHoras || 48}h expirou sem contestação e o resultado foi confirmado automaticamente.${n.detalhe ? `<div class="box-destaque-resultado"><b>Resultado:</b> ${n.detalhe}</div>` : ''}`
                     });
                     break;
 
