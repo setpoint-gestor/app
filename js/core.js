@@ -1568,8 +1568,84 @@ function iniciarMonitorOciosidadeSaaS() {
         }
     });
 
-    resetarCronometro();
+    resetarCronometro(); 
 } 
+
+// ==========================================
+// VARIÁVEL DE SESSÃO: ITENS ADIADOS PELO USUÁRIO
+// ==========================================
+let ouvinteConexaoConvitesAtivoSaaS = false;
+let servidorFirebaseConectadoSaaS = true;
+let timestampConexaoServidorSaaS = Date.now();
+let ultimoSnapshotReservasConvitesSaaS = null;
+
+function obterChaveStorageConvitesAdiadosSaaS() {
+    const clube = clubeAtivoId || localStorage.getItem('setpoint_jogador_clube_id') || 'default';
+    const idJog = localStorage.getItem('jogadorLogadoId') || 'anon';
+    return `setpoint_convites_adiados_${clube}_${idJog}`;
+}
+
+function sincronizarConvitesAdiadosStorageSaaS(listaParaSalvar = null) {
+    const chave = obterChaveStorageConvitesAdiadosSaaS();
+    if (Array.isArray(listaParaSalvar)) {
+        try {
+            localStorage.setItem(chave, JSON.stringify(listaParaSalvar));
+        } catch (e) {}
+        return listaParaSalvar;
+    }
+    try {
+        const raw = localStorage.getItem(chave);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function criarListaIgnoradosPersistenteSaaS(listaInicial = []) {
+    const arr = Array.isArray(listaInicial) ? [...listaInicial] : [];
+    return new Proxy(arr, {
+        get(target, prop, receiver) {
+            if (prop === 'push') {
+                return function (...items) {
+                    const res = Array.prototype.push.apply(target, items);
+                    sincronizarConvitesAdiadosStorageSaaS(target);
+                    return res;
+                };
+            }
+            return Reflect.get(target, prop, receiver);
+        }
+    });
+}
+
+window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS(sincronizarConvitesAdiadosStorageSaaS());
+
+function desligarTodosRadaresSaaS() {
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (typeof raizBanco !== 'undefined' && raizBanco) {
+        if (listenerConvitesCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerConvitesCallback);
+        if (listenerSumulasCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerSumulasCallback);
+        if (listenerArbitroCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerArbitroCallback);
+        if (listenerNotificacoesCallback && idLogado) database.ref(`${raizBanco}/jogadores/${idLogado}/notificacoes`).off('value', listenerNotificacoesCallback);
+        if (listenerRankingCallback) database.ref(`${raizBanco}/convites_ranking`).off('value', listenerRankingCallback);
+    }
+    if (timerConfirmacaoConvitesSaaS) {
+        clearTimeout(timerConfirmacaoConvitesSaaS);
+        timerConfirmacaoConvitesSaaS = null;
+    }
+
+    radarConvitesAtivoId = null;
+    radarSumulasAtivoId = null;
+    radarRankingAtivoId = null;
+    listenerConvitesCallback = null;
+    listenerSumulasCallback = null;
+    listenerArbitroCallback = null;
+    listenerNotificacoesCallback = null;
+    listenerRankingCallback = null;
+    qtdNotificacoesAnterior = null;
+    window.temConviteRankingPendenteSocio = false;
+    window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS([]);
+}
 
 // ==========================================
 // 9. RADAR DE CONVITES PENDENTES (SAAS)
