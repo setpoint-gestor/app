@@ -8,7 +8,7 @@
     min-height: 100vh;
 }
 
-/* NOVO PAINEL DE BOAS-VINDAS (CÓPIA FIEL DO ANTIGO) */
+/* NOVO PAINEL DE BOAS-VINDAS (CÓPIA FIEL DO ANTIGO) */ 
 #app-header {
     width: 100%; 
     height: 35px;
@@ -1739,7 +1739,7 @@ body.dark-mode .prompt-saas-warning {
 
 
 /* ======================================================== */
-/* 19. COMPONENTE: USUÁRIOS ONLINE SAAS (MATTE GLASS)       */
+/* 19. COMPONENTE: CONTROLE DE ACESSOS & ONLINE (MATTE)     */
 /* ======================================================== */
 .badge-SaaS-online {
     position: absolute;
@@ -1765,8 +1765,8 @@ body.dark-mode .badge-SaaS-online {
 .sheet-SaaS-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.25) !important;
-    z-index: 26000 !important; /* Camada superior para sobreposição total */
+    background: rgba(0, 0, 0, 0.35) !important;
+    z-index: 26000 !important;
     display: none;
     align-items: flex-end;
     justify-content: center;
@@ -1775,27 +1775,39 @@ body.dark-mode .badge-SaaS-online {
 }
 .sheet-SaaS-content {
     width: 100%;
-    max-width: 400px;
+    max-width: 440px;
     border-radius: 24px 24px 0 0 !important;
     padding: 16px 20px 20px 20px !important;
     box-sizing: border-box !important;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.05) !important;
-    background: rgba(255, 255, 255, 0.88) !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
     backdrop-filter: blur(25px) !important;
     -webkit-backdrop-filter: blur(25px) !important;
 }
+@media (min-width: 768px) {
+    .sheet-SaaS-overlay {
+        align-items: center;
+    }
+    .sheet-SaaS-content.sheet-acessos-saas {
+        border-radius: 20px !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.16) !important;
+    }
+    .sheet-acessos-saas .drag-handle-SaaS {
+        display: none;
+    }
+}
 body.dark-mode .sheet-SaaS-content {
-    background: rgba(30, 30, 30, 0.88) !important;
-    border-color: rgba(255, 255, 255, 0.06) !important;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5) !important;
+    background: rgba(30, 30, 30, 0.94) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55) !important;
 }
 .drag-handle-SaaS {
     width: 35px;
     height: 4px;
     background: #cbd5e1;
     border-radius: 4px;
-    margin: 0 auto 15px auto;
+    margin: 0 auto 14px auto;
 }
 body.dark-mode .drag-handle-SaaS { background: #444444; }
 
@@ -1808,32 +1820,222 @@ body.dark-mode .drag-handle-SaaS { background: #444444; }
 body.dark-mode .sheet-SaaS-title { color: #f8fafc !important; }
 
 .sheet-SaaS-subtitle {
-    margin: 0 0 15px 0 !important;
+    margin: 0 0 12px 0 !important;
     font-size: 12.5px !important;
     color: #64748b !important;
 }
 body.dark-mode .sheet-SaaS-subtitle { color: #94a3b8 !important; }
 
+/* Abas Segmentadas (Online Agora x Histórico do Dia) */
+.tabs-online-saas {
+    display: flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    gap: 4px;
+}
+.tab-online-btn {
+    flex: 1;
+    padding: 7px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.tab-online-btn.active {
+    background: #ffffff;
+    color: var(--cor-primaria, #2e8b57);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+}
+body.dark-mode .tabs-online-saas {
+    background: #141414;
+}
+body.dark-mode .tab-online-btn {
+    color: #94a3b8;
+}
+body.dark-mode .tab-online-btn.active {
+    background: #2a2a2a;
+    color: #4ade80;
+}
+
+/* Barra de Filtro por Data e Resumo (Aba Histórico) */
+.filtro-data-acessos-saas {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.input-data-acesso-saas {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    background: #ffffff;
+    outline: none;
+}
+.input-data-acesso-saas:focus {
+    border-color: var(--cor-primaria, #2e8b57);
+}
+body.dark-mode .input-data-acesso-saas {
+    background: #252525;
+    border-color: #3f3f46;
+    color: #f8fafc;
+    color-scheme: dark;
+}
+.resumo-acessos-pill {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(46, 139, 87, 0.12);
+    color: #2e8b57;
+    white-space: nowrap;
+}
+body.dark-mode .resumo-acessos-pill {
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+}
+
 .lista-online-SaaS {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+}
+.lista-historico-scroll {
+    max-height: 310px;
+    overflow-y: auto;
+    padding-right: 2px;
 }
 .linha-usuario-SaaS {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 0;
+    padding: 6px 2px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.linha-usuario-SaaS:last-child {
+    border-bottom: none;
+}
+body.dark-mode .linha-usuario-SaaS {
+    border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 .nome-usuario-SaaS {
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 13.5px;
+    font-weight: 600;
     color: #334155;
 }
-body.dark-mode .nome-usuario-SaaS { color: #cbd5e1; }
+body.dark-mode .nome-usuario-SaaS { color: #e2e8f0; }
+
+.tempo-online-agora {
+    font-size: 11px;
+    color: #16a34a;
+    font-weight: 600;
+    margin-left: 6px;
+}
+body.dark-mode .tempo-online-agora { color: #4ade80; }
+
 .tags-container-SaaS {
     display: flex;
+    align-items: center;
     gap: 4px;
+    flex-shrink: 0;
+}
+
+/* Card de Sessão Individual no Histórico do Dia */
+.card-sessao-acesso {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 9px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+body.dark-mode .card-sessao-acesso {
+    background: #242424;
+    border-color: #333333;
+}
+.sessao-topo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+.sessao-nome-atleta {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body.dark-mode .sessao-nome-atleta { color: #f8fafc; }
+
+.sessao-base-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.sessao-horario-range {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+body.dark-mode .sessao-horario-range { color: #cbd5e1; }
+
+.sessao-status-online {
+    color: #16a34a;
+    font-weight: 700;
+}
+body.dark-mode .sessao-status-online { color: #4ade80; }
+
+.sessao-duracao-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: #e2e8f0;
+    color: #475569;
+    white-space: nowrap;
+}
+.sessao-duracao-badge.ativo {
+    background: rgba(22, 163, 74, 0.14);
+    color: #15803d;
+}
+body.dark-mode .sessao-duracao-badge {
+    background: #333333;
+    color: #cbd5e1;
+}
+body.dark-mode .sessao-duracao-badge.ativo {
+    background: rgba(74, 222, 128, 0.16);
+    color: #4ade80;
+}
+
+.sessao-device-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    white-space: nowrap;
+}
+body.dark-mode .sessao-device-pill {
+    background: rgba(59, 130, 246, 0.16);
+    color: #60a5fa;
 }
 
 /* Cápsulas Pílulas de Identificação */
