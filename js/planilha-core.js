@@ -1900,6 +1900,11 @@ function deslogarJogadorSaaS() {
         if (isGestorLogado || localStorage.getItem('god_mode_clube')) {
             fazerLogout();
         } else {
+            // 📝 Encerra a sessão de acesso no log com o horário exato de saída e limpa presença online
+            if (typeof removerPresencaOnlineSaaS === 'function') {
+                removerPresencaOnlineSaaS(true, 'Saída manual', true);
+            }
+
             // 🧹 HIGIENIZA O TOKEN DESTE APARELHO ANTES DE SAIR DA CONTA (Multi-Device)
             const idLogadoParaLimpeza = localStorage.getItem('jogadorLogadoId');
             const tokenDesteAparelho = localStorage.getItem('setpoint_aparelho_fcm_token');
@@ -1911,7 +1916,7 @@ function deslogarJogadorSaaS() {
             localStorage.removeItem('jogadorLogadoId');
             localStorage.removeItem('jogadorLogadoNome');
             showToast('Sessão encerrada.', 'success');
-            setTimeout(() => window.location.href = window.location.pathname, 500); 
+            setTimeout(() => window.location.href = window.location.pathname, 600); 
         }
     });
 }
@@ -2007,23 +2012,124 @@ function alternarNotificacoesSaaS(isLigado) {
 
 
 // ====================================================================
-// 10. MOTOR DE PRESENÇA ONLINE GAVETA MATTE
+// 10. MOTOR DE PRESENÇA ONLINE E HISTÓRICO DE ACESSOS (GAVETA MATTE)
 // ====================================================================
+let abaControleAcessosAtivaSaaS = 'online';
+let cacheEntradasHojeSaaS = {};
+
+function formatarHoraMinutoSaaS(timestamp) {
+    if (!timestamp) return '--:--';
+    const d = new Date(timestamp);
+    if (isNaN(d.getTime())) return '--:--';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+}
+
+function formatarDuracaoSessaoSaaS(inicioMs, fimMs) {
+    if (!inicioMs || !fimMs || fimMs <= inicioMs) return '1 min';
+    const totalMin = Math.max(1, Math.round((fimMs - inicioMs) / 60000));
+    if (totalMin < 60) return `${totalMin} min`;
+    const horas = Math.floor(totalMin / 60);
+    const mins = totalMin % 60;
+    return mins > 0 ? `${horas}h ${mins}m` : `${horas}h`;
+}
+
+function formatarNomeControleAcessoSaaS(nomeBruto) {
+    return (nomeBruto || 'Atleta').toLowerCase().split(/\s+/).map(palavra => {
+        if (['da', 'de', 'do', 'dos', 'das'].includes(palavra)) {
+            return palavra;
+        }
+        return window.innerWidth <= 767 && palavra.length > 10
+            ? palavra.charAt(0).toUpperCase() + '.'
+            : palavra.charAt(0).toUpperCase() + palavra.slice(1);
+    }).join(' ');
+}
+
+function montarTagsControleAcessoSaaS(usuarioId, nomeFallback, vinculoFallback, perfisFallback) {
+    let dados = null;
+    if (typeof obterDadosControlePresencaSaas === 'function') {
+        const identificador = (usuarioId && usuarioId.startsWith('-')) ? usuarioId : nomeFallback;
+        dados = obterDadosControlePresencaSaas(identificador);
+    }
+
+    const socio = (dados && dados.socio) ? dados.socio : (vinculoFallback || 'titular');
+    const isAdmin = dados ? dados.isAdmin : !!(perfisFallback && perfisFallback['Admin'] === true);
+
+    let tagsHtml = '';
+    if (socio === 'titular') {
+        tagsHtml += `<span class="SaaS-tag SaaS-tag-socio">Sócio</span>`;
+    } else if (socio === 'dependente') {
+        tagsHtml += `<span class="SaaS-tag SaaS-tag-dependente">Dependente</span>`;
+    }
+
+    if (isAdmin) {
+        tagsHtml += `<span class="SaaS-tag SaaS-tag-admin">Admin</span>`;
+    }
+
+    return tagsHtml;
+}
+
+function obterIconePlataformaSaaS(plataforma) {
+    const plat = (plataforma || 'Web PC').trim();
+    if (plat.includes('iOS') || plat.includes('iPhone')) return `📱 ${plat}`;
+    if (plat.includes('Android')) return `🤖 ${plat}`;
+    return `💻 ${plat}`;
+}
+
 function abrirJanelaOnlineSaaS() {
-    document.getElementById('modal-online-SaaS').style.display = 'flex';
-    renderizarListaUsuariosOnlineSaaS();
+    const overlay = document.getElementById('modal-online-SaaS');
+    if (!overlay) return;
+
+    const inpData = document.getElementById('inp-data-logs-acesso');
+    const hojeStr = (typeof obterDataLocalYMDSaaS === 'function')
+        ? obterDataLocalYMDSaaS()
+        : new Date().toISOString().split('T')[0];
+
+    if (inpData) {
+        inpData.value = hojeStr;
+        inpData.max = hojeStr;
+    }
+
+    overlay.style.display = 'flex';
+    alternarAbaOnlineSaaS('online');
 }
 
 function fecharJanelaOnlineSaaS(event) {
     const overlay = document.getElementById('modal-online-SaaS');
-    if (event && event.target !== overlay) return; 
+    if (!overlay) return;
+    if (event && event.target !== overlay) return;
     overlay.style.display = 'none';
+}
+
+function alternarAbaOnlineSaaS(aba) {
+    abaControleAcessosAtivaSaaS = aba;
+
+    const btnOnline = document.getElementById('btn-tab-online-agora');
+    const btnHist = document.getElementById('btn-tab-online-historico');
+    const viewOnline = document.getElementById('view-online-agora-saas');
+    const viewHist = document.getElementById('view-online-historico-saas');
+
+    if (btnOnline) btnOnline.classList.toggle('active', aba === 'online');
+    if (btnHist) btnHist.classList.toggle('active', aba === 'historico');
+
+    if (viewOnline) viewOnline.style.display = (aba === 'online') ? 'block' : 'none';
+    if (viewHist) viewHist.style.display = (aba === 'historico') ? 'block' : 'none';
+
+    if (aba === 'online') {
+        renderizarListaUsuariosOnlineSaaS();
+    } else {
+        const inpData = document.getElementById('inp-data-logs-acesso');
+        const dataAlvo = (inpData && inpData.value)
+            ? inpData.value
+            : ((typeof obterDataLocalYMDSaaS === 'function') ? obterDataLocalYMDSaaS() : new Date().toISOString().split('T')[0]);
+        carregarHistoricoAcessosDiaSaaS(dataAlvo);
+    }
 }
 
 function renderizarListaUsuariosOnlineSaaS() {
     const container = document.getElementById('lista-online-SaaS');
     if (!container) return;
-    container.innerHTML = ''; 
 
     const chavesOnline = Object.keys(saasUsuariosOnlineCache || {});
     const agora = Date.now();
@@ -2031,7 +2137,7 @@ function renderizarListaUsuariosOnlineSaaS() {
 
     const filtrados = chavesOnline.filter(key => {
         const usr = saasUsuariosOnlineCache[key];
-        if (key === 'GESTOR' || usr.isGestor) return false;
+        if (!usr || key === 'GESTOR' || usr.isGestor) return false;
         if (usr.lastSeen && (agora - usr.lastSeen > TOLERANCIA_GHOST_MS)) return false;
         return true;
     });
@@ -2041,40 +2147,174 @@ function renderizarListaUsuariosOnlineSaaS() {
         return;
     }
 
+    // Busca silenciosa do horário de entrada de hoje para exibir "Online há X min"
+    const hojeStr = (typeof obterDataLocalYMDSaaS === 'function') ? obterDataLocalYMDSaaS() : '';
+    const faltaEntradaNoCache = filtrados.some(k => !cacheEntradasHojeSaaS[k]);
+
+    if (faltaEntradaNoCache && hojeStr && typeof raizBanco !== 'undefined' && raizBanco && !window.buscandoEntradasHojeSaaS) {
+        window.buscandoEntradasHojeSaaS = true;
+        database.ref(`${raizBanco}/logs_acesso/${hojeStr}`).once('value').then((snap) => {
+            window.buscandoEntradasHojeSaaS = false;
+            if (snap.exists()) {
+                snap.forEach((child) => {
+                    const s = child.val();
+                    if (s && s.usuarioId && s.entrada) {
+                        const atual = cacheEntradasHojeSaaS[s.usuarioId] || 0;
+                        if (s.entrada > atual) {
+                            cacheEntradasHojeSaaS[s.usuarioId] = s.entrada;
+                        }
+                    }
+                });
+                if (abaControleAcessosAtivaSaaS === 'online') {
+                    renderizarListaUsuariosOnlineSaaS();
+                }
+            }
+        }).catch(() => {
+            window.buscandoEntradasHojeSaaS = false;
+        });
+    }
+
     let atletasRicos = filtrados.map(key => {
-        const nomeBruto = saasUsuariosOnlineCache[key].usuario || "Atleta";
-        const identificador = key.startsWith('-') ? key : nomeBruto;
-        return obterDadosControlePresencaSaas(identificador);
+        const nomeBruto = saasUsuariosOnlineCache[key].usuario || 'Atleta';
+        const entradaTs = cacheEntradasHojeSaaS[key] || null;
+        return {
+            id: key,
+            nome: nomeBruto,
+            entradaTs: entradaTs
+        };
     });
 
-    atletasRicos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); 
+    atletasRicos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
+    container.innerHTML = '';
     atletasRicos.forEach(atleta => {
-        const nomeFormatado = atleta.nome.toLowerCase().split(/\s+/).map(palavra => {
-            if (['da', 'de', 'do', 'dos', 'das'].includes(palavra)) {
-                return palavra;
-            }
-            return window.innerWidth <= 767 && palavra.length > 10 ? palavra.charAt(0).toUpperCase() + '.' : palavra.charAt(0).toUpperCase() + palavra.slice(1);
-        }).join(' '); 
+        const nomeFormatado = formatarNomeControleAcessoSaaS(atleta.nome);
+        const tagsHtml = montarTagsControleAcessoSaaS(atleta.id, atleta.nome);
 
-        let tagsHtml = '';
-        if (atleta.socio === 'titular') {
-            tagsHtml += `<span class="SaaS-tag SaaS-tag-socio">Sócio</span>`;
-        } else if (atleta.socio === 'dependente') {
-            tagsHtml += `<span class="SaaS-tag SaaS-tag-dependente">Dependente</span>`;
-        }
-
-        if (atleta.isAdmin) {
-            tagsHtml += `<span class="SaaS-tag SaaS-tag-admin">Admin</span>`; 
+        let tempoOnlineHtml = '';
+        if (atleta.entradaTs && agora >= atleta.entradaTs) {
+            const mins = Math.max(1, Math.round((agora - atleta.entradaTs) / 60000));
+            tempoOnlineHtml = `<span class="tempo-online-agora">• há ${mins} min</span>`;
         }
 
         const divLinha = document.createElement('div');
         divLinha.className = 'linha-usuario-SaaS';
         divLinha.innerHTML = `
-            <span class="nome-usuario-SaaS">${nomeFormatado}</span>
+            <div>
+                <span class="nome-usuario-SaaS">${nomeFormatado}</span>
+                ${tempoOnlineHtml}
+            </div>
             <div class="tags-container-SaaS">${tagsHtml}</div>
         `;
         container.appendChild(divLinha);
+    });
+}
+
+function carregarHistoricoAcessosDiaSaaS(dataYMD) {
+    const container = document.getElementById('lista-historico-acesso-SaaS');
+    const badgeResumo = document.getElementById('txt-resumo-acessos-dia');
+    if (!container || !raizBanco || !dataYMD) return;
+
+    container.innerHTML = '<p class="SaaS-lista-vazia">Carregando registros...</p>';
+    if (badgeResumo) badgeResumo.textContent = '...';
+
+    database.ref(`${raizBanco}/logs_acesso/${dataYMD}`).once('value').then((snap) => {
+        if (!snap.exists()) {
+            container.innerHTML = '<p class="SaaS-lista-vazia">Nenhum acesso registrado nesta data.</p>';
+            if (badgeResumo) badgeResumo.textContent = '0 acessos';
+            return;
+        }
+
+        const sessoes = [];
+        snap.forEach((child) => {
+            const val = child.val();
+            if (val && val.usuarioId && val.entrada) {
+                sessoes.push({ id: child.key, ...val });
+            }
+        });
+
+        if (sessoes.length === 0) {
+            container.innerHTML = '<p class="SaaS-lista-vazia">Nenhum acesso registrado nesta data.</p>';
+            if (badgeResumo) badgeResumo.textContent = '0 acessos';
+            return;
+        }
+
+        // Ordena do acesso mais recente para o mais antigo
+        sessoes.sort((a, b) => (b.entrada || 0) - (a.entrada || 0));
+
+        // Cálculo de métricas: sócios únicos e horário de pico
+        const sociosUnicos = new Set(sessoes.map(s => s.usuarioId));
+        const contagemPorHora = {};
+        sessoes.forEach(s => {
+            const h = String(new Date(s.entrada).getHours()).padStart(2, '0');
+            contagemPorHora[h] = (contagemPorHora[h] || 0) + 1;
+        });
+
+        let horaPico = '';
+        let maxAcessosHora = 0;
+        Object.keys(contagemPorHora).forEach(h => {
+            if (contagemPorHora[h] > maxAcessosHora) {
+                maxAcessosHora = contagemPorHora[h];
+                horaPico = h;
+            }
+        });
+
+        if (badgeResumo) {
+            const txtSocios = `${sociosUnicos.size} ${sociosUnicos.size === 1 ? 'sócio' : 'sócios'}`;
+            badgeResumo.textContent = horaPico ? `${txtSocios} • Pico ${horaPico}h` : txtSocios;
+        }
+
+        const agora = Date.now();
+        const hojeStr = (typeof obterDataLocalYMDSaaS === 'function') ? obterDataLocalYMDSaaS(agora) : '';
+        const TOLERANCIA_GHOST_MS = 5 * 60 * 1000;
+
+        container.innerHTML = '';
+        sessoes.forEach(s => {
+            const nomeFormatado = formatarNomeControleAcessoSaaS(s.usuario);
+            const tagsHtml = montarTagsControleAcessoSaaS(s.usuarioId, s.usuario, s.vinculo, s.perfis);
+            const deviceTexto = obterIconePlataformaSaaS(s.plataforma);
+
+            // Valida se a sessão continua realmente ativa agora
+            const presencaAtiva = saasUsuariosOnlineCache && saasUsuariosOnlineCache[s.usuarioId];
+            const aindaOnline = (dataYMD === hojeStr) &&
+                s.status === 'online' &&
+                presencaAtiva &&
+                (!presencaAtiva.lastSeen || (agora - presencaAtiva.lastSeen <= TOLERANCIA_GHOST_MS));
+
+            const horaEntrada = formatarHoraMinutoSaaS(s.entrada);
+            let horarioRangeHtml = '';
+            let duracaoTexto = '';
+
+            if (aindaOnline) {
+                horarioRangeHtml = `${horaEntrada} ➔ <span class="sessao-status-online">● Online agora</span>`;
+                duracaoTexto = formatarDuracaoSessaoSaaS(s.entrada, agora);
+            } else {
+                const fimReal = s.saida || s.ultimaAtividade || s.entrada;
+                const horaSaida = formatarHoraMinutoSaaS(fimReal);
+                horarioRangeHtml = `${horaEntrada} ➔ ${horaSaida}`;
+                duracaoTexto = formatarDuracaoSessaoSaaS(s.entrada, fimReal);
+            }
+
+            const card = document.createElement('div');
+            card.className = 'card-sessao-acesso';
+            card.innerHTML = `
+                <div class="sessao-topo-row">
+                    <span class="sessao-nome-atleta">${nomeFormatado}</span>
+                    <div class="tags-container-SaaS">
+                        ${tagsHtml}
+                        <span class="sessao-device-pill">${deviceTexto}</span>
+                    </div>
+                </div>
+                <div class="sessao-base-row">
+                    <span class="sessao-horario-range">${horarioRangeHtml}</span>
+                    <span class="sessao-duracao-badge ${aindaOnline ? 'ativo' : ''}">${duracaoTexto}</span>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }).catch(() => {
+        container.innerHTML = '<p class="SaaS-lista-vazia">Erro ao carregar histórico de acessos.</p>';
+        if (badgeResumo) badgeResumo.textContent = 'Erro';
     });
 }
 
@@ -2838,7 +3078,7 @@ function processarGatilhoPushSaaS(dadosReserva, organizadorFormatado, quadraAlvo
                     tipo: "INICIO_TEMPORADA",
                     keyNotif: `inicio_temporada_${agoraDisparo}`,
                     categoria: "inicio_temporada",
-                    titulo: "A temporada começou!",
+                    titulo: "A temporada começou!", 
                     detalhe: detalheCard,
                     timestamp: String(agoraDisparo)
                 });

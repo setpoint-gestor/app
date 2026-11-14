@@ -1225,9 +1225,190 @@ async function enviarFilaLogsAoGitHubSaaS(arrayNovosLogs) {
 
 
 // ==========================================
-// 8. LOGÍSTICA DE PRESENÇA ONLINE (SaaS)
+// 8. LOGÍSTICA DE PRESENÇA ONLINE E LOG DE ACESSOS (SaaS)
 // ==========================================
 let intervaloHeartbeatSaaS = null;
+let refSessaoAcessoAtivaSaaS = null;
+
+function obterDataLocalYMDSaaS(timestamp = Date.now()) {
+    const d = new Date(timestamp);
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+}
+
+function detectarPlataformaAcessoSaaS() {
+    const isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    if (isNative) return isIos ? 'iOS App' : 'Android App';
+    if (isIos) return isStandalone ? 'iPhone PWA' : 'iPhone Web';
+    if (isAndroid) return isStandalone ? 'Android PWA' : 'Android Web';
+    return 'Web PC';
+}
+
+function obterChaveStorageSessaoAcessoSaaS(idJogador) {
+    const clube = clubeAtivoId || localStorage.getItem('setpoint_jogador_clube_id') || 'default';
+    return `setpoint_sessao_acesso_${clube}_${idJogador}`;
+}
+
+function executarAutoFaxinaLogsAcessoSaaS() {
+    if (!raizBanco || !clubeAtivoId) return;
+
+    const hojeStr = obterDataLocalYMDSaaS();
+    const chaveControle = `setpoint_faxina_logs_acesso_${clubeAtivoId}`;
+    if (localStorage.getItem(chaveControle) === hojeStr) return;
+
+    localStorage.setItem(chaveControle, hojeStr);
+
+    const diasRetencao = (typeof DiasLimpezaLogs !== 'undefined' && parseInt(DiasLimpezaLogs, 10) > 0)
+        ? parseInt(DiasLimpezaLogs, 10)
+        : 15;
+
+    const limiteMs = Date.now() - (diasRetencao * 24 * 60 * 60 * 1000);
+    const dataLimiteStr = obterDataLocalYMDSaaS(limiteMs);
+
+    database.ref(`${raizBanco}/logs_acesso`).once('value').then((snap) => {
+        if (!snap.exists()) return;
+        const updates = {};
+        let qtdRemovida = 0;
+
+        snap.forEach((child) => {
+            const dataKey = child.key;
+            if (dataKey && dataKey < dataLimiteStr) {
+                updates[dataKey] = null;
+                qtdRemovida++;
+            }
+        });
+
+        if (qtdRemovida > 0) {
+            database.ref(`${raizBanco}/logs_acesso`).update(updates).catch(() => {});
+        }
+    }).catch(() => {});
+}
+
+function registrarOuRetomarSessaoAcessoAtletaSaaS(idJogador, nomeJogador) {
+    if (!raizBanco || !idJogador || !nomeJogador) return;
+
+    // 🚫 Regra estrita: registra exclusivamente sócios/atletas (nunca Gestor nem God Mode)
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    if (isGestorLogado || isGodMode) return;
+
+    const agora = Date.now();
+    const hojeStr = obterDataLocalYMDSaaS(agora);
+    const storageKey = obterChaveStorageSessaoAcessoSaaS(idJogador);
+    const TOLERANCIA_SESSAO_MS = 5 * 60 * 1000;
+
+    let sessaoSalva = null;
+    try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) sessaoSalva = JSON.parse(raw);
+    } catch (e) {}
+
+    const dentroDaTolerancia = sessaoSalva &&
+        sessaoSalva.sessaoId &&
+        sessaoSalva.dataDia === hojeStr &&
+        (agora - (sessaoSalva.ultimaAtividadeTs || sessaoSalva.entradaTs || 0)) <= TOLERANCIA_SESSAO_MS;
+
+    if (dentroDaTolerancia) {
+        const refSessao = database.ref(`${raizBanco}/logs_acesso/${sessaoSalva.dataDia}/${sessaoSalva.sessaoId}`);
+        refSessaoAcessoAtivaSaaS = refSessao;
+
+        sessaoSalva.ultimaAtividadeTs = agora;
+        localStorage.setItem(storageKey, JSON.stringify(sessaoSalva));
+
+        refSessao.update({
+            status: 'online',
+            ultimaAtividade: agora,
+            saida: null,
+            motivoSaida: null
+        }).catch(() => {});
+
+        refSessao.onDisconnect().update({
+            status: 'offline',
+            saida: firebase.database.ServerValue.TIMESTAMP,
+            motivoSaida: 'App fechado / Desconexão'
+        });
+        return;
+    }
+
+    // Nova sessão de acesso
+    const novaSessaoRef = database.ref(`${raizBanco}/logs_acesso/${hojeStr}`).push();
+    const novaSessaoId = novaSessaoRef.key;
+    refSessaoAcessoAtivaSaaS = novaSessaoRef;
+
+    const dadosAtleta = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal && jogadoresGlobal[idJogador])
+        ? jogadoresGlobal[idJogador]
+        : {};
+
+    let perfisAtleta = dadosAtleta.perfis || {};
+    if (!dadosAtleta.perfis) {
+        try {
+            perfisAtleta = JSON.parse(localStorage.getItem('jogadorLogadoPerfis') || '{}');
+        } catch (e) {}
+    }
+
+    const payloadSessao = {
+        usuarioId: idJogador,
+        usuario: nomeJogador,
+        vinculo: dadosAtleta.socio || localStorage.getItem('jogadorLogadoSocio') || 'titular',
+        perfis: perfisAtleta,
+        plataforma: detectarPlataformaAcessoSaaS(),
+        entrada: agora,
+        ultimaAtividade: agora,
+        saida: null,
+        status: 'online',
+        motivoSaida: null
+    };
+
+    localStorage.setItem(storageKey, JSON.stringify({
+        sessaoId: novaSessaoId,
+        dataDia: hojeStr,
+        entradaTs: agora,
+        ultimaAtividadeTs: agora
+    }));
+
+    novaSessaoRef.set(payloadSessao).catch(() => {});
+    novaSessaoRef.onDisconnect().update({
+        status: 'offline',
+        saida: firebase.database.ServerValue.TIMESTAMP,
+        motivoSaida: 'App fechado / Desconexão'
+    });
+}
+
+function encerrarSessaoAcessoAtletaSaaS(motivo = 'Inatividade', forcarNovaNaProxima = false) {
+    const idJogador = localStorage.getItem('jogadorLogadoId');
+    if (!idJogador || !raizBanco) return;
+
+    const storageKey = obterChaveStorageSessaoAcessoSaaS(idJogador);
+    let sessaoSalva = null;
+    try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) sessaoSalva = JSON.parse(raw);
+    } catch (e) {}
+
+    if (sessaoSalva && sessaoSalva.sessaoId && sessaoSalva.dataDia) {
+        const refSessao = database.ref(`${raizBanco}/logs_acesso/${sessaoSalva.dataDia}/${sessaoSalva.sessaoId}`);
+        const horarioSaida = forcarNovaNaProxima
+            ? Date.now()
+            : (sessaoSalva.ultimaAtividadeTs || Date.now());
+
+        refSessao.onDisconnect().cancel().catch(() => {});
+        refSessao.update({
+            status: 'offline',
+            saida: horarioSaida,
+            motivoSaida: motivo
+        }).catch(() => {});
+    }
+
+    if (forcarNovaNaProxima) {
+        localStorage.removeItem(storageKey);
+    }
+    refSessaoAcessoAtivaSaaS = null;
+}
 
 function sincronizarPresencaOnlineSaaS() {
     if (!raizBanco) return; 
@@ -1259,6 +1440,10 @@ function sincronizarPresencaOnlineSaaS() {
                 activePushToken: tokenAparelhoAtivo
             });
             refPresencaAtleta.onDisconnect().remove();
+
+            // 📝 Registra ou retoma a sessão auditável exclusiva do sócio
+            registrarOuRetomarSessaoAcessoAtletaSaaS(idJogadorLogado, nomeJogadorLogado);
+            executarAutoFaxinaLogsAcessoSaaS();
         }
     }
 
@@ -1273,6 +1458,19 @@ function sincronizarPresencaOnlineSaaS() {
                 const idLogado = localStorage.getItem('jogadorLogadoId');
                 if (idLogado) {
                     database.ref(`${raizBanco}/usuariosOnline/${idLogado}/lastSeen`).set(agoraLoop);
+
+                    const storageKey = obterChaveStorageSessaoAcessoSaaS(idLogado);
+                    try {
+                        const raw = localStorage.getItem(storageKey);
+                        if (raw) {
+                            const sessaoObj = JSON.parse(raw);
+                            sessaoObj.ultimaAtividadeTs = agoraLoop;
+                            localStorage.setItem(storageKey, JSON.stringify(sessaoObj));
+                            if (sessaoObj.dataDia && sessaoObj.sessaoId) {
+                                database.ref(`${raizBanco}/logs_acesso/${sessaoObj.dataDia}/${sessaoObj.sessaoId}/ultimaAtividade`).set(agoraLoop);
+                            }
+                        }
+                    } catch (e) {}
                 }
             }
         }
@@ -1294,7 +1492,7 @@ const TEMPO_OCIOSIDADE_MS = 5 * 60 * 1000; // ⏱️ Calibrado para 5 minutos de
 /**
  * Remove a presença do banco imediatamente quando o usuário se ausenta
  */
-function removerPresencaOnlineSaaS() {
+function removerPresencaOnlineSaaS(encerrarLogAcesso = true, motivoSaida = 'Inatividade', forcarNovaSessao = false) {
     if (intervaloHeartbeatSaaS) {
         clearInterval(intervaloHeartbeatSaaS);
         intervaloHeartbeatSaaS = null;
@@ -1306,6 +1504,9 @@ function removerPresencaOnlineSaaS() {
         const idJogadorLogado = localStorage.getItem('jogadorLogadoId');
         if (idJogadorLogado) {
             database.ref(`${raizBanco}/usuariosOnline/${idJogadorLogado}`).remove();
+            if (encerrarLogAcesso) {
+                encerrarSessaoAcessoAtletaSaaS(motivoSaida, forcarNovaSessao);
+            }
         }
     }
     console.log("💤 [Ociosidade] Usuário inativo por muito tempo. Presença recolhida.");
@@ -1341,7 +1542,7 @@ function iniciarMonitorOciosidadeSaaS() {
         clearTimeout(temporizadorOciosidadeSaaS);
         temporizadorOciosidadeSaaS = setTimeout(() => {
             usuarioEstaOciosoSaaS = true;
-            removerPresencaOnlineSaaS();
+            removerPresencaOnlineSaaS(true, 'Inatividade', true);
         }, TEMPO_OCIOSIDADE_MS);
     };
 
@@ -1352,8 +1553,8 @@ function iniciarMonitorOciosidadeSaaS() {
 
     window.addEventListener('blur', () => {
         usuarioEstaOciosoSaaS = true;
-        clearTimeout(temporizadorOciosidadeSaaS); 
-        removerPresencaOnlineSaaS(); 
+        // Recolhe presença imediata do contador ao vivo, mantendo a sessão em tolerância de 5 min
+        removerPresencaOnlineSaaS(false);
     });
 
     window.addEventListener('focus', resetarCronometro);
@@ -1361,82 +1562,14 @@ function iniciarMonitorOciosidadeSaaS() {
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             usuarioEstaOciosoSaaS = true;
-            clearTimeout(temporizadorOciosidadeSaaS);
-            removerPresencaOnlineSaaS();
+            removerPresencaOnlineSaaS(false);
         } else {
             resetarCronometro();
         }
     });
 
     resetarCronometro();
-}
-
-
-// ==========================================
-// VARIAVEL DE SESSÃO: ITENS ADIADOS PELO USUÁRIO
-// ==========================================
-let servidorFirebaseConectadoSaaS = false;
-let timestampConexaoServidorSaaS = 0;
-let ultimoSnapshotReservasConvitesSaaS = null;
-let ouvinteConexaoConvitesAtivoSaaS = false;
-
-function obterChaveStorageConvitesAdiadosSaaS() {
-    const clube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) ? clubeAtivoId : (localStorage.getItem('setpoint_jogador_clube_id') || 'default');
-    const jogador = localStorage.getItem('jogadorLogadoId') || 'anon';
-    return `setpoint_convites_adiados_${clube}_${jogador}`;
-}
-
-function sincronizarConvitesAdiadosStorageSaaS(listaKeys = null) {
-    try {
-        const storageKey = obterChaveStorageConvitesAdiadosSaaS();
-        if (Array.isArray(listaKeys)) {
-            localStorage.setItem(storageKey, JSON.stringify(listaKeys));
-            return listaKeys;
-        }
-        const raw = localStorage.getItem(storageKey);
-        const parsed = raw ? JSON.parse(raw) : [];
-        return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-        return [];
-    }
-}
-
-function criarListaIgnoradosPersistenteSaaS(iniciais = []) {
-    const arr = Array.from(new Set(iniciais));
-    arr.push = function (...itens) {
-        const res = Array.prototype.push.apply(this, itens);
-        sincronizarConvitesAdiadosStorageSaaS(this);
-        return res;
-    };
-    return arr;
-}
-
-window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS(sincronizarConvitesAdiadosStorageSaaS());
-
-function desligarTodosRadaresSaaS() {
-    if (listenerConvitesCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerConvitesCallback);
-    if (listenerSumulasCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerSumulasCallback);
-    if (listenerArbitroCallback) database.ref(`${raizBanco}/reservas`).off('value', listenerArbitroCallback);
-    if (listenerRankingCallback) database.ref(`${raizBanco}/convites_ranking`).off('value', listenerRankingCallback);
-    if (timerConfirmacaoConvitesSaaS) {
-        clearTimeout(timerConfirmacaoConvitesSaaS);
-        timerConfirmacaoConvitesSaaS = null;
-    }
-
-    try {
-        localStorage.removeItem(obterChaveStorageConvitesAdiadosSaaS());
-    } catch (e) {}
-    
-    radarConvitesAtivoId = null;
-    radarSumulasAtivoId = null;
-    radarRankingAtivoId = null;
-    listenerConvitesCallback = null;
-    listenerSumulasCallback = null;
-    listenerArbitroCallback = null;
-    listenerRankingCallback = null;
-    ultimoSnapshotReservasConvitesSaaS = null;
-    window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS([]);
-}
+} 
 
 // ==========================================
 // 9. RADAR DE CONVITES PENDENTES (SAAS)
