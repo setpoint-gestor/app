@@ -2237,10 +2237,16 @@
                 </div>
             </div>
 
-            <!-- Abas de Alternância: Online Agora x Histórico do Dia -->
-            <div class="tabs-online-saas">
-                <button type="button" id="btn-tab-online-agora" class="tab-online-btn active" onclick="alternarAbaOnlineSaaS('online')">Online Agora</button>
-                <button type="button" id="btn-tab-online-historico" class="tab-online-btn" onclick="alternarAbaOnlineSaaS('historico')">Histórico do Dia</button>
+            <!-- Abas de Alternância: Online Agora x Histórico do Dia + Botão Calendário -->
+            <div class="tabs-online-row-saas">
+                <div class="tabs-online-saas">
+                    <button type="button" id="btn-tab-online-agora" class="tab-online-btn active" onclick="alternarAbaOnlineSaaS('online')">Online Agora</button>
+                    <button type="button" id="btn-tab-online-historico" class="tab-online-btn" onclick="alternarAbaOnlineSaaS('historico')">Histórico do Dia</button>
+                </div>
+                <button type="button" id="btn-calendario-acessos-saas" class="btn-calendario-acessos-saas" style="display: none;" onclick="abrirSeletorDataAcessosSaaS()" title="Selecionar Data">
+                    <i class="material-icons">calendar_today</i>
+                    <input type="date" id="inp-data-logs-acesso" class="input-data-oculto-saas" onchange="carregarHistoricoAcessosDiaSaaS(this.value)">
+                </button>
             </div>
 
             <!-- ABA 1: ONLINE AGORA -->
@@ -2251,7 +2257,10 @@
             <!-- ABA 2: HISTÓRICO DE ACESSOS DO DIA -->
             <div id="view-online-historico-saas" style="display: none;">
                 <div class="filtro-data-acessos-saas">
-                    <input type="date" id="inp-data-logs-acesso" class="input-data-acesso-saas" onchange="carregarHistoricoAcessosDiaSaaS(this.value)">
+                    <div class="busca-acessos-wrapper">
+                        <i class="material-icons">search</i>
+                        <input type="text" id="inp-busca-acessos-nome" class="input-busca-acessos-saas" placeholder="Pesquisar por nome ou apelido..." autocomplete="off" oninput="filtrarHistoricoAcessosPorNomeSaaS(this.value)">
+                    </div>
                     <span id="txt-resumo-acessos-dia" class="resumo-acessos-pill">0 acessos</span>
                 </div>
                 <div id="lista-historico-acesso-SaaS" class="lista-online-SaaS lista-historico-scroll"></div>
