@@ -1478,6 +1478,8 @@ function atualizarCabecalhoDias() {
 }
 
 function montarEsqueletoPlanilha() {
+    document.body.classList.remove('planilha-maximizada');
+
     const corpo = document.getElementById('tabelaCorpo');
     if (!corpo) {
         return;
@@ -1495,6 +1497,21 @@ function montarEsqueletoPlanilha() {
             <td class="horario-celula"><span class="hora-item">${horaInicio}</span><span class="hora-traco"> - </span><span class="hora-item">${horaFim}</span></td>`;
         corpo.appendChild(tr);
     }
+
+    let ultimoToqueHorarios = 0;
+    document.querySelectorAll('#tabelaQuadra th.horario-celula').forEach(th => {
+        th.onclick = () => {
+            const agora = Date.now();
+            const diff = agora - ultimoToqueHorarios;
+            if (diff > 0 && diff < 350) {
+                ultimoToqueHorarios = 0;
+                if (navigator.vibrate) navigator.vibrate(25);
+                document.body.classList.toggle('planilha-maximizada');
+            } else {
+                ultimoToqueHorarios = agora;
+            }
+        };
+    });
 }
 
 function toggleLegendaVisual() {
@@ -2542,7 +2559,7 @@ function renderizarCardsHistoricoAcessosSaaS() {
             `;
         });
 
-        const card = document.createElement('div');
+        const card = document.createElement('div'); 
         card.className = 'card-sessao-acesso';
         card.innerHTML = `
             <div class="sessao-card-header" onclick="this.parentElement.classList.toggle('aberto')">
