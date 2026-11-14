@@ -1911,9 +1911,10 @@ body.dark-mode .resumo-acessos-pill {
     gap: 6px;
 }
 .lista-historico-scroll {
-    max-height: 310px;
+    max-height: 340px;
     overflow-y: auto;
-    padding-right: 2px;
+    padding-right: 4px;
+    padding-bottom: 4px;
 }
 .linha-usuario-SaaS {
     display: flex;
@@ -1921,6 +1922,7 @@ body.dark-mode .resumo-acessos-pill {
     justify-content: space-between;
     padding: 6px 2px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
 }
 .linha-usuario-SaaS:last-child {
     border-bottom: none;
@@ -1950,20 +1952,44 @@ body.dark-mode .tempo-online-agora { color: #4ade80; }
     flex-shrink: 0;
 }
 
-/* Card de Sessão Individual no Histórico do Dia */
+/* Card Sanfona Agrupado por Atleta no Histórico do Dia */
 .card-sessao-acesso {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 9px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-sessao-acesso.aberto {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 body.dark-mode .card-sessao-acesso {
     background: #242424;
     border-color: #333333;
 }
+body.dark-mode .card-sessao-acesso.aberto {
+    border-color: #4b5563;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.sessao-card-header {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.sessao-card-header:active {
+    background: rgba(0, 0, 0, 0.02);
+}
+body.dark-mode .sessao-card-header:active {
+    background: rgba(255, 255, 255, 0.03);
+}
+
 .sessao-topo-row {
     display: flex;
     align-items: center;
@@ -1971,7 +1997,7 @@ body.dark-mode .card-sessao-acesso {
     gap: 6px;
 }
 .sessao-nome-atleta {
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 700;
     color: #1e293b;
     white-space: nowrap;
@@ -1979,6 +2005,20 @@ body.dark-mode .card-sessao-acesso {
     text-overflow: ellipsis;
 }
 body.dark-mode .sessao-nome-atleta { color: #f8fafc; }
+
+.sessao-chevron {
+    font-size: 18px !important;
+    color: #94a3b8;
+    transition: transform 0.22s ease, color 0.2s ease;
+    flex-shrink: 0;
+}
+.card-sessao-acesso.aberto .sessao-chevron {
+    transform: rotate(180deg);
+    color: var(--cor-primaria, #2e8b57);
+}
+body.dark-mode .card-sessao-acesso.aberto .sessao-chevron {
+    color: #4ade80;
+}
 
 .sessao-base-row {
     display: flex;
@@ -2036,6 +2076,46 @@ body.dark-mode .sessao-duracao-badge.ativo {
 body.dark-mode .sessao-device-pill {
     background: rgba(59, 130, 246, 0.16);
     color: #60a5fa;
+}
+
+/* Gaveta Interna Expansível (Lista de Sessões do Atleta) */
+.sessao-detalhes-drawer {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 12px 10px 12px;
+    background: #ffffff;
+    border-top: 1px dashed #e2e8f0;
+}
+.card-sessao-acesso.aberto .sessao-detalhes-drawer {
+    display: flex;
+}
+body.dark-mode .sessao-detalhes-drawer {
+    background: #1b1b1b;
+    border-top-color: #333333;
+}
+
+.sessao-sub-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.sessao-sub-linha:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+body.dark-mode .sessao-sub-linha {
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.sessao-sub-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
 }
 
 /* Cápsulas Pílulas de Identificação */
