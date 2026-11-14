@@ -779,7 +779,7 @@
                                 <div class="ctrl-row">
                                     <div class="ctrl-text">
                                         <span class="ctrl-title">Limpeza de Logs</span>
-                                        <span class="ctrl-desc">Histórico de reservas excluídas.</span>
+                                        <span class="ctrl-desc">Histórico de reservas excluídas e acessos ao sistema.</span>
                                     </div>
                                     <select class="modern-select" id="regra-limpeza-logs">
                                         <option value="0">Desativada</option>
@@ -2231,7 +2231,10 @@
             
             <div class="sheet-header-box">
                 <h3 class="sheet-SaaS-title">Controle de Acessos</h3>
-                <p id="txt-saas-online-contador" class="sheet-SaaS-subtitle">0 usuários online agora</p>
+                <div style="display: flex; align-items: center; gap: 6px; margin: 0 0 12px 0; flex-wrap: wrap;">
+                    <p id="txt-saas-online-contador" class="sheet-SaaS-subtitle" style="margin: 0 !important;">0 usuários online agora</p>
+                    <span id="txt-dias-retencao-acessos" class="pilula-versao-dash">Auto-Faxina: 15d</span>
+                </div>
             </div>
 
             <!-- Abas de Alternância: Online Agora x Histórico do Dia -->
