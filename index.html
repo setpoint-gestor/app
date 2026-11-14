@@ -2223,19 +2223,36 @@
     </div>
 	
 	<!-- ======================================================== -->
-    <!-- 🎯 NOVO COMPONENTE: GAVETA MATTE DE ATLETAS CONECTADOS   -->
+    <!-- 🎯 COMPONENTE: CONTROLE DE ACESSOS & ATLETAS CONECTADOS  -->
     <!-- ======================================================== -->
     <div id="modal-online-SaaS" class="sheet-SaaS-overlay" onclick="fecharJanelaOnlineSaaS(event)">
-        <div class="sheet-SaaS-content">
+        <div class="sheet-SaaS-content sheet-acessos-saas" onclick="event.stopPropagation()">
             <div class="drag-handle-SaaS"></div>
             
             <div class="sheet-header-box">
-                <h3 class="sheet-SaaS-title">Atletas Conectados</h3>
+                <h3 class="sheet-SaaS-title">Controle de Acessos</h3>
                 <p id="txt-saas-online-contador" class="sheet-SaaS-subtitle">0 usuários online agora</p>
             </div>
-            
-            <!-- LISTA DE ALTA DENSIDADE SEM CÍRCULOS (Injetada via JS) -->
-            <div id="lista-online-SaaS" class="lista-online-SaaS"></div>
+
+            <!-- Abas de Alternância: Online Agora x Histórico do Dia -->
+            <div class="tabs-online-saas">
+                <button type="button" id="btn-tab-online-agora" class="tab-online-btn active" onclick="alternarAbaOnlineSaaS('online')">Online Agora</button>
+                <button type="button" id="btn-tab-online-historico" class="tab-online-btn" onclick="alternarAbaOnlineSaaS('historico')">Histórico do Dia</button>
+            </div>
+
+            <!-- ABA 1: ONLINE AGORA -->
+            <div id="view-online-agora-saas">
+                <div id="lista-online-SaaS" class="lista-online-SaaS"></div>
+            </div>
+
+            <!-- ABA 2: HISTÓRICO DE ACESSOS DO DIA -->
+            <div id="view-online-historico-saas" style="display: none;">
+                <div class="filtro-data-acessos-saas">
+                    <input type="date" id="inp-data-logs-acesso" class="input-data-acesso-saas" onchange="carregarHistoricoAcessosDiaSaaS(this.value)">
+                    <span id="txt-resumo-acessos-dia" class="resumo-acessos-pill">0 acessos</span>
+                </div>
+                <div id="lista-historico-acesso-SaaS" class="lista-online-SaaS lista-historico-scroll"></div>
+            </div>
             
             <!-- TRAÇO SÓLIDO E TEXTO DE FECHAMENTO CONTEXTUAL -->
             <hr class="divisor-SaaS-linha">
@@ -3329,13 +3346,19 @@
 								<i class="material-icons" style="color: #f97316;">leaderboard</i>
 								<div class="header-title-block">
 									<span class="sidebar-title">Ranking Geral</span>
-									<span class="sidebar-desc">Fila Mestre, pontuação acumulada e regras.</span>
+									<span class="sidebar-desc">Fila Mestre, pontuação acumulada e regras.</span> 
 								</div>
 							</div>
 							<i class="material-icons icon-arrow">expand_more</i>
 						</div>
 						<div class="accordion-content">
 							<div class="accordion-content-inner">
+								
+								<div style="margin-bottom: 20px;">
+									<h2 style="font-size: 18px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; margin: 0;">
+										📊 Ranking Geral
+									</h2>
+								</div>
 								
 								<!-- BARRA SUPERIOR DE CONTROLES -->
 								<div class="ranking-top-bar">
