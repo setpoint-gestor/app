@@ -1959,7 +1959,7 @@ body.dark-mode .input-data-oculto-saas {
     transition: border-color 0.2s ease;
 }
 .input-busca-acessos-saas:focus {
-    border-color: var(--cor-primaria, #2e8b57);
+    border-color: var(--cor-primaria, #2e8b57); 
 }
 body.dark-mode .input-busca-acessos-saas {
     background: #252525;
@@ -3773,4 +3773,24 @@ body.dark-mode .linha-divisoria-baixa {
 
 body.dark-mode .check-row {
     border-bottom-color: #2e2e2e !important;
+}
+
+/* ======================================================== */
+/* 31. MODO MAXIMIZADO DA PLANILHA (FOCO NA GRADE)          */
+/* ======================================================== */
+#tabelaQuadra th.horario-celula {
+    cursor: pointer !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    touch-action: manipulation !important;
+}
+
+body.planilha-maximizada #tela-visao-quadras #app-header,
+body.planilha-maximizada #tela-visao-quadras .tab-container,
+body.planilha-maximizada #tela-visao-quadras .header-legenda-container {
+    display: none !important;
+}
+
+body.planilha-maximizada #tela-visao-quadras .tabela-container {
+    padding-top: 4px !important;
 }
