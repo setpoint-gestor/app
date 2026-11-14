@@ -2100,13 +2100,38 @@ function atualizarSeloAutoFaxinaAcessosSaaS(diasRaw) {
     }
 }
 
+let gruposHistoricoAcessosCacheSaaS = [];
+let metaHistoricoAcessosDiaSaaS = { dataYMD: '', horaPico: '', dataPrefixo: '' };
+
+function normalizarTextoBuscaAcessosSaaS(txt) {
+    return (txt || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function abrirSeletorDataAcessosSaaS() {
+    const inpData = document.getElementById('inp-data-logs-acesso');
+    if (!inpData) return;
+    if (typeof inpData.showPicker === 'function') {
+        try {
+            inpData.showPicker();
+        } catch (e) {}
+    }
+}
+
 function abrirJanelaOnlineSaaS() {
     const overlay = document.getElementById('modal-online-SaaS');
     if (!overlay) return;
 
     cacheEntradasHojeSaaS = {};
+    gruposHistoricoAcessosCacheSaaS = [];
 
     const inpData = document.getElementById('inp-data-logs-acesso');
+    const inpBusca = document.getElementById('inp-busca-acessos-nome');
+    const btnCal = document.getElementById('btn-calendario-acessos-saas');
+
     const hojeStr = (typeof obterDataLocalYMDSaaS === 'function')
         ? obterDataLocalYMDSaaS()
         : new Date().toISOString().split('T')[0];
@@ -2114,6 +2139,11 @@ function abrirJanelaOnlineSaaS() {
     if (inpData) {
         inpData.value = hojeStr;
         inpData.max = hojeStr;
+    }
+    if (inpBusca) inpBusca.value = '';
+    if (btnCal) {
+        btnCal.classList.remove('data-filtrada');
+        btnCal.style.display = 'none';
     }
 
     // Sincroniza o prazo da Auto-Faxina com as Regras de Reserva
@@ -2145,11 +2175,13 @@ function alternarAbaOnlineSaaS(aba) {
 
     const btnOnline = document.getElementById('btn-tab-online-agora');
     const btnHist = document.getElementById('btn-tab-online-historico');
+    const btnCal = document.getElementById('btn-calendario-acessos-saas');
     const viewOnline = document.getElementById('view-online-agora-saas');
     const viewHist = document.getElementById('view-online-historico-saas');
 
     if (btnOnline) btnOnline.classList.toggle('active', aba === 'online');
     if (btnHist) btnHist.classList.toggle('active', aba === 'historico');
+    if (btnCal) btnCal.style.display = (aba === 'historico') ? 'inline-flex' : 'none';
 
     if (viewOnline) viewOnline.style.display = (aba === 'online') ? 'block' : 'none';
     if (viewHist) viewHist.style.display = (aba === 'historico') ? 'block' : 'none';
@@ -2157,6 +2189,9 @@ function alternarAbaOnlineSaaS(aba) {
     if (aba === 'online') {
         renderizarListaUsuariosOnlineSaaS();
     } else {
+        const inpBusca = document.getElementById('inp-busca-acessos-nome');
+        if (inpBusca) inpBusca.value = '';
+
         const inpData = document.getElementById('inp-data-logs-acesso');
         const dataAlvo = (inpData && inpData.value)
             ? inpData.value
@@ -2185,7 +2220,7 @@ function renderizarListaUsuariosOnlineSaaS() {
         return;
     }
 
-    // Busca silenciosa do horário de entrada e dispositivo de hoje
+    // Busca silenciosa do horário de entrada e dispositivo da sessão realmente ativa hoje
     const hojeStr = (typeof obterDataLocalYMDSaaS === 'function') ? obterDataLocalYMDSaaS() : '';
     const faltaEntradaNoCache = filtrados.some(k => !cacheEntradasHojeSaaS[k]);
 
@@ -2197,11 +2232,17 @@ function renderizarListaUsuariosOnlineSaaS() {
                 snap.forEach((child) => {
                     const s = child.val();
                     if (s && s.usuarioId && s.entrada) {
-                        const atual = (cacheEntradasHojeSaaS[s.usuarioId] && cacheEntradasHojeSaaS[s.usuarioId].entrada) || 0;
-                        if (s.entrada >= atual) {
+                        const atualObj = cacheEntradasHojeSaaS[s.usuarioId];
+                        const atualEntrada = (atualObj && atualObj.entrada) || 0;
+                        const atualOnline = !!(atualObj && atualObj.isOnline);
+                        const novaOnline = (s.status === 'online');
+
+                        // Prioriza a sessão com status 'online'; em caso de empate, mantém a mais recente
+                        if (!atualObj || (novaOnline && !atualOnline) || (novaOnline === atualOnline && s.entrada >= atualEntrada)) {
                             cacheEntradasHojeSaaS[s.usuarioId] = {
                                 entrada: s.entrada,
-                                plataforma: s.plataforma || 'Web PC'
+                                plataforma: s.plataforma || 'Web PC',
+                                isOnline: novaOnline
                             };
                         }
                     }
@@ -2209,7 +2250,7 @@ function renderizarListaUsuariosOnlineSaaS() {
             }
             filtrados.forEach(k => {
                 if (!cacheEntradasHojeSaaS[k]) {
-                    cacheEntradasHojeSaaS[k] = { entrada: null, plataforma: 'Web PC' };
+                    cacheEntradasHojeSaaS[k] = { entrada: null, plataforma: 'Web PC', isOnline: true };
                 }
             });
             if (abaControleAcessosAtivaSaaS === 'online') {
@@ -2267,7 +2308,30 @@ function renderizarListaUsuariosOnlineSaaS() {
 function carregarHistoricoAcessosDiaSaaS(dataYMD) {
     const container = document.getElementById('lista-historico-acesso-SaaS');
     const badgeResumo = document.getElementById('txt-resumo-acessos-dia');
+    const btnCal = document.getElementById('btn-calendario-acessos-saas');
+    const inpBusca = document.getElementById('inp-busca-acessos-nome');
     if (!container || !raizBanco || !dataYMD) return;
+
+    const agora = Date.now();
+    const hojeStr = (typeof obterDataLocalYMDSaaS === 'function') ? obterDataLocalYMDSaaS(agora) : '';
+    const ehOutroDia = (hojeStr && dataYMD !== hojeStr);
+
+    if (btnCal) {
+        btnCal.classList.toggle('data-filtrada', ehOutroDia);
+    }
+    if (inpBusca) {
+        inpBusca.value = '';
+    }
+
+    let dataPrefixo = '';
+    if (ehOutroDia) {
+        const partesDt = dataYMD.split('-');
+        const dataCurta = partesDt.length === 3 ? `${partesDt[2]}/${partesDt[1]}` : dataYMD;
+        dataPrefixo = `${dataCurta} • `;
+    }
+
+    gruposHistoricoAcessosCacheSaaS = [];
+    metaHistoricoAcessosDiaSaaS = { dataYMD, horaPico: '', dataPrefixo };
 
     container.innerHTML = '<p class="SaaS-lista-vazia">Carregando registros...</p>';
     if (badgeResumo) badgeResumo.textContent = '...';
@@ -2275,7 +2339,7 @@ function carregarHistoricoAcessosDiaSaaS(dataYMD) {
     database.ref(`${raizBanco}/logs_acesso/${dataYMD}`).once('value').then((snap) => {
         if (!snap.exists()) {
             container.innerHTML = '<p class="SaaS-lista-vazia">Nenhum acesso registrado nesta data.</p>';
-            if (badgeResumo) badgeResumo.textContent = '0 acessos';
+            if (badgeResumo) badgeResumo.textContent = `${dataPrefixo}0 acessos`;
             return;
         }
 
@@ -2289,14 +2353,14 @@ function carregarHistoricoAcessosDiaSaaS(dataYMD) {
 
         if (sessoes.length === 0) {
             container.innerHTML = '<p class="SaaS-lista-vazia">Nenhum acesso registrado nesta data.</p>';
-            if (badgeResumo) badgeResumo.textContent = '0 acessos';
+            if (badgeResumo) badgeResumo.textContent = `${dataPrefixo}0 acessos`;
             return;
         }
 
         // Ordena todas as sessões da mais recente para a mais antiga
         sessoes.sort((a, b) => (b.entrada || 0) - (a.entrada || 0));
 
-        // Cálculo de métricas gerais do dia (sócios únicos e horário de pico)
+        // Cálculo de métricas gerais do dia (horário de pico)
         const contagemPorHora = {};
         sessoes.forEach(s => {
             const h = String(new Date(s.entrada).getHours()).padStart(2, '0');
@@ -2312,17 +2376,19 @@ function carregarHistoricoAcessosDiaSaaS(dataYMD) {
             }
         });
 
-        const agora = Date.now();
-        const hojeStr = (typeof obterDataLocalYMDSaaS === 'function') ? obterDataLocalYMDSaaS(agora) : '';
         const TOLERANCIA_GHOST_MS = 5 * 60 * 1000;
 
         // Agrupa as sessões por usuarioId
         const gruposMap = {};
         sessoes.forEach(s => {
             if (!gruposMap[s.usuarioId]) {
+                const jogCad = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal)
+                    ? jogadoresGlobal[s.usuarioId]
+                    : null;
                 gruposMap[s.usuarioId] = {
                     usuarioId: s.usuarioId,
-                    usuario: s.usuario || 'Atleta',
+                    usuario: s.usuario || (jogCad && jogCad.nomeCompleto) || 'Atleta',
+                    apelido: (jogCad && jogCad.apelido) || '',
                     vinculo: s.vinculo,
                     perfis: s.perfis,
                     sessoes: []
@@ -2335,14 +2401,27 @@ function carregarHistoricoAcessosDiaSaaS(dataYMD) {
             grupo.sessoes.sort((a, b) => (b.entrada || 0) - (a.entrada || 0));
 
             const presencaAtiva = saasUsuariosOnlineCache && saasUsuariosOnlineCache[grupo.usuarioId];
-            const algumaOnline = (dataYMD === hojeStr) &&
+            const usuarioAindaConectado = (dataYMD === hojeStr) &&
                 presencaAtiva &&
-                (!presencaAtiva.lastSeen || (agora - presencaAtiva.lastSeen <= TOLERANCIA_GHOST_MS)) &&
-                grupo.sessoes.some(s => s.status === 'online');
+                (!presencaAtiva.lastSeen || (agora - presencaAtiva.lastSeen <= TOLERANCIA_GHOST_MS));
+
+            // Identifica exatamente qual sessão está marcada com status === 'online'
+            const sessaoOnlineObj = usuarioAindaConectado
+                ? grupo.sessoes.find(s => s.status === 'online')
+                : null;
+            const sessaoAtivaId = sessaoOnlineObj ? sessaoOnlineObj.id : null;
+            const algumaOnline = !!sessaoAtivaId;
+
+            // Coloca a sessão realmente online no topo da sanfona, seguida pelas demais em ordem cronológica
+            grupo.sessoes.sort((a, b) => {
+                if (a.id === sessaoAtivaId) return -1;
+                if (b.id === sessaoAtivaId) return 1;
+                return (b.entrada || 0) - (a.entrada || 0);
+            });
 
             let totalDuracaoMs = 0;
-            grupo.sessoes.forEach((s, idx) => {
-                const sEstaOnline = algumaOnline && idx === 0;
+            grupo.sessoes.forEach(s => {
+                const sEstaOnline = (s.id === sessaoAtivaId);
                 const fimMs = sEstaOnline ? agora : (s.saida || s.ultimaAtividade || s.entrada);
                 totalDuracaoMs += Math.max(60000, fimMs - s.entrada);
             });
@@ -2353,6 +2432,7 @@ function carregarHistoricoAcessosDiaSaaS(dataYMD) {
             return {
                 ...grupo,
                 algumaOnline,
+                sessaoAtivaId,
                 totalDuracaoMs,
                 ultimoTs
             };
@@ -2366,85 +2446,123 @@ function carregarHistoricoAcessosDiaSaaS(dataYMD) {
             return b.ultimoTs - a.ultimoTs;
         });
 
-        if (badgeResumo) {
-            const totalSocios = gruposAtletas.length;
-            const txtSocios = `${totalSocios} ${totalSocios === 1 ? 'sócio' : 'sócios'}`;
-            badgeResumo.textContent = horaPico ? `${txtSocios} • Pico ${horaPico}h` : txtSocios;
-        }
+        gruposHistoricoAcessosCacheSaaS = gruposAtletas;
+        metaHistoricoAcessosDiaSaaS = { dataYMD, horaPico, dataPrefixo };
 
-        container.innerHTML = '';
-        gruposAtletas.forEach(grupo => {
-            const nomeFormatado = formatarNomeControleAcessoSaaS(grupo.usuario);
-            const tagsHtml = montarTagsControleAcessoSaaS(grupo.usuarioId, grupo.usuario, grupo.vinculo, grupo.perfis);
-            const totalAcessos = grupo.sessoes.length;
-            const duracaoAcumuladaTxt = formatarDuracaoSessaoSaaS(0, grupo.totalDuracaoMs);
-
-            const maisRecente = grupo.sessoes[0];
-            let resumoStatusHtml = '';
-            if (grupo.algumaOnline) {
-                resumoStatusHtml = `<span class="sessao-status-online">● Online agora</span>`;
-            } else {
-                const ultimoHorario = formatarHoraMinutoSaaS(maisRecente.saida || maisRecente.ultimaAtividade || maisRecente.entrada);
-                resumoStatusHtml = `Último acesso: ${ultimoHorario}`;
-            }
-
-            const resumoBadgeTxt = `${totalAcessos} ${totalAcessos === 1 ? 'acesso' : 'acessos'} • ${duracaoAcumuladaTxt}`;
-
-            let subLinhasHtml = '';
-            grupo.sessoes.forEach((s, idx) => {
-                const sEstaOnline = grupo.algumaOnline && idx === 0;
-                const deviceTexto = obterIconePlataformaSaaS(s.plataforma);
-                const horaEntrada = formatarHoraMinutoSaaS(s.entrada);
-
-                let horarioRangeHtml = '';
-                let duracaoItem = '';
-
-                if (sEstaOnline) {
-                    horarioRangeHtml = `${horaEntrada} ➔ <span class="sessao-status-online">● Online agora</span>`;
-                    duracaoItem = formatarDuracaoSessaoSaaS(s.entrada, agora);
-                } else {
-                    const fimReal = s.saida || s.ultimaAtividade || s.entrada;
-                    const horaSaida = formatarHoraMinutoSaaS(fimReal);
-                    horarioRangeHtml = `${horaEntrada} ➔ ${horaSaida}`;
-                    duracaoItem = formatarDuracaoSessaoSaaS(s.entrada, fimReal);
-                }
-
-                subLinhasHtml += `
-                    <div class="sessao-sub-linha">
-                        <span class="sessao-horario-range">${horarioRangeHtml}</span>
-                        <div class="sessao-sub-right">
-                            <span class="sessao-device-pill">${deviceTexto}</span>
-                            <span class="sessao-duracao-badge ${sEstaOnline ? 'ativo' : ''}">${duracaoItem}</span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            const card = document.createElement('div');
-            card.className = 'card-sessao-acesso';
-            card.innerHTML = `
-                <div class="sessao-card-header" onclick="this.parentElement.classList.toggle('aberto')">
-                    <div class="sessao-topo-row">
-                        <span class="sessao-nome-atleta">${nomeFormatado}</span>
-                        <div class="tags-container-SaaS">
-                            ${tagsHtml}
-                            <i class="material-icons sessao-chevron">expand_more</i>
-                        </div>
-                    </div>
-                    <div class="sessao-base-row">
-                        <span class="sessao-horario-range">${resumoStatusHtml}</span>
-                        <span class="sessao-duracao-badge ${grupo.algumaOnline ? 'ativo' : ''}">${resumoBadgeTxt}</span>
-                    </div>
-                </div>
-                <div class="sessao-detalhes-drawer">
-                    ${subLinhasHtml}
-                </div>
-            `;
-            container.appendChild(card);
-        });
+        renderizarCardsHistoricoAcessosSaaS();
     }).catch(() => {
         container.innerHTML = '<p class="SaaS-lista-vazia">Erro ao carregar histórico de acessos.</p>';
         if (badgeResumo) badgeResumo.textContent = 'Erro';
+    });
+}
+
+function filtrarHistoricoAcessosPorNomeSaaS() {
+    renderizarCardsHistoricoAcessosSaaS();
+}
+
+function renderizarCardsHistoricoAcessosSaaS() {
+    const container = document.getElementById('lista-historico-acesso-SaaS');
+    const badgeResumo = document.getElementById('txt-resumo-acessos-dia');
+    const inpBusca = document.getElementById('inp-busca-acessos-nome');
+    if (!container) return;
+
+    const termoNorm = normalizarTextoBuscaAcessosSaaS(inpBusca ? inpBusca.value : '');
+    const totalGeral = gruposHistoricoAcessosCacheSaaS.length;
+    const { horaPico, dataPrefixo } = metaHistoricoAcessosDiaSaaS;
+
+    const listaFiltrada = termoNorm
+        ? gruposHistoricoAcessosCacheSaaS.filter(g => {
+            const nomeNorm = normalizarTextoBuscaAcessosSaaS(g.usuario);
+            const apelidoNorm = normalizarTextoBuscaAcessosSaaS(g.apelido);
+            return nomeNorm.includes(termoNorm) || apelidoNorm.includes(termoNorm);
+        })
+        : gruposHistoricoAcessosCacheSaaS;
+
+    if (badgeResumo) {
+        if (termoNorm) {
+            badgeResumo.textContent = `${dataPrefixo}${listaFiltrada.length} de ${totalGeral}`;
+        } else {
+            const txtSocios = `${totalGeral} ${totalGeral === 1 ? 'sócio' : 'sócios'}`;
+            badgeResumo.textContent = horaPico ? `${dataPrefixo}${txtSocios} • Pico ${horaPico}h` : `${dataPrefixo}${txtSocios}`;
+        }
+    }
+
+    if (listaFiltrada.length === 0) {
+        container.innerHTML = '<p class="SaaS-lista-vazia">Nenhum atleta encontrado para esta pesquisa.</p>';
+        return;
+    }
+
+    const agora = Date.now();
+    container.innerHTML = '';
+
+    listaFiltrada.forEach(grupo => {
+        const nomeFormatado = formatarNomeControleAcessoSaaS(grupo.usuario);
+        const tagsHtml = montarTagsControleAcessoSaaS(grupo.usuarioId, grupo.usuario, grupo.vinculo, grupo.perfis);
+        const totalAcessos = grupo.sessoes.length;
+        const duracaoAcumuladaTxt = formatarDuracaoSessaoSaaS(0, grupo.totalDuracaoMs);
+
+        const maisRecente = grupo.sessoes[0];
+        let resumoStatusHtml = '';
+        if (grupo.algumaOnline) {
+            resumoStatusHtml = `<span class="sessao-status-online">● Online agora</span>`;
+        } else {
+            const ultimoHorario = formatarHoraMinutoSaaS(maisRecente.saida || maisRecente.ultimaAtividade || maisRecente.entrada);
+            resumoStatusHtml = `Último acesso: ${ultimoHorario}`;
+        }
+
+        const resumoBadgeTxt = `${totalAcessos} ${totalAcessos === 1 ? 'acesso' : 'acessos'} • ${duracaoAcumuladaTxt}`;
+
+        let subLinhasHtml = '';
+        grupo.sessoes.forEach(s => {
+            const sEstaOnline = (s.id === grupo.sessaoAtivaId);
+            const deviceTexto = obterIconePlataformaSaaS(s.plataforma);
+            const horaEntrada = formatarHoraMinutoSaaS(s.entrada);
+
+            let horarioRangeHtml = '';
+            let duracaoItem = '';
+
+            if (sEstaOnline) {
+                horarioRangeHtml = `${horaEntrada} ➔ <span class="sessao-status-online">● Online agora</span>`;
+                duracaoItem = formatarDuracaoSessaoSaaS(s.entrada, agora);
+            } else {
+                const fimReal = s.saida || s.ultimaAtividade || s.entrada;
+                const horaSaida = formatarHoraMinutoSaaS(fimReal);
+                horarioRangeHtml = `${horaEntrada} ➔ ${horaSaida}`;
+                duracaoItem = formatarDuracaoSessaoSaaS(s.entrada, fimReal);
+            }
+
+            subLinhasHtml += `
+                <div class="sessao-sub-linha">
+                    <span class="sessao-horario-range">${horarioRangeHtml}</span>
+                    <div class="sessao-sub-right">
+                        <span class="sessao-device-pill">${deviceTexto}</span>
+                        <span class="sessao-duracao-badge ${sEstaOnline ? 'ativo' : ''}">${duracaoItem}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        const card = document.createElement('div');
+        card.className = 'card-sessao-acesso';
+        card.innerHTML = `
+            <div class="sessao-card-header" onclick="this.parentElement.classList.toggle('aberto')">
+                <div class="sessao-topo-row">
+                    <span class="sessao-nome-atleta">${nomeFormatado}</span>
+                    <div class="tags-container-SaaS">
+                        ${tagsHtml}
+                        <i class="material-icons sessao-chevron">expand_more</i>
+                    </div>
+                </div>
+                <div class="sessao-base-row">
+                    <span class="sessao-horario-range">${resumoStatusHtml}</span>
+                    <span class="sessao-duracao-badge ${grupo.algumaOnline ? 'ativo' : ''}">${resumoBadgeTxt}</span>
+                </div>
+            </div>
+            <div class="sessao-detalhes-drawer">
+                ${subLinhasHtml}
+            </div>
+        `;
+        container.appendChild(card);
     });
 }
 
