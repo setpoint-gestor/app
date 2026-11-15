@@ -433,5 +433,36 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-15T14:09:36.382Z",
+    "dataLocal": "15/11/2026, 11:09:36",
+    "autor": "ROBIN SODERLING",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "18-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ROBIN SODERLING",
+    "confirmacoes": {
+      "Soderling": true,
+      "Verdasco": true
+    },
+    "jogadores": "Soderling, Verdasco",
+    "jogadores_completo": "ROBIN SODERLING, FERNANDO VERDASCO",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 6
+      },
+      {
+        "dia": 3,
+        "hora": 7
+      }
+    ]
   }
 ]
