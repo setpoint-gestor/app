@@ -495,5 +495,36 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ALMIR ALVES DA CRUZ",
+    "clube": "NIKKEI",
+    "confirmacoes": {
+      "Alessandro Xavier": true,
+      "Almir": true
+    },
+    "data": "15-11-2026",
+    "dataLocal": "15/11/2026, 11:17:41",
+    "duracao": "2 Horas",
+    "horario": "11:00 - 13:00",
+    "jogadores": "Almir, Alessandro Xavier",
+    "jogadores_completo": "ALMIR ALVES DA CRUZ, ALESSANDRO ROMERO XAVIER",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ALMIR ALVES DA CRUZ",
+    "origem": "manual",
+    "quadra": "Rafael Martins",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 11
+      },
+      {
+        "dia": 7,
+        "hora": 12
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-11-15T14:17:41.041Z"
   }
 ]
