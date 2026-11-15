@@ -16,12 +16,14 @@ let iaFalaAtivaGlobal = null;              // Proteção contra o Garbage Collec
 // 1. INICIALIZAÇÃO DA INTERFACE (Injeção limpa no DOM)
 // ====================================================================
 function inicializarUIConcierge() {
+    if (typeof isGestorLogado !== 'undefined' && isGestorLogado) return;
     if (document.getElementById('fab-ia-concierge')) return;
 
     const fab = document.createElement('button');
     fab.id = 'fab-ia-concierge';
     fab.title = 'Concierge SetPoint';
     fab.innerHTML = '<i class="material-icons">auto_awesome</i>';
+    fab.style.display = 'none';
     fab.onclick = abrirBarraConcierge;
 
     const backdrop = document.createElement('div');
@@ -53,6 +55,32 @@ function inicializarUIConcierge() {
 
     vincularEventosConcierge();
     prepararMotorDeVozConcierge();
+    iniciarObservadorVisibilidadeFabJogador();
+}
+
+function iniciarObservadorVisibilidadeFabJogador() {
+    const atualizarVisibilidade = () => {
+        const fab = document.getElementById('fab-ia-concierge');
+        const barra = document.getElementById('ia-barra-mestra'); 
+        if (!fab) return;
+
+        if (typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+            fab.style.display = 'none';
+            if (barra && barra.classList.contains('aberta')) {
+                fecharBarraConcierge();
+            }
+            return;
+        }
+
+        const telaQuadras = document.getElementById('tela-visao-quadras');
+        const naPlanilha = telaQuadras && telaQuadras.classList.contains('ativa');
+        const barraAberta = barra && barra.classList.contains('aberta');
+
+        fab.style.display = (naPlanilha && !barraAberta) ? 'flex' : 'none';
+    };
+
+    atualizarVisibilidade();
+    setInterval(atualizarVisibilidade, 400);
 }
 
 // ====================================================================
@@ -130,6 +158,8 @@ function abrirBarraConcierge() {
     document.getElementById('fab-ia-concierge').classList.add('oculto');
     document.getElementById('ia-backdrop').classList.add('ativo');
     document.getElementById('ia-barra-mestra').classList.add('aberta');
+
+    ciclarSugestoesIA();
 
     const input = document.getElementById('ia-input-texto');
     setTimeout(() => input.focus(), 250);
@@ -1052,9 +1082,23 @@ REGRA DE RESPOSTA E UX (MUITO IMPORTANTE):
         }
     }
 
-    if (respostaIAObj && respostaIAObj.mensagem) {
-        if (typeof showToast === 'function') showToast(respostaIAObj.mensagem, "success", 7000);
-        if (typeof falarRespostaConcierge === 'function') falarRespostaConcierge(respostaIAObj.mensagem);
+if (respostaIAObj && respostaIAObj.mensagem) {
+        // Dispensa eventual aviso intermediário ("Consultando...") para exibir a resposta imediatamente
+        const toastIntermediario = document.querySelector('#toastContainer .toast.info');
+        if (toastIntermediario) toastIntermediario.click();
+
+        const temSuporteVoz = ('speechSynthesis' in window);
+        const controleToast = (typeof showToast === 'function')
+            ? showToast(respostaIAObj.mensagem, "success", temSuporteVoz ? 0 : 7500, () => {
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+                iaFalaAtivaGlobal = null;
+                desativarModoContinuoVisual();
+            })
+            : null;
+
+        if (typeof falarRespostaConcierge === 'function') {
+            falarRespostaConcierge(respostaIAObj.mensagem, controleToast);
+        }
         if (typeof executarAcaoDaIA === 'function') executarAcaoDaIA(respostaIAObj);
     } else {
         if (cotaEsgotadaDetectada) {
@@ -1093,8 +1137,19 @@ REGRA DE RESPOSTA E UX (MUITO IMPORTANTE):
 // ====================================================================
 // 9. DEVOLUÇÃO SENSORIAL (Text-to-Speech nativo)
 // ====================================================================
-function falarRespostaConcierge(textoBase) {
-    if (!('speechSynthesis' in window)) return;
+let iaControleRespiracaoFala = null;
+let iaTimeoutSegurancaFala = null;
+
+function falarRespostaConcierge(textoBase, controleToast = null) {
+    if (!('speechSynthesis' in window)) {
+        if (controleToast && typeof controleToast.fechar === 'function') {
+            setTimeout(() => controleToast.fechar(), 7000);
+        }
+        return;
+    }
+
+    if (iaControleRespiracaoFala) clearInterval(iaControleRespiracaoFala);
+    if (iaTimeoutSegurancaFala) clearTimeout(iaTimeoutSegurancaFala);
 
     window.speechSynthesis.cancel();
     encerrarMicrofoneSilencioso();
@@ -1103,19 +1158,36 @@ function falarRespostaConcierge(textoBase) {
 
     const fala = new SpeechSynthesisUtterance(textoLimpo);
     fala.lang = 'pt-BR';
-    fala.rate = 1.0; 
-    fala.pitch = 1.0; 
+    fala.rate = 1.0;
+    fala.pitch = 1.0;
 
     const vozes = window.speechSynthesis.getVoices();
     const vozGoogleBr = vozes.find(v => v.name.includes('Google') && v.lang === 'pt-BR');
     if (vozGoogleBr) fala.voice = vozGoogleBr;
 
     iaFalaAtivaGlobal = fala;
+    let falaFinalizada = false;
 
-    const reativarEscutaModoContinuo = () => {
+    const finalizarLeitura = (reativarEscuta = true) => {
+        if (falaFinalizada) return;
+        falaFinalizada = true;
+
+        if (iaControleRespiracaoFala) {
+            clearInterval(iaControleRespiracaoFala);
+            iaControleRespiracaoFala = null;
+        }
+        if (iaTimeoutSegurancaFala) {
+            clearTimeout(iaTimeoutSegurancaFala);
+            iaTimeoutSegurancaFala = null;
+        }
+
         iaFalaAtivaGlobal = null;
-        if (iaModoContinuo && !iaEsgotadaSessao) {
-            // Atraso intencional maior (800ms) para libertar o hardware no Android
+
+        if (controleToast && typeof controleToast.fechar === 'function') {
+            controleToast.fechar();
+        }
+
+        if (reativarEscuta && iaModoContinuo && !iaEsgotadaSessao) {
             setTimeout(() => {
                 iniciarGravacaoVozConcierge();
             }, 800);
@@ -1123,37 +1195,34 @@ function falarRespostaConcierge(textoBase) {
     };
 
     // 🔥 O "Desfibrilador": Obriga o Android a manter o evento ativo
-    let controleRespiracao = setInterval(() => {
+    iaControleRespiracaoFala = setInterval(() => {
         if (!window.speechSynthesis.speaking) {
-            clearInterval(controleRespiracao);
+            clearInterval(iaControleRespiracaoFala);
+            iaControleRespiracaoFala = null;
         } else {
-            // Pausa e retoma microscopicamente para renovar o timer interno do SO
             window.speechSynthesis.pause();
             window.speechSynthesis.resume();
         }
-    }, 14000); // Acorda o sistema antes dos 15s críticos
+    }, 14000);
 
     fala.onend = () => {
-        clearInterval(controleRespiracao);
-        reativarEscutaModoContinuo();
+        finalizarLeitura(true);
     };
 
     fala.onerror = (err) => {
         console.warn("Erro no sintetizador de voz:", err);
-        clearInterval(controleRespiracao);
-        reativarEscutaModoContinuo();
+        finalizarLeitura(false);
     };
 
-    // Adição de segurança: timeout máximo de fallback caso o onend ainda falhe
-    let tempoEstimado = textoLimpo.length * 100; // Cálculo aproximado em milissegundos
-    setTimeout(() => {
-        if (iaFalaAtivaGlobal) {
-            console.warn("⚠️ Recuperação ativada: onend falhou, forçando libertação.");
-            clearInterval(controleRespiracao);
+    // Rede de proteção ampla para nunca cortar respostas extensas de horários no meio
+    const tempoMaximoSeguranca = Math.max((textoLimpo.length * 250) + 4000, 12000);
+    iaTimeoutSegurancaFala = setTimeout(() => {
+        if (!falaFinalizada && iaFalaAtivaGlobal === fala) {
+            console.warn("⚠️ Recuperação ativada: onend demorou além do esperado, encerrando fala.");
             window.speechSynthesis.cancel();
-            reativarEscutaModoContinuo();
+            finalizarLeitura(true);
         }
-    }, Math.max(tempoEstimado, 5000));
+    }, tempoMaximoSeguranca);
 
     window.speechSynthesis.speak(fala);
 }

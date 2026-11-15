@@ -1839,14 +1839,22 @@ function abrirSheetPerfil() {
 
         clubeExibicao = localStorage.getItem('setpoint_jogador_clube_nome') || "Arena";
 
-        // Busca a classe oficial do atleta no cadastro global ou cache
+        // Busca a classe e o gênero oficial do atleta no cadastro global ou cache
         const idLogado = localStorage.getItem('jogadorLogadoId');
-        if (idLogado && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado] && jogadoresGlobal[idLogado].classe) {
-            classeExibicao = "Classe " + jogadoresGlobal[idLogado].classe;
-        } else {
-            const classeArmazenada = localStorage.getItem('jogadorLogadoClasse');
-            classeExibicao = classeArmazenada ? ("Classe " + classeArmazenada) : "Classe A";
+        const atletaObj = (idLogado && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado])
+            ? jogadoresGlobal[idLogado]
+            : {};
+
+        const classeBase = atletaObj.classe || localStorage.getItem('jogadorLogadoClasse') || "A";
+        const generoBruto = (atletaObj.genero || "").toUpperCase().trim();
+        let sufixoGenero = "";
+        if (generoBruto === "MASCULINO") {
+            sufixoGenero = " Masc";
+        } else if (generoBruto === "FEMININO") {
+            sufixoGenero = " Fem";
         }
+
+        classeExibicao = `Classe ${classeBase}${sufixoGenero}`;
     }
 
     // Injeção de Identidade

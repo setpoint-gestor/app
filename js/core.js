@@ -151,10 +151,28 @@ window.toastAtivoSaaS = window.toastAtivoSaaS || false;
 /**
  * Exibe as notificações em formato de Pílula Flutuante com Click-to-Dismiss seguro.
  * Coloca a notificação na fila de espera e aciona o processador.
+ * Se tempoCustomizado === 0, o Toast permanece fixo até ser fechado via retorno .fechar() ou clique do usuário.
  */
-function showToast(msg, tipo = 'info', tempoCustomizado = null) {
-    window.filaToastsSaaS.push({ msg, tipo, tempoCustomizado });
+function showToast(msg, tipo = 'info', tempoCustomizado = null, aoClicarFechar = null) {
+    const itemFila = {
+        msg,
+        tipo,
+        tempoCustomizado,
+        aoClicarFechar,
+        cancelado: false,
+        fecharFn: null
+    };
+    window.filaToastsSaaS.push(itemFila);
     processarFilaToastsSaaS();
+
+    return {
+        fechar: () => {
+            itemFila.cancelado = true;
+            if (typeof itemFila.fecharFn === 'function') {
+                itemFila.fecharFn(false);
+            }
+        }
+    };
 }
 
 /**
@@ -164,11 +182,17 @@ function processarFilaToastsSaaS() {
     // Se já tem uma mensagem na tela ou a fila está vazia, o motor descansa.
     if (window.toastAtivoSaaS || window.filaToastsSaaS.length === 0) return;
 
-    // Tranca a porta: avisa o sistema que uma mensagem está em exibição
-    window.toastAtivoSaaS = true;
-
     // Pega a primeira mensagem da fila (a mais antiga)
     const atual = window.filaToastsSaaS.shift();
+
+    // Se a mensagem foi cancelada antes mesmo de entrar na tela, pula para a próxima
+    if (atual.cancelado) {
+        processarFilaToastsSaaS();
+        return;
+    }
+
+    // Tranca a porta: avisa o sistema que uma mensagem está em exibição
+    window.toastAtivoSaaS = true;
 
     const container = document.getElementById('toastContainer');
     if (!container) {
@@ -188,13 +212,21 @@ function processarFilaToastsSaaS() {
     
     container.appendChild(toast); 
     
-    let timeoutId; // Variável que guardará o temporizador
+    let timeoutId = null; // Variável que guardará o temporizador
+    let jaFechou = false; // Trava contra duplo fechamento
 
     // Função interna blindada para remover a pílula (Desliza para cima e some)
-    const fecharToast = () => {
-        clearTimeout(timeoutId); // Mata o temporizador pendente
+    const fecharToast = (clicadoPeloUsuario = false) => {
+        if (jaFechou) return;
+        jaFechou = true;
+
+        if (timeoutId) clearTimeout(timeoutId); // Mata o temporizador pendente
         toast.classList.add('saindo'); // Chama a nova animação de subida do CSS
         toast.onclick = null; // Remove o evento de clique por segurança
+
+        if (clicadoPeloUsuario && typeof atual.aoClicarFechar === 'function') {
+            atual.aoClicarFechar();
+        }
         
         // Aguarda a animação de saída (300ms) terminar para remover o elemento
         setTimeout(() => {
@@ -207,12 +239,16 @@ function processarFilaToastsSaaS() {
         }, 300); 
     };
 
-    // 🎯 O Click-to-Dismiss preservado e ativo: o usuário clica e a pílula foge pra cima!
-    toast.onclick = fecharToast;
+    atual.fecharFn = fecharToast;
 
-    // ⏱️ Ocupação por tempo (se o usuário não clicar)
-    const duracao = atual.tempoCustomizado !== null ? atual.tempoCustomizado : 3000;
-    timeoutId = setTimeout(fecharToast, duracao);
+    // 🎯 O Click-to-Dismiss preservado e ativo: o usuário clica e a pílula foge pra cima!
+    toast.onclick = () => fecharToast(true);
+
+    // ⏱️ Ocupação por tempo (se tempoCustomizado === 0, aguarda fechamento externo ou clique)
+    if (atual.tempoCustomizado !== 0) {
+        const duracao = atual.tempoCustomizado !== null ? atual.tempoCustomizado : 3000;
+        timeoutId = setTimeout(() => fecharToast(false), duracao);
+    }
 }
 
 
@@ -1644,7 +1680,7 @@ function desligarTodosRadaresSaaS() {
     listenerRankingCallback = null;
     qtdNotificacoesAnterior = null;
     window.temConviteRankingPendenteSocio = false;
-    window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS([]);
+    window.ignoradosSessaoSaaS = criarListaIgnoradosPersistenteSaaS([]); 
 }
 
 // ==========================================
