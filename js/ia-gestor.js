@@ -246,9 +246,6 @@ function abrirBarraConciergeGestor() {
     }
 
     ciclarSugestoesGestorIA();
-
-    const input = document.getElementById('ia-gestor-input-texto');
-    if (input) setTimeout(() => input.focus(), 250);
 }
 
 function fecharBarraConciergeGestor() {

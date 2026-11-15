@@ -160,9 +160,6 @@ function abrirBarraConcierge() {
     document.getElementById('ia-barra-mestra').classList.add('aberta');
 
     ciclarSugestoesIA();
-
-    const input = document.getElementById('ia-input-texto');
-    setTimeout(() => input.focus(), 250);
 }
 
 function fecharBarraConcierge() {
