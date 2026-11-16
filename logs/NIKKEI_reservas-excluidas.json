@@ -526,5 +526,38 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-11-15T14:17:41.041Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-16T08:40:59.861Z",
+    "dataLocal": "16/11/2026, 05:40:59",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "08:00 - 10:00",
+    "duracao": "2 Horas",
+    "data": "17-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "RONALDO TABORDA",
+    "confirmacoes": {
+      "Rafa": false,
+      "Taborda": true
+    },
+    "jogadores": "Taborda, Rafa",
+    "jogadores_completo": "RONALDO TABORDA, RAFAEL MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 8
+      },
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 9
+      }
+    ]
   }
 ]
