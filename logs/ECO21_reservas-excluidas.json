@@ -2737,5 +2737,26 @@
         "hora": 8
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-18T20:33:36.987Z",
+    "dataLocal": "18/11/2026, 17:33:36",
+    "autor": "ALEX SOUZA (Autoexclusão pelo Usuário)",
+    "acao": "EXCLUSÃO_CONTA",
+    "motivo": "O próprio usuário solicitou o encerramento permanente da conta e confirmou digitando \"EXCLUIR\" via Web PC. Nenhuma reserva futura ativa no momento da exclusão.",
+    "clube": "ECO21",
+    "quadra": "Cadastro de Atletas",
+    "horario": "Web PC",
+    "duracao": "Conta Encerrada",
+    "data": "18-11-2026",
+    "statusNoMomentoDaExclusao": "conta_excluida",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true
+    },
+    "jogadores": "Alex",
+    "jogadores_completo": "ALEX SOUZA (titular)",
+    "slotsExcluidos": []
   }
 ]
