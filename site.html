@@ -554,8 +554,8 @@
             <div class="card">
                 <i class="material-icons card-icone" style="color: #3DDC84;">android</i>
                 <h3>Android</h3>
-                <p>Baixe o aplicativo para Android em arquivo APK oficial com instalação rápida e direta.</p>
-                <a href="https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq" class="btn-loja" target="_blank" onclick="baixarApkAndroid(event)">
+                <p id="desc-download-android">Baixe o aplicativo para Android em arquivo APK oficial com instalação rápida e direta.</p>
+                <a id="btn-download-android" href="https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq" class="btn-loja" target="_blank" onclick="baixarApkAndroid(event)">
                     Baixar Aplicativo (APK)
                 </a>
             </div>
@@ -571,14 +571,45 @@
         </div>
     </section>
 
-    <!-- SEÇÃO GESTORES (B2B) -->
+    <!-- SEÇÃO GESTORES E PLANOS (B2B) -->
     <section id="gestores" class="gestores">
         <span class="badge-b2b">PARA DONOS DE ARENAS</span>
-        <h2 class="section-title" style="margin-bottom: 15px;">Transforme a gestão do seu Clube</h2>
-        <p style="color: #64748b; font-size: 17px; max-width: 600px; margin: 0 auto 35px auto; line-height: 1.6;">
-            Painel financeiro, grades de horários complexas, controle de perfis e histórico de jogos. Tudo em um só lugar.
+        <h2 class="section-title" style="margin-bottom: 15px;">Planos transparentes para o seu Clube</h2>
+        <p style="color: #64748b; font-size: 17px; max-width: 620px; margin: 0 auto 40px auto; line-height: 1.6;">
+            Comece gratuitamente sem limite de tempo ou escale sua arena com recursos profissionais e navegação 100% livre de anúncios.
         </p>
-        <a href="index.html?tela=tela-gestor-cadastro" class="btn-login" style="padding: 16px 32px; font-size: 16px; text-decoration: none;">Criar Conta da Arena</a>
+
+        <div class="cards-grid" style="max-width: 820px; margin-bottom: 35px;">
+            <div class="card" style="background: #ffffff; text-align: left; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <span class="badge-b2b" style="background: #f1f5f9; color: #475569;">PLANO STARTER</span>
+                    <h3 style="font-size: 24px; margin-bottom: 6px;">Grátis <span style="font-size: 14px; font-weight: 500; color: #64748b;">/ para sempre</span></h3>
+                    <p style="margin-bottom: 18px;">Ideal para arenas com 1 quadra que desejam automatizar os agendamentos sem custo fixo.</p>
+                    <ul style="list-style: none; padding: 0; margin: 0 0 24px 0; font-size: 14px; color: #334155; line-height: 2;">
+                        <li>✅ <b>1 quadra</b> cadastrada na grade</li>
+                        <li>✅ Sócios e reservas ilimitados</li>
+                        <li>✅ Módulo de Ranking e Súmulas</li>
+                        <li>ℹ️ Exibe banners discretos para atletas</li>
+                    </ul>
+                </div>
+                <a href="index.html?tela=tela-gestor-cadastro" class="btn-loja" style="text-align: center;">Criar Conta Grátis</a>
+            </div>
+
+            <div class="card" style="background: #ffffff; border: 2px solid var(--cor-primaria); text-align: left; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <span class="badge-b2b">PLANO ARENA PRO</span>
+                    <h3 style="font-size: 24px; margin-bottom: 6px; color: var(--cor-primaria);">Sob Medida <span style="font-size: 14px; font-weight: 500; color: #64748b;">/ mensal</span></h3>
+                    <p style="margin-bottom: 18px;">Para clubes e complexos esportivos que buscam operação multi-quadras e experiência VIP.</p>
+                    <ul style="list-style: none; padding: 0; margin: 0 0 24px 0; font-size: 14px; color: #334155; line-height: 2;">
+                        <li>✅ <b>Múltiplas quadras</b> sem limite</li>
+                        <li>✅ <b>Zero anúncios</b> para todos os seus atletas</li>
+                        <li>✅ Concierge IA e Push Notifications</li>
+                        <li>✅ Suporte prioritário via WhatsApp</li>
+                    </ul>
+                </div>
+                <a href="https://wa.me/5541999176972?text=Ol%C3%A1!%20Tenho%20interesse%20no%20Plano%20Arena%20PRO%20do%20SetPoint." target="_blank" class="btn-loja" style="background: var(--cor-primaria); text-align: center;">Falar com Consultor</a>
+            </div>
+        </div>
     </section>
 
     <!-- SEÇÃO PERGUNTAS FREQUENTES (FAQ) -->
@@ -613,6 +644,20 @@
             </div>
             <div class="faq-resposta">
                 O gestor cria um código exclusivo do clube (Exemplo: OLIMPICO10). Os jogadores digitam esse código na primeira vez que abrem o app e entram com a senha cadastrada pela secretaria.
+            </div>
+        </div>
+		
+		<div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-pergunta">
+                <span>Como posso excluir minha conta e meus dados do app SetPoint Gestor?</span>
+                <i class="material-icons faq-icone">expand_more</i>
+            </div>
+            <div class="faq-resposta">
+                Para solicitar a exclusão permanente da sua conta e de todos os seus dados associados ao aplicativo <b>SetPoint Gestor</b> (como nome, e-mail, telefone e histórico de reservas):<br><br>
+                1. Abra o aplicativo e faça login.<br>
+                2. No menu principal, acesse a aba "Perfil".<br>
+                3. Toque em "Excluir Conta" e confirme a operação.<br><br>
+                Todos os seus dados pessoais serão removidos imediatamente dos nossos servidores, sendo mantidos apenas registros financeiros anonimizados necessários para conformidade fiscal.
             </div>
         </div>
 
@@ -715,7 +760,7 @@
             const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
             if (isIOS) {
                 event.preventDefault();
-                alert('📱 Você está navegando de um iPhone!\n\nArquivos APK são exclusivos para sistemas Android.\n\nPara o seu iPhone, utilize o botão "Acessar Web App (PWA)" no card do iOS!');
+                alert('📱 Você está navegando de um iPhone!\n\nEste botão é exclusivo para celulares Android.\n\nPara o seu iPhone, utilize o botão "Acessar Web App (PWA)" no card do iOS!');
             }
         }
 
@@ -735,7 +780,7 @@
         }
 
         // ==========================================
-        // MÁGICA: SINCRONIZADOR DE VERSÃO (SAAS)
+        // SINCRONIZADOR REMOTO SAAS (VERSÃO E CANAL)
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyARV9a_z2gzWHJ_I9hTxCM90ytvA_7qo0Y",
@@ -751,12 +796,30 @@
             firebase.initializeApp(firebaseConfig);
         }
 
-        // Vai no banco, lê a versão uma única vez e atualiza o rodapé
-        firebase.database().ref('Clubes/SaaS_Config/versao_web').once('value').then((snapshot) => {
-            if (snapshot.exists()) {
-                const elVersao = document.getElementById('versao-site');
-                if (elVersao) {
-                    elVersao.textContent = "Versão " + snapshot.val();
+        firebase.database().ref('Clubes/SaaS_Config').on('value', (snapshot) => {
+            if (!snapshot.exists()) return;
+            const cfg = snapshot.val() || {};
+
+            // 1. Atualiza a versão exibida no rodapé
+            const elVersao = document.getElementById('versao-site');
+            if (elVersao && cfg.versao_web) {
+                elVersao.textContent = "Versão " + cfg.versao_web;
+            }
+
+            // 2. Alterna dinamicamente o card Android entre APK de testes e Google Play
+            const btnAndroid = document.getElementById('btn-download-android');
+            const descAndroid = document.getElementById('desc-download-android');
+            const canal = cfg.canal_distribuicao || 'APK_DIRETO';
+
+            if (btnAndroid && descAndroid) {
+                if (canal === 'GOOGLE_PLAY') {
+                    descAndroid.innerHTML = 'Baixe o aplicativo oficial diretamente pela loja <b>Google Play</b> com atualizações automáticas.';
+                    btnAndroid.textContent = 'Disponível no Google Play';
+                    btnAndroid.href = cfg.url_playstore || 'https://play.google.com/store/apps/details?id=com.ronaldo.setpoint';
+                } else {
+                    descAndroid.innerHTML = 'Baixe o aplicativo para Android em arquivo APK oficial com instalação rápida e direta.';
+                    btnAndroid.textContent = 'Baixar Aplicativo (APK)';
+                    btnAndroid.href = cfg.url_apk || 'https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq';
                 }
             }
         });
