@@ -4677,5 +4677,38 @@
         "hora": 12
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-18T14:24:24.272Z",
+    "dataLocal": "18/11/2026, 11:24:24",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "19-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Jodar": false,
+      "Shelton": false
+    },
+    "jogadores": "Shelton, Jodar",
+    "jogadores_completo": "BEN SHELTON, RAFAEL JODAR",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 11
+      }
+    ]
   }
 ]
