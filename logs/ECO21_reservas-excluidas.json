@@ -4710,5 +4710,38 @@
         "hora": 11
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-18T14:24:51.288Z",
+    "dataLocal": "18/11/2026, 11:24:51",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 18:00",
+    "duracao": "2 Horas",
+    "data": "19-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Fils": false,
+      "Zverev": false
+    },
+    "jogadores": "Zverev, Fils",
+    "jogadores_completo": "ALEXANDER ZVEREV, ARTHUR FILS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 16
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 17
+      }
+    ]
   }
 ]
