@@ -2881,5 +2881,38 @@
     ],
     "statusNoMomentoDaExclusao": "pendente",
     "timestamp": "2026-11-19T01:38:12.336Z"
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-19T02:09:08.817Z",
+    "dataLocal": "18/11/2026, 23:09:08",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "19-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Alex": false,
+      "Ana Julia": false
+    },
+    "jogadores": "Alex, Ana Julia",
+    "jogadores_completo": "ALEX DE SOUZA, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 7
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 8
+      }
+    ]
   }
 ]
