@@ -3006,5 +3006,43 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-19T11:21:55.246Z",
+    "dataLocal": "19/11/2026, 08:21:55",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Manutenção cancelada pela Equipe",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "12:00 - 13:00",
+    "duracao": "1 Hora",
+    "data": "19-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Erick",
+    "confirmacoes": {
+      "Erick": true
+    },
+    "jogadores": "💦 Manutenção",
+    "jogadores_completo": "💦 Manutenção",
+    "slotsExcluidos": [
+      {
+        "dia": 4,
+        "hora": 12
+      },
+      {
+        "dia": 4,
+        "hora": 13
+      },
+      {
+        "dia": 4,
+        "hora": 14
+      },
+      {
+        "dia": 4,
+        "hora": 15
+      }
+    ]
   }
 ]
