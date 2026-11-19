@@ -21,7 +21,7 @@
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--ia-primaria) 0%, var(--ia-secundaria) 100%);
+    background: linear-gradient(135deg, var(--ia-primaria) 0%, var(--ia-secundaria) 100%); 
     color: #ffffff;
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
@@ -257,4 +257,19 @@
     width: auto !important;
     left: -9999px !important;
     top: -9999px !important;
+}
+
+/* ---------------------------------------------------- */
+/* 5. ADAPTAÇÃO VISUAL PARA BANNER ADMOB (ANTI-CLIQUE)  */
+/* ---------------------------------------------------- */
+body.com-anuncio-admob #fab-ia-concierge {
+    bottom: 85px !important;
+}
+
+body.com-anuncio-admob #ia-barra-mestra.aberta {
+    bottom: 85px !important;
+}
+
+body.com-anuncio-admob #ia-menu-sugestoes {
+    bottom: 150px !important;
 }

@@ -3794,3 +3794,15 @@ body.planilha-maximizada #tela-visao-quadras .header-legenda-container {
 body.planilha-maximizada #tela-visao-quadras .tabela-container {
     padding-top: 4px !important;
 }
+
+
+/* ======================================================== */
+/* 32. ADAPTAÇÃO VISUAL PARA BANNER ADMOB (ANTI-CLIQUE)     */
+/* ======================================================== */
+body.com-anuncio-admob #tela-visao-quadras {
+    padding-bottom: 75px !important;
+}
+
+body.com-anuncio-admob #fab-nova-reserva {
+    bottom: 85px !important;
+}
