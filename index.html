@@ -1740,7 +1740,11 @@
                     <div class="perfil-grupo">
                         <span class="perfil-grupo-titulo">Sessão</span>
                         <div class="perfil-caixa">
-                            <div class="perfil-linha" onclick="fecharAplicativoSaaS()">
+                            <div class="perfil-linha" onclick="solicitarAutoExclusaoSocioSaaS()">
+                                <div class="perfil-ic" style="background:#fef2f2; color:#ef4444; border: 1px solid #fecaca;"><i class="material-icons">delete_forever</i></div>
+                                <span class="perfil-linha-txt" style="color:#dc2626;">Excluir Minha Conta</span>
+                            </div>
+							<div class="perfil-linha" onclick="fecharAplicativoSaaS()">
                                 <div class="perfil-ic perfil-ic-close"><i class="material-icons">power_settings_new</i></div>
                                 <span class="perfil-linha-txt" style="color:#ef4444; font-weight:700;">Fechar Aplicativo</span>
                             </div>
@@ -4025,6 +4029,61 @@
             </div>
         </div>
     </div>
+	
+	<!-- ======================================================== -->
+	<!-- 📢 SIMULADOR DE BANNER ADMOB & MODAL SEJA PRO (B2C)      -->
+	<!-- ======================================================== -->
+	<div id="admob-banner-simulador">
+		<i class="material-icons" style="font-size: 16px; color: #fbbf24;">campaign</i>
+		<span>ESPAÇO RESERVADO • BANNER ADMOB (320x50 / 60px)</span>
+	</div>
+
+	<div id="modal-seja-pro" onclick="if (event.target === this) fecharModalConfig('modal-seja-pro');">
+		<div class="modal-pro-card">
+			<div class="pro-header">
+				<div class="pro-header-titulo">
+					<i class="material-icons" style="font-size: 28px;">workspace_premium</i>
+					<div>
+						<h3>SetPoint PRO</h3>
+						<span>Experiência limpa e sem interrupções</span>
+					</div>
+				</div>
+				<button type="button" class="pro-btn-fechar" onclick="fecharModalConfig('modal-seja-pro')" title="Fechar">
+					<i class="material-icons" style="font-size: 18px;">close</i>
+				</button>
+			</div>
+
+			<div class="pro-body">
+				<ul class="pro-beneficios">
+					<li>
+						<i class="material-icons">check_circle</i>
+						<span>100% livre de anúncios e banners</span>
+					</li>
+					<li>
+						<i class="material-icons">check_circle</i>
+						<span>Tela cheia com área útil ampliada na grade</span>
+					</li>
+					<li>
+						<i class="material-icons">check_circle</i>
+						<span>Selo exclusivo PRO no seu perfil de atleta</span>
+					</li>
+				</ul>
+
+				<div class="pro-preco-box">
+					<div class="pro-preco-valor">R$ 9,90 <span class="pro-preco-periodo">/ mês</span></div>
+					<div class="pro-preco-periodo">Cancele quando quiser pela Google Play</div>
+				</div>
+
+				<button type="button" class="btn-assinar-pro" id="btn-assinar-setpoint-pro" onclick="iniciarAssinaturaProSaaS()">
+					Assinar SetPoint PRO
+				</button>
+
+				<div class="pro-rodape-nota">
+					Assinatura vinculada à sua conta Google Play. A remoção dos anúncios é aplicada automaticamente após a confirmação.
+				</div>
+			</div>
+		</div>
+	</div>
 	
 	<script src="js/core.js?v=6"></script> 
     <script src="js/autenticacao.js?v=4"></script>   

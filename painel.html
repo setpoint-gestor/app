@@ -309,6 +309,144 @@
                 margin: 6px 10px 14px 10px; 
             }
         }
+		
+		/* ==========================================
+           ABAS DO CONSOLE, CANAL GLOBAL & FINANCEIRO B2B
+           ========================================== */
+        .console-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .console-tab-btn {
+            background: var(--bg-card);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .console-tab-btn:hover {
+            color: var(--text-main);
+            border-color: #475569;
+        }
+
+        .console-tab-btn.ativa {
+            background: rgba(16, 185, 129, 0.14);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .saas-global-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .kpi-grid-b2b {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card-b2b {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+        }
+
+        .kpi-card-b2b .kpi-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .kpi-card-b2b .kpi-valor {
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--text-main);
+        }
+
+        .kpi-card-b2b .kpi-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            display: block;
+        }
+
+        .badge-plano-pro {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid #10b981;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 800;
+            display: inline-block;
+        }
+
+        .badge-plano-starter {
+            background: rgba(148, 163, 184, 0.12);
+            color: #cbd5e1;
+            border: 1px solid #475569;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .badge-admob-on {
+            background: rgba(245, 158, 11, 0.14);
+            color: #fbbf24;
+            border: 1px solid #f59e0b;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .badge-admob-off {
+            background: rgba(56, 189, 248, 0.14);
+            color: #38bdf8;
+            border: 1px solid #0284c7;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .kpi-grid-b2b {
+                grid-template-columns: 1fr;
+            }
+        }
+		
     </style>
 </head>
 <body>
@@ -353,22 +491,142 @@
         </header>
 
         <main>
-            
-            <div class="tabela-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nome da Arena</th>
-                            <th class="esconder-mobile">Código</th>
-                            <th style="text-align: center;">Status</th>
-                            <th class="esconder-mobile" style="text-align: center;">Usuários Online</th>
-                            <th style="text-align: center;">Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-clubes-body">
-                        <!-- Renderizado pelo Firebase -->
-                    </tbody>
-                </table>
+            <!-- Navegação entre Infraestrutura e Financeiro B2B -->
+            <div class="console-tabs">
+                <button type="button" id="btn-console-tab-arenas" class="console-tab-btn ativa" onclick="alternarAbaConsole('arenas')">
+                    <i class="material-icons" style="font-size: 18px;">dns</i> Infraestrutura & Arenas
+                </button>
+                <button type="button" id="btn-console-tab-financeiro" class="console-tab-btn" onclick="alternarAbaConsole('financeiro')">
+                    <i class="material-icons" style="font-size: 18px;">payments</i> Financeiro B2B
+                </button>
+            </div>
+
+            <!-- ABA 1: INFRAESTRUTURA & ARENAS -->
+            <div id="console-view-arenas">
+                <!-- Controle Global de Distribuição (SaaS_Config) -->
+                <div class="saas-global-bar">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                            <i class="material-icons" style="font-size: 18px; color: var(--primary);">cloud_sync</i>
+                            Canal de Distribuição Android (Site & App)
+                            <span id="badge-versao-console-global" style="font-size: 11px; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 6px; color: var(--text-muted); font-weight: 600;">v--</span>
+                        </div>
+                        <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 3px;">
+                            Define se o site entrega o APK direto para testes ou direciona para a Google Play Store.
+                        </span>
+                    </div>
+                    <select id="select-canal-distribuicao" class="input-dev" style="margin: 0; width: auto; min-width: 240px; padding: 9px 14px; font-size: 13px; font-weight: 700;" onchange="alterarCanalDistribuicaoSaaS(this.value)">
+                        <option value="APK_DIRETO">APK_DIRETO (Testes / Link Direto)</option>
+                        <option value="GOOGLE_PLAY">GOOGLE_PLAY (Produção Oficial Loja)</option>
+                    </select>
+                </div>
+
+                <div class="tabela-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome da Arena</th>
+                                <th class="esconder-mobile">Código</th>
+                                <th style="text-align: center;">Status</th>
+                                <th class="esconder-mobile" style="text-align: center;">Anúncios</th>
+                                <th class="esconder-mobile" style="text-align: center;">Usuários Online</th>
+                                <th style="text-align: center;">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-clubes-body">
+                            <!-- Renderizado pelo Firebase -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ABA 2: FINANCEIRO B2B (ASSINATURAS DE ARENAS) -->
+            <div id="console-view-financeiro" style="display: none;">
+                <div class="kpi-grid-b2b">
+                    <div class="kpi-card-b2b">
+                        <span class="kpi-label">Receita Mensal Recorrente (MRR)</span>
+                        <span class="kpi-valor" id="kpi-b2b-mrr" style="color: var(--primary);">R$ 0,00</span>
+                        <span class="kpi-sub" id="kpi-b2b-pagantes">0 arenas no Plano Arena PRO</span>
+                    </div>
+                    <div class="kpi-card-b2b">
+                        <span class="kpi-label">Arenas Plano Starter (Grátis)</span>
+                        <span class="kpi-valor" id="kpi-b2b-starter">0</span>
+                        <span class="kpi-sub">1 quadra • Monetizadas via AdMob</span>
+                    </div>
+                    <div class="kpi-card-b2b">
+                        <span class="kpi-label">Pendências / Vencimentos</span>
+                        <span class="kpi-valor" id="kpi-b2b-pendentes" style="color: var(--warning);">0</span>
+                        <span class="kpi-sub">Mensalidades aguardando baixa</span>
+                    </div>
+                </div>
+
+                <div class="tabela-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Arena / Código</th>
+                                <th style="text-align: center;">Plano B2B</th>
+                                <th class="esconder-mobile" style="text-align: center;">Valor Mensal</th>
+                                <th class="esconder-mobile" style="text-align: center;">Vencimento</th>
+                                <th style="text-align: center;">Situação</th>
+                                <th style="text-align: center;">Gestão</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-financeiro-b2b-body">
+                            <!-- Renderizado pelo Firebase -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal de Gestão de Plano B2B e Anúncios da Arena -->
+            <div id="modalConsolePlanoB2B" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:99999; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+                <div style="background:#1e293b; border:1px solid #334155; border-radius:16px; padding:24px; max-width:420px; width:92%; text-align:left; color:#fff; box-shadow:0 20px 40px rgba(0,0,0,0.6);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #334155; padding-bottom:12px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; color:#f8fafc;">Contrato & Plano B2B</h3>
+                            <span id="b2bModalTituloArena" style="font-size:12px; color:#10b981; font-weight:700;">Arena</span>
+                        </div>
+                        <button type="button" onclick="fecharModalContratoB2B()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:20px;">✕</button>
+                    </div>
+
+                    <input type="hidden" id="b2bModalClubeCodigo" value="">
+
+                    <label style="display:block; font-size:12px; font-weight:700; color:#94a3b8; margin-bottom:6px;">Plano da Arena</label>
+                    <select id="b2bSelectPlano" class="input-dev" style="margin-bottom:12px;" onchange="aoTrocarPlanoContratoB2B(this.value)">
+                        <option value="starter">Plano Starter (Grátis • 1 Quadra • Com AdMob)</option>
+                        <option value="pro">Plano Arena PRO (Pago • Multi-quadras • Sem AdMob)</option>
+                    </select>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                        <div>
+                            <label style="display:block; font-size:12px; font-weight:700; color:#94a3b8; margin-bottom:6px;">Mensalidade (R$)</label>
+                            <input type="text" id="b2bInputValor" class="input-dev" placeholder="0,00" style="margin:0;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:12px; font-weight:700; color:#94a3b8; margin-bottom:6px;">Dia Vencimento</label>
+                            <input type="number" id="b2bInputVencimento" class="input-dev" min="1" max="31" placeholder="10" style="margin:0;">
+                        </div>
+                    </div>
+
+                    <label style="display:block; font-size:12px; font-weight:700; color:#94a3b8; margin-bottom:6px;">Situação Financeira</label>
+                    <select id="b2bSelectStatusPgto" class="input-dev" style="margin-bottom:12px;">
+                        <option value="isento">Isento (Plano Starter Grátis)</option>
+                        <option value="em_dia">Em Dia (Pago)</option>
+                        <option value="pendente">Pendente / Aguardando PIX</option>
+                    </select>
+
+                    <label style="display:block; font-size:12px; font-weight:700; color:#94a3b8; margin-bottom:6px;">Exibição de Anúncios (AdMob nos Atletas)</label>
+                    <select id="b2bSelectAdmob" class="input-dev" style="margin-bottom:20px;">
+                        <option value="true">Ativado (Exibe banner para atletas não-PRO)</option>
+                        <option value="false">Desativado (100% livre de anúncios na arena)</option>
+                    </select>
+
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" onclick="fecharModalContratoB2B()" style="flex:1; padding:11px; background:#334155; color:#f8fafc; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Cancelar</button>
+                        <button type="button" onclick="salvarContratoB2B()" style="flex:1; padding:11px; background:#10b981; color:#000; border:none; border-radius:8px; font-weight:900; cursor:pointer;">Salvar Contrato</button>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -509,46 +767,89 @@
             btn.innerHTML = `Desbloquear Painel <i class="material-icons">lock_open</i>`;
             db.ref('Clubes').off(); 
         }
+		
+		// ==========================================
+        // CONTROLE DE ABAS & CANAL DE DISTRIBUIÇÃO
+        // ==========================================
+        let cacheClubesConsole = {};
 
-        // 3. MOTOR DE DADOS E MONITORAMENTO
+        function alternarAbaConsole(aba) {
+            const btnArenas = document.getElementById('btn-console-tab-arenas');
+            const btnFin = document.getElementById('btn-console-tab-financeiro');
+            const viewArenas = document.getElementById('console-view-arenas');
+            const viewFin = document.getElementById('console-view-financeiro');
+
+            if (btnArenas) btnArenas.classList.toggle('ativa', aba === 'arenas');
+            if (btnFin) btnFin.classList.toggle('ativa', aba === 'financeiro');
+            if (viewArenas) viewArenas.style.display = (aba === 'arenas') ? 'block' : 'none';
+            if (viewFin) viewFin.style.display = (aba === 'financeiro') ? 'block' : 'none';
+        }
+
+        function alterarCanalDistribuicaoSaaS(novoCanal) {
+            db.ref('Clubes/SaaS_Config/canal_distribuicao').set(novoCanal)
+                .then(() => {
+                    showToast('Canal de distribuição alterado para ' + novoCanal + '!', 'success');
+                })
+                .catch(() => {
+                    showToast('Erro ao atualizar canal de distribuição no Firebase.', 'error');
+                });
+        }
+
+        // 3. MOTOR DE DADOS, CANAL GLOBAL E FINANCEIRO B2B
         function carregarArenasRealTime() {
             const tbody = document.getElementById('tabela-clubes-body');
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">Buscando infraestrutura... <i class="material-icons" style="animation: spin 1s linear infinite; vertical-align: middle; font-size: 18px; margin-left: 5px;">sync</i></td></tr>`;
+            const tbodyFin = document.getElementById('tabela-financeiro-b2b-body');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Buscando infraestrutura... <i class="material-icons" style="animation: spin 1s linear infinite; vertical-align: middle; font-size: 18px; margin-left: 5px;">sync</i></td></tr>';
+            }
 
-            // SVG Path do WhatsApp
-            const pathWhatsapp = `M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.105 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z`;
-
-            // SVG Desktop (Verde sob fundo escuro)
-            const svgWhatsappDesktop = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366" style="vertical-align: middle; flex-shrink: 0;"><path d="${pathWhatsapp}"/></svg>`;
-
-            // SVG Mobile (Branco destacado no centro do botão)
-            const svgWhatsappMobile = `<svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" style="vertical-align: middle; flex-shrink: 0;"><path d="${pathWhatsapp}"/></svg>`;
+            const pathWhatsapp = 'M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.105 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z';
+            const svgWhatsappDesktop = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366" style="vertical-align: middle; flex-shrink: 0;"><path d="' + pathWhatsapp + '"/></svg>';
+            const svgWhatsappMobile = '<svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" style="vertical-align: middle; flex-shrink: 0;"><path d="' + pathWhatsapp + '"/></svg>';
 
             db.ref('Clubes').on('value', (snapshot) => {
-                tbody.innerHTML = '';
+                if (tbody) tbody.innerHTML = '';
+                if (tbodyFin) tbodyFin.innerHTML = '';
+
                 if (!snapshot.exists()) {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhuma arena cadastrada no sistema.</td></tr>`;
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhuma arena cadastrada no sistema.</td></tr>';
                     return;
                 }
 
                 const clubes = snapshot.val();
+                cacheClubesConsole = clubes;
+
+                // Sincroniza controles globais (SaaS_Config)
+                const saasCfg = clubes.SaaS_Config || {};
+                const selCanal = document.getElementById('select-canal-distribuicao');
+                const badgeVersao = document.getElementById('badge-versao-console-global');
+                if (selCanal) selCanal.value = saasCfg.canal_distribuicao || 'APK_DIRETO';
+                if (badgeVersao) badgeVersao.textContent = saasCfg.versao_web ? ('v' + saasCfg.versao_web) : 'v--';
+
                 let htmlTabela = '';
+                let htmlFinanceiro = '';
+
+                let mrrTotal = 0;
+                let qtdPagantes = 0;
+                let qtdStarter = 0;
+                let qtdPendentes = 0;
 
                 Object.keys(clubes).forEach((codigo, index) => {
-                    if (codigo === 'SaaS_Config' || !clubes[codigo].info_clube) return; 
+                    if (codigo === 'SaaS_Config' || !clubes[codigo].info_clube) return;
 
                     const clube = clubes[codigo];
                     const info = clube.info_clube || {};
                     const sistemas = clube.sistemas || {};
                     const config = sistemas.config || {};
-                    
+
                     const nome = info.nome || codigo;
                     const emailGestor = info.email_contato || 'Sem e-mail';
                     const whatsGestor = info.whatsapp || info.celular || info.telefone || null;
-					const isDesativado = info.ativo === false;
-                    
+                    const isDesativado = info.ativo === false;
+                    const exibirAnuncios = info.exibir_anuncios !== false;
+
                     const qtdQuadras = (config.Quadras && config.Quadras.quantidade) ? config.Quadras.quantidade : 0;
-                    
+
                     const onlineObj = sistemas.usuariosOnline || {};
                     let qtdOnline = 0;
                     const agoraConsole = Date.now();
@@ -557,7 +858,6 @@
                     Object.keys(onlineObj).forEach(key => {
                         if (key !== 'GESTOR' && !onlineObj[key].isGestor) {
                             const usr = onlineObj[key];
-                            // Contabiliza apenas se tiver enviado sinal de vida nos últimos 5 minutos
                             if (!usr.lastSeen || (agoraConsole - usr.lastSeen <= TOLERANCIA_CONSOLE_MS)) {
                                 qtdOnline++;
                             }
@@ -566,105 +866,252 @@
 
                     let statusBadge = '';
                     let statusMobile = '';
-                    let isFechado = config.Abrir === false;
+                    const isFechado = config.Abrir === false;
 
                     if (isDesativado) {
-                        // 1. Prioridade Máxima: Arena com Licença Desligada (Vermelho)
-                        statusBadge = `<span class="badge badge-fechado">Desativado</span>`;
-                        statusMobile = `<span class="ponto-status ponto-fechado"></span>`;
+                        statusBadge = '<span class="badge badge-fechado">Desativado</span>';
+                        statusMobile = '<span class="ponto-status ponto-fechado"></span>';
                     } else if (isFechado) {
-                        // 2. Arena em Manutenção pelo próprio Gestor (Laranja Escuro)
-                        statusBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid #f59e0b;">Manutenção</span>`;
-                        statusMobile = `<span class="ponto-status" style="background-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);"></span>`;
+                        statusBadge = '<span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid #f59e0b;">Manutenção</span>';
+                        statusMobile = '<span class="ponto-status" style="background-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);"></span>';
                     } else if (qtdOnline > 0) {
-                        // 3. Arena Online com usuários (Verde)
-                        statusBadge = `<span class="badge badge-online">Online</span>`;
-                        statusMobile = `<span class="ponto-status ponto-online"></span>`;
+                        statusBadge = '<span class="badge badge-online">Online</span>';
+                        statusMobile = '<span class="ponto-status ponto-online"></span>';
                     } else {
-                        // 4. Arena Online mas sem ninguém (Amarelo/Ocioso)
-                        statusBadge = `<span class="badge badge-ocioso">Ocioso</span>`;
-                        statusMobile = `<span class="ponto-status ponto-ocioso"></span>`;
+                        statusBadge = '<span class="badge badge-ocioso">Ocioso</span>';
+                        statusMobile = '<span class="ponto-status ponto-ocioso"></span>';
                     }
 
-                    // Configuração Estrita de Links por Dispositivo
-                    let htmlWhatsappDesktop = `<span style="color: var(--text-muted);">Não cadastrado</span>`;
-                    let btnWhatsMobile = ''; 
+                    const badgeAnuncioHtml = exibirAnuncios
+                        ? '<span class="badge-admob-on">AdMob ON</span>'
+                        : '<span class="badge-admob-off">Sem Anúncios</span>';
+
+                    let htmlWhatsappDesktop = '<span style="color: var(--text-muted);">Não cadastrado</span>';
+                    let btnWhatsMobile = '';
 
                     if (whatsGestor) {
                         const numeroLimpo = whatsGestor.replace(/\D/g, '');
-                        
-                        // 🖥️ Desktop: Texto com Ícone na coluna dedicada
-                        htmlWhatsappDesktop = `<a href="https://wa.me/55${numeroLimpo}" target="_blank" style="color: #25d366; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                            ${svgWhatsappDesktop} ${whatsGestor}
-                        </a>`;
-                        
-                        // 📱 Mobile: Botão de Ação Destacado de 36px (Oculto via CSS no PC)
-                        btnWhatsMobile = `<a href="https://wa.me/55${numeroLimpo}" target="_blank" class="mostrar-mobile" title="Chamar no WhatsApp" style="text-decoration: none; background: #25d366; width: 36px; height: 36px; border-radius: 50%; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.45); flex-shrink: 0; margin-left: 10px;">
-                            ${svgWhatsappMobile}
-                        </a>`;
+                        htmlWhatsappDesktop = '<a href="https://wa.me/55' + numeroLimpo + '" target="_blank" style="color: #25d366; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">' + svgWhatsappDesktop + ' ' + whatsGestor + '</a>';
+                        btnWhatsMobile = '<a href="https://wa.me/55' + numeroLimpo + '" target="_blank" class="mostrar-mobile" title="Chamar no WhatsApp" style="text-decoration: none; background: #25d366; width: 36px; height: 36px; border-radius: 50%; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.45); flex-shrink: 0; margin-left: 10px;">' + svgWhatsappMobile + '</a>';
                     }
 
-                    htmlTabela += `
-                        <tr class="linha-principal" id="linha-${index}" onclick="toggleSanfona('detalhe-${index}', 'linha-${index}')">
-                            <td style="font-weight: 700;">${nome}</td>
-                            <td class="esconder-mobile" style="font-family: monospace; font-size: 13px; color: var(--text-muted);">${codigo}</td>
-                            <td style="text-align: center;">
-                                <div class="esconder-mobile">${statusBadge}</div>
-                                <div class="mostrar-mobile" style="justify-content: center;">
-                                    ${statusMobile}
-                                    <div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
-                                        <span style="font-weight: 700; font-size: 13px; color: var(--text-main);">${qtdOnline}</span>
-                                        <i class="material-icons" style="font-size: 14px; color: var(--text-muted);">groups</i>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="esconder-mobile" style="text-align: center;"><strong>${qtdOnline}</strong> ${qtdOnline === 1 ? 'logado' : 'logados'}</td>
-                            <td style="text-align: center;">
-                                <div style="display: flex; justify-content: center; align-items: center;">
-                                    <button class="btn-acao" style="${isDesativado ? 'background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: var(--danger);' : ''}" title="Invadir Sessão" onclick="event.stopPropagation(); invadirClube('${codigo}')">
-                                        <i class="material-icons">login</i> <span>Logar</span>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <!-- Gaveta Sanfona Inteligente (Caixa Flutuante 3D) -->
-                        <tr id="detalhe-${index}" class="linha-detalhe">
-                            <td colspan="5" style="padding: 0;">
-                                <div class="conteudo-detalhe">
-                                    <div>
-                                        <strong>Código de Acesso</strong>
-                                        <span style="font-family: monospace; color: var(--primary); font-size: 14px;">${codigo}</span>
-                                    </div>
-                                    <div>
-                                        <strong>Conta (Gestor)</strong>
-                                        <div style="display: flex; align-items: center;">
-                                            <span>${emailGestor}</span>
-                                            ${btnWhatsMobile}
-                                        </div>
-                                    </div>
-                                    <div class="esconder-mobile">
-                                        <strong>WhatsApp (Contato)</strong>
-                                        ${htmlWhatsappDesktop}
-                                    </div>
-                                    <div>
-                                        <strong>Infraestrutura</strong>
-                                        ${qtdQuadras} Quadra(s)
-                                    </div>
-                                    <div>
-                                        <strong>Status da Licença</strong>
-                                        ${isDesativado 
-                                            ? '<button class="btn-acao" style="background: rgba(16,185,129,0.15); color: #10b981; border-color: #10b981;" onclick="event.stopPropagation(); toggleStatusAtivoClube(\'' + codigo + '\', true)"><i class="material-icons">power_settings_new</i> Religar Arena</button>'
-                                            : '<button class="btn-acao" style="background: rgba(239,68,68,0.1); color: var(--danger); border-color: var(--danger);" onclick="event.stopPropagation(); toggleStatusAtivoClube(\'' + codigo + '\', false)"><i class="material-icons">power_off</i> Desligar Arena</button>'
-                                        }
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                    const estiloBtnLogar = isDesativado
+                        ? 'background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: var(--danger);'
+                        : '';
+
+                    const btnLicencaHtml = isDesativado
+                        ? '<button class="btn-acao" style="background: rgba(16,185,129,0.15); color: #10b981; border-color: #10b981;" onclick="event.stopPropagation(); toggleStatusAtivoClube(\'' + codigo + '\', true)"><i class="material-icons">power_settings_new</i> Religar Arena</button>'
+                        : '<button class="btn-acao" style="background: rgba(239,68,68,0.1); color: var(--danger); border-color: var(--danger);" onclick="event.stopPropagation(); toggleStatusAtivoClube(\'' + codigo + '\', false)"><i class="material-icons">power_off</i> Desligar Arena</button>';
+
+                    const txtLogados = qtdOnline === 1 ? 'logado' : 'logados';
+
+                    htmlTabela +=
+                        '<tr class="linha-principal" id="linha-' + index + '" onclick="toggleSanfona(\'detalhe-' + index + '\', \'linha-' + index + '\')">' +
+                            '<td style="font-weight: 700;">' + nome + '</td>' +
+                            '<td class="esconder-mobile" style="font-family: monospace; font-size: 13px; color: var(--text-muted);">' + codigo + '</td>' +
+                            '<td style="text-align: center;">' +
+                                '<div class="esconder-mobile">' + statusBadge + '</div>' +
+                                '<div class="mostrar-mobile" style="justify-content: center;">' +
+                                    statusMobile +
+                                    '<div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">' +
+                                        '<span style="font-weight: 700; font-size: 13px; color: var(--text-main);">' + qtdOnline + '</span>' +
+                                        '<i class="material-icons" style="font-size: 14px; color: var(--text-muted);">groups</i>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</td>' +
+                            '<td class="esconder-mobile" style="text-align: center;">' + badgeAnuncioHtml + '</td>' +
+                            '<td class="esconder-mobile" style="text-align: center;"><strong>' + qtdOnline + '</strong> ' + txtLogados + '</td>' +
+                            '<td style="text-align: center;">' +
+                                '<div style="display: flex; justify-content: center; align-items: center;">' +
+                                    '<button class="btn-acao" style="' + estiloBtnLogar + '" title="Invadir Sessão" onclick="event.stopPropagation(); invadirClube(\'' + codigo + '\')">' +
+                                        '<i class="material-icons">login</i> <span>Logar</span>' +
+                                    '</button>' +
+                                '</div>' +
+                            '</td>' +
+                        '</tr>' +
+                        '<tr id="detalhe-' + index + '" class="linha-detalhe">' +
+                            '<td colspan="6" style="padding: 0;">' +
+                                '<div class="conteudo-detalhe" style="flex-wrap: wrap;">' +
+                                    '<div>' +
+                                        '<strong>Código de Acesso</strong>' +
+                                        '<span style="font-family: monospace; color: var(--primary); font-size: 14px;">' + codigo + '</span>' +
+                                    '</div>' +
+                                    '<div>' +
+                                        '<strong>Conta (Gestor)</strong>' +
+                                        '<div style="display: flex; align-items: center;">' +
+                                            '<span>' + emailGestor + '</span>' +
+                                            btnWhatsMobile +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<div class="esconder-mobile">' +
+                                        '<strong>WhatsApp (Contato)</strong>' +
+                                        htmlWhatsappDesktop +
+                                    '</div>' +
+                                    '<div>' +
+                                        '<strong>Infraestrutura</strong>' +
+                                        qtdQuadras + ' Quadra(s)' +
+                                    '</div>' +
+                                    '<div>' +
+                                        '<strong>Plano & Anúncios</strong>' +
+                                        '<button class="btn-acao" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border-color: #0284c7;" onclick="event.stopPropagation(); abrirModalContratoB2B(\'' + codigo + '\')">' +
+                                            '<i class="material-icons">tune</i> Gerenciar Plano' +
+                                        '</button>' +
+                                    '</div>' +
+                                    '<div>' +
+                                        '<strong>Status da Licença</strong>' +
+                                        btnLicencaHtml +
+                                    '</div>' +
+                                '</div>' +
+                            '</td>' +
+                        '</tr>';
+
+                    // Cálculos e linha da aba Financeiro B2B
+                    const planoB2B = info.plano_b2b || 'starter';
+                    const valorMensal = parseFloat(info.valor_mensal) || 0;
+                    const diaVencimento = parseInt(info.dia_vencimento, 10) || 10;
+                    const statusPgto = info.status_pagamento || (planoB2B === 'starter' ? 'isento' : 'em_dia');
+
+                    if (planoB2B === 'pro') {
+                        qtdPagantes++;
+                        if (!isDesativado) mrrTotal += valorMensal;
+                    } else {
+                        qtdStarter++;
+                    }
+                    if (statusPgto === 'pendente') qtdPendentes++;
+
+                    const valorFormatado = valorMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    const badgePlanoHtml = planoB2B === 'pro'
+                        ? '<span class="badge-plano-pro">Arena PRO</span>'
+                        : '<span class="badge-plano-starter">Starter Grátis</span>';
+
+                    let badgeSituacaoHtml = '<span class="badge-plano-starter">Isento</span>';
+                    if (statusPgto === 'em_dia') badgeSituacaoHtml = '<span class="badge badge-online">Em Dia</span>';
+                    else if (statusPgto === 'pendente') badgeSituacaoHtml = '<span class="badge badge-ocioso">Pendente</span>';
+
+                    const txtVencimento = planoB2B === 'pro' ? ('Dia ' + diaVencimento) : '—';
+                    const btnBaixarHtml = statusPgto === 'pendente'
+                        ? '<button type="button" class="btn-acao" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: #f59e0b;" onclick="darBaixaMensalidadeB2B(\'' + codigo + '\')" title="Confirmar Recebimento"><i class="material-icons">check_circle</i> <span>Baixar</span></button>'
+                        : '';
+
+                    htmlFinanceiro +=
+                        '<tr class="linha-principal" style="cursor: default;">' +
+                            '<td>' +
+                                '<div style="font-weight: 700;">' + nome + '</div>' +
+                                '<div style="font-size: 12px; color: var(--text-muted); font-family: monospace;">' + codigo + ' • ' + qtdQuadras + ' quadra(s)</div>' +
+                            '</td>' +
+                            '<td style="text-align: center;">' + badgePlanoHtml + '</td>' +
+                            '<td class="esconder-mobile" style="text-align: center; font-weight: 700;">' + valorFormatado + '</td>' +
+                            '<td class="esconder-mobile" style="text-align: center; color: var(--text-muted);">' + txtVencimento + '</td>' +
+                            '<td style="text-align: center;">' + badgeSituacaoHtml + '</td>' +
+                            '<td style="text-align: center;">' +
+                                '<div style="display: flex; justify-content: center; gap: 6px; flex-wrap: wrap;">' +
+                                    '<button type="button" class="btn-acao" onclick="abrirModalContratoB2B(\'' + codigo + '\')" title="Editar Contrato">' +
+                                        '<i class="material-icons">edit</i> <span>Contrato</span>' +
+                                    '</button>' +
+                                    btnBaixarHtml +
+                                '</div>' +
+                            '</td>' +
+                        '</tr>';
                 });
 
-                tbody.innerHTML = htmlTabela;
+                if (tbody) tbody.innerHTML = htmlTabela;
+                if (tbodyFin) {
+                    tbodyFin.innerHTML = htmlFinanceiro || '<tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-muted);">Nenhuma arena cadastrada.</td></tr>';
+                }
+
+                // Atualiza KPIs da aba Financeiro B2B
+                const elMrr = document.getElementById('kpi-b2b-mrr');
+                const elPagantes = document.getElementById('kpi-b2b-pagantes');
+                const elStarter = document.getElementById('kpi-b2b-starter');
+                const elPendentes = document.getElementById('kpi-b2b-pendentes');
+
+                if (elMrr) elMrr.textContent = mrrTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                if (elPagantes) elPagantes.textContent = qtdPagantes + ' ' + (qtdPagantes === 1 ? 'arena' : 'arenas') + ' no Plano Arena PRO';
+                if (elStarter) elStarter.textContent = String(qtdStarter);
+                if (elPendentes) elPendentes.textContent = String(qtdPendentes);
             });
+        }
+		
+		
+		// ==========================================
+        // GESTÃO DO MODAL DE CONTRATO B2B & ANÚNCIOS
+        // ==========================================
+        function abrirModalContratoB2B(codigo) {
+            const clube = cacheClubesConsole[codigo];
+            if (!clube || !clube.info_clube) return;
+
+            const info = clube.info_clube;
+            const plano = info.plano_b2b || 'starter';
+            const valor = parseFloat(info.valor_mensal) || 0;
+            const venc = parseInt(info.dia_vencimento, 10) || 10;
+            const statusPgto = info.status_pagamento || (plano === 'starter' ? 'isento' : 'em_dia');
+            const exibirAdmob = info.exibir_anuncios !== false;
+
+            document.getElementById('b2bModalClubeCodigo').value = codigo;
+            document.getElementById('b2bModalTituloArena').textContent = (info.nome || codigo) + ' (' + codigo + ')';
+            document.getElementById('b2bSelectPlano').value = plano;
+            document.getElementById('b2bInputValor').value = valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('b2bInputVencimento').value = venc;
+            document.getElementById('b2bSelectStatusPgto').value = statusPgto;
+            document.getElementById('b2bSelectAdmob').value = exibirAdmob ? 'true' : 'false';
+
+            document.getElementById('modalConsolePlanoB2B').style.display = 'flex';
+        }
+
+        function fecharModalContratoB2B() {
+            const modal = document.getElementById('modalConsolePlanoB2B');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function aoTrocarPlanoContratoB2B(plano) {
+            const inpValor = document.getElementById('b2bInputValor');
+            const selPgto = document.getElementById('b2bSelectStatusPgto');
+            const selAdmob = document.getElementById('b2bSelectAdmob');
+
+            if (plano === 'pro') {
+                selAdmob.value = 'false';
+                if (selPgto.value === 'isento') selPgto.value = 'em_dia';
+                if (!inpValor.value || inpValor.value === '0,00') inpValor.value = '149,90';
+            } else {
+                selAdmob.value = 'true';
+                selPgto.value = 'isento';
+                inpValor.value = '0,00';
+            }
+        }
+
+        function salvarContratoB2B() {
+            const codigo = document.getElementById('b2bModalClubeCodigo').value;
+            if (!codigo) return;
+
+            const plano = document.getElementById('b2bSelectPlano').value;
+            const valorRaw = document.getElementById('b2bInputValor').value || '0';
+            const valorNum = parseFloat(valorRaw.replace(/\./g, '').replace(',', '.')) || 0;
+            const vencNum = parseInt(document.getElementById('b2bInputVencimento').value, 10) || 10;
+            const statusPgto = document.getElementById('b2bSelectStatusPgto').value;
+            const exibirAnuncios = document.getElementById('b2bSelectAdmob').value === 'true';
+
+            db.ref('Clubes/' + codigo + '/info_clube').update({
+                plano_b2b: plano,
+                valor_mensal: valorNum,
+                dia_vencimento: vencNum,
+                status_pagamento: statusPgto,
+                exibir_anuncios: exibirAnuncios
+            }).then(() => {
+                fecharModalContratoB2B();
+                showToast('Contrato da arena [' + codigo + '] atualizado!', 'success');
+            }).catch(() => {
+                showToast('Erro ao salvar contrato no Firebase.', 'error');
+            });
+        }
+
+        function darBaixaMensalidadeB2B(codigo) {
+            db.ref('Clubes/' + codigo + '/info_clube/status_pagamento').set('em_dia')
+                .then(() => {
+                    showToast('Mensalidade da arena [' + codigo + '] baixada como Em Dia!', 'success');
+                })
+                .catch(() => {
+                    showToast('Erro ao confirmar baixa da mensalidade.', 'error');
+                });
         }
 
         // 4. SANFONA E ROTEAMENTO HÍBRIDO (SEMÁFORO INTELIGENTE)
