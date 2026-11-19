@@ -13,7 +13,7 @@ let visibilidadeGlobalSaaS = { piso: true, vip: true, luz: true, arqui: true };
 function atualizarBotaoInversaoUI() {
     const btn = document.getElementById('btn-inverter-ordem');
     if (btn) {
-        btn.style.background = ordemInvertidaSaaS ? 'var(--cor-escura, #1e293b)' : '#e2e8f0';
+        btn.style.background = ordemInvertidaSaaS ? 'var(--cor-escura, #1e293b)' : '#e2e8f0'; 
         btn.style.color = ordemInvertidaSaaS ? '#ffffff' : '#475569';
     }
 }
@@ -211,6 +211,20 @@ function salvarFiltrosGlobalSaaS() {
 // ==========================================================================
 // 5. FORMULÁRIO DE INFRAESTRUTURA INDIVIDUAL (TOTALMENTE LIMPO)
 // ==========================================================================
+function exibirAvisoLimitePlanoStarterSaaS() {
+    const msgHTML =
+        '<div style="text-align: left; font-size: 14px; line-height: 1.55;">' +
+            'Sua arena está operando no <b>Plano Starter (Grátis)</b>, que permite o cadastro de até <b style="color: #16a34a;">1 quadra</b>.<br><br>' +
+            'Para cadastrar múltiplas quadras sem limite e liberar navegação 100% sem anúncios para todos os seus atletas, solicite o upgrade para o <b style="color: #16a34a;">Plano Arena PRO</b>.' +
+        '</div>';
+
+    if (typeof showPrompt === 'function') {
+        showPrompt('Limite do Plano Starter', msgHTML, function() {});
+    } else {
+        showToast('O Plano Starter (Grátis) permite apenas 1 quadra. Faça upgrade para o Plano Arena PRO.', 'warning');
+    }
+}
+
 function abrirModalCadastroQuadraSaaS(isEdicao, index = null) {
     const modal = document.getElementById('modal-form-quadra');
     const faixa = document.getElementById('faixa-status-quadra');
@@ -222,8 +236,19 @@ function abrirModalCadastroQuadraSaaS(isEdicao, index = null) {
     document.querySelectorAll('#esportes-grid-quadra .pilula-check-saas').forEach(el => el.classList.remove('ativa'));
     
     if (!isEdicao) {
-        database.ref(`${raizBanco}/config/Quadras/quantidade`).once('value').then((snap) => {
-            const proxima = (parseInt(snap.val()) || 0) + 1;
+        Promise.all([
+            database.ref(`${raizBanco}/config/Quadras/quantidade`).once('value'),
+            database.ref(`Clubes/${clubeAtivoId}/info_clube/plano_b2b`).once('value')
+        ]).then(([snapQtd, snapPlano]) => {
+            const qtdAtual = parseInt(snapQtd.val()) || 0;
+            const planoAtual = snapPlano.val() || 'starter';
+
+            if (planoAtual !== 'pro' && qtdAtual >= 1) {
+                exibirAvisoLimitePlanoStarterSaaS();
+                return;
+            }
+
+            const proxima = qtdAtual + 1;
             
             chaveInput.value = ""; 
             titulo.innerText = `Nova Quadra ${proxima}`;
@@ -318,7 +343,6 @@ function salvarConfiguracaoRichQuadraSaaS() {
         }
     });
 
-    // O payload individual salva puramente o hardware físico da quadra
     const payloadQuadra = {
         nome: nomeInp,
         piso: pisoInp,
@@ -330,9 +354,20 @@ function salvarConfiguracaoRichQuadraSaaS() {
     };
 
     if (chaveEdicao === "") {
-        database.ref(`${raizBanco}/config/Quadras`).once('value').then((snap) => {
+        Promise.all([
+            database.ref(`${raizBanco}/config/Quadras`).once('value'),
+            database.ref(`Clubes/${clubeAtivoId}/info_clube/plano_b2b`).once('value')
+        ]).then(([snap, snapPlano]) => {
             const config = snap.val() || {};
             const qtdAtual = parseInt(config.quantidade) || 0;
+            const planoAtual = snapPlano.val() || 'starter';
+
+            if (planoAtual !== 'pro' && qtdAtual >= 1) {
+                fecharModalCadastroQuadraSaaS();
+                exibirAvisoLimitePlanoStarterSaaS();
+                return;
+            }
+
             const proximoIndex = qtdAtual + 1;
 
             const updates = {};
@@ -353,7 +388,7 @@ function salvarConfiguracaoRichQuadraSaaS() {
         updates[`nomes/${chaveEdicao}`] = payloadQuadra;
 
         database.ref(`${raizBanco}/config/Quadras`).update(updates).then(() => {
-            showToast("Configurações da quadra updated!", 'success');
+            showToast("Configurações da quadra atualizadas!", 'success');
             fecharModalCadastroQuadraSaaS();
             abrirGerenciadorQuadras();
         });
@@ -834,10 +869,9 @@ function abrirOnboardingPrimeiroAcessoSaaS() {
  * Valida o número inserido e gera a revisão prévia para o gestor
  */
 function avancarPreviewOnboardingSaaS() {
-    
     const inputQtd = document.getElementById('input-onboarding-qtd');
-    let qtd = inputQtd ? parseInt(inputQtd.value) : 1;
-    
+    const qtd = inputQtd ? parseInt(inputQtd.value, 10) : 1;
+
     // Trava física de segurança: nunca permite menos de 1 quadra
     if (isNaN(qtd) || qtd < 1) {
         showToast("O clube deve possuir obrigatoriamente pelo menos 1 quadra.", "warning");
@@ -846,40 +880,46 @@ function avancarPreviewOnboardingSaaS() {
         }
         return;
     }
-    
-    if (navigator.vibrate) {
-        navigator.vibrate(30);
-    }
-    
-    // Monta o texto explicativo dinâmico (Preview) para o Dono do Clube revisar
-    const textoPreviewDOM = document.getElementById('onboarding-texto-preview');
-    if (textoPreviewDOM) {
-        
-        let resumoQuadras = "";
-        for (let i = 1; i <= Math.min(qtd, 5); i++) {
-            resumoQuadras += `• Quadra ${i}<br>`;
+
+    database.ref('Clubes/' + clubeAtivoId + '/info_clube/plano_b2b').once('value').then((snapPlano) => {
+        const planoAtual = snapPlano.val() || 'starter';
+
+        // Trava comercial: Plano Starter (Grátis) limita a arena a 1 quadra
+        if (planoAtual !== 'pro' && qtd > 1) {
+            if (inputQtd) {
+                inputQtd.value = 1;
+            }
+            exibirAvisoLimitePlanoStarterSaaS();
+            return;
         }
-        
-        if (qtd > 5) {
-            resumoQuadras += `• ... e mais ${qtd - 5} quadras sequenciais.<br>`;
+
+        if (navigator.vibrate) {
+            navigator.vibrate(30);
         }
-        
-        textoPreviewDOM.innerHTML = `
-            <b style="color: #1e293b; display: block; margin-bottom: 8px;">📋 Resumo da Estrutura a ser Criada:</b>
-            Você está prestes a inicializar a arena com <b>${qtd} ${qtd === 1 ? 'quadra' : 'quadras'}</b>.<br><br>
-            
-            <b style="color: #475569;">Nomes Iniciais Automáticos:</b><br>
-            ${resumoQuadras}<br>
-            
-            <i style="color: #64748b; display: block; margin-top: 5px;">*Você poderá alterar o nome de cada uma delas de forma personalizada a qualquer momento dentro do Gerenciador.</i>
-        `;
-        
-    }
-    
-    // Altera a visibilidade das etapas
-    document.getElementById('onboarding-etapa-input').style.display = 'none';
-    document.getElementById('onboarding-etapa-preview').style.display = 'block';
-    
+
+        const textoPreviewDOM = document.getElementById('onboarding-texto-preview');
+        if (textoPreviewDOM) {
+            let resumoQuadras = "";
+            for (let i = 1; i <= Math.min(qtd, 5); i++) {
+                resumoQuadras += '• Quadra ' + i + '<br>';
+            }
+
+            if (qtd > 5) {
+                resumoQuadras += '• ... e mais ' + (qtd - 5) + ' quadras sequenciais.<br>';
+            }
+
+            const labelQuadra = qtd === 1 ? 'quadra' : 'quadras';
+            textoPreviewDOM.innerHTML =
+                '<b style="color: #1e293b; display: block; margin-bottom: 8px;">📋 Resumo da Estrutura a ser Criada:</b>' +
+                'Você está prestes a inicializar a arena com <b>' + qtd + ' ' + labelQuadra + '</b>.<br><br>' +
+                '<b style="color: #475569;">Nomes Iniciais Automáticos:</b><br>' +
+                resumoQuadras + '<br>' +
+                '<i style="color: #64748b; display: block; margin-top: 5px;">*Você poderá alterar o nome de cada uma delas de forma personalizada a qualquer momento dentro do Gerenciador.</i>';
+        }
+
+        document.getElementById('onboarding-etapa-input').style.display = 'none';
+        document.getElementById('onboarding-etapa-preview').style.display = 'block';
+    });
 }
 
 
@@ -887,14 +927,12 @@ function avancarPreviewOnboardingSaaS() {
  * Retorna à primeira etapa para o gestor corrigir o número de quadras
  */
 function voltarEtapaInputOnboardingSaaS() {
-    
     if (navigator.vibrate) {
         navigator.vibrate(20);
     }
-    
+
     document.getElementById('onboarding-etapa-input').style.display = 'block';
     document.getElementById('onboarding-etapa-preview').style.display = 'none';
-    
 }
 
 
@@ -902,41 +940,45 @@ function voltarEtapaInputOnboardingSaaS() {
  * Dispara a gravação estrutural em lote no Firebase e libera o chassi
  */
 function confirmarECriarArenaSaaS() {
-    
     const inputQtd = document.getElementById('input-onboarding-qtd');
-    const qtd = inputQtd ? parseInt(inputQtd.value) : 1;
-    
-    showToast("Construindo infraestrutura da arena...", "info");
-    
-    // 1. Cria o mapa de nomes padrões sequenciais ("Quadra 1", "Quadra 2"...)
-    const nomesIniciais = {};
-    for (let i = 1; i <= qtd; i++) {
-        nomesIniciais[i] = `Quadra ${i}`;
-    }
-    
-    // 2. Monta o pacote estrutural base exigido pelo ecossistema do SetPoint
-    const payloadOnboarding = {
-        quantidade: qtd,
-        nomes: nomesIniciais
-    };
-    
-    // 3. Grava de forma soberana na rota mestre de configurações de quadra
-    database.ref(`${raizBanco}/config/Quadras`).set(payloadOnboarding).then(() => {
-        
-        if (navigator.vibrate) {
-            navigator.vibrate([100, 50, 100]);
+    const qtd = inputQtd ? parseInt(inputQtd.value, 10) : 1;
+
+    database.ref('Clubes/' + clubeAtivoId + '/info_clube/plano_b2b').once('value').then((snapPlano) => {
+        const planoAtual = snapPlano.val() || 'starter';
+
+        if (planoAtual !== 'pro' && qtd > 1) {
+            if (inputQtd) {
+                inputQtd.value = 1;
+            }
+            exibirAvisoLimitePlanoStarterSaaS();
+            return;
         }
-        
-        showToast("Arena inicializada com sucesso absoluto!", "success");
-        
-        // Aguarda o toast finalizar e força o recarregamento total da planilha já configurada
-        setTimeout(() => {
-            location.reload();
-        }, 1500);
-        
-    }).catch(err => {
-        console.error("Erro no deploy do onboarding:", err);
-        showToast("Erro técnico ao tentar inicializar a estrutura no servidor.", "error");
+
+        showToast("Construindo infraestrutura da arena...", "info");
+
+        const nomesIniciais = {};
+        for (let i = 1; i <= qtd; i++) {
+            nomesIniciais[i] = 'Quadra ' + i;
+        }
+
+        const payloadOnboarding = {
+            quantidade: qtd,
+            nomes: nomesIniciais
+        };
+
+        database.ref(`${raizBanco}/config/Quadras`).set(payloadOnboarding).then(() => {
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
+
+            showToast("Arena inicializada com sucesso absoluto!", "success");
+
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        }).catch(err => {
+            console.error("Erro no deploy do onboarding:", err);
+            showToast("Erro técnico ao tentar inicializar a estrutura no servidor.", "error");
+        });
     });
-    
 }

@@ -931,19 +931,11 @@ function iniciarOuvinteMestreSaaS() {
             
             // 🧠 INTEGRAÇÃO GAVETA 2: Atualiza os Dias de Antecedência na Memória RAM
             DiasParaLimpar = parseInt(configRegrasGlobal.DiasParaLimpar) || 3;
-			DiasParaExibir = configRegrasGlobal.DiasParaExibir !== undefined ? parseInt(configRegrasGlobal.DiasParaExibir) : 1; // 🌟 Linha Injetada
-			
-			// 📜 ETAPA 1: Sincroniza a retenção de logs em dias na memória RAM
+            DiasParaExibir = configRegrasGlobal.DiasParaExibir !== undefined ? parseInt(configRegrasGlobal.DiasParaExibir) : 1; // 🌟 Linha Injetada
+            
+            // 📜 ETAPA 1: Sincroniza a retenção de logs em dias na memória RAM
             DiasLimpezaLogs = configRegrasGlobal.DiasLimpezaLogs !== undefined ? parseInt(configRegrasGlobal.DiasLimpezaLogs) : 15;
             window.DiasLimpezaLogs = DiasLimpezaLogs; // Registra também na janela global
-
-            // 🤖 INJEÇÃO IA: Sincroniza a chave do Gemini do nó SaaS_Config
-            database.ref('Clubes/SaaS_Config/geminiApiKey').once('value').then((snapKey) => {
-                if (snapKey.exists()) {
-                    geminiApiKeyGlobal = snapKey.val();
-                    console.log("🔑 [Core] Chave da IA (Gemini) carregada com sucesso na memória RAM.");
-                }
-            });
         }
                   
         console.log("✓ [Core] Regras operacionais atualizadas na memória RAM.");
@@ -1171,52 +1163,43 @@ function b64EncodeUnicodeSaaS(str) {
 
 
 /**
- * Motor de Auditoria Externa: Consome a API do GitHub para ler, anexar e salvar
- * relatórios textuais. Se a internet falhar (Timeout), usa a Dead Letter Queue (Firebase).
+ * Motor de Auditoria Externa: Consome o Worker seguro da Cloudflare (/logs) para ler, anexar e salvar
+ * relatórios textuais no GitHub sem expor o token no cliente. Se falhar, usa a Dead Letter Queue (Firebase).
  */
 async function enviarFilaLogsAoGitHubSaaS(arrayNovosLogs) {
     if (!arrayNovosLogs || arrayNovosLogs.length === 0) return;
 
-    let tokenAcesso = null;
-    try {
-        const snapToken = await database.ref('Clubes/SaaS_Config/githubToken').once('value');
-        tokenAcesso = snapToken ? snapToken.val() : null;
-    } catch(e) {
-        console.error("❌ [GitHub API] Erro ao ler nó SaaS_Config no Firebase:", e); 
-    }
-
-    if (!tokenAcesso) {
-        console.warn("⚠️ [GitHub API] Abortado: githubToken não localizado. Salvando na fila local.");
-        // Se nem o token ele conseguiu ler, salva na fila de emergência
+    if (!clubeAtivoId) {
+        console.warn("⚠️ [GitHub Worker] Abortado: clubeAtivoId não identificado. Salvando na fila local.");
         const refPendentes = database.ref(`${raizBanco}/logs_pendentes`);
         arrayNovosLogs.forEach(log => refPendentes.push(log));
         return;
     }
 
-    const repoOwner = "setpoint-gestor";
-    const repoName = "app";
-    const nomeArquivoLogs = `logs/${clubeAtivoId}_reservas-excluidas.json`;
-    const urlApi = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${nomeArquivoLogs}`;
+    const urlWorkerLogs = "https://setpoint-api.ronaldo-taborda.workers.dev/logs";
 
     let existenteSha = null;
     let arrayLogsCompleto = [];
 
     try {
-        const respostaGet = await fetch(urlApi, {
-            method: "GET",
+        const respostaGet = await fetch(urlWorkerLogs, {
+            method: "POST",
             headers: {
-                "Authorization": `token ${tokenAcesso}`,
-                "Accept": "application/vnd.github.v3+json"
-            }
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                clubeId: clubeAtivoId,
+                method: "GET"
+            })
         });
 
         if (respostaGet.ok) {
             const dadosArquivo = await respostaGet.json();
-            existenteSha = dadosArquivo.sha; 
+            existenteSha = dadosArquivo.sha;
             const conteudoDecodificado = decodeURIComponent(escape(atob(dadosArquivo.content)));
             arrayLogsCompleto = JSON.parse(conteudoDecodificado || "[]");
         } else if (respostaGet.status === 404) {
-            console.log(`📝 [GitHub API] Criando arquivo inédito para o clube: ${clubeAtivoId}`);
+            console.log(`📝 [GitHub Worker] Criando arquivo inédito para o clube: ${clubeAtivoId}`);
             arrayLogsCompleto = [];
         } else {
             throw new Error(`Falha de comunicação. Status: ${respostaGet.status}`);
@@ -1227,29 +1210,31 @@ async function enviarFilaLogsAoGitHubSaaS(arrayNovosLogs) {
         const payloadString = JSON.stringify(arrayLogsCompleto, null, 2);
         const payloadBase64 = b64EncodeUnicodeSaaS(payloadString);
 
-        const respostaPut = await fetch(urlApi, {
-            method: "PUT",
+        const respostaPut = await fetch(urlWorkerLogs, {
+            method: "POST",
             headers: {
-                "Authorization": `token ${tokenAcesso}`,
-                "Content-Type": "application/json",
-                "Accept": "application/vnd.github.v3+json"
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                message: `🤖 [SetPoint SaaS] Auditoria: ${arrayNovosLogs.length} registro(s) arquivado(s).`,
-                content: payloadBase64,
-                sha: existenteSha 
+                clubeId: clubeAtivoId,
+                method: "PUT",
+                body: {
+                    message: `🤖 [SetPoint SaaS] Auditoria: ${arrayNovosLogs.length} registro(s) arquivado(s).`,
+                    content: payloadBase64,
+                    sha: existenteSha
+                }
             })
         });
 
         if (respostaPut.ok) {
-            console.log(`✅ [GitHub API] Sucesso! ${arrayNovosLogs.length} recibo(s) commitado(s).`);
+            console.log(`✅ [GitHub Worker] Sucesso! ${arrayNovosLogs.length} recibo(s) commitado(s).`);
         } else {
-            throw new Error(respostaPut.statusText);
+            throw new Error(`Erro PUT: ${respostaPut.status}`);
         }
 
     } catch (erro) {
-        console.error("❌ [GitHub API] Falha crítica (Timeout/Net). Acionando Dead Letter Queue...", erro);
-        
+        console.error("❌ [GitHub Worker] Falha crítica (Timeout/Net). Acionando Dead Letter Queue...", erro);
+
         // 🛡️ DEAD LETTER QUEUE: O para-quedas! A internet caiu? Guarda no Firebase.
         const refPendentes = database.ref(`${raizBanco}/logs_pendentes`);
         arrayNovosLogs.forEach(log => {
@@ -1257,8 +1242,6 @@ async function enviarFilaLogsAoGitHubSaaS(arrayNovosLogs) {
         });
     }
 }
-
-
 
 // ==========================================
 // 8. LOGÍSTICA DE PRESENÇA ONLINE E LOG DE ACESSOS (SaaS)

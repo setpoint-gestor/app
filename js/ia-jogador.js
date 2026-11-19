@@ -981,11 +981,6 @@ async function processarMensagemConcierge(texto) {
         inputTexto.placeholder = "Peça ao SetPoint...";
     }
 
-    if (!geminiApiKeyGlobal) {
-        if (typeof showToast === 'function') showToast("Aguarde, conectando ao cérebro do SetPoint...", "warning");
-        return;
-    }
-
     if (inputTexto) {
         inputTexto.value = 'Interpretando pedido...';
         inputTexto.disabled = true;
@@ -1045,17 +1040,19 @@ REGRA DE RESPOSTA E UX (MUITO IMPORTANTE):
         generationConfig: { temperature: 0.0, responseMimeType: "application/json" }
     };
 
+    const urlWorkerGemini = "https://setpoint-api.ronaldo-taborda.workers.dev/gemini";
     let respostaIAObj = null;
     let cotaEsgotadaDetectada = false;
 
     for (const modelo of modelosParaTestar) {
-        const urlEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelo.id}:generateContent?key=${geminiApiKeyGlobal}`;
-
         try {
-            const resposta = await fetch(urlEndpoint, {
+            const resposta = await fetch(urlWorkerGemini, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(corpoRequisicao)
+                body: JSON.stringify({
+                    modelo: modelo.id,
+                    corpoRequisicao: corpoRequisicao
+                })
             });
 
             const dados = await resposta.json();
@@ -1063,7 +1060,7 @@ REGRA DE RESPOSTA E UX (MUITO IMPORTANTE):
             if (dados.candidates && dados.candidates[0].content) {
                 try {
                     respostaIAObj = JSON.parse(dados.candidates[0].content.parts[0].text);
-                    console.log(`🤖 [${modelo.nome} Retornou JSON]:`, respostaIAObj);
+                    console.log(`🤖 [${modelo.nome} via Worker Retornou JSON]:`, respostaIAObj);
                 } catch (e) {
                     console.error("❌ Erro JSON:", e);
                 }
@@ -1075,11 +1072,11 @@ REGRA DE RESPOSTA E UX (MUITO IMPORTANTE):
                 }
             }
         } catch (e) {
-            console.warn(`Falha de conexão com ${modelo.nome}:`, e);
+            console.warn(`Falha de conexão com ${modelo.nome} via Worker:`, e);
         }
     }
 
-if (respostaIAObj && respostaIAObj.mensagem) {
+    if (respostaIAObj && respostaIAObj.mensagem) {
         // Dispensa eventual aviso intermediário ("Consultando...") para exibir a resposta imediatamente
         const toastIntermediario = document.querySelector('#toastContainer .toast.info');
         if (toastIntermediario) toastIntermediario.click();

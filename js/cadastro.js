@@ -28,7 +28,7 @@ function abrirModuloJogadores() {
                 'Financeiro': { cor: '#007bff', abreviacao: 'Fin' }
             };
             renderizarCheckboxesPerfis();
-            renderizarCardsJogadores(); 
+            renderizarCardsJogadores();  
         });
 
         database.ref(`${raizBanco}/jogadores`).on('value', (snap) => {
@@ -758,4 +758,522 @@ function obterDadosControlePresencaSaas(idOrName) {
     }
     
     return { nome: idOrName, socio: "titular", isAdmin: false };
+}
+
+// ==========================================
+// 7. AUTOEXCLUSÃO DE CONTA DO JOGADOR (LGPD & GOOGLE PLAY)
+// ==========================================
+
+/**
+ * Inicia o fluxo protegido de autoexclusão da conta do jogador logado:
+ * 1. Bloqueia se estiver em torneio/ranking em andamento (Fases 3 ou 4);
+ * 2. Exige confirmação explícita digitando a palavra EXCLUIR;
+ * 3. Cancela/ajusta reservas futuras, limpa rankings, registra auditoria no GitHub
+ *    e remove definitivamente os dados pessoais do Firebase.
+ */
+function solicitarAutoExclusaoSocioSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    if ((typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode) {
+        showToast("A autoexclusão de atleta está disponível apenas para contas de jogadores.", "warning");
+        return;
+    }
+
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    const nomeLogado = (localStorage.getItem('jogadorLogadoNome') || '').trim();
+
+    if (!idLogado || typeof raizBanco === 'undefined' || !raizBanco) {
+        showToast("Nenhum atleta identificado na sessão.", "warning");
+        return;
+    }
+
+    if (typeof fecharSheetPerfil === 'function') {
+        fecharSheetPerfil();
+    }
+
+    // 1. Trava preventiva: verifica se o atleta está em torneio/ranking ativo em andamento (Fases 3 ou 4)
+    const confRanking = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking)
+        ? configRegrasGlobal.ranking
+        : {};
+    const faseAtual = parseInt(confRanking.faseAtual, 10) || 1;
+    const estaInscritoTorneio = !!(confRanking.inscritosConfirmados && confRanking.inscritosConfirmados[idLogado]);
+    let estaNaTabelaAtiva = false;
+
+    if (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
+        Object.values(rankingTabelasGlobal).forEach(listaIds => {
+            if (Array.isArray(listaIds) && listaIds.includes(idLogado)) {
+                estaNaTabelaAtiva = true;
+            }
+        });
+    }
+
+    if (confRanking.ativo === true && (faseAtual === 3 || faseAtual === 4) && (estaInscritoTorneio || estaNaTabelaAtiva)) {
+        showPrompt(
+            "Torneio em Andamento",
+            "Você está participando de uma edição ativa do <b>Ranking/Torneio</b> em andamento.<br><br>Para não prejudicar as chaves dos demais atletas, solicite primeiro o seu desligamento da competição ao <b>Gestor</b> ou <b>Árbitro</b> antes de excluir sua conta.",
+            () => {}
+        );
+        return;
+    }
+
+    const atletaObj = (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal && jogadoresGlobal[idLogado])
+        ? jogadoresGlobal[idLogado]
+        : {};
+    const ehAssinantePro = (atletaObj.isPro === true || atletaObj.pro_ativo === true);
+
+    const avisoProHtml = ehAssinantePro
+        ? `<div style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 12px; border-radius: 8px; font-size: 12.5px; line-height: 1.45; margin-bottom: 12px; text-align: left;">
+               ⚠️ <b>Assinatura SetPoint PRO ativa:</b> Excluir sua conta remove seus dados deste clube, mas não cancela automaticamente a cobrança recorrente na <b>Google Play Store</b>. Lembre-se de cancelar a assinatura nas configurações da loja.
+           </div>`
+        : '';
+
+    const corpoModalHtml = `
+        <div style="text-align: left; font-size: 13.5px; color: #475569; line-height: 1.5;">
+            <p style="margin: 0 0 10px 0;">
+                Esta ação é <b>permanente e irreversível</b>. Ao prosseguir:
+            </p>
+            <ul style="margin: 0 0 12px 0; padding-left: 18px; font-size: 13px; color: #334155;">
+                <li>Seus dados pessoais (nome, e-mail, telefone e notificações) serão apagados deste clube;</li>
+                <li>Suas reservas futuras serão canceladas ou ajustadas conforme o quórum da quadra;</li>
+                <li>Seu acesso será encerrado imediatamente.</li>
+            </ul>
+            ${avisoProHtml}
+            <div style="background: #fef2f2; border: 1px dashed #fca5a5; padding: 10px 12px; border-radius: 8px;">
+                <label for="inp-confirmar-autoexclusao" style="display: block; font-size: 12px; font-weight: 700; color: #991b1b; margin-bottom: 6px;">
+                    Digite <span style="font-weight: 900; text-decoration: underline;">EXCLUIR</span> para confirmar:
+                </label>
+                <input type="text" id="inp-confirmar-autoexclusao" autocomplete="off" spellcheck="false"
+                       placeholder="Digite EXCLUIR aqui"
+                       style="width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid #fca5a5; border-radius: 6px; font-size: 14px; font-weight: 800; text-align: center; text-transform: uppercase; outline: none; color: #991b1b; background: #ffffff;">
+            </div>
+        </div>
+    `;
+
+    const restaurarBotaoPrompt = () => {
+        const btnConfirm = document.getElementById('btnPromptConfirm');
+        if (btnConfirm) {
+            btnConfirm.disabled = false;
+            btnConfirm.style.opacity = '';
+            btnConfirm.style.cursor = '';
+            btnConfirm.textContent = 'Confirmar';
+        }
+    };
+
+    showPrompt(
+        "Excluir Minha Conta",
+        corpoModalHtml,
+        async () => {
+            restaurarBotaoPrompt();
+            await executarAutoExclusaoSocioSaaS(idLogado, nomeLogado);
+        },
+        () => {
+            restaurarBotaoPrompt();
+        }
+    );
+
+    // Configura a trava de digitação no botão recém-clonado pelo showPrompt
+    setTimeout(() => {
+        const btnConfirm = document.getElementById('btnPromptConfirm');
+        const inpConfirm = document.getElementById('inp-confirmar-autoexclusao');
+
+        if (btnConfirm) {
+            btnConfirm.textContent = 'Excluir Conta';
+            btnConfirm.disabled = true;
+            btnConfirm.style.opacity = '0.45';
+            btnConfirm.style.cursor = 'not-allowed';
+        }
+
+        if (inpConfirm && btnConfirm) {
+            inpConfirm.oninput = () => {
+                const valido = inpConfirm.value.trim().toUpperCase() === 'EXCLUIR';
+                btnConfirm.disabled = !valido;
+                btnConfirm.style.opacity = valido ? '1' : '0.45';
+                btnConfirm.style.cursor = valido ? 'pointer' : 'not-allowed';
+            };
+        }
+    }, 20);
+}
+
+/**
+ * Executa a exclusão atômica da conta do jogador, limpa reservas futuras,
+ * registra o recibo de auditoria no GitHub e encerra a sessão local.
+ */
+async function executarAutoExclusaoSocioSaaS(idLogado, nomeFallback) {
+    const toastAguarde = showToast("Excluindo conta e atualizando registros...", "info", 0);
+
+    try {
+        const snapJogador = await database.ref(`${raizBanco}/jogadores/${idLogado}`).once('value');
+        const atleta = snapJogador.val() || (typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado]) || {};
+
+        const nomeCompletoAtleta = (atleta.nomeCompleto || nomeFallback || "Atleta").trim();
+        const apelidoAtleta = (atleta.apelido || nomeCompletoAtleta.split(' ')[0]).trim();
+        const vinculoAtleta = atleta.socio || localStorage.getItem('jogadorLogadoSocio') || 'titular';
+
+        const norm = (txt) => (txt || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9 ]/g, "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toUpperCase();
+
+        const normNomeCompleto = norm(nomeCompletoAtleta);
+        const normApelido = norm(apelidoAtleta);
+
+        const updates = {};
+        const filaLogsAuditoria = [];
+        const filaNotificacoesPush = [];
+
+        let qtdReservasCanceladas = 0;
+        let qtdReservasAjustadas = 0;
+
+        // 1. Varredura de reservas futuras para cancelamento ou ajuste de quórum
+        const snapReservas = await database.ref(`${raizBanco}/reservas`).once('value');
+        const todasReservas = snapReservas.val() || {};
+
+        const agora = new Date();
+        const hojeYMD = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+        const horaAtual = agora.getHours();
+        const diasSemana = ["", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+
+        Object.keys(todasReservas).forEach(quadraChave => {
+            const slots = todasReservas[quadraChave] || {};
+            const matchQ = quadraChave.match(/\d+/);
+            const quadraIndex = matchQ ? `Quadra${matchQ[0]}` : "Quadra1";
+
+            let nomeQuadraAmigavel = quadraChave;
+            if (matchQ && typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal && configQuadrasGlobal.nomes) {
+                const dq = configQuadrasGlobal.nomes[matchQ[0]];
+                if (dq) nomeQuadraAmigavel = typeof dq === 'object' ? (dq.nome || `Quadra ${matchQ[0]}`) : dq;
+            }
+
+            const configAula = (typeof configAulasGlobal !== 'undefined' && configAulasGlobal) ? configAulasGlobal[quadraIndex] : null;
+            const aulaAtiva = !!(configAula && configAula.Ativo && configAula.Grade);
+
+            Object.keys(slots).forEach(slotKey => {
+                const r = slots[slotKey];
+                if (!r || !r.dataCompleta || r.status === 'aula_cancelada') return;
+                if (r.borda === undefined && parseInt(r.duracao, 10) === 2) return;
+                if (r.tipo === 'aula' || r.tipo === 'manutencao') return;
+
+                const duracao = parseInt(r.duracao, 10) || 1;
+                const ehFutura = (r.dataCompleta > hojeYMD) || (r.dataCompleta === hojeYMD && (parseInt(r.hora, 10) + duracao > horaAtual));
+                if (!ehFutura) return;
+
+                const orgPuro = (r.organizador || "").replace(/\s*\(.*?\)\s*/g, "").trim();
+                const orgNorm = norm(orgPuro);
+                const souOrganizador = (normNomeCompleto && orgNorm === normNomeCompleto) || (normApelido && orgNorm === normApelido);
+
+                const arrApelidos = (r.jogadores || "").split(',').map(s => s.trim()).filter(Boolean);
+                const arrCompletos = (r.jogadores_completo || "").split(',').map(s => s.trim()).filter(Boolean);
+
+                const souParticipante = arrCompletos.some(n => norm(n) === normNomeCompleto || (normApelido && norm(n) === normApelido)) ||
+                                        arrApelidos.some(a => norm(a) === normNomeCompleto || (normApelido && norm(a) === normApelido));
+
+                if (!souOrganizador && !souParticipante) return;
+
+                const dia = parseInt(r.dia, 10);
+                const hora = parseInt(r.hora, 10);
+                const ehRanking = (r.isRanking === true || r.tipo === 'ranking');
+                const formatData = r.dataCompleta.split('-').reverse().join('/');
+                const hIniFmt = String(hora).padStart(2, '0') + ":00";
+                const hFimFmt = String(hora + duracao).padStart(2, '0') + ":00";
+                const quadraTexto = nomeQuadraAmigavel.toLowerCase().startsWith('quadra')
+                    ? nomeQuadraAmigavel.toLowerCase()
+                    : `quadra ${nomeQuadraAmigavel}`;
+
+                const limparSlotsReserva = () => {
+                    const slotsExcluidos = [{ quadra: quadraChave, dia, hora }];
+                    const temAula1 = aulaAtiva && configAula.Grade[slotKey] && configAula.Grade[slotKey] !== "";
+                    updates[`reservas/${quadraChave}/${slotKey}`] = temAula1 ? { status: 'aula_cancelada' } : null;
+
+                    if (duracao === 2) {
+                        const slotKey2 = `${dia}_${hora + 1}`;
+                        const temAula2 = aulaAtiva && configAula.Grade[slotKey2] && configAula.Grade[slotKey2] !== "";
+                        updates[`reservas/${quadraChave}/${slotKey2}`] = temAula2 ? { status: 'aula_cancelada' } : null;
+                        slotsExcluidos.push({ quadra: quadraChave, dia, hora: hora + 1 });
+                    }
+                    return slotsExcluidos;
+                };
+
+                // Caso A: Organizador da reserva ou partida de Ranking 1x1 -> cancela a reserva inteira
+                if (souOrganizador || ehRanking) {
+                    const slotsExcluidos = limparSlotsReserva();
+                    qtdReservasCanceladas++;
+
+                    const confs = r.confirmacoes || {};
+                    arrApelidos.forEach((ap, idx) => {
+                        const comp = arrCompletos[idx] || ap;
+                        if (norm(ap) === normApelido || norm(comp) === normNomeCompleto) return;
+
+                        const idParceiro = Object.keys(jogadoresGlobal || {}).find(k => {
+                            if (k === idLogado) return false;
+                            const j = jogadoresGlobal[k];
+                            return j && (norm(j.nomeCompleto) === norm(comp) || norm(j.apelido) === norm(ap));
+                        });
+
+                        if (idParceiro) {
+                            const keyNotif = `remocao_jogador_${dia}_${hora}_${Date.now()}`;
+                            updates[`jogadores/${idParceiro}/notificacoes/${keyNotif}`] = {
+                                categoria: "remocao_jogador",
+                                detalhe: `A partida do dia ${formatData}, das ${hIniFmt} às ${hFimFmt} na ${quadraTexto}, foi cancelada pois o organizador encerrou sua conta.`,
+                                timestamp: Date.now()
+                            };
+                        }
+                    });
+
+                    filaNotificacoesPush.push({
+                        reserva: { ...r, dia, hora },
+                        organizador: nomeCompletoAtleta,
+                        quadra: nomeQuadraAmigavel,
+                        evento: "RESERVA_CANCELADA_ORG"
+                    });
+
+                    filaLogsAuditoria.push({
+                        origem: "sistema",
+                        timestamp: new Date().toISOString(),
+                        dataLocal: new Date().toLocaleString('pt-BR'),
+                        autor: `${nomeCompletoAtleta} (Autoexclusão pelo Usuário)`,
+                        acao: "EXCLUSÃO_AGENDAMENTO",
+                        motivo: "Reserva futura cancelada automaticamente devido à autoexclusão da conta do organizador.",
+                        clube: typeof clubeAtivoId !== 'undefined' ? clubeAtivoId : "",
+                        quadra: nomeQuadraAmigavel,
+                        horario: `${hIniFmt} - ${hFimFmt}`,
+                        duracao: duracao === 1 ? "1 Hora" : "2 Horas",
+                        data: formatData,
+                        statusNoMomentoDaExclusao: r.status || "confirmada",
+                        organizadorDaReserva: r.organizador || nomeCompletoAtleta,
+                        confirmacoes: confs,
+                        jogadores: r.jogadores || "",
+                        jogadores_completo: r.jogadores_completo || "",
+                        slotsExcluidos: slotsExcluidos
+                    });
+                } else {
+                    // Caso B: Participante em reserva de terceiro -> remove do elenco e reavalia quórum
+                    const indicesManter = [];
+                    arrApelidos.forEach((ap, idx) => {
+                        const comp = arrCompletos[idx] || ap;
+                        const ehEsteUsuario = (norm(ap) === normApelido) || (norm(comp) === normNomeCompleto);
+                        if (!ehEsteUsuario) indicesManter.push(idx);
+                    });
+
+                    const novosApelidos = indicesManter.map(i => arrApelidos[i]);
+                    const novosCompletos = indicesManter.map(i => arrCompletos[i] || arrApelidos[i]);
+
+                    const novasConfs = {};
+                    const confsAntigas = r.confirmacoes || {};
+                    Object.keys(confsAntigas).forEach(k => {
+                        if (norm(k) !== normApelido && norm(k) !== normNomeCompleto) {
+                            novasConfs[k] = confsAntigas[k];
+                        }
+                    });
+
+                    const isDuplaSlot = typeof configDuplasGlobal !== 'undefined' && configDuplasGlobal &&
+                                        configDuplasGlobal[quadraIndex]?.Ativo &&
+                                        configDuplasGlobal[quadraIndex]?.Grade?.[slotKey] === true;
+
+                    let quorumExigido = 1;
+                    if (isDuplaSlot) {
+                        quorumExigido = 4;
+                    } else if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal) {
+                        quorumExigido = (duracao === 1)
+                            ? (configRegrasGlobal.Quorum1h !== undefined ? parseInt(configRegrasGlobal.Quorum1h, 10) : 1)
+                            : (configRegrasGlobal.Quorum2h !== undefined ? parseInt(configRegrasGlobal.Quorum2h, 10) : 2);
+                    }
+
+                    const idOrg = Object.keys(jogadoresGlobal || {}).find(k => {
+                        if (k === idLogado) return false;
+                        const j = jogadoresGlobal[k];
+                        return j && (norm(j.nomeCompleto) === orgNorm || norm(j.apelido) === orgNorm);
+                    });
+
+                    const nomeDia = diasSemana[dia] || "Dia";
+                    const detalheTempo = `${nomeDia}, das ${hIniFmt} às ${hFimFmt} hs, na ${quadraTexto}`;
+
+                    if (novosApelidos.length < quorumExigido) {
+                        const slotsExcluidos = limparSlotsReserva();
+                        qtdReservasCanceladas++;
+
+                        if (idOrg) {
+                            updates[`jogadores/${idOrg}/notificacoes/cancelado_quorum_${dia}_${hora}_${Date.now()}`] = {
+                                categoria: "cancelado_quorum",
+                                adversario: apelidoAtleta,
+                                detalhe: detalheTempo,
+                                timestamp: Date.now()
+                            };
+                        }
+
+                        filaLogsAuditoria.push({
+                            origem: "sistema",
+                            timestamp: new Date().toISOString(),
+                            dataLocal: new Date().toLocaleString('pt-BR'),
+                            autor: `${nomeCompletoAtleta} (Autoexclusão pelo Usuário)`,
+                            acao: "EXCLUSÃO_AGENDAMENTO",
+                            motivo: `Reserva cancelada por falta de quórum após autoexclusão do participante ${apelidoAtleta}.`,
+                            clube: typeof clubeAtivoId !== 'undefined' ? clubeAtivoId : "",
+                            quadra: nomeQuadraAmigavel,
+                            horario: `${hIniFmt} - ${hFimFmt}`,
+                            duracao: duracao === 1 ? "1 Hora" : "2 Horas",
+                            data: formatData,
+                            statusNoMomentoDaExclusao: r.status || "pendente",
+                            organizadorDaReserva: r.organizador || "Não Informado",
+                            confirmacoes: confsAntigas,
+                            jogadores: r.jogadores || "",
+                            jogadores_completo: r.jogadores_completo || "",
+                            slotsExcluidos: slotsExcluidos
+                        });
+                    } else {
+                        qtdReservasAjustadas++;
+                        const todosConfirmados = Object.values(novasConfs).every(v => v === true);
+                        const rAtualizada = {
+                            ...r,
+                            jogadores: novosApelidos.join(', '),
+                            jogadores_completo: novosCompletos.join(', '),
+                            confirmacoes: novasConfs,
+                            status: todosConfirmados ? 'confirmada' : 'pendente'
+                        };
+                        if (todosConfirmados) delete rAtualizada.expiraEm;
+
+                        updates[`reservas/${quadraChave}/${slotKey}`] = rAtualizada;
+                        if (duracao === 2) {
+                            const rAtualizada2 = { ...rAtualizada, hora: hora + 1 };
+                            delete rAtualizada2.borda;
+                            updates[`reservas/${quadraChave}/${dia}_${hora + 1}`] = rAtualizada2;
+                        }
+
+                        if (idOrg) {
+                            updates[`jogadores/${idOrg}/notificacoes/convite_recusado_${dia}_${hora}_${Date.now()}`] = {
+                                categoria: "convite_recusado",
+                                adversario: apelidoAtleta,
+                                detalhe: detalheTempo,
+                                timestamp: Date.now()
+                            };
+                        }
+                    }
+                }
+            });
+        });
+
+        // 2. Limpeza de vínculos em convites, fila de espera e rankings gerais
+        updates[`convites_ranking/pendentes/${idLogado}`] = null;
+        updates[`config/ranking/inscritosConfirmados/${idLogado}`] = null;
+
+        const confRank = (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking)
+            ? configRegrasGlobal.ranking
+            : {};
+        if (confRank.filaEspera && typeof confRank.filaEspera === 'object') {
+            Object.keys(confRank.filaEspera).forEach(cat => {
+                if (confRank.filaEspera[cat] && confRank.filaEspera[cat][idLogado]) {
+                    updates[`config/ranking/filaEspera/${cat}/${idLogado}`] = null;
+                }
+            });
+        }
+
+        if (typeof rankingTabelasGlobal !== 'undefined' && rankingTabelasGlobal) {
+            Object.keys(rankingTabelasGlobal).forEach(cat => {
+                if (Array.isArray(rankingTabelasGlobal[cat]) && rankingTabelasGlobal[cat].includes(idLogado)) {
+                    updates[`ranking/tabelas/${cat}`] = rankingTabelasGlobal[cat].filter(id => id !== idLogado);
+                }
+            });
+        }
+
+        if (typeof rankingGeralGlobal !== 'undefined' && rankingGeralGlobal) {
+            Object.keys(rankingGeralGlobal).forEach(cat => {
+                if (Array.isArray(rankingGeralGlobal[cat]) && rankingGeralGlobal[cat].includes(idLogado)) {
+                    updates[`ranking/ranking_geral/${cat}`] = rankingGeralGlobal[cat].filter(id => id !== idLogado);
+                }
+            });
+        }
+
+        if (typeof rankingPontosGeralGlobal !== 'undefined' && rankingPontosGeralGlobal) {
+            Object.keys(rankingPontosGeralGlobal).forEach(cat => {
+                if (rankingPontosGeralGlobal[cat] && rankingPontosGeralGlobal[cat][idLogado] !== undefined) {
+                    updates[`ranking/pontos_geral/${cat}/${idLogado}`] = null;
+                }
+            });
+        }
+
+        // 3. Remoção da presença online e exclusão definitiva do cadastro pessoal
+        updates[`usuariosOnline/${idLogado}`] = null;
+        updates[`jogadores/${idLogado}`] = null;
+
+        // Encerra e anonimiza a sessão ativa no log de acessos do dia
+        if (typeof encerrarSessaoAcessoAtletaSaaS === 'function') {
+            encerrarSessaoAcessoAtletaSaaS('Conta excluída pelo usuário', true);
+        }
+
+        // 4. Monta o recibo blindado de auditoria jurídica para o Gestor
+        const plataformaAtual = (typeof detectarPlataformaAcessoSaaS === 'function')
+            ? detectarPlataformaAcessoSaaS()
+            : 'App SetPoint';
+        const resumoReservasTxt = (qtdReservasCanceladas > 0 || qtdReservasAjustadas > 0)
+            ? `Reservas futuras impactadas: ${qtdReservasCanceladas} cancelada(s), ${qtdReservasAjustadas} ajustada(s).`
+            : 'Nenhuma reserva futura ativa no momento da exclusão.';
+
+        const logAutoExclusao = {
+            origem: "manual",
+            timestamp: new Date().toISOString(),
+            dataLocal: new Date().toLocaleString('pt-BR'),
+            autor: `${nomeCompletoAtleta} (Autoexclusão pelo Usuário)`,
+            acao: "EXCLUSÃO_CONTA",
+            motivo: `O próprio usuário solicitou o encerramento permanente da conta e confirmou digitando "EXCLUIR" via ${plataformaAtual}. ${resumoReservasTxt}`,
+            clube: typeof clubeAtivoId !== 'undefined' ? clubeAtivoId : "",
+            quadra: "Cadastro de Atletas",
+            horario: plataformaAtual,
+            duracao: "Conta Encerrada",
+            data: new Date().toLocaleDateString('pt-BR').replace(/\//g, '-'),
+            statusNoMomentoDaExclusao: "conta_excluida",
+            organizadorDaReserva: nomeCompletoAtleta,
+            confirmacoes: { [apelidoAtleta]: true },
+            jogadores: apelidoAtleta,
+            jogadores_completo: `${nomeCompletoAtleta} (${vinculoAtleta})`,
+            slotsExcluidos: []
+        };
+
+        filaLogsAuditoria.unshift(logAutoExclusao);
+
+        // 5. Executa a gravação atômica no Firebase e envia os recibos ao GitHub
+        await database.ref(raizBanco).update(updates);
+
+        if (filaNotificacoesPush.length > 0 && typeof processarGatilhoPushSaaS === 'function') {
+            filaNotificacoesPush.forEach(item => {
+                processarGatilhoPushSaaS(item.reserva, item.organizador, item.quadra, item.evento);
+            });
+        }
+
+        if (typeof enviarFilaLogsAoGitHubSaaS === 'function') {
+            await enviarFilaLogsAoGitHubSaaS(filaLogsAuditoria);
+        }
+
+        // 6. Desliga radares, limpa memória local e redireciona para a tela inicial
+        if (typeof desligarTodosRadaresSaaS === 'function') {
+            desligarTodosRadaresSaaS();
+        }
+
+        localStorage.removeItem('jogadorLogadoId');
+        localStorage.removeItem('jogadorLogadoNome');
+        localStorage.removeItem('jogadorLogadoSocio');
+        localStorage.removeItem('jogadorLogadoClasse');
+        localStorage.removeItem('jogadorLogadoPerfis');
+        localStorage.removeItem('setpoint_aparelho_fcm_token');
+        localStorage.removeItem('setpoint_notificacoes_ativas');
+
+        if (toastAguarde && typeof toastAguarde.fechar === 'function') {
+            toastAguarde.fechar();
+        }
+
+        showToast("Sua conta e seus dados pessoais foram excluídos permanentemente.", "success", 4000);
+
+        setTimeout(() => {
+            window.location.href = window.location.pathname;
+        }, 900);
+
+    } catch (erro) {
+        console.error("❌ [Autoexclusão SaaS] Falha ao excluir conta:", erro);
+        if (toastAguarde && typeof toastAguarde.fechar === 'function') {
+            toastAguarde.fechar();
+        }
+        showToast("Erro ao excluir a conta. Verifique sua conexão e tente novamente.", "error");
+    }
 }

@@ -15,7 +15,7 @@ auth.onAuthStateChanged((user) => {
         localStorage.setItem('god_mode_clube', godModeClube);  
         carregamentoInicial = false;
         clubeAtivoId = godModeClube;
-        raizBanco = `Clubes/${godModeClube}/sistemas`;   
+        raizBanco = `Clubes/${godModeClube}/sistemas`;    
         isGestorLogado = true;
         
         // Acorda os ouvintes mestres instantaneamente
@@ -303,15 +303,21 @@ function cadastrarNovoClube() {
             auth.createUserWithEmailAndPassword(email, senha).then((userCredential) => {
                 const estruturaInicial = {
                     info_clube: { 
+                        ativo: true,
                         nome: nomeClube, 
                         gestor_uid: userCredential.user.uid, 
                         email_contato: email,
-                        whatsapp: whatsapp || 'Não informado'
+                        whatsapp: whatsapp || 'Não informado',
+                        plano_b2b: 'starter',
+                        valor_mensal: 0,
+                        dia_vencimento: 10,
+                        status_pagamento: 'isento',
+                        exibir_anuncios: true
                     },
                     sistemas: { 
                         config: { 
                             Abrir: true,
-                            limiteIaDiario: 5 // 🤖 Cota inicial automática injetada para novos clubes
+                            limiteIaDiario: 5 // Cota inicial automática injetada para novos clubes
                         }, 
                         jogadores: {}, 
                         reservas: {} 
@@ -1221,7 +1227,7 @@ function compararVersoesSemVerSaaS(versaoLocal, versaoServidor) {
  * Consulta o nó SaaS_Config no Firebase e avalia se o app necessita de atualização.
  */
 function verificarAtualizacaoDisponivelSaaS() {
-    // 🛑 Aborta a verificação se o usuário já clicou em Atualizar
+    // Aborta a verificação se o usuário já clicou em Atualizar
     if (window.isBaixandoAtualizacao) return;
 
     let versaoLocal = localStorage.getItem('versaoWebLocalSimulada') || "1.8.6"; 
@@ -1235,23 +1241,26 @@ function verificarAtualizacaoDisponivelSaaS() {
         const configSaaS = snapshot.val();
         const versaoServidor = configSaaS.versao_web || "1.8.6";
         const urlApk = configSaaS.url_apk || "";
+        const urlPlayStore = configSaaS.url_playstore || "https://play.google.com/store/apps/details?id=com.ronaldo.setpoint";
         const forcar = configSaaS.forcar_atualizacao === true;
         const canal = configSaaS.canal_distribuicao || "APK_DIRETO";
 
-        // Trava de elevação (Aparelho atualizado sobrescreve o banco)
+        window.canalDistribuicaoSaaS = canal;
+        window.urlApkAtualizacaoSaaS = urlApk;
+        window.urlPlayStoreSaaS = urlPlayStore;
+
+        // Trava de elevação (Aparelho de teste APK atualizado sobrescreve o banco apenas em APK_DIRETO)
         const eVersaoMaisRecente = compararVersoesSemVerSaaS(versaoServidor, versaoLocal);
-        if (eVersaoMaisRecente && window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
-            console.log(`🚀 [SaaS Update] Dispositivo com versão superior identificada (v${versaoLocal}). Sincronizando servidor...`);
+        if (eVersaoMaisRecente && canal === "APK_DIRETO" && window.AndroidBridge && typeof window.AndroidBridge.getAppVersion === 'function') {
+            console.log('[SaaS Update] Dispositivo com versão superior identificada (v' + versaoLocal + '). Sincronizando servidor...');
             database.ref('Clubes/SaaS_Config/versao_web').set(versaoLocal);
             return; 
         }
 
-        window.urlApkAtualizacaoSaaS = urlApk;
-
         const haNovaVersao = compararVersoesSemVerSaaS(versaoLocal, versaoServidor);
 
-        if (haNovaVersao && canal === "APK_DIRETO" && !window.isBaixandoAtualizacao) {
-            console.log(`🚀 [SaaS Update] Nova versão: v${versaoLocal} -> v${versaoServidor}`);
+        if (haNovaVersao && (canal === "APK_DIRETO" || canal === "GOOGLE_PLAY") && !window.isBaixandoAtualizacao) {
+            console.log('[SaaS Update] Nova versão (' + canal + '): v' + versaoLocal + ' -> v' + versaoServidor);
             
             const elAtual = document.getElementById('lbl-versao-atual-app');
             const elNova = document.getElementById('lbl-versao-nova-app');
@@ -1268,7 +1277,7 @@ function verificarAtualizacaoDisponivelSaaS() {
             if (modal) modal.style.display = 'flex';
         }
     }).catch(err => {
-        console.error("❌ [SaaS Update] Erro ao verificar atualização:", err);
+        console.error("[SaaS Update] Erro ao verificar atualização:", err);
     });
 }
 
@@ -1278,11 +1287,20 @@ window.addEventListener('load', () => {
 });
 
 /**
- * Download silencioso via Capacitor Filesystem + FileOpener (Versão Final Limpa)
+ * Executa a atualização conforme o canal configurado (Google Play Store ou APK Direto)
  */
 async function executarDownloadEInstalacaoApkSaaS() {
     window.isBaixandoAtualizacao = true;
 
+    // 1. MODO PRODUÇÃO GOOGLE PLAY: Redireciona para a loja oficial e bloqueia download de APK externo
+    if (window.canalDistribuicaoSaaS === "GOOGLE_PLAY") {
+        const urlLoja = window.urlPlayStoreSaaS || "https://play.google.com/store/apps/details?id=com.ronaldo.setpoint";
+        window.isBaixandoAtualizacao = false;
+        window.open(urlLoja, '_system');
+        return;
+    }
+
+    // 2. MODO TESTES (APK_DIRETO): Download silencioso via Capacitor Filesystem + FileOpener
     const btnConfirmar = document.getElementById('btn-saas-confirmar-atualizacao');
     const btnAdiar = document.getElementById('btn-saas-adiar-atualizacao');
     const containerProgresso = document.getElementById('container-progresso-download');
@@ -1339,7 +1357,6 @@ async function executarDownloadEInstalacaoApkSaaS() {
         if (barraProgresso) barraProgresso.style.width = '100%';
         if (txtPorcentagem) txtPorcentagem.innerText = '100%';
 
-        // Caminho do arquivo retornado pelo sistema
         const caminhoFinal = res.path || res.uri;
 
         await FileOpener.openFile({
@@ -1347,7 +1364,6 @@ async function executarDownloadEInstalacaoApkSaaS() {
             filePath: caminhoFinal
         });
 
-        // Oculta a janela após 1 segundo para deixar o instalador brilhar
         setTimeout(() => {
             const modal = document.getElementById('modal-atualizacao-disponivel');
             if (modal) modal.style.display = 'none';

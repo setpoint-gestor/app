@@ -48,7 +48,7 @@ async function abrirModuloLogs() {
 }
 
 /**
- * Motor de Leitura e Auto-Faxina Silenciosa do Histórico
+ * Motor de Leitura e Auto-Faxina Silenciosa do Histórico via Cloudflare Worker (/logs)
  */
 async function carregarLogsEExecutarFaxinaSaaS() {
     console.log("📜 [Logs SaaS] Iniciando sincronização e auto-faxina do histórico...");
@@ -58,35 +58,21 @@ async function carregarLogsEExecutarFaxinaSaaS() {
         return [];
     }
 
-    let tokenAcesso = null;
-    try {
-        const snapToken = await database.ref('Clubes/SaaS_Config/githubToken').once('value');
-        tokenAcesso = snapToken ? snapToken.val() : null;
-    } catch (e) {
-        console.error("❌ [Logs SaaS] Erro ao ler githubToken no Firebase:", e);
-    }
-
-    if (!tokenAcesso) {
-        console.warn("⚠️ [Logs SaaS] Token do GitHub indisponível.");
-        return [];
-    }
-
-    const repoOwner = "setpoint-gestor";
-    const repoName = "app";
-    const nomeArquivoLogs = `logs/${clubeAtivoId}_reservas-excluidas.json`;
-    const urlApi = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${nomeArquivoLogs}`;
+    const urlWorkerLogs = "https://setpoint-api.ronaldo-taborda.workers.dev/logs";
 
     let existenteSha = null;
     let arrayLogsGitHub = [];
 
     try {
-        const respostaGet = await fetch(urlApi, {
-            method: "GET",
+        const respostaGet = await fetch(urlWorkerLogs, {
+            method: "POST",
             headers: {
-                "Authorization": `token ${tokenAcesso}`,
-                "Accept": "application/vnd.github.v3+json"
+                "Content-Type": "application/json"
             },
-            cache: "no-cache"
+            body: JSON.stringify({
+                clubeId: clubeAtivoId,
+                method: "GET"
+            })
         });
 
         if (respostaGet.ok) {
@@ -97,9 +83,11 @@ async function carregarLogsEExecutarFaxinaSaaS() {
         } else if (respostaGet.status === 404) {
             console.log(`📝 [Logs SaaS] Histórico inédito para o clube: ${clubeAtivoId}`);
             arrayLogsGitHub = [];
+        } else {
+            throw new Error(`Status HTTP ${respostaGet.status}`);
         }
     } catch (err) {
-        console.error("❌ [Logs SaaS] Erro ao conectar à API do GitHub:", err);
+        console.error("❌ [Logs SaaS] Erro ao conectar ao Worker de Logs:", err);
     }
 
     let logsPendentesFirebase = [];
@@ -112,7 +100,7 @@ async function carregarLogsEExecutarFaxinaSaaS() {
     }
 
     let todosOsLogs = [...arrayLogsGitHub, ...logsPendentesFirebase];
-    let houveMudaçaOuLimpeza = logsPendentesFirebase.length > 0;
+	let houveMudaçaOuLimpeza = logsPendentesFirebase.length > 0;
 
     const diasRetencao = (typeof DiasLimpezaLogs !== 'undefined' && DiasLimpezaLogs !== null) ? DiasLimpezaLogs : 15;
 
@@ -122,6 +110,7 @@ async function carregarLogsEExecutarFaxinaSaaS() {
         const totalAntes = todosOsLogs.length;
 
         todosOsLogs = todosOsLogs.filter(log => {
+            if ((log.acao || "").toUpperCase().includes('EXCLUSÃO_CONTA')) return true;
             if (!log.timestamp) return true;
             const logMs = new Date(log.timestamp).getTime();
             const idadeMs = agoraMs - logMs;
@@ -139,26 +128,28 @@ async function carregarLogsEExecutarFaxinaSaaS() {
             const payloadString = JSON.stringify(todosOsLogs, null, 2);
             const payloadBase64 = b64EncodeUnicodeSaaS(payloadString);
 
-            const respostaPut = await fetch(urlApi, {
-                method: "PUT",
+            const respostaPut = await fetch(urlWorkerLogs, {
+                method: "POST",
                 headers: {
-                    "Authorization": `token ${tokenAcesso}`,
-                    "Content-Type": "application/json",
-                    "Accept": "application/vnd.github.v3+json"
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    message: `🤖 [SetPoint SaaS] Auto-Faxina / Resgate: Mantidos ${todosOsLogs.length} registro(s) (Retenção: ${diasRetencao}d).`,
-                    content: payloadBase64,
-                    sha: existenteSha
+                    clubeId: clubeAtivoId,
+                    method: "PUT",
+                    body: {
+                        message: `🤖 [SetPoint SaaS] Auto-Faxina / Resgate: Mantidos ${todosOsLogs.length} registro(s) (Retenção: ${diasRetencao}d).`,
+                        content: payloadBase64,
+                        sha: existenteSha
+                    }
                 })
             });
 
             if (respostaPut.ok) {
-                console.log("✅ [Logs SaaS] GitHub sincronizado e limpo com sucesso!");
+                console.log("✅ [Logs SaaS] Histórico sincronizado e limpo com sucesso via Worker!");
                 await database.ref(`${raizBanco}/logs_pendentes`).remove();
             }
         } catch (err) {
-            console.error("❌ [Logs SaaS] Falha ao atualizar histórico limpo no GitHub:", err);
+            console.error("❌ [Logs SaaS] Falha ao atualizar histórico limpo no Worker:", err);
         }
     }
 
@@ -200,7 +191,12 @@ function renderizarTimelineLogsSaaS(lista) {
 
         const acaoUpper = (log.acao || "").toUpperCase();
 
-        if (acaoUpper.includes('RECUSA')) {
+        if (acaoUpper.includes('EXCLUSÃO_CONTA')) {
+            tagClasse = 'tag-manual';
+            tagIcone = 'person_off';
+            tagTexto = 'Exclusão de Conta';
+            corBordaDot = '#dc2626';
+        } else if (acaoUpper.includes('RECUSA')) {
             tagClasse = 'tag-recusa';
             tagIcone = 'event_busy';
             tagTexto = acaoUpper.includes('CANCELAMENTO') ? 'Recusa de Convite' : 'Recusa (Parcial)';
@@ -237,7 +233,10 @@ function renderizarTimelineLogsSaaS(lista) {
                 let statusTxt = "Confirmado";
                 let statusCor = "#10b981";
 
-                if (idx === 0) {
+                if (acaoUpper.includes('EXCLUSÃO_CONTA')) {
+                    statusTxt = "Conta Excluída";
+                    statusCor = "#dc2626";
+                } else if (idx === 0) {
                     statusTxt = "Organizador (OK)";
                     statusCor = "#10b981";
                 } else {

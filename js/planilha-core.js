@@ -5,7 +5,7 @@
 // ==========================================
 let modoVisualizacaoQuadras = "grade";
 
-let timeoutPillQuadra = null; 
+let timeoutPillQuadra = null;  
 
 // Variável de controle para o duplo toque no mobile
 let ultimoCliqueTituloQuadra = 0;  
@@ -1950,25 +1950,292 @@ function deslogarJogadorSaaS() {
 // 9.1. NOVO MENU DE PERFIL — Seja PRO, navegação Guia Rápido, accordion
 // ====================================================================
 
-// Alterna entre Plano Básico <-> PRO de forma orgânica
+// Controlo do estado PRO do atleta e exibição de anúncios (AdMob Nativo + Simulador Web)
 let perfilEhPro = false;
-function alternarPlanoPerfil() {
-    perfilEhPro = !perfilEhPro;
+window.admobBannerAtivoNativo = false;
+
+function obterChaveLocalProSaaS() {
+    const clube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) ? clubeAtivoId : 'default';
+    const idJog = localStorage.getItem('jogadorLogadoId') || 'anon';
+    return 'setpoint_usuario_pro_' + clube + '_' + idJog;
+}
+
+async function gerenciarBannerAdMobNativoSaaS(deveExibir) {
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+
+    // No navegador (PC / PWA), alterna a faixa visual de simulação para testes
+    if (!isNativo) {
+        document.body.classList.toggle('simular-banner', deveExibir);
+        return;
+    }
+
+    document.body.classList.remove('simular-banner');
+
+    const AdMobPlugin = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins.AdMob : null;
+    if (!AdMobPlugin) return;
+
+    try {
+        if (deveExibir && !window.admobBannerAtivoNativo) {
+            if (!window.admobInicializadoSaaS && typeof AdMobPlugin.initialize === 'function') {
+                await AdMobPlugin.initialize({ initializeForTesting: false });
+                window.admobInicializadoSaaS = true;
+            }
+
+            // ID oficial de teste do Google AdMob (substituível remotamente por Clubes/SaaS_Config/admob_banner_id)
+            const adUnitId = window.admobBannerIdRemotoSaaS || 'ca-app-pub-3940256099942544/6300978111';
+
+            await AdMobPlugin.showBanner({
+                adId: adUnitId,
+                adSize: 'ADAPTIVE_BANNER',
+                position: 'BOTTOM_CENTER',
+                margin: 0,
+                isTesting: !window.admobBannerIdRemotoSaaS
+            });
+            window.admobBannerAtivoNativo = true;
+        } else if (!deveExibir && window.admobBannerAtivoNativo) {
+            if (typeof AdMobPlugin.removeBanner === 'function') {
+                await AdMobPlugin.removeBanner();
+            } else if (typeof AdMobPlugin.hideBanner === 'function') {
+                await AdMobPlugin.hideBanner();
+            }
+            window.admobBannerAtivoNativo = false;
+        }
+    } catch (erroAdmob) {
+        console.warn('[AdMob SaaS] Aviso ao gerenciar banner nativo:', erroAdmob);
+    }
+}
+
+function sincronizarEstadoProEAnunciosSaaS() {
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    const ehGestorOuDev = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode;
+
+    if (ehGestorOuDev) {
+        document.body.classList.remove('com-anuncio-admob');
+        gerenciarBannerAdMobNativoSaaS(false);
+        return;
+    }
+
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    const atletaObj = (idLogado && typeof jogadoresGlobal !== 'undefined' && jogadoresGlobal[idLogado])
+        ? jogadoresGlobal[idLogado]
+        : null;
+
+    const proNoBanco = !!(atletaObj && atletaObj.isPro === true);
+    const proNoLocal = localStorage.getItem(obterChaveLocalProSaaS()) === 'true';
+    perfilEhPro = proNoBanco || proNoLocal;
+
     const card    = document.getElementById('perfil-card-upgrade');
     const badge   = document.getElementById('perfil-badge-pro');
     const divisor = document.getElementById('perfil-divisor-pro');
-    if (!card || !badge || !divisor) return;
 
-    if (perfilEhPro) {
-        card.style.display = 'none';
-        badge.style.display = 'inline-block';
-        divisor.style.display = 'inline';
-    } else {
-        card.style.display = 'flex';
-        badge.style.display = 'none';
-        divisor.style.display = 'none';
+    if (card && badge && divisor) {
+        if (perfilEhPro) {
+            card.style.display = 'none';
+            badge.style.display = 'inline-block';
+            divisor.style.display = 'inline';
+        } else {
+            card.style.display = 'flex';
+            badge.style.display = 'none';
+            divisor.style.display = 'none';
+        }
+    }
+
+    // Por omissão, anúncios ficam ativos para atletas não-PRO quando o clube usa o plano gratuito
+    const clubeExibeAnuncios = (window.clubeExibeAnunciosSaaS !== false);
+    const deveMostrarBanner = !perfilEhPro && clubeExibeAnuncios;
+
+    document.body.classList.toggle('com-anuncio-admob', deveMostrarBanner);
+    gerenciarBannerAdMobNativoSaaS(deveMostrarBanner);
+}
+
+function alternarPlanoPerfil() {
+    if (!perfilEhPro) {
+        fecharSheetPerfil();
+        if (typeof abrirModalConfig === 'function') {
+            abrirModalConfig('modal-seja-pro');
+        }
+        return;
+    }
+
+    // Permite reverter para Plano Básico durante os testes de desenvolvimento
+    showPrompt(
+        'Plano SetPoint PRO',
+        'A sua assinatura PRO está ativa e os anúncios estão desativados. Deseja simular o regresso ao Plano Básico?',
+        () => {
+            perfilEhPro = false;
+            localStorage.removeItem(obterChaveLocalProSaaS());
+
+            const idLogado = localStorage.getItem('jogadorLogadoId');
+            if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
+                database.ref(`${raizBanco}/jogadores/${idLogado}/isPro`).set(false).catch(() => {});
+            }
+
+            sincronizarEstadoProEAnunciosSaaS();
+            showToast('Plano Básico restaurado para testes.', 'info'); 
+        }
+    );
+}
+
+function concluirAtivacaoProAtletaSaaS(detalhesCompra) {
+    perfilEhPro = true;
+    localStorage.setItem(obterChaveLocalProSaaS(), 'true');
+
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
+        const payloadPro = {
+            isPro: true,
+            proAssinaturaInfo: {
+                produtoId: (detalhesCompra && detalhesCompra.produtoId) || 'setpoint_pro_mensal',
+                origem: (detalhesCompra && detalhesCompra.origem) || 'google_play',
+                orderId: (detalhesCompra && detalhesCompra.orderId) || '',
+                atualizadoEm: Date.now()
+            }
+        };
+        database.ref(raizBanco + '/jogadores/' + idLogado).update(payloadPro).catch(() => {});
+    }
+
+    if (typeof fecharModalConfig === 'function') {
+        fecharModalConfig('modal-seja-pro');
+    }
+
+    const btnAssinar = document.getElementById('btn-assinar-setpoint-pro');
+    if (btnAssinar) {
+        btnAssinar.disabled = false;
+        btnAssinar.textContent = 'Assinar SetPoint PRO';
+    }
+
+    sincronizarEstadoProEAnunciosSaaS();
+    showToast('Bem-vindo ao SetPoint PRO! Anúncios removidos.', 'success', 4000);
+}
+
+async function iniciarAssinaturaProSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const btnAssinar = document.getElementById('btn-assinar-setpoint-pro');
+    const restaurarBotao = () => {
+        if (btnAssinar) {
+            btnAssinar.disabled = false;
+            btnAssinar.textContent = 'Assinar SetPoint PRO';
+        }
+    };
+
+    if (btnAssinar) {
+        btnAssinar.disabled = true;
+        btnAssinar.textContent = 'Conectando à Google Play...';
+    }
+
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const PRODUTO_ID_PRO = 'setpoint_pro_mensal';
+
+    // 1. AMBIENTE WEB / PC (Mantém simulação local para homologação)
+    if (!isNativo) {
+        setTimeout(() => {
+            concluirAtivacaoProAtletaSaaS({ produtoId: PRODUTO_ID_PRO, origem: 'simulacao_web' });
+        }, 600);
+        return;
+    }
+
+    // 2. AMBIENTE ANDROID NATIVO (Google Play Billing)
+    try {
+        const plugins = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : {};
+        const NativePurchases = plugins.NativePurchases || plugins.InAppPurchase || null;
+
+        if (NativePurchases && typeof NativePurchases.purchaseProduct === 'function') {
+            const resultado = await NativePurchases.purchaseProduct({
+                productIdentifier: PRODUTO_ID_PRO,
+                planIdentifier: 'plano-mensal',
+                productType: 'subs',
+                quantity: 1
+            });
+
+            if (resultado && (resultado.transactionId || resultado.purchaseToken || resultado.acknowledged !== false)) {
+                concluirAtivacaoProAtletaSaaS({
+                    produtoId: PRODUTO_ID_PRO,
+                    origem: 'google_play',
+                    orderId: resultado.transactionId || resultado.orderId || ''
+                });
+            } else {
+                restaurarBotao();
+            }
+            return;
+        }
+
+        // Suporte alternativo caso seja utilizada a ponte CdvPurchase (cordova-plugin-purchase)
+        if (window.CdvPurchase && window.CdvPurchase.store) {
+            const store = window.CdvPurchase.store;
+            const produto = store.get(PRODUTO_ID_PRO);
+            const oferta = produto && produto.getOffer ? produto.getOffer() : null;
+
+            if (oferta && typeof oferta.order === 'function') {
+                await oferta.order();
+                restaurarBotao();
+                return;
+            }
+        }
+
+        restaurarBotao();
+        showToast('Assinatura indisponível no momento. Tente novamente pela Google Play.', 'warning');
+    } catch (erroCompra) {
+        console.warn('[Play Billing SaaS] Compra cancelada ou não concluída:', erroCompra);
+        restaurarBotao();
+
+        const msgErro = (erroCompra && erroCompra.message) ? erroCompra.message.toLowerCase() : '';
+        if (msgErro.includes('cancel') || msgErro.includes('user')) {
+            showToast('Assinatura cancelada.', 'info');
+        } else {
+            showToast('Não foi possível concluir a assinatura na Google Play.', 'error');
+        }
     }
 }
+
+async function restaurarAssinaturaProNativaSaaS() {
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    if (!isNativo || perfilEhPro) return;
+
+    try {
+        const plugins = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : {};
+        const NativePurchases = plugins.NativePurchases || plugins.InAppPurchase || null;
+
+        if (NativePurchases && typeof NativePurchases.getPurchases === 'function') {
+            const compras = await NativePurchases.getPurchases({ productType: 'subs' });
+            const lista = (compras && compras.purchases) ? compras.purchases : [];
+            const assinaturaAtiva = lista.find(p => p.productIdentifier === 'setpoint_pro_mensal' && p.isActive !== false);
+
+            if (assinaturaAtiva) {
+                concluirAtivacaoProAtletaSaaS({
+                    produtoId: 'setpoint_pro_mensal',
+                    origem: 'google_play_restore',
+                    orderId: assinaturaAtiva.transactionId || ''
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('[Play Billing SaaS] Aviso ao verificar assinaturas existentes:', e);
+    }
+}
+
+// Sincronização automática do estado de anúncios, ID de produção AdMob e plano do clube no arranque
+setInterval(() => {
+    if (typeof raizBanco !== 'undefined' && raizBanco && typeof clubeAtivoId !== 'undefined' && clubeAtivoId && !window.ouvinteAnunciosClubeAtivo) {
+        window.ouvinteAnunciosClubeAtivo = true;
+
+        // Lê o ID oficial de Banner do AdMob (quando cadastrado em SaaS_Config, substitui o ID de teste)
+        database.ref('Clubes/SaaS_Config/admob_banner_id').on('value', (snapAdId) => {
+            window.admobBannerIdRemotoSaaS = snapAdId.val() || '';
+            sincronizarEstadoProEAnunciosSaaS();
+        });
+
+        // Monitora em tempo real se a arena ativa ou desativa anúncios no Console B2B
+        database.ref('Clubes/' + clubeAtivoId + '/info_clube/exibir_anuncios').on('value', (snap) => {
+            window.clubeExibeAnunciosSaaS = snap.exists() ? (snap.val() === true) : true;
+            sincronizarEstadoProEAnunciosSaaS();
+        });
+
+        // Verifica se o atleta possui assinatura PRO ativa vinculada à conta Google Play
+        restaurarAssinaturaProNativaSaaS();
+    }
+}, 1000);
+
 
 // Navega para a sub-tela de Guia Rápido
 function perfilAbrirGuia() {

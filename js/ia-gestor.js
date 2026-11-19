@@ -805,11 +805,6 @@ function executarAcaoDoGestorIA(jsonDaIA) {
 // 7. DISPACHO E COMUNICAÇÃO COM GEMINI API (JSON + FALLBACK)
 // ====================================================================
 async function processarMensagemConciergeGestor(texto) {
-    if (!geminiApiKeyGlobal) {
-        if (typeof showToast === 'function') showToast("Aguarde, conectando ao cérebro do SetPoint...", "warning");
-        return;
-    }
-
     const inputTexto = document.getElementById('ia-gestor-input-texto');
     if (inputTexto) {
         inputTexto.value = 'Analisando indicadores...';
@@ -871,17 +866,19 @@ Responda EXCLUSIVAMENTE com um objeto JSON válido contendo:
         generationConfig: { temperature: 0.0, responseMimeType: "application/json" }
     };
 
+    const urlWorkerGemini = "https://setpoint-api.ronaldo-taborda.workers.dev/gemini";
     let respostaIAObj = null;
     let cotaEsgotadaDetectada = false;
 
     for (const modelo of modelosParaTestar) {
-        const urlEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelo.id}:generateContent?key=${geminiApiKeyGlobal}`;
-
         try {
-            const resposta = await fetch(urlEndpoint, {
+            const resposta = await fetch(urlWorkerGemini, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(corpoRequisicao)
+                body: JSON.stringify({
+                    modelo: modelo.id,
+                    corpoRequisicao: corpoRequisicao
+                })
             });
 
             const dados = await resposta.json();
@@ -889,7 +886,7 @@ Responda EXCLUSIVAMENTE com um objeto JSON válido contendo:
             if (dados.candidates && dados.candidates[0].content) {
                 try {
                     respostaIAObj = JSON.parse(dados.candidates[0].content.parts[0].text);
-                    console.log(`🤖 [Gestor IA - ${modelo.nome}]:`, respostaIAObj);
+                    console.log(`🤖 [Gestor IA via Worker - ${modelo.nome}]:`, respostaIAObj);
                 } catch (e) {
                     console.error("❌ Erro JSON Gestor IA:", e);
                 }
@@ -900,11 +897,11 @@ Responda EXCLUSIVAMENTE com um objeto JSON válido contendo:
                 }
             }
         } catch (e) {
-            console.warn(`Falha de conexão com ${modelo.nome}:`, e);
+            console.warn(`Falha de conexão com ${modelo.nome} via Worker:`, e);
         }
     }
 
-if (respostaIAObj && respostaIAObj.mensagem) {
+    if (respostaIAObj && respostaIAObj.mensagem) {
         // Dispensa eventual aviso intermediário ("Consultando indicadores...") para exibir a resposta imediatamente
         const toastIntermediario = document.querySelector('#toastContainer .toast.info');
         if (toastIntermediario) toastIntermediario.click();
