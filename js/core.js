@@ -556,6 +556,37 @@ function voltarAoQG() {
     navegarApp('tela-gestor-dashboard');  
 }
 
+// Abertura do Manual do Gestor em PDF (Local, GitHub Pages e Nativo)
+function abrirManualGestorSaaS() {
+    if (navigator.vibrate) navigator.vibrate(25);
+
+    const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const urlPadrao = isLocal
+        ? new URL('manual-setpoint-gestor.pdf', window.location.href).href
+        : 'https://setpoint-gestor.github.io/app/manual-setpoint-gestor.pdf';
+
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+
+    const abrirUrl = (urlDestino) => {
+        if (isNativo) {
+            window.open(urlDestino, '_system');
+        } else {
+            window.open(urlDestino, '_blank', 'noopener,noreferrer');
+        }
+    };
+
+    if (typeof database !== 'undefined' && database) {
+        database.ref('Clubes/SaaS_Config/url_manual_gestor').once('value')
+            .then((snap) => {
+                const urlRemota = (snap && snap.exists() && snap.val()) ? String(snap.val()).trim() : '';
+                abrirUrl(urlRemota || urlPadrao);
+            })
+            .catch(() => abrirUrl(urlPadrao));
+    } else {
+        abrirUrl(urlPadrao);
+    }
+}
+
 function abrirModalConfig(idModal) { 
     const modal = document.getElementById(idModal);
     if (modal) {

@@ -13,7 +13,7 @@
 /* ======================================================== */
 
 async function aceitarConviteRankingSocioSaaS() {
-    const idLogado = localStorage.getItem('jogadorLogadoId');    
+    const idLogado = localStorage.getItem('jogadorLogadoId');     
     if (!idLogado || !raizBanco) return;
 
     if (navigator.vibrate) navigator.vibrate(30);
@@ -1134,8 +1134,37 @@ function renderizarGestaoTemporadaSaaS() {
 
             const btnEditarResumo = cardResumo.querySelector('button[onclick*="editarCalendarioAtivoSaaS"]') || cardResumo.querySelector('.btn-editar');
             if (btnEditarResumo) {
+                let boxAcoesResumo = document.getElementById('box-acoes-resumo-calendario-saas');
+                if (!boxAcoesResumo) {
+                    boxAcoesResumo = document.createElement('div');
+                    boxAcoesResumo.id = 'box-acoes-resumo-calendario-saas';
+                    boxAcoesResumo.className = 'box-acoes-resumo';
+                    btnEditarResumo.parentNode.insertBefore(boxAcoesResumo, btnEditarResumo);
+                    boxAcoesResumo.appendChild(btnEditarResumo);
+                }
+
+                let btnPdfResumo = document.getElementById('btn-ver-pdf-resumo-saas');
+                if (cal.regulamentoUrl) {
+                    if (!btnPdfResumo) {
+                        btnPdfResumo = document.createElement('button');
+                        btnPdfResumo.id = 'btn-ver-pdf-resumo-saas';
+                        btnPdfResumo.type = 'button';
+                        btnPdfResumo.className = 'btn-acao-resumo btn-acao-pdf';
+                        btnPdfResumo.innerHTML = '<i class="material-icons">picture_as_pdf</i>';
+                        btnPdfResumo.title = 'Abrir Edital em PDF';
+                        boxAcoesResumo.insertBefore(btnPdfResumo, btnEditarResumo);
+                    }
+                    btnPdfResumo.onclick = () => abrirRegulamentoPdfSaaS(cal.regulamentoUrl);
+                    btnPdfResumo.style.display = 'inline-flex';
+                } else if (btnPdfResumo) {
+                    btnPdfResumo.style.display = 'none';
+                }
+
                 const podeEditar = (faseAtual === 2);
-                btnEditarResumo.style.setProperty('display', podeEditar ? 'inline-flex' : 'none', 'important');
+                btnEditarResumo.className = 'btn-acao-resumo btn-acao-edit';
+                btnEditarResumo.innerHTML = '<i class="material-icons">edit</i>';
+                btnEditarResumo.title = 'Editar Calendário do Torneio';
+                btnEditarResumo.style.display = podeEditar ? 'inline-flex' : 'none';
             }
 
             cardResumo.style.display = 'flex';
@@ -1184,6 +1213,19 @@ function renderizarGestaoTemporadaSaaS() {
 	// 🔒 Invocação da trava de segurança para reavaliar os campos sempre que a esteira for renderizada
     if (typeof aplicarTravaParametrosCongeladosSaaS === 'function') {
         aplicarTravaParametrosCongeladosSaaS(conf);
+    }
+}
+
+function abrirRegulamentoPdfSaaS(url) {
+    if (!url) {
+        showToast('Nenhum regulamento em PDF anexado para esta edição.', 'info');
+        return;
+    }
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    if (isNativo) {
+        window.open(url, '_system');
+    } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
     }
 }
 
@@ -1844,6 +1886,17 @@ function atualizarStatusPdfSaaS(input) {
 
     if (input.files && input.files[0]) {
         const file = input.files[0];
+        const maxBytes = 5 * 1024 * 1024; // 5 MB
+
+        if (file.size > maxBytes) {
+            input.value = '';
+            lbl.innerText = 'Nenhum arquivo anexado (Opcional)';
+            lbl.style.color = '#64748b';
+            lbl.style.fontWeight = '400';
+            showToast('O arquivo PDF excede o limite máximo de 5 MB.', 'warning');
+            return;
+        }
+
         lbl.innerText = `📄 ${file.name} (${(file.size / 1024).toFixed(0)} KB - Pronto para upload)`;
         lbl.style.color = '#15803d';
         lbl.style.fontWeight = '700';
@@ -1922,23 +1975,55 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
     if (navigator.vibrate) navigator.vibrate(30);
 
-    // Função interna auxiliar para envio de PDF opcional
+    // Função interna auxiliar para envio de PDF opcional via Cloudflare Worker (/regulamento)
     const uploadPdfOpcional = () => {
         const inputPdf = document.getElementById('inp-pdf-file');
-        if (inputPdf && inputPdf.files && inputPdf.files[0]) {
-            const file = inputPdf.files[0];
-            const pathStorage = `Clubes/${clubeAtivoId || 'SaaS'}/torneios/regulamento_${Date.now()}.pdf`;
+        if (!inputPdf || !inputPdf.files || !inputPdf.files[0]) return;
 
-            firebase.storage().ref(pathStorage).put(file)
-                .then(snapshot => snapshot.ref.getDownloadURL())
-                .then(downloadURL => {
-                    database.ref(`${raizBanco}/config/ranking/calendario/regulamentoUrl`).set(downloadURL);
-                    showToast("Regulamento em PDF anexado com sucesso!", "info");
-                })
-                .catch(err => {
-                    console.warn("⚠️ Upload do PDF barrado por CORS em localhost. O contrato do torneio foi mantido no banco:", err);
+        const file = inputPdf.files[0];
+        const urlWorkerRegulamento = "https://setpoint-api.ronaldo-taborda.workers.dev/regulamento";
+
+        showToast("Enviando regulamento em PDF...", "info", 3000);
+
+        const reader = new FileReader();
+        reader.onload = async (evento) => {
+            try {
+                const resultadoDataUrl = String(evento.target.result || "");
+                const base64Puro = resultadoDataUrl.includes(",") ? resultadoDataUrl.split(",")[1] : resultadoDataUrl;
+
+                const resposta = await fetch(urlWorkerRegulamento, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        clubeId: clubeAtivoId || "SaaS",
+                        contentBase64: base64Puro
+                    })
                 });
-        }
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok || !dados.url) {
+                    throw new Error(dados.error || `Erro HTTP ${resposta.status}`);
+                }
+
+                await database.ref(`${raizBanco}/config/ranking/calendario/regulamentoUrl`).set(dados.url);
+
+                if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario) {
+                    configRegrasGlobal.ranking.calendario.regulamentoUrl = dados.url;
+                }
+
+                inputPdf.value = "";
+                showToast("Regulamento em PDF anexado com sucesso!", "success");
+
+                if (typeof renderizarGestaoTemporadaSaaS === 'function') {
+                    renderizarGestaoTemporadaSaaS();
+                }
+            } catch (err) {
+                console.error("❌ [Torneios] Falha ao enviar regulamento PDF via Worker:", err);
+                showToast("O torneio foi salvo, mas houve falha ao enviar o PDF.", "warning");
+            }
+        };
+        reader.readAsDataURL(file);
     };
 
     // 🔒 1. CENÁRIO: MODO DE EDIÇÃO (TORNEIO EM ANDAMENTO - PRESERVAÇÃO TOTAL)

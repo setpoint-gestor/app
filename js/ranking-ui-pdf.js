@@ -19,7 +19,7 @@ let abaStatusAtivoSaaS = 'TODOS'; // 'TODOS', 'PENDENTE', 'AGENDADO', 'HOMOLOGAD
 
 let edicaoHistoricaFocoSaaS = null;
 let categoriaHistoricaAtivaSaaS = null;
-let listenerGavetaHistoricoAdd = false; 
+let listenerGavetaHistoricoAdd = false;   
 
 let modoVisaoPiramideSaaS = 'lista'; // 'lista' ou 'piramide'
 
@@ -421,11 +421,22 @@ function renderizarLeaderboardSaaS() {
         const ptsDer = parseInt(configRanking.barragem?.pontosDerrota, 10) || 1;
 
         if (txtSub) {
+            const ehGestorOuDev = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || !!localStorage.getItem('god_mode_clube');
+            const urlEdital = (!ehGestorOuDev && !torneioConcluido && faseAtual >= 2 && cal.regulamentoUrl) ? String(cal.regulamentoUrl).replace(/'/g, "\\'") : '';
+            const btnEditalSub = urlEdital
+                ? `<button type="button" onclick="if(typeof abrirRegulamentoPdfSaaS === 'function'){ abrirRegulamentoPdfSaaS('${urlEdital}'); } else { window.open('${urlEdital}', '_blank', 'noopener,noreferrer'); }" title="Abrir Edital Oficial em PDF" style="display: inline-flex; align-items: center; gap: 3px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 7px; padding: 2px 7px; font-size: 10px; font-weight: 800; cursor: pointer; flex-shrink: 0; line-height: 1.2;"><i class="material-icons" style="font-size: 12px;">picture_as_pdf</i> Edital</button>`
+                : '';
+
             if (torneioConcluido) {
                 txtSub.innerHTML = `<b>🏆 Hall de Campeões</b> • ${cal.nomeTorneio || 'Torneio do Clube'} <span style="display:inline-block; background:#dcfce7; color:#15803d; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #86efac;">✓ Homologado</span>`;
             } else {
-                const nomesModelos = { piramide: 'Pirâmide (Escada)', barragem: 'Barragem (Pontos)', grupos: 'Grupos (Chaves)' };
-                txtSub.textContent = `Ranking Oficial do Clube • Modelo ${nomesModelos[modelo] || 'Oficial'}`;
+                const nomesModelos = { piramide: 'Pirâmide', barragem: 'Barragem', grupos: 'Grupos' };
+                const textoModelo = `Ranking Oficial do Clube • Modelo ${nomesModelos[modelo] || 'Oficial'}`;
+                if (btnEditalSub) {
+                    txtSub.innerHTML = `<span style="display: inline-flex; align-items: center; flex-wrap: nowrap; gap: 6px; white-space: nowrap; font-size: clamp(10.5px, 2.9vw, 12.5px);"><span>${textoModelo}</span>${btnEditalSub}</span>`;
+                } else {
+                    txtSub.textContent = textoModelo;
+                }
             }
         }
 
@@ -1661,7 +1672,7 @@ function renderizarLeaderboardSaaS() {
 
             const rotulosBadgesCampeao = {
                 piramide: "1º LUGAR • PIRÂMIDE",
-                barragem: "1º LUGAR • BARRAGEM",
+                barragem: "1º LUGAR • BARRAGEM", 
                 grupos: "1º LUGAR • GRUPOS"
             };
             const txtBadgeCampeao = rotulosBadgesCampeao[modelo] || "1º LUGAR • CAMPEÃO";

@@ -888,6 +888,11 @@ function renderizarListaNotificacoesSocioSaaS() {
         // HTML base dos dados da categoria e datas
         const gridBaseHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #fff8e1; padding: 10px 12px; border-radius: 10px; border: 1px solid #fef08a; text-align: left; margin-top: 4px;"><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">SUA CATEGORIA</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${minhaClasseStr}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">MODELO</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${modeloFormatado}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">INSCRIÇÕES ATÉ</span><span style="font-size: 12px; color: #000000; font-weight: 800;">${dataFimInscricao}</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 10px; text-transform: uppercase; color: #b45309; font-weight: 700;">PERÍODO JOGOS</span><span style="font-size: 12px; color: #475569; font-weight: 500;">${periodoJogos}</span></div></div>`;
 
+        const urlRegulamentoEscapada = cal.regulamentoUrl ? String(cal.regulamentoUrl).replace(/'/g, "\\'") : '';
+        const linkRegulamentoHTML = urlRegulamentoEscapada
+            ? `<div style="margin-top: 8px; text-align: center;"><button type="button" onclick="if(typeof abrirRegulamentoPdfSaaS === 'function'){ abrirRegulamentoPdfSaaS('${urlRegulamentoEscapada}'); } else { window.open('${urlRegulamentoEscapada}', '_blank', 'noopener,noreferrer'); }" style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; width: 100%; box-sizing: border-box;"><i class="material-icons" style="font-size: 16px;">picture_as_pdf</i> Ver Regulamento Oficial (PDF)</button></div>`
+            : '';
+
         let detalheCompletoHTML = '';
         let botoesCardHTML = '';
         let prazoEsgotado = false;
@@ -899,7 +904,7 @@ function renderizarListaNotificacoesSocioSaaS() {
 
             if (prazoEsgotado) {
                 // 4. CONCORRÊNCIA ABERTA (POOL ACUMULATIVO) - COMPACTO
-                detalheCompletoHTML = gridBaseHTML + `<div style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.35;">⚡ Prazo exclusivo de 2h encerrado!<span style="display: block; font-size: 11px; font-weight: 500; color: #78350f; margin-top: 2px;">A vaga agora está aberta para concorrência com o próximo da fila:</span><span style="display: inline-flex; align-items: center; justify-content: center; gap: 4px; margin-top: 4px; font-weight: 700; font-size: 11px; color: #854d0e; background: #fef08a; padding: 3px 8px; border-radius: 6px; border: 1px solid #facc15;">🟡 Quem aceitar primeiro garante!</span></div>`;
+                detalheCompletoHTML = gridBaseHTML + linkRegulamentoHTML + `<div style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.35;">⚡ Prazo exclusivo de 2h encerrado!<span style="display: block; font-size: 11px; font-weight: 500; color: #78350f; margin-top: 2px;">A vaga agora está aberta para concorrência com o próximo da fila:</span><span style="display: inline-flex; align-items: center; justify-content: center; gap: 4px; margin-top: 4px; font-weight: 700; font-size: 11px; color: #854d0e; background: #fef08a; padding: 3px 8px; border-radius: 6px; border: 1px solid #facc15;">🟡 Quem aceitar primeiro garante!</span></div>`;
             } else {
                 // 3. CONVOCAÇÃO COM EXCLUSIVIDADE (2 HORAS) - COMPACTO
                 const h = String(Math.floor(diffSegundos / 3600)).padStart(2, '0');
@@ -907,7 +912,7 @@ function renderizarListaNotificacoesSocioSaaS() {
                 const s = String(diffSegundos % 60).padStart(2, '0');
                 const tempoStrInicial = `${h}h ${m}m ${s}s`;
 
-                detalheCompletoHTML = gridBaseHTML + `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.35;">🎉 Abriu uma vaga para a sua categoria!<span style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 4px; font-weight: 700; font-size: 11px; color: #854d0e; background: #fef08a; padding: 3px 8px; border-radius: 6px; border: 1px solid #facc15;"><i class="material-icons" style="font-size: 13px;">timer</i> expira em <span id="timer-notif-convocado-vivo" data-expira="${expiraTimestamp}">${tempoStrInicial}</span></span></div>`;
+                detalheCompletoHTML = gridBaseHTML + linkRegulamentoHTML + `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.35;">🎉 Abriu uma vaga para a sua categoria!<span style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 4px; font-weight: 700; font-size: 11px; color: #854d0e; background: #fef08a; padding: 3px 8px; border-radius: 6px; border: 1px solid #facc15;"><i class="material-icons" style="font-size: 13px;">timer</i> expira em <span id="timer-notif-convocado-vivo" data-expira="${expiraTimestamp}">${tempoStrInicial}</span></span></div>`;
             }
 
             botoesCardHTML = `
@@ -920,14 +925,14 @@ function renderizarListaNotificacoesSocioSaaS() {
                 ? `⚠️ Vagas esgotadas para sua categoria (${totalConfirmadosCat}/${limiteVagasCat})`
                 : `⚠️ Todas as vagas preenchidas • (${qtdFilaCat} ${qtdFilaCat === 1 ? 'suplente' : 'suplentes'})`;
 
-            detalheCompletoHTML = gridBaseHTML + `<div style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.3;">${txtAvisoVagas}<span style="display: block; margin-top: 3px; font-weight: 500; font-size: 11.5px; color: #78350f;">Deseja aguardar na fila de espera?</span></div>`;
+            detalheCompletoHTML = gridBaseHTML + linkRegulamentoHTML + `<div style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; margin-top: 6px; line-height: 1.3;">${txtAvisoVagas}<span style="display: block; margin-top: 3px; font-weight: 500; font-size: 11.5px; color: #78350f;">Deseja aguardar na fila de espera?</span></div>`;
             botoesCardHTML = `
                 <button class="btn-sub-action" onclick="if(typeof entrarFilaEsperaRankingSocioSaaS === 'function') { entrarFilaEsperaRankingSocioSaaS(); } else { showToast('Fila de espera em homologação...', 'info'); }" style="background: #f59e0b !important; color: #ffffff !important; font-weight: 700;">Entrar na Fila</button>
                 <button class="btn-sub-action btn-no" onclick="recusarConviteRankingSocioSaaS()">Recusar</button>
             `;
         } else {
             // 1. CONVITE REGULAR COM VAGAS DISPONÍVEIS - COMPACTO
-            detalheCompletoHTML = gridBaseHTML + `<div style="text-align: center; margin-top: 8px; font-size: 13px; color: #475569; font-weight: 500;">Deseja confirmar sua participação?</div>`;
+            detalheCompletoHTML = gridBaseHTML + linkRegulamentoHTML + `<div style="text-align: center; margin-top: 8px; font-size: 13px; color: #475569; font-weight: 500;">Deseja confirmar sua participação?</div>`;
             botoesCardHTML = `
                 <button class="btn-sub-action btn-ok" onclick="aceitarConviteRankingSocioSaaS()">Aceitar e Entrar</button>
                 <button class="btn-sub-action btn-no" onclick="recusarConviteRankingSocioSaaS()">Recusar</button>
