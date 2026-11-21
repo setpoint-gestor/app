@@ -2651,5 +2651,31 @@
     "jogadores": "Zverev",
     "jogadores_completo": "ALEXANDER ZVEREV",
     "slotsExcluidos": []
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-21T11:19:56.124Z",
+    "dataLocal": "21/11/2026, 08:19:56",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "21-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDER ZVEREV",
+    "confirmacoes": {
+      "Zverev": true
+    },
+    "jogadores": "Zverev",
+    "jogadores_completo": "ALEXANDER ZVEREV",
+    "slotsExcluidos": [
+      {
+        "dia": 6,
+        "hora": 7
+      }
+    ]
   }
 ]
