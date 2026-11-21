@@ -148,7 +148,12 @@
                 <h2 id="txt-nome-clube">Carregando...</h2>
                 <span class="subtitulo-header" style="font-size: 13px; color: #888; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 2px;">
                     <span>Painel de Controle do Gestor</span>
-                    <span id="txt-versao-gestor" style="font-size: 11px; color: #64748b; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;"></span>
+                    <span style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span id="txt-versao-gestor" style="font-size: 11px; color: #64748b; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;"></span>
+                        <button type="button" onclick="abrirManualGestorSaaS()" title="Abrir Manual do Gestor (PDF)" style="font-size: 11px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; line-height: 1.2;">
+                            <i class="material-icons" style="font-size: 13px;">menu_book</i> Manual do Gestor
+                        </button>
+                    </span>
                 </span>
             </div>
 			
@@ -1847,7 +1852,7 @@
                                 <div class="perfil-pdf-sub">Guia detalhado do app • PDF</div>
                             </div>
                         </div>
-                        <button class="perfil-pdf-btn" onclick="alert('Download do manual acionado')">Baixar</button>
+                        <button type="button" class="perfil-pdf-btn" onclick="abrirManualCompletoSaaS()">Abrir</button>
                     </div>
 
                 </div>
