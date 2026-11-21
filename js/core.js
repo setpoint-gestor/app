@@ -569,28 +569,66 @@ if (typeof database !== 'undefined' && database) {
     });
 }
 
-// Motor Universal de Abertura de PDF (Web/PWA iOS + Nativo Android/iOS via Filesystem e FileOpener)
+// Motor Universal de Abertura de PDF (PC Web, iOS PWA via Blob Download e Nativo Android/iOS)
 async function abrirPdfUniversalSaaS(urlDestino, nomeArquivoCache = 'manual-setpoint.pdf') {
     const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const isIos = (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isMobileWeb = isIos || /Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    const abrirViaLinkExterno = (url) => {
-        const win = window.open(url, '_blank', 'noopener,noreferrer');
-        if (!win) {
+    const baixarViaBlobNativoWeb = async (url, nomeArquivo) => {
+        const toastAviso = typeof showToast === 'function'
+            ? showToast('Baixando manual em PDF...', 'info', 0)
+            : null;
+
+        try {
+            const resposta = await fetch(url);
+            if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+
+            const blobOriginal = await resposta.blob();
+            const pdfBlob = new Blob([blobOriginal], { type: 'application/pdf' });
+            const blobUrl = URL.createObjectURL(pdfBlob);
+
             const link = document.createElement('a');
-            link.href = url;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
+            link.href = blobUrl;
+            link.download = nomeArquivo;
             document.body.appendChild(link);
             link.click();
-            link.remove();
+            document.body.removeChild(link);
+
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+
+            if (toastAviso && typeof toastAviso.fechar === 'function') toastAviso.fechar();
+            if (typeof showToast === 'function') {
+                showToast('Manual baixado com sucesso!', 'success');
+            }
+        } catch (erroDownload) {
+            console.warn('[Manual PDF] Fallback de download direto:', erroDownload);
+            if (toastAviso && typeof toastAviso.fechar === 'function') toastAviso.fechar();
+
+            const linkFallback = document.createElement('a');
+            linkFallback.href = url;
+            linkFallback.download = nomeArquivo;
+            document.body.appendChild(linkFallback);
+            linkFallback.click();
+            document.body.removeChild(linkFallback);
         }
     };
 
+    // 1. Ambiente Web / PWA (PC abre em nova aba; iPhone/iPad e Mobile baixam via Blob igual ao Ranking)
     if (!isNativo) {
-        abrirViaLinkExterno(urlDestino);
+        if (isMobileWeb) {
+            await baixarViaBlobNativoWeb(urlDestino, nomeArquivoCache);
+            return;
+        }
+
+        const win = window.open(urlDestino, '_blank', 'noopener,noreferrer');
+        if (!win) {
+            await baixarViaBlobNativoWeb(urlDestino, nomeArquivoCache);
+        }
         return;
     }
 
+    // 2. Ambiente Nativo Empacotado (Capacitor Android / iOS via Filesystem + FileOpener)
     const plugins = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : {};
     const Filesystem = plugins.Filesystem;
     const FileOpener = plugins.FileOpener;
@@ -629,12 +667,12 @@ async function abrirPdfUniversalSaaS(urlDestino, nomeArquivoCache = 'manual-setp
             });
             return;
         } catch (err) {
-            console.warn('[Manual PDF] Fallback para navegador externo:', err);
+            console.warn('[Manual PDF] Fallback para download direto:', err);
             if (toastAviso && typeof toastAviso.fechar === 'function') toastAviso.fechar();
         }
     }
 
-    abrirViaLinkExterno(urlDestino);
+    await baixarViaBlobNativoWeb(urlDestino, nomeArquivoCache);
 }
 
 // Abertura do Manual do Gestor em PDF (Local, GitHub Pages/PWA e Nativo Android/iOS)
