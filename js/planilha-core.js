@@ -2259,34 +2259,22 @@ function perfilToggleAcc(headerEl) {
     if (item) item.classList.toggle('open');
 }
 
-// Abertura do Manual do Jogador em PDF (Local, GitHub Pages e Nativo)
+// Abertura do Manual do Jogador em PDF (Local, GitHub Pages/PWA e Nativo Android/iOS)
 function abrirManualCompletoSaaS() {
     if (navigator.vibrate) navigator.vibrate(25);
 
-    const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const isLocal = !isNativo && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     const urlPadrao = isLocal
         ? new URL('manual-setpoint-jogador.pdf', window.location.href).href
         : 'https://setpoint-gestor.github.io/app/manual-setpoint-jogador.pdf';
 
-    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const urlFinal = window.urlManualJogadorGlobal || urlPadrao;
 
-    const abrirUrl = (urlDestino) => {
-        if (isNativo) {
-            window.open(urlDestino, '_system');
-        } else {
-            window.open(urlDestino, '_blank', 'noopener,noreferrer');
-        }
-    };
-
-    if (typeof database !== 'undefined' && database) {
-        database.ref('Clubes/SaaS_Config/url_manual_jogador').once('value')
-            .then((snap) => {
-                const urlRemota = (snap && snap.exists() && snap.val()) ? String(snap.val()).trim() : '';
-                abrirUrl(urlRemota || urlPadrao);
-            })
-            .catch(() => abrirUrl(urlPadrao));
+    if (typeof abrirPdfUniversalSaaS === 'function') {
+        abrirPdfUniversalSaaS(urlFinal, 'manual-setpoint-jogador.pdf');
     } else {
-        abrirUrl(urlPadrao);
+        window.open(urlFinal, '_blank', 'noopener,noreferrer');
     }
 }
 

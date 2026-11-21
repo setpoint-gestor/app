@@ -556,35 +556,98 @@ function voltarAoQG() {
     navegarApp('tela-gestor-dashboard');  
 }
 
-// Abertura do Manual do Gestor em PDF (Local, GitHub Pages e Nativo)
+// Pré-carregamento em RAM das URLs remotas dos manuais (evita bloqueio de pop-up no iOS Safari PWA)
+window.urlManualGestorGlobal = '';
+window.urlManualJogadorGlobal = '';
+
+if (typeof database !== 'undefined' && database) {
+    database.ref('Clubes/SaaS_Config/url_manual_gestor').on('value', (snap) => {
+        window.urlManualGestorGlobal = (snap && snap.exists() && snap.val()) ? String(snap.val()).trim() : '';
+    });
+    database.ref('Clubes/SaaS_Config/url_manual_jogador').on('value', (snap) => {
+        window.urlManualJogadorGlobal = (snap && snap.exists() && snap.val()) ? String(snap.val()).trim() : '';
+    });
+}
+
+// Motor Universal de Abertura de PDF (Web/PWA iOS + Nativo Android/iOS via Filesystem e FileOpener)
+async function abrirPdfUniversalSaaS(urlDestino, nomeArquivoCache = 'manual-setpoint.pdf') {
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+
+    const abrirViaLinkExterno = (url) => {
+        const win = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!win) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+    };
+
+    if (!isNativo) {
+        abrirViaLinkExterno(urlDestino);
+        return;
+    }
+
+    const plugins = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : {};
+    const Filesystem = plugins.Filesystem;
+    const FileOpener = plugins.FileOpener;
+
+    if (Filesystem && FileOpener) {
+        const toastAviso = typeof showToast === 'function'
+            ? showToast('Abrindo manual em PDF...', 'info', 0)
+            : null;
+
+        try {
+            const resposta = await fetch(urlDestino);
+            if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+
+            const blob = await resposta.blob();
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const res = String(reader.result || '');
+                    resolve(res.includes(',') ? res.split(',')[1] : res);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+
+            const fileResult = await Filesystem.writeFile({
+                path: nomeArquivoCache,
+                data: base64Data,
+                directory: 'CACHE'
+            });
+
+            if (toastAviso && typeof toastAviso.fechar === 'function') toastAviso.fechar();
+
+            await FileOpener.openFile({
+                path: fileResult.uri,
+                mimeType: 'application/pdf'
+            });
+            return;
+        } catch (err) {
+            console.warn('[Manual PDF] Fallback para navegador externo:', err);
+            if (toastAviso && typeof toastAviso.fechar === 'function') toastAviso.fechar();
+        }
+    }
+
+    abrirViaLinkExterno(urlDestino);
+}
+
+// Abertura do Manual do Gestor em PDF (Local, GitHub Pages/PWA e Nativo Android/iOS)
 function abrirManualGestorSaaS() {
     if (navigator.vibrate) navigator.vibrate(25);
 
-    const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const isLocal = !isNativo && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     const urlPadrao = isLocal
         ? new URL('manual-setpoint-gestor.pdf', window.location.href).href
         : 'https://setpoint-gestor.github.io/app/manual-setpoint-gestor.pdf';
 
-    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
-
-    const abrirUrl = (urlDestino) => {
-        if (isNativo) {
-            window.open(urlDestino, '_system');
-        } else {
-            window.open(urlDestino, '_blank', 'noopener,noreferrer');
-        }
-    };
-
-    if (typeof database !== 'undefined' && database) {
-        database.ref('Clubes/SaaS_Config/url_manual_gestor').once('value')
-            .then((snap) => {
-                const urlRemota = (snap && snap.exists() && snap.val()) ? String(snap.val()).trim() : '';
-                abrirUrl(urlRemota || urlPadrao);
-            })
-            .catch(() => abrirUrl(urlPadrao));
-    } else {
-        abrirUrl(urlPadrao);
-    }
+    abrirPdfUniversalSaaS(window.urlManualGestorGlobal || urlPadrao, 'manual-setpoint-gestor.pdf');
 }
 
 function abrirModalConfig(idModal) { 
