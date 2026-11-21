@@ -2564,5 +2564,92 @@
         "hora": 17
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T03:14:57.334Z",
+    "dataLocal": "21/11/2026, 00:14:57",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "17-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Fils": true,
+      "Jodar": true
+    },
+    "jogadores": "Fils, Jodar",
+    "jogadores_completo": "ARTHUR FILS, RAFAEL JODAR",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T03:14:57.336Z",
+    "dataLocal": "21/11/2026, 00:14:57",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 18:00",
+    "duracao": "2 Horas",
+    "data": "17-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Shelton": true,
+      "Zverev": true
+    },
+    "jogadores": "Zverev, Shelton",
+    "jogadores_completo": "ALEXANDER ZVEREV, BEN SHELTON",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 16
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 17
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T03:14:57.336Z",
+    "dataLocal": "21/11/2026, 00:14:57",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "21-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEXANDER ZVEREV",
+    "confirmacoes": {
+      "Zverev": true
+    },
+    "jogadores": "Zverev",
+    "jogadores_completo": "ALEXANDER ZVEREV",
+    "slotsExcluidos": []
   }
 ]
