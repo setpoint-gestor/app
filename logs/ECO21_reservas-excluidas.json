@@ -2708,5 +2708,236 @@
         "hora": 11
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T13:53:50.208Z",
+    "dataLocal": "21/11/2026, 10:53:50",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "16-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "CARLOS ALCARAZ",
+    "confirmacoes": {
+      "Alcaraz": true,
+      "Tiafoe": true
+    },
+    "jogadores": "Alcaraz, Tiafoe",
+    "jogadores_completo": "CARLOS ALCARAZ, FRANCES TIAFOE",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 1,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 1,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T13:53:50.213Z",
+    "dataLocal": "21/11/2026, 10:53:50",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 18:00",
+    "duracao": "2 Horas",
+    "data": "16-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "DANIIL MEDVEDEV",
+    "confirmacoes": {
+      "Cobolli": true,
+      "Medvedev": true
+    },
+    "jogadores": "Medvedev, Cobolli",
+    "jogadores_completo": "DANIIL MEDVEDEV, FLAVIO COBOLLI",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 1,
+        "hora": 16
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 1,
+        "hora": 17
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T13:53:50.213Z",
+    "dataLocal": "21/11/2026, 10:53:50",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "17-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Fils": true,
+      "Jodar": true
+    },
+    "jogadores": "Fils, Jodar",
+    "jogadores_completo": "ARTHUR FILS, RAFAEL JODAR",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T13:53:50.213Z",
+    "dataLocal": "21/11/2026, 10:53:50",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 18:00",
+    "duracao": "2 Horas",
+    "data": "17-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Shelton": true,
+      "Zverev": true
+    },
+    "jogadores": "Zverev, Shelton",
+    "jogadores_completo": "ALEXANDER ZVEREV, BEN SHELTON",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 16
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 17
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T13:53:50.216Z",
+    "dataLocal": "21/11/2026, 10:53:50",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "07:00 - 09:00",
+    "duracao": "2 Horas",
+    "data": "19-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Alex": false,
+      "Ana Julia": false
+    },
+    "jogadores": "Alex, Ana Julia",
+    "jogadores_completo": "ALEX DE SOUZA, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 7
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 4,
+        "hora": 8
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T13:53:50.216Z",
+    "dataLocal": "21/11/2026, 10:53:50",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "RAFAEL JODAR",
+    "confirmacoes": {
+      "Jodar": true,
+      "Zverev": true
+    },
+    "jogadores": "Jodar, Zverev",
+    "jogadores_completo": "RAFAEL JODAR, ALEXANDER ZVEREV",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-21T13:53:50.216Z",
+    "dataLocal": "21/11/2026, 10:53:50",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 18:00",
+    "duracao": "2 Horas",
+    "data": "15-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "BEN SHELTON",
+    "confirmacoes": {
+      "Fils": true,
+      "Shelton": true
+    },
+    "jogadores": "Shelton, Fils",
+    "jogadores_completo": "BEN SHELTON, ARTHUR FILS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 16
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 7,
+        "hora": 17
+      }
+    ]
   }
 ]
