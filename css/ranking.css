@@ -785,6 +785,48 @@ td.col-edicao .pdf-link-inline {
 
 .btn-edit-cal:hover { background: #f1f5f9; }
 
+.box-acoes-resumo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+#modal-config-ranking .card-resumo-calendario .btn-acao-resumo {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    padding: 0 !important;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.btn-acao-resumo:active { transform: scale(0.95); }
+.btn-acao-resumo .material-icons { font-size: 17px; margin: 0; }
+
+.btn-acao-pdf {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+.btn-acao-pdf:hover { background: #fee2e2; }
+
+.btn-acao-edit {
+    background: #ffffff;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+.btn-acao-edit:hover { background: #f1f5f9; }
+
 /* Pílulas Interativas de Categorias/Gêneros (Fase 1) */
 .classes-pills-container .pilula-check {
     padding: 6px 12px;
@@ -1047,35 +1089,49 @@ body.dark-mode #modal-config-ranking select.input-app:disabled {
         padding: 1.5px 5px !important;
     }
 
-    /* Aproximação das linhas de Inscrições e Partidas com recuo à direita para o botão */
+    /* Aproximação das linhas de Inscrições e Partidas */
     #modal-config-ranking .card-resumo-calendario .resumo-datas {
         gap: 3px 14px !important;
-        padding-right: 36px !important;
+        padding-right: 0 !important;
     }
 
-    /* Botão Editar quadrado com ícone no canto inferior direito */ 
+    /* Botões Edital e Editar empilhados com texto completo e largura igual */
+    #modal-config-ranking .card-resumo-calendario #box-acoes-resumo-calendario-saas {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+    }
+
     #modal-config-ranking .card-resumo-calendario .btn-edit-cal,
+    #modal-config-ranking .card-resumo-calendario .btn-editar-resumo-saas,
     #modal-config-ranking .card-resumo-calendario button[onclick*="editarCalendarioAtivoSaaS"] {
-        position: absolute !important;
-        right: 10px !important;
-        bottom: 10px !important;
-        width: 30px !important;
-        height: 30px !important;
-        min-width: 30px !important;
-        padding: 0 !important;
-        font-size: 0 !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        min-width: 0 !important;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
+        gap: 4px !important;
         border-radius: 8px !important;
         border: 1px solid #cbd5e1 !important;
         background: #ffffff !important;
+        color: #334155 !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
         cursor: pointer !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
     }
 
     #modal-config-ranking .card-resumo-calendario .btn-edit-cal i,
     #modal-config-ranking .card-resumo-calendario .btn-edit-cal .material-icons,
+    #modal-config-ranking .card-resumo-calendario .btn-editar-resumo-saas i,
+    #modal-config-ranking .card-resumo-calendario .btn-editar-resumo-saas .material-icons,
     #modal-config-ranking .card-resumo-calendario button[onclick*="editarCalendarioAtivoSaaS"] i,
     #modal-config-ranking .card-resumo-calendario button[onclick*="editarCalendarioAtivoSaaS"] .material-icons {
         font-size: 16px !important;
