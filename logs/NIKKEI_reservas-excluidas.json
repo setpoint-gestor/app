@@ -592,5 +592,71 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T00:54:54.081Z",
+    "dataLocal": "21/11/2026, 21:54:54",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "23-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Ana Julia": false
+    },
+    "jogadores": "Alice Pereira, Ana Julia",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 1,
+        "hora": 10
+      },
+      {
+        "quadra": "Rafael Martins",
+        "dia": 1,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T00:54:54.082Z",
+    "dataLocal": "21/11/2026, 21:54:54",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "09:00 - 11:00",
+    "duracao": "2 Horas",
+    "data": "23-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Ana Julia": false
+    },
+    "jogadores": "Alice Pereira, Ana Julia",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 1,
+        "hora": 9
+      },
+      {
+        "quadra": "Rafael Martins",
+        "dia": 1,
+        "hora": 10
+      }
+    ]
   }
 ]
