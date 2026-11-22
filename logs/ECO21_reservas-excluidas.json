@@ -3102,5 +3102,36 @@
         "hora": 13
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-22T17:47:47.840Z",
+    "dataLocal": "22/11/2026, 14:47:47",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "14:00 - 16:00",
+    "duracao": "2 Horas",
+    "data": "22-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "CARLOS ALCARAZ",
+    "confirmacoes": {
+      "Alcaraz": true,
+      "Zverev": true
+    },
+    "jogadores": "Alcaraz, Zverev",
+    "jogadores_completo": "CARLOS ALCARAZ, ALEXANDER ZVEREV",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 14
+      },
+      {
+        "dia": 7,
+        "hora": 15
+      }
+    ]
   }
 ]
