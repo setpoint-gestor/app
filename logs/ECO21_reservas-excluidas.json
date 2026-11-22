@@ -3069,5 +3069,38 @@
         "hora": 7
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T10:42:57.362Z",
+    "dataLocal": "22/11/2026, 07:42:57",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "motivo": "Convite recusado por Alex. Reserva cancelada por falta de quórum mínimo.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "12:00 - 14:00",
+    "duracao": "2 Horas",
+    "data": "24-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEXANDER ZVEREV",
+    "confirmacoes": {
+      "Alex": false,
+      "Zverev": true
+    },
+    "jogadores": "Zverev, Alex",
+    "jogadores_completo": "ALEXANDER ZVEREV, ALEX DE SOUZA",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 12
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 2,
+        "hora": 13
+      }
+    ]
   }
 ]
