@@ -559,5 +559,38 @@
         "hora": 9
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T00:15:38.105Z",
+    "dataLocal": "21/11/2026, 21:15:38",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "22-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALICE ALMEIDA PEREIRA",
+    "confirmacoes": {
+      "Alice Pereira": true,
+      "Ana Julia": false
+    },
+    "jogadores": "Alice Pereira, Ana Julia",
+    "jogadores_completo": "ALICE ALMEIDA PEREIRA, ANA JULIA MARTINS",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 7,
+        "hora": 6
+      },
+      {
+        "quadra": "Rafael Martins",
+        "dia": 7,
+        "hora": 7
+      }
+    ]
   }
 ]
