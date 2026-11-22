@@ -3133,5 +3133,38 @@
         "hora": 15
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-22T17:49:18.569Z",
+    "dataLocal": "22/11/2026, 14:49:18",
+    "autor": "Administração (Gestor)",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "14:00 - 16:00",
+    "duracao": "2 Horas",
+    "data": "22-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Alexandre Voj": true,
+      "Allana Barbosa": true,
+      "Ana Paula Pereira": true,
+      "Vitor Zamprogna": true
+    },
+    "jogadores": "Vitor Zamprogna, Ana Paula Pereira, Allana Barbosa, Alexandre Voj",
+    "jogadores_completo": "VITOR ZAMPROGNA, ANA PAULA KESSLER PEREIRA, ALLANA BARBOSA, ALEXANDRE VOJCIECHOVSKI",
+    "slotsExcluidos": [
+      {
+        "dia": 7,
+        "hora": 14
+      },
+      {
+        "dia": 7,
+        "hora": 15
+      }
+    ]
   }
 ]
