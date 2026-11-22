@@ -1348,5 +1348,59 @@
         "hora": 22
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T19:23:49.059Z",
+    "dataLocal": "22/11/2026, 16:23:49",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EVIÇÃO_PARCIAL_CONVITE",
+    "motivo": "Convite expirado. Reserva MANTIDA (1 confirmado(s)). Jogadores pendentes foram removidos.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 11:00",
+    "duracao": "1 Hora",
+    "data": "23-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX DE SOUZA",
+    "confirmacoes": {
+      "Alex": true
+    },
+    "jogadores": "Alex",
+    "jogadores_completo": "ALEX DE SOUZA",
+    "slotsExcluidos": []
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T19:23:49.062Z",
+    "dataLocal": "22/11/2026, 16:23:49",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXPIRAÇÃO_CONVITE",
+    "motivo": "Convite expirado (Cancelada por falta de quórum: Exigido 2, Confirmado(s) 1)",
+    "clube": "ECO21",
+    "quadra": "Quadra 2 - Aberta",
+    "horario": "21:00 - 23:00",
+    "duracao": "2 Horas",
+    "data": "25-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Ana Julia": false,
+      "Andre Guzik": false
+    },
+    "jogadores": "Ana Julia, Andre Guzik",
+    "jogadores_completo": "ANA JULIA MARTINS, ANDRE GUZIK",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 2",
+        "dia": 3,
+        "hora": 21
+      },
+      {
+        "quadra": "Quadra - 2",
+        "dia": 3,
+        "hora": 22
+      }
+    ]
   }
 ]
