@@ -2970,5 +2970,71 @@
         "hora": 15
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T10:25:35.570Z",
+    "dataLocal": "22/11/2026, 07:25:35",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "10:00 - 12:00",
+    "duracao": "2 Horas",
+    "data": "18-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Alcaraz": true,
+      "Medvedev": true
+    },
+    "jogadores": "Alcaraz, Medvedev",
+    "jogadores_completo": "CARLOS ALCARAZ, DANIIL MEDVEDEV",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 10
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 11
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T10:25:35.571Z",
+    "dataLocal": "22/11/2026, 07:25:35",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (3d)",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "16:00 - 18:00",
+    "duracao": "2 Horas",
+    "data": "18-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Administração (Gestor)",
+    "confirmacoes": {
+      "Cobolli": true,
+      "Tiafoe": true
+    },
+    "jogadores": "Cobolli, Tiafoe",
+    "jogadores_completo": "FLAVIO COBOLLI, FRANCES TIAFOE",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 16
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 17
+      }
+    ]
   }
 ]
