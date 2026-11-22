@@ -3036,5 +3036,38 @@
         "hora": 17
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-22T10:29:26.007Z",
+    "dataLocal": "22/11/2026, 07:29:26",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "RECUSA_CONVITE_CANCELAMENTO",
+    "motivo": "Convite recusado por Zverev. Reserva cancelada por falta de quórum mínimo.",
+    "clube": "ECO21",
+    "quadra": "Quadra 1 - Coberta",
+    "horario": "06:00 - 08:00",
+    "duracao": "2 Horas",
+    "data": "25-11-2026",
+    "statusNoMomentoDaExclusao": "pendente",
+    "organizadorDaReserva": "ALEX DE MINAUR",
+    "confirmacoes": {
+      "De Minaur": true,
+      "Zverev": false
+    },
+    "jogadores": "De Minaur, Zverev",
+    "jogadores_completo": "ALEX DE MINAUR, ALEXANDER ZVEREV",
+    "slotsExcluidos": [
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 6
+      },
+      {
+        "quadra": "Quadra - 1",
+        "dia": 3,
+        "hora": 7
+      }
+    ]
   }
 ]
