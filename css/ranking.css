@@ -15,7 +15,7 @@
     padding: 0 !important; 
     display: flex;
     flex-direction: column;
-    background-color: var(--bg-site, #f4f6f8);     
+    background-color: var(--bg-site, #f4f6f8);      
 }
 
 #modal-config-ranking .header-painel {
@@ -802,7 +802,7 @@ td.col-edicao .pdf-link-inline {
     padding: 0 !important;
     border-radius: 8px;
     cursor: pointer;
-    display: inline-flex !important;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
@@ -1114,7 +1114,7 @@ body.dark-mode #modal-config-ranking select.input-app:disabled {
         padding: 6px 10px !important;
         font-size: 12px !important;
         font-weight: 700 !important;
-        display: inline-flex !important;
+        display: inline-flex;
         align-items: center !important;
         justify-content: center !important;
         gap: 4px !important;
@@ -2315,8 +2315,10 @@ body.dark-mode .prompt-ranking-sub { color: #94a3b8; }
     max-width: 500px !important;
     margin: 0 auto !important;
     border-radius: 24px 24px 0 0 !important;
-    height: 82vh !important; /* Mantém a altura da modal travada e constante */
-    max-height: 82vh !important;
+    height: 92vh !important; /* Amplia a altura útil para exibir os 8 confrontos */
+    height: 92dvh !important;
+    max-height: 92vh !important;
+    max-height: 92dvh !important;
     display: flex;
     flex-direction: column;
     overflow-x: hidden !important; /* Elimina qualquer rolagem horizontal */
@@ -2329,7 +2331,8 @@ body.dark-mode .prompt-ranking-sub { color: #94a3b8; }
     }
     #sheet-leaderboard-ranking .sheet-leaderboard-content {
         border-radius: 20px !important;
-        max-height: 90vh !important;
+        height: 92vh !important;
+        max-height: 92vh !important;
     }
 }
 
