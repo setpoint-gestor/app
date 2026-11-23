@@ -19,7 +19,7 @@ let abaStatusAtivoSaaS = 'TODOS'; // 'TODOS', 'PENDENTE', 'AGENDADO', 'HOMOLOGAD
 
 let edicaoHistoricaFocoSaaS = null;
 let categoriaHistoricaAtivaSaaS = null;
-let listenerGavetaHistoricoAdd = false;   
+let listenerGavetaHistoricoAdd = false;    
 
 let modoVisaoPiramideSaaS = 'lista'; // 'lista' ou 'piramide'
 
@@ -1780,6 +1780,44 @@ function renderizarLeaderboardSaaS() {
             return;
         }
 
+        // 🏷️ Gerador Unificado de Pílulas de Categoria para Visões Gráficas (Pirâmide & Árvore Mata-Mata)
+        const gerarHtmlPilulasCategoriaTorneioAtivoSaaS = (categoriasLista, categoriaAtiva) => {
+            window.mudarCategoriaVisualTorneioAtivoSaaS = (novaCat) => {
+                const partesCat = novaCat.split('_');
+                abaClasseAtivaSaaS = partesCat[0] || 'B';
+                abaGeneroAtivaSaaS = partesCat[1] || 'MASCULINO';
+                abaFaseAtivaSaaS = 'AUTO';
+                if (typeof faseFocoMataMataSaaS !== 'undefined') faseFocoMataMataSaaS = null;
+                if (typeof quadranteAtivoMataMataSaaS !== 'undefined') quadranteAtivoMataMataSaaS = 0;
+                renderizarLeaderboardSaaS();
+            };
+
+            if (!Array.isArray(categoriasLista) || categoriasLista.length === 0) return '';
+
+            const ehClasseUnica = (categoriasLista.length === 1);
+            let htmlPills = `<div style="flex-shrink: 0; align-items: center; margin-bottom: 6px; display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px 2px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
+
+            categoriasLista.forEach(cat => {
+                const ativa = (cat === categoriaAtiva);
+                const p = cat.replace('CLASSE_', '').split('_');
+                const c = p[0] || 'B';
+                const g = (p[1] || 'MASCULINO').toUpperCase();
+                const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Fem' : 'Masc');
+                const label = `${c} ${gTxt}`;
+                const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
+                const acaoClick = ehClasseUnica ? '' : `onclick="window.mudarCategoriaVisualTorneioAtivoSaaS('${cat}')"`;
+
+                htmlPills += `
+                    <button type="button" ${acaoClick} style="flex-shrink: 0; white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; ${estiloCursor} transition: all 0.2s;">
+                        ${label}
+                    </button>
+                `;
+            });
+
+            htmlPills += `</div>`;
+            return htmlPills;
+        };
+
         if (modelo === 'piramide') {
             const containerAlvo = document.getElementById('body-leaderboard-scroll');
             const containerAbas = document.querySelector('#sheet-leaderboard-ranking .opt1-segmented');
@@ -2090,10 +2128,31 @@ function renderizarLeaderboardSaaS() {
                     if (containerDropdownsOpt) containerDropdownsOpt.style.display = 'none';
 
                     if (typeof renderizarVisaoMataMataSaaS === 'function') {
-                        renderizarVisaoMataMataSaaS(bodyList, dadosChaveCat, idLogado);
+                        const chavesAtivasKeys = Object.keys(chavesMapUI).filter(k => chavesMapUI[k] && (chavesMapUI[k].rodada1 || chavesMapUI[k].totalClassificados)).sort();
+                        const categoriasArvore = chavesAtivasKeys.length > 0 ? chavesAtivasKeys : Array.from(setCategoriasTorneioUI).sort();
+                        const htmlPillsArvore = gerarHtmlPilulasCategoriaTorneioAtivoSaaS(categoriasArvore, chaveTabela);
+
+                        bodyList.style.paddingTop = '2px';
+                        bodyList.style.overflow = 'hidden';
+                        bodyList.scrollTop = 0;
+
+                        bodyList.innerHTML = `
+                            <div id="container-pills-torneio-ativo" style="flex-shrink: 0; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">
+                                ${htmlPillsArvore}
+                            </div>
+                            <div id="container-bracket-torneio-ativo" style="flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; position: relative; box-sizing: border-box;"></div>
+                        `;
+
+                        const bracketContainer = document.getElementById('container-bracket-torneio-ativo');
+                        renderizarVisaoMataMataSaaS(bracketContainer, dadosChaveCat, idLogado);
                         return;
                     }
                 }
+
+                // Restaura visibilidade das abas, dropdowns e rolagem se estiver no modo lista
+                bodyList.style.overflow = '';
+                if (containerAbasOpt) containerAbasOpt.style.display = '';
+                if (containerDropdownsOpt) containerDropdownsOpt.style.display = '';
 
                 // Restaura visibilidade das abas e dropdowns se estiver no modo lista
                 if (containerAbasOpt) containerAbasOpt.style.display = '';
@@ -2400,6 +2459,8 @@ function renderizarHTMLGruposAcervoSaaS() {
     const txtSub = document.getElementById('txt-subtitulo-leaderboard');
     if (!bodyList || !edicaoHistoricaFocoSaaS) return;
 
+    bodyList.style.paddingTop = '2px';
+
     const edicao = edicaoHistoricaFocoSaaS; 
     const cal = edicao.contrato || {};
     const categorias = Object.keys(edicao.classificacaoFinal || {});
@@ -2408,24 +2469,25 @@ function renderizarHTMLGruposAcervoSaaS() {
 
     if (txtSub) {
         txtSub.innerHTML = `<b>Grupos Final</b> • ${cal.nomeTorneio || 'Torneio'} <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:4px; border:1px solid #cbd5e1;">[Acervo Histórico]</span>`;
+        txtSub.style.marginBottom = '0px';
     }
 
     let htmlHeaderCat = '';
     if (categorias.length > 0) {
         const ehClasseUnica = (categorias.length === 1);
-        htmlHeaderCat += `<div style="margin-bottom: 6px; display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px 2px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
+        htmlHeaderCat += `<div style="flex-shrink: 0; align-items: center; margin-bottom: 6px; display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px 2px; border-bottom: 1px solid #f1f5f9; width: 100%; box-sizing: border-box;" data-html2canvas-ignore="true">`;
         categorias.sort().forEach(cat => {
             const ativa = (cat === catAtiva);
             const p = cat.replace('CLASSE_', '').split('_');
             const c = p[0] || 'B';
             const g = (p[1] || 'MASCULINO').toUpperCase();
-            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Feminino' : 'Masculino');
-            const label = ehClasseUnica ? `Classe ${c} ${gTxt}` : `${c} ${gTxt}`;
+            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Fem' : 'Masc');
+            const label = `${c} ${gTxt}`;
             const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
             const acaoClick = ehClasseUnica ? '' : `onclick="mudarCategoriaGruposHistoricaSaaS('${cat}')"`;
 
             htmlHeaderCat += `
-                <button type="button" ${acaoClick} style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; ${estiloCursor} transition: all 0.2s;">
+                <button type="button" ${acaoClick} style="flex-shrink: 0; white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid ${ativa ? '#8b5cf6' : '#cbd5e1'}; background: ${ativa ? '#8b5cf6' : '#f8fafc'}; color: ${ativa ? '#fff' : '#475569'}; ${estiloCursor} transition: all 0.2s;">
                     ${label}
                 </button>
             `;

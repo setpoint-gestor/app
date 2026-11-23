@@ -1953,6 +1953,9 @@ function deslogarJogadorSaaS() {
 // Controlo do estado PRO do atleta e exibição de anúncios (AdMob Nativo + Simulador Web)
 let perfilEhPro = false;
 window.admobBannerAtivoNativo = false;
+window.admobOperacaoEmAndamentoSaaS = false;
+window.admobEstadoDesejadoSaaS = false;
+window.tecladoVirtualAbertoAdMobSaaS = false;
 
 function obterChaveLocalProSaaS() {
     const clube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) ? clubeAtivoId : 'default';
@@ -1960,12 +1963,43 @@ function obterChaveLocalProSaaS() {
     return 'setpoint_usuario_pro_' + clube + '_' + idJog;
 }
 
+function verificarContextoSeguroBannerAdMobSaaS() {
+    // 1. Exige jogador autenticado (nunca exibe nas telas de Boas-Vindas, Código do Clube ou Login)
+    const idLogado = localStorage.getItem('jogadorLogadoId');
+    if (!idLogado) return false;
+
+    // 2. Exige que a tela ativa seja exclusivamente a grade de quadras
+    const telaQuadras = document.getElementById('tela-visao-quadras');
+    if (!telaQuadras || !telaQuadras.classList.contains('ativa')) return false;
+
+    // 3. Oculta sempre que o teclado virtual estiver aberto
+    if (window.tecladoVirtualAbertoAdMobSaaS) return false;
+    if (window.visualViewport && window.innerHeight && (window.visualViewport.height < window.innerHeight * 0.78)) {
+        return false;
+    }
+
+    // 4. Oculta sempre que qualquer modal, gaveta, prompt, barra da IA ou popover estiver visível
+    const overlays = document.querySelectorAll(
+        '.modal-overlay, .modal-form-overlay, .bottom-sheet-overlay, .sheet-SaaS-overlay, .modal-overlay-notif, .modal-prompt-overlay, [id^="modal-"], #popover-central-baixas, #ia-backdrop.ativo, #ia-barra-mestra.aberta'
+    );
+    for (let i = 0; i < overlays.length; i++) {
+        const el = overlays[i];
+        const estilo = window.getComputedStyle(el);
+        if (estilo && estilo.display !== 'none' && estilo.visibility !== 'hidden') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 async function gerenciarBannerAdMobNativoSaaS(deveExibir) {
+    window.admobEstadoDesejadoSaaS = !!deveExibir;
     const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
 
     // No navegador (PC / PWA), alterna a faixa visual de simulação para testes
     if (!isNativo) {
-        document.body.classList.toggle('simular-banner', deveExibir);
+        document.body.classList.toggle('simular-banner', window.admobEstadoDesejadoSaaS);
         return;
     }
 
@@ -1974,34 +2008,44 @@ async function gerenciarBannerAdMobNativoSaaS(deveExibir) {
     const AdMobPlugin = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins.AdMob : null;
     if (!AdMobPlugin) return;
 
+    // Fila de sincronização para evitar corrida entre showBanner e removeBanner
+    if (window.admobOperacaoEmAndamentoSaaS) return;
+    window.admobOperacaoEmAndamentoSaaS = true;
+
     try {
-        if (deveExibir && !window.admobBannerAtivoNativo) {
-            if (!window.admobInicializadoSaaS && typeof AdMobPlugin.initialize === 'function') {
-                await AdMobPlugin.initialize({ initializeForTesting: false });
-                window.admobInicializadoSaaS = true;
-            }
+        while (window.admobEstadoDesejadoSaaS !== window.admobBannerAtivoNativo) {
+            const alvoExibir = window.admobEstadoDesejadoSaaS;
 
-            // ID oficial de teste do Google AdMob (substituível remotamente por Clubes/SaaS_Config/admob_banner_id)
-            const adUnitId = window.admobBannerIdRemotoSaaS || 'ca-app-pub-3940256099942544/6300978111';
+            if (alvoExibir) {
+                if (!window.admobInicializadoSaaS && typeof AdMobPlugin.initialize === 'function') {
+                    await AdMobPlugin.initialize({ initializeForTesting: false });
+                    window.admobInicializadoSaaS = true;
+                }
 
-            await AdMobPlugin.showBanner({
-                adId: adUnitId,
-                adSize: 'ADAPTIVE_BANNER',
-                position: 'BOTTOM_CENTER',
-                margin: 0,
-                isTesting: !window.admobBannerIdRemotoSaaS
-            });
-            window.admobBannerAtivoNativo = true;
-        } else if (!deveExibir && window.admobBannerAtivoNativo) {
-            if (typeof AdMobPlugin.removeBanner === 'function') {
-                await AdMobPlugin.removeBanner();
-            } else if (typeof AdMobPlugin.hideBanner === 'function') {
-                await AdMobPlugin.hideBanner();
+                // ID oficial de teste do Google AdMob (substituível remotamente por Clubes/SaaS_Config/admob_banner_id)
+                const adUnitId = window.admobBannerIdRemotoSaaS || 'ca-app-pub-3940256099942544/6300978111';
+
+                await AdMobPlugin.showBanner({
+                    adId: adUnitId,
+                    adSize: 'ADAPTIVE_BANNER',
+                    position: 'BOTTOM_CENTER',
+                    margin: 0,
+                    isTesting: !window.admobBannerIdRemotoSaaS
+                });
+                window.admobBannerAtivoNativo = true;
+            } else {
+                if (typeof AdMobPlugin.removeBanner === 'function') {
+                    await AdMobPlugin.removeBanner();
+                } else if (typeof AdMobPlugin.hideBanner === 'function') {
+                    await AdMobPlugin.hideBanner();
+                }
+                window.admobBannerAtivoNativo = false;
             }
-            window.admobBannerAtivoNativo = false;
         }
     } catch (erroAdmob) {
         console.warn('[AdMob SaaS] Aviso ao gerenciar banner nativo:', erroAdmob);
+    } finally {
+        window.admobOperacaoEmAndamentoSaaS = false;
     }
 }
 
@@ -2040,12 +2084,67 @@ function sincronizarEstadoProEAnunciosSaaS() {
         }
     }
 
-    // Por omissão, anúncios ficam ativos para atletas não-PRO quando o clube usa o plano gratuito
+    // Exibe anúncios apenas para atleta básico autenticado, na planilha e sem modais/teclado abertos
     const clubeExibeAnuncios = (window.clubeExibeAnunciosSaaS !== false);
-    const deveMostrarBanner = !perfilEhPro && clubeExibeAnuncios;
+    const contextoSeguro = verificarContextoSeguroBannerAdMobSaaS();
+    const deveMostrarBanner = !!idLogado && !perfilEhPro && clubeExibeAnuncios && contextoSeguro;
 
     document.body.classList.toggle('com-anuncio-admob', deveMostrarBanner);
     gerenciarBannerAdMobNativoSaaS(deveMostrarBanner);
+}
+
+// Sensores automáticos de navegação, abertura/fechamento de modais e teclado virtual
+if (!window.sensoresContextoAdMobAtivosSaaS) {
+    window.sensoresContextoAdMobAtivosSaaS = true;
+    let timerSyncAdMob = null;
+
+    const agendarSyncAdMob = () => {
+        if (timerSyncAdMob) clearTimeout(timerSyncAdMob);
+        timerSyncAdMob = setTimeout(() => {
+            sincronizarEstadoProEAnunciosSaaS();
+        }, 30);
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (document.body) {
+            const observadorContexto = new MutationObserver(() => {
+                agendarSyncAdMob();
+            });
+            observadorContexto.observe(document.body, {
+                attributes: true,
+                subtree: true,
+                attributeFilter: ['style', 'class']
+            });
+        }
+        agendarSyncAdMob();
+    });
+
+    document.addEventListener('focusin', (e) => {
+        const tag = e.target && e.target.tagName ? e.target.tagName.toUpperCase() : '';
+        const tipo = (e.target && e.target.type) ? e.target.type.toLowerCase() : '';
+        const ehCampoTexto = (tag === 'TEXTAREA') || (tag === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'file', 'range'].includes(tipo));
+        if (ehCampoTexto) {
+            window.tecladoVirtualAbertoAdMobSaaS = true;
+            sincronizarEstadoProEAnunciosSaaS();
+        }
+    });
+
+    document.addEventListener('focusout', () => {
+        setTimeout(() => {
+            const ativo = document.activeElement;
+            const tag = ativo && ativo.tagName ? ativo.tagName.toUpperCase() : '';
+            const tipo = (ativo && ativo.type) ? ativo.type.toLowerCase() : '';
+            const aindaDigitando = (tag === 'TEXTAREA') || (tag === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'file', 'range'].includes(tipo));
+            if (!aindaDigitando) {
+                window.tecladoVirtualAbertoAdMobSaaS = false;
+                sincronizarEstadoProEAnunciosSaaS();
+            }
+        }, 180);
+    });
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', agendarSyncAdMob);
+    }
 }
 
 function alternarPlanoPerfil() {

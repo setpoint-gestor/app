@@ -391,6 +391,7 @@ function limparFormularioFase1SaaS() {
     const elDtIncFim = document.getElementById('inp-torneio-dt-inc-fim');
     const elDtJogIni = document.getElementById('inp-torneio-dt-jog-ini');
     const elDtJogFim = document.getElementById('inp-torneio-dt-jog-fim');
+    const inputPdf = document.getElementById('inp-pdf-file');
     const lblPdf = document.getElementById('pdf-file-name');
     const containerPills = document.getElementById('container-pills-categorias');
 
@@ -402,6 +403,7 @@ function limparFormularioFase1SaaS() {
     if (elDtIncFim) { elDtIncFim.value = ''; elDtIncFim.disabled = false; elDtIncFim.title = ''; }
     if (elDtJogIni) { elDtJogIni.value = ''; elDtJogIni.disabled = false; elDtJogIni.title = ''; }
     if (elDtJogFim) { elDtJogFim.value = ''; elDtJogFim.disabled = false; elDtJogFim.title = ''; }
+    if (inputPdf) { inputPdf.value = ''; }
 
     if (lblPdf) {
         lblPdf.innerText = 'Nenhum arquivo anexado (Opcional)';
@@ -425,6 +427,26 @@ function limparFormularioFase1SaaS() {
     window.emModoEdicaoCalendarioSaaS = false;
 }
 
+
+async function excluirRegulamentoPdfGitHubSaaS(urlOuArquivo) {
+    if (!urlOuArquivo || typeof urlOuArquivo !== 'string') return;
+
+    const urlWorkerRegulamento = "https://setpoint-api.ronaldo-taborda.workers.dev/regulamento";
+
+    try {
+        await fetch(urlWorkerRegulamento, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                clubeId: clubeAtivoId || "SaaS",
+                method: "DELETE",
+                fileUrl: urlOuArquivo
+            })
+        });
+    } catch (err) {
+        console.warn("⚠️ [Torneios] Não foi possível remover o PDF antigo no GitHub:", err);
+    }
+}
 
 async function zerarRankingSaaS() {
     if (!isGestorLogado || !raizBanco) {
@@ -456,6 +478,7 @@ async function zerarRankingSaaS() {
         const faseAtual = parseInt(configRanking.faseAtual, 10) || 1;
         const cal = configRanking.calendario || {};
         const temCalendario = !!configRanking.calendario;
+        const regulamentoUrlAntigo = cal.regulamentoUrl || '';
 
         // 1. Contagem das partidas ativas na temporada atual
         const totalPartidas = Object.keys(partidas).length;
@@ -579,6 +602,11 @@ async function zerarRankingSaaS() {
                 caminhosNotificacoesExcluir.forEach(path => { updates[path] = null; }); 
 
                 await database.ref(raizBanco).update(updates); 
+
+                // 🗑️ Remove também o PDF físico do regulamento no GitHub (se havia edital anexado)
+                if (regulamentoUrlAntigo) {
+                    excluirRegulamentoPdfGitHubSaaS(regulamentoUrlAntigo);
+                }
 
                 // 3. Sincroniza a memória RAM imediatamente para evitar cache fantasma
                 if (typeof rankingPartidasGlobal !== 'undefined') {
@@ -1157,7 +1185,7 @@ function renderizarGestaoTemporadaSaaS() {
                     btnPdfResumo.onclick = () => abrirRegulamentoPdfSaaS(cal.regulamentoUrl);
                     btnPdfResumo.style.display = 'inline-flex';
                 } else if (btnPdfResumo) {
-                    btnPdfResumo.style.display = 'none';
+                    btnPdfResumo.remove();
                 }
 
                 const podeEditar = (faseAtual === 2);
@@ -1982,6 +2010,7 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
         const file = inputPdf.files[0];
         const urlWorkerRegulamento = "https://setpoint-api.ronaldo-taborda.workers.dev/regulamento";
+        const urlPdfAnterior = confGlobalCheck.calendario?.regulamentoUrl || '';
 
         showToast("Enviando regulamento em PDF...", "info", 3000);
 
@@ -2010,6 +2039,11 @@ function salvarCalendarioEAbrirInscricoesSaaS() {
 
                 if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal && configRegrasGlobal.ranking && configRegrasGlobal.ranking.calendario) {
                     configRegrasGlobal.ranking.calendario.regulamentoUrl = dados.url;
+                }
+
+                // 🗑️ Remove o PDF anterior no GitHub caso tenha sido substituído por um novo edital
+                if (urlPdfAnterior && urlPdfAnterior !== dados.url && typeof excluirRegulamentoPdfGitHubSaaS === 'function') {
+                    excluirRegulamentoPdfGitHubSaaS(urlPdfAnterior);
                 }
 
                 inputPdf.value = "";
@@ -4192,11 +4226,27 @@ function excluirTorneioHistoricoSaaS(edicaoId, nomeTorneio) {
             if (navigator.vibrate) navigator.vibrate(50);
             showToast("Excluindo torneio do histórico...", "info");
 
+            // Captura a URL do edital em PDF antes de apagar (RAM com fallback para o Firebase)
+            let regulamentoUrlHistorico = '';
+            if (typeof acervoHistoricoGlobalSaaS !== 'undefined' && Array.isArray(acervoHistoricoGlobalSaaS)) {
+                const edicaoEncontrada = acervoHistoricoGlobalSaaS.find(item => item.id === edicaoId);
+                regulamentoUrlHistorico = edicaoEncontrada?.contrato?.regulamentoUrl || '';
+            }
+            if (!regulamentoUrlHistorico) {
+                const snapRegUrl = await database.ref(`${raizBanco}/historico_torneios/${edicaoId}/contrato/regulamentoUrl`).once('value');
+                regulamentoUrlHistorico = snapRegUrl.val() || '';
+            }
+
             const updates = {};
             updates[`${raizBanco}/historico_torneios/${edicaoId}`] = null;
             updates[`${raizBanco}/hall_de_campeoes/${edicaoId}`] = null;
 
             await database.ref().update(updates);
+
+            // 🗑️ Remove também o PDF físico do regulamento no GitHub (se havia edital anexado)
+            if (regulamentoUrlHistorico && typeof excluirRegulamentoPdfGitHubSaaS === 'function') {
+                excluirRegulamentoPdfGitHubSaaS(regulamentoUrlHistorico);
+            }
 
             // 🧠 1. REMOÇÃO DA MEMÓRIA RAM (EVITA ATUALIZAÇÃO MANUAL COM F5)
             if (typeof acervoHistoricoGlobalSaaS !== 'undefined' && Array.isArray(acervoHistoricoGlobalSaaS)) {
