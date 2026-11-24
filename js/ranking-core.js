@@ -1492,6 +1492,11 @@ function salvarSumulaSaaS() {
 
             fecharModalConfig('modal-sumula-ranking');
 
+            // 📺 Intersticial Pós-Súmula (ignorado em arbitragem neutra/gestor para não interromper julgamentos)
+            if (!ehArbitragemNeutra && typeof exibirIntersticialAdMobSaaS === 'function') {
+                exibirIntersticialAdMobSaaS();
+            }
+
             // 🎯 SE AINDA RESTAREM CONTESTAÇÕES, REABRE O PAINEL DO ÁRBITRO
             if (ehContestado && ehArbitragemNeutra && window.contestacoesAbertasSaaS && window.contestacoesAbertasSaaS.length > 0) {
                 setTimeout(() => {
