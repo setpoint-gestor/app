@@ -926,53 +926,139 @@ function executarAcaoDaIA(jsonDaIA) {
 // 8. DISPACHO E COMUNICAÇÃO (JSON API REST + FALLBACK + COTA INTELIGENTE)
 // ====================================================================
 
-// Lê o limite em tempo real do espelho na memória (atualizado pelo core.js)
+function usuarioIsentoCotaBasicaIaSaaS() {
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    const ehGestorOuDev = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode;
+    if (ehGestorOuDev) return true;
+
+    const ehPro = (typeof perfilEhPro !== 'undefined' && perfilEhPro === true) ||
+                  (typeof verificarTrialProAtivoSaaS === 'function' && verificarTrialProAtivoSaaS());
+    if (ehPro) return true;
+
+    if (window.admobAtivoRemotoSaaS === false) {
+        return true;
+    }
+
+    return false;
+}
+
+// Lê o limite em tempo real do espelho na memória (1/dia no Plano Básico; cota do clube no PRO)
 function obterLimiteDiarioPerguntas() {
+    if (!usuarioIsentoCotaBasicaIaSaaS()) {
+        return 1;
+    }
+
     if (typeof configRegrasGlobal !== 'undefined' && configRegrasGlobal.limiteIaDiario !== undefined) {
         const limiteConfigurado = parseInt(configRegrasGlobal.limiteIaDiario, 10);
         if (!isNaN(limiteConfigurado)) {
             return limiteConfigurado;
         }
     }
-    return 10; // Fallback padrão
+    return 10; // Fallback padrão para assinantes PRO
+}
+
+function obterChaveCotaIaUsuarioSaaS() {
+    const clube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId)
+        ? clubeAtivoId
+        : (localStorage.getItem('setpoint_jogador_clube_id') || 'default');
+    const idJog = localStorage.getItem('jogadorLogadoId') || 'anon';
+    return 'setpoint_ia_cota_' + clube + '_' + idJog;
+}
+
+function obterRegistroCotaIaHojeSaaS() {
+    const chaveCota = obterChaveCotaIaUsuarioSaaS();
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    let registroCota = {};
+    try {
+        registroCota = JSON.parse(localStorage.getItem(chaveCota) || '{}');
+    } catch (e) {
+        registroCota = {};
+    }
+
+    if (registroCota.data !== hoje) {
+        registroCota = { data: hoje, usos: 0, creditosExtras: 0 };
+        localStorage.setItem(chaveCota, JSON.stringify(registroCota));
+    }
+
+    if (typeof registroCota.usos !== 'number') registroCota.usos = 0;
+    if (typeof registroCota.creditosExtras !== 'number') registroCota.creditosExtras = 0;
+
+    return registroCota;
+}
+
+function verificarDisponibilidadeCotaIaSaaS() {
+    const limiteDiario = obterLimiteDiarioPerguntas();
+    const registro = obterRegistroCotaIaHojeSaaS();
+
+    if (registro.usos < limiteDiario) {
+        return { permitido: true, origem: 'gratuita' };
+    }
+
+    if (registro.creditosExtras > 0) {
+        return { permitido: true, origem: 'extra' };
+    }
+
+    return {
+        permitido: false,
+        ehPlanoBasico: !usuarioIsentoCotaBasicaIaSaaS(),
+        limiteDiario
+    };
+}
+
+function confirmarConsumoCotaIaSaaS(origemCredito) {
+    const chaveCota = obterChaveCotaIaUsuarioSaaS();
+    const registro = obterRegistroCotaIaHojeSaaS();
+    if (origemCredito === 'extra' && registro.creditosExtras > 0) {
+        registro.creditosExtras -= 1;
+    } else {
+        registro.usos += 1;
+    }
+    localStorage.setItem(chaveCota, JSON.stringify(registro));
+    console.log(`🤖 [Cota Local] Usos gratuitos: ${registro.usos}/${obterLimiteDiarioPerguntas()} | Créditos extras: ${registro.creditosExtras}`);
+}
+
+function concederCreditoExtraIaPorVideoSaaS() {
+    const chaveCota = obterChaveCotaIaUsuarioSaaS();
+    const registro = obterRegistroCotaIaHojeSaaS();
+    registro.creditosExtras += 1;
+    localStorage.setItem(chaveCota, JSON.stringify(registro));
 }
 
 function verificarEConsumirCotaLocal() {
-    const limiteDiario = obterLimiteDiarioPerguntas();
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    let registroCota = JSON.parse(localStorage.getItem('setpoint_ia_cota') || '{}');
-
-    if (registroCota.data !== hoje) {
-        registroCota = { data: hoje, usos: 0 };
-    }
-
-    // Compara o uso armazenado com o limite FRESCO da memória RAM
-    if (registroCota.usos >= limiteDiario) {
-        return false; // Cota esgotada (temporária ou não, dependendo do Firebase)
-    }
-
-    registroCota.usos += 1;
-    localStorage.setItem('setpoint_ia_cota', JSON.stringify(registroCota));
-
-    console.log(`🤖 [Cota Local] Uso: ${registroCota.usos} de ${limiteDiario}`);
+    const status = verificarDisponibilidadeCotaIaSaaS();
+    if (!status.permitido) return false;
+    confirmarConsumoCotaIaSaaS(status.origem);
     return true;
 }
 
 async function processarMensagemConcierge(texto) {
-    if (!verificarEConsumirCotaLocal()) {
-        const limiteAtual = obterLimiteDiarioPerguntas();
+    const statusCota = verificarDisponibilidadeCotaIaSaaS();
+
+    if (!statusCota.permitido) {
+        encerrarMicrofoneSilencioso();
+        desativarModoContinuoVisual();
+
+        // Atleta no Plano Básico: oferece Vídeo Premiado (+1 pergunta) ou Assinar SetPoint PRO
+        if (statusCota.ehPlanoBasico && typeof solicitarVideoPremiadoAdMobSaaS === 'function') {
+            solicitarVideoPremiadoAdMobSaaS(() => {
+                concederCreditoExtraIaPorVideoSaaS();
+                showToast('+1 pergunta liberada no Concierge IA!', 'success', 2500);
+                processarMensagemConcierge(texto);
+            }, 'Pergunta Extra no Concierge IA');
+            return;
+        }
+
+        // Assinante PRO que atingiu o teto diário do clube
         if (typeof showToast === 'function') {
-            showToast(`Você atingiu seu limite diário de perguntas (${limiteAtual}/dia). Créditos renovam à meia-noite!`, "warning", 6000);
+            showToast(`Você atingiu seu limite diário de perguntas (${statusCota.limiteDiario}/dia). Créditos renovam à meia-noite!`, "warning", 6000);
         }
         const inputTexto = document.getElementById('ia-input-texto');
         if (inputTexto) {
             inputTexto.value = '';
             inputTexto.placeholder = "Limite diário atingido. Até amanhã!";
-            inputTexto.disabled = true; 
+            inputTexto.disabled = true;
         }
-        encerrarMicrofoneSilencioso();
-        desativarModoContinuoVisual();
-        return; 
+        return;
     }
 
     const inputTexto = document.getElementById('ia-input-texto');
@@ -1077,6 +1163,9 @@ REGRA DE RESPOSTA E UX (MUITO IMPORTANTE):
     }
 
     if (respostaIAObj && respostaIAObj.mensagem) {
+        // Desconta o crédito apenas após resposta válida da IA (protege contra falhas de rede ou erro 429)
+        confirmarConsumoCotaIaSaaS(statusCota.origem);
+
         // Dispensa eventual aviso intermediário ("Consultando...") para exibir a resposta imediatamente
         const toastIntermediario = document.querySelector('#toastContainer .toast.info');
         if (toastIntermediario) toastIntermediario.click();

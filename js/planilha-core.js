@@ -2049,6 +2049,227 @@ async function gerenciarBannerAdMobNativoSaaS(deveExibir) {
     }
 }
 
+async function exibirIntersticialAdMobSaaS() {
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const clubeExibeAnuncios = (window.clubeExibeAnunciosSaaS !== false);
+    const admobAtivoGlobal = (window.admobAtivoRemotoSaaS !== false);
+
+    // Regras de isenção: PRO (permanente ou trial 24h), Gestor/Admin, ou anúncios desligados
+    if (perfilEhPro || !clubeExibeAnuncios || !admobAtivoGlobal || (typeof isGestorLogado !== 'undefined' && isGestorLogado) || !!localStorage.getItem('god_mode_clube')) {
+        return;
+    }
+
+    // Controle Anti-Fadiga (Frequency Capping) - Padrão 60 minutos
+    const intervaloMinutos = window.admobIntervaloIntersticialSaaS || 60;
+    const ultimoDisparo = parseInt(localStorage.getItem('setpoint_ultimo_intersticial_ts') || '0', 10);
+    const agora = Date.now();
+
+    if (agora - ultimoDisparo < (intervaloMinutos * 60 * 1000)) {
+        console.log(`[AdMob SaaS] Intersticial ignorado (Anti-Fadiga). Próximo em ${Math.ceil((intervaloMinutos * 60 * 1000 - (agora - ultimoDisparo)) / 60000)} min.`);
+        return;
+    }
+
+    if (!isNativo) {
+        console.log('[AdMob SaaS SIMULADOR] 📺 Intersticial de Tela Cheia exibido com sucesso no PC.');
+        localStorage.setItem('setpoint_ultimo_intersticial_ts', agora.toString());
+        return;
+    }
+
+    const AdMobPlugin = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins.AdMob : null;
+    if (!AdMobPlugin) return;
+
+    try {
+        if (!window.admobInicializadoSaaS && typeof AdMobPlugin.initialize === 'function') {
+            await AdMobPlugin.initialize({ initializeForTesting: false });
+            window.admobInicializadoSaaS = true;
+        }
+
+        const adUnitId = window.admobInterstitialIdRemotoSaaS || 'ca-app-pub-3940256099942544/1033173712';
+
+        await AdMobPlugin.prepareInterstitial({ adId: adUnitId, isTesting: !window.admobInterstitialIdRemotoSaaS });
+        await AdMobPlugin.showInterstitial();
+
+        localStorage.setItem('setpoint_ultimo_intersticial_ts', agora.toString());
+    } catch (erro) {
+        console.warn('[AdMob SaaS] Erro ao exibir Intersticial:', erro);
+    }
+}
+
+async function solicitarVideoPremiadoAdMobSaaS(callbackSucesso, tituloRecurso = "Recurso Exclusivo", pularConfirmacao = false) {
+    const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+
+    const executarFluxoVideo = async () => {
+        if (!isNativo) {
+            showToast("📺 [Simulador Web] Vídeo premiado assistido com sucesso!", "success");
+            if (typeof callbackSucesso === 'function') callbackSucesso();
+            return;
+        }
+
+        const AdMobPlugin = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins.AdMob : null;
+        if (!AdMobPlugin) {
+            showToast("Recurso de vídeo indisponível neste aparelho.", "error");
+            return;
+        }
+
+        showToast("Carregando vídeo...", "info");
+
+        try {
+            if (!window.admobInicializadoSaaS && typeof AdMobPlugin.initialize === 'function') {
+                await AdMobPlugin.initialize({ initializeForTesting: false });
+                window.admobInicializadoSaaS = true;
+            }
+
+            const adUnitId = window.admobRewardedIdRemotoSaaS || 'ca-app-pub-3940256099942544/5224354917';
+
+            if (typeof AdMobPlugin.removeAllListeners === 'function') {
+                await AdMobPlugin.removeAllListeners();
+            }
+
+            let recompensaEntregue = false;
+
+            AdMobPlugin.addListener('onRewardedVideoAdReward', () => {
+                recompensaEntregue = true;
+            });
+
+            AdMobPlugin.addListener('onRewardedVideoAdDismissed', () => {
+                if (recompensaEntregue && typeof callbackSucesso === 'function') {
+                    callbackSucesso();
+                } else if (!recompensaEntregue) {
+                    showToast("Vídeo cancelado. A recompensa não foi liberada.", "warning");
+                }
+            });
+
+            await AdMobPlugin.prepareRewardVideoAd({ adId: adUnitId, isTesting: !window.admobRewardedIdRemotoSaaS });
+            await AdMobPlugin.showRewardVideoAd();
+
+        } catch (erro) {
+            console.warn('[AdMob SaaS] Erro no Vídeo Premiado:', erro);
+            showToast("Erro ao carregar o vídeo. Tente novamente mais tarde.", "error");
+        }
+    };
+
+    if (pularConfirmacao) {
+        await executarFluxoVideo();
+        return;
+    }
+
+    showPrompt(
+        'Conteúdo Premium',
+        `<div style="text-align: left; color: #334155; font-size: 13.5px; line-height: 1.4;">
+            O recurso <b>${tituloRecurso}</b> é exclusivo do plano PRO.<br><br>
+            Deseja assistir a um vídeo rápido para liberá-lo agora ou prefere assinar o pacote PRO para ter acesso permanente sem anúncios?
+        </div>`,
+        async () => {
+            await executarFluxoVideo();
+        },
+        () => {
+            if (typeof fecharSheetPerfil === 'function') fecharSheetPerfil();
+            if (typeof abrirModalConfig === 'function') abrirModalConfig('modal-seja-pro');
+        }
+    );
+
+    setTimeout(() => {
+        const btnSim = document.getElementById('btnPromptConfirm');
+        const btnNao = document.getElementById('btnPromptCancel');
+        if (btnSim) {
+            btnSim.innerHTML = '<i class="material-icons" style="font-size: 16px;">play_circle</i> Ver Vídeo';
+            btnSim.style.setProperty('background-color', '#8b5cf6', 'important');
+            btnSim.style.setProperty('color', '#ffffff', 'important');
+            btnSim.style.setProperty('display', 'inline-flex', 'important');
+            btnSim.style.setProperty('align-items', 'center', 'important');
+            btnSim.style.setProperty('justify-content', 'center', 'important');
+            btnSim.style.setProperty('gap', '6px', 'important');
+        }
+        if (btnNao) {
+            btnNao.innerHTML = '🌟 Seja PRO';
+            btnNao.style.setProperty('background-color', '#f59e0b', 'important');
+            btnNao.style.setProperty('color', '#ffffff', 'important');
+        }
+    }, 10);
+}
+
+function obterChavesTrialProSaaS() {
+    const clube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) ? clubeAtivoId : 'default';
+    const idJog = localStorage.getItem('jogadorLogadoId') || 'anon';
+    return {
+        chaveAte: 'setpoint_pro_trial_until_' + clube + '_' + idJog,
+        chaveCooldown: 'setpoint_pro_trial_cooldown_' + clube + '_' + idJog
+    };
+}
+
+function verificarTrialProAtivoSaaS() {
+    const { chaveAte } = obterChavesTrialProSaaS();
+    const ateTs = parseInt(localStorage.getItem(chaveAte) || '0', 10);
+    if (ateTs > Date.now()) {
+        return true;
+    }
+    if (ateTs > 0) {
+        localStorage.removeItem(chaveAte);
+    }
+    return false;
+}
+
+function renderizarBotaoDegustacaoProModalSaaS() {
+    const btnAssinar = document.getElementById('btn-assinar-setpoint-pro');
+    if (!btnAssinar || !btnAssinar.parentElement) return;
+
+    let btnTrial = document.getElementById('btn-degustacao-pro-24h');
+    if (!btnTrial) {
+        btnTrial = document.createElement('button');
+        btnTrial.id = 'btn-degustacao-pro-24h';
+        btnTrial.type = 'button';
+        btnAssinar.insertAdjacentElement('afterend', btnTrial);
+    }
+
+    const { chaveCooldown } = obterChavesTrialProSaaS();
+    const cooldownAte = parseInt(localStorage.getItem(chaveCooldown) || '0', 10);
+    const agora = Date.now();
+
+    if (cooldownAte > agora) {
+        const diasRestantes = Math.ceil((cooldownAte - agora) / (24 * 60 * 60 * 1000));
+        btnTrial.disabled = true;
+        btnTrial.style.cssText = 'width: 100%; margin-top: 10px; padding: 11px 14px; border-radius: 12px; border: 1px dashed #cbd5e1; background: #f8fafc; color: #94a3b8; font-size: 12px; font-weight: 700; cursor: not-allowed; display: flex; align-items: center; justify-content: center; gap: 6px;';
+        btnTrial.innerHTML = `<i class="material-icons" style="font-size: 16px;">schedule</i> Próximo teste grátis disponível em ${diasRestantes} dia(s)`;
+        btnTrial.onclick = null;
+    } else {
+        btnTrial.disabled = false;
+        btnTrial.style.cssText = 'width: 100%; margin-top: 10px; padding: 11px 14px; border-radius: 12px; border: 1.5px solid #8b5cf6; background: #f5f3ff; color: #6d28d9; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;';
+        btnTrial.innerHTML = `<i class="material-icons" style="font-size: 18px;">play_circle</i> Testar PRO por 24h (Ver Vídeo)`;
+        btnTrial.onclick = () => iniciarDegustacaoPro24hSaaS();
+    }
+}
+
+function iniciarDegustacaoPro24hSaaS() {
+    if (navigator.vibrate) navigator.vibrate(25);
+
+    const { chaveAte, chaveCooldown } = obterChavesTrialProSaaS();
+    const cooldownAte = parseInt(localStorage.getItem(chaveCooldown) || '0', 10);
+    const agora = Date.now();
+
+    if (cooldownAte > agora) {
+        const diasRestantes = Math.ceil((cooldownAte - agora) / (24 * 60 * 60 * 1000));
+        showToast(`Próximo teste grátis disponível em ${diasRestantes} dia(s).`, 'info');
+        return;
+    }
+
+    if (typeof fecharModalConfig === 'function') {
+        fecharModalConfig('modal-seja-pro');
+    }
+
+    solicitarVideoPremiadoAdMobSaaS(() => {
+        const carenciaDias = window.admobCarenciaTrialDiasSaaS || 15;
+        const agoraConclusao = Date.now();
+        const expiraTrial = agoraConclusao + (24 * 60 * 60 * 1000);
+        const expiraCooldown = agoraConclusao + (carenciaDias * 24 * 60 * 60 * 1000);
+
+        localStorage.setItem(chaveAte, String(expiraTrial));
+        localStorage.setItem(chaveCooldown, String(expiraCooldown));
+
+        sincronizarEstadoProEAnunciosSaaS();
+        showToast('Degustação SetPoint PRO ativada por 24 horas! Aproveite sem anúncios.', 'success', 4500);
+    }, 'Degustação SetPoint PRO (24h)', true);
+}
+
 function sincronizarEstadoProEAnunciosSaaS() {
     const isGodMode = !!localStorage.getItem('god_mode_clube');
     const ehGestorOuDev = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode;
@@ -2066,7 +2287,22 @@ function sincronizarEstadoProEAnunciosSaaS() {
 
     const proNoBanco = !!(atletaObj && atletaObj.isPro === true);
     const proNoLocal = localStorage.getItem(obterChaveLocalProSaaS()) === 'true';
-    perfilEhPro = proNoBanco || proNoLocal;
+    const emTrialPro24h = verificarTrialProAtivoSaaS();
+    perfilEhPro = proNoBanco || proNoLocal || emTrialPro24h;
+
+    if (window.timerExpiracaoTrialProSaaS) {
+        clearTimeout(window.timerExpiracaoTrialProSaaS);
+        window.timerExpiracaoTrialProSaaS = null;
+    }
+    if (emTrialPro24h) {
+        const { chaveAte } = obterChavesTrialProSaaS();
+        const restanteMs = parseInt(localStorage.getItem(chaveAte) || '0', 10) - Date.now();
+        if (restanteMs > 0 && restanteMs <= 24 * 60 * 60 * 1000) {
+            window.timerExpiracaoTrialProSaaS = setTimeout(() => {
+                sincronizarEstadoProEAnunciosSaaS();
+            }, restanteMs + 500);
+        }
+    }
 
     const card    = document.getElementById('perfil-card-upgrade');
     const badge   = document.getElementById('perfil-badge-pro');
@@ -2081,6 +2317,7 @@ function sincronizarEstadoProEAnunciosSaaS() {
             card.style.display = 'flex';
             badge.style.display = 'none';
             divisor.style.display = 'none';
+            renderizarBotaoDegustacaoProModalSaaS();
         }
     }
 
@@ -2150,19 +2387,32 @@ if (!window.sensoresContextoAdMobAtivosSaaS) {
 function alternarPlanoPerfil() {
     if (!perfilEhPro) {
         fecharSheetPerfil();
+        renderizarBotaoDegustacaoProModalSaaS();
         if (typeof abrirModalConfig === 'function') {
             abrirModalConfig('modal-seja-pro');
         }
         return;
     }
 
+    const emTrial = verificarTrialProAtivoSaaS();
+    const { chaveAte, chaveCooldown } = obterChavesTrialProSaaS();
+    let msgPrompt = 'A sua assinatura PRO está ativa e os anúncios estão desativados. Deseja simular o regresso ao Plano Básico?';
+
+    if (emTrial) {
+        const ateTs = parseInt(localStorage.getItem(chaveAte) || '0', 10);
+        const horasRestantes = Math.max(1, Math.ceil((ateTs - Date.now()) / (60 * 60 * 1000)));
+        msgPrompt = `A sua degustação PRO de 24h está ativa (restam ~${horasRestantes}h). Deseja encerrar o teste e voltar ao Plano Básico?`;
+    }
+
     // Permite reverter para Plano Básico durante os testes de desenvolvimento
     showPrompt(
         'Plano SetPoint PRO',
-        'A sua assinatura PRO está ativa e os anúncios estão desativados. Deseja simular o regresso ao Plano Básico?',
+        msgPrompt,
         () => {
             perfilEhPro = false;
             localStorage.removeItem(obterChaveLocalProSaaS());
+            localStorage.removeItem(chaveAte);
+            localStorage.removeItem(chaveCooldown);
 
             const idLogado = localStorage.getItem('jogadorLogadoId');
             if (idLogado && typeof raizBanco !== 'undefined' && raizBanco) {
@@ -2170,7 +2420,7 @@ function alternarPlanoPerfil() {
             }
 
             sincronizarEstadoProEAnunciosSaaS();
-            showToast('Plano Básico restaurado para testes.', 'info'); 
+            showToast('Plano Básico restaurado para testes.', 'info');
         }
     );
 }
@@ -2313,15 +2563,30 @@ async function restaurarAssinaturaProNativaSaaS() {
     }
 }
 
-// Sincronização automática do estado de anúncios, ID de produção AdMob e plano do clube no arranque
+// Sincronização automática do estado de anúncios, IDs de produção AdMob e plano do clube no arranque
 setInterval(() => {
     if (typeof raizBanco !== 'undefined' && raizBanco && typeof clubeAtivoId !== 'undefined' && clubeAtivoId && !window.ouvinteAnunciosClubeAtivo) {
         window.ouvinteAnunciosClubeAtivo = true;
 
-        // Lê o ID oficial de Banner do AdMob (quando cadastrado em SaaS_Config, substitui o ID de teste)
-        database.ref('Clubes/SaaS_Config/admob_banner_id').on('value', (snapAdId) => {
-            window.admobBannerIdRemotoSaaS = snapAdId.val() || '';
+        // Lê as configurações centrais do AdMob (Banner, Intersticial, Vídeo Premiado e Intervalos)
+        database.ref('Clubes/SaaS_Config/admob').on('value', (snapAdmob) => {
+            const cfg = snapAdmob.val() || {};
+            window.admobAtivoRemotoSaaS = (cfg.ativo !== false);
+            window.admobBannerIdRemotoSaaS = cfg.bannerId || window.admobBannerIdLegacySaaS || '';
+            window.admobInterstitialIdRemotoSaaS = cfg.interstitialId || '';
+            window.admobRewardedIdRemotoSaaS = cfg.rewardedId || '';
+            window.admobIntervaloIntersticialSaaS = parseInt(cfg.intervaloMinutos, 10) || 60;
+            window.admobCarenciaTrialDiasSaaS = parseInt(cfg.carenciaTrialDias, 10) || 15;
             sincronizarEstadoProEAnunciosSaaS();
+        });
+
+        // Retrocompatibilidade caso ainda exista o nó legado admob_banner_id
+        database.ref('Clubes/SaaS_Config/admob_banner_id').on('value', (snapAdId) => {
+            window.admobBannerIdLegacySaaS = snapAdId.val() || '';
+            if (!window.admobBannerIdRemotoSaaS) {
+                window.admobBannerIdRemotoSaaS = window.admobBannerIdLegacySaaS;
+                sincronizarEstadoProEAnunciosSaaS();
+            }
         });
 
         // Monitora em tempo real se a arena ativa ou desativa anúncios no Console B2B

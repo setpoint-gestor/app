@@ -12,7 +12,7 @@ function cliqueCelula(dia, hora) {
     if (linhaDatasTabela) {
         const agora = new Date();
         const diaMes = String(agora.getDate()).padStart(2, '0');
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');  
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');   
         const ano = agora.getFullYear();
         const stringHoje = `${diaMes}/${mes}/${ano}`;
         const horaAtual = agora.getHours();
@@ -2348,6 +2348,11 @@ function validarEAgendarPartidaSaas() {
                 if (typeof processarGatilhoPushSaaS === 'function') {
                     processarGatilhoPushSaaS(objetoReservaReferencia, nomeOrgPuro, pacote.quadraAlvo, "NOVO_CONVITE");
                 }
+            }
+
+            // 📺 Intersticial Pós-Agendamento (ignorado quando há convidado para preservar o checkout PIX)
+            if (!temConvidado && typeof exibirIntersticialAdMobSaaS === 'function') {
+                exibirIntersticialAdMobSaaS();
             }
         });
     })

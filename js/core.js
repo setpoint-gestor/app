@@ -276,9 +276,6 @@ function fecharAplicativoSaaS() {
 /**
  * Cria a caixa de confirmação (Prompt) vermelha/cinza padrão.
  */
-/**
- * Cria a caixa de confirmação (Prompt) vermelha/cinza padrão.
- */
 function showPrompt(titulo, msg, callback, cancelCallback = null) {
     const modal = document.getElementById('modalPrompt');
     if (!modal) return;
@@ -287,28 +284,32 @@ function showPrompt(titulo, msg, callback, cancelCallback = null) {
     modal.style.setProperty('z-index', '999999', 'important');
     modal.style.setProperty('position', 'fixed', 'important');
 
-    document.getElementById('promptTitle').textContent = titulo; 
+    document.getElementById('promptTitle').textContent = titulo;
     document.getElementById('promptMessage').innerHTML = msg;
-    
-    const btnSim = document.getElementById('btnPromptConfirm'); 
+
+    const btnSim = document.getElementById('btnPromptConfirm');
     const btnNao = document.getElementById('btnPromptCancel');
-    
+
     // Clona os botões para remover eventos de cliques velhos que ficaram na memória
-    const novoBtnSim = btnSim.cloneNode(true); 
+    const novoBtnSim = btnSim.cloneNode(true);
+    novoBtnSim.textContent = 'Confirmar';
+    novoBtnSim.removeAttribute('style');
     btnSim.parentNode.replaceChild(novoBtnSim, btnSim);
-    
-    const novoBtnNao = btnNao.cloneNode(true); 
+
+    const novoBtnNao = btnNao.cloneNode(true);
+    novoBtnNao.textContent = 'Cancelar';
+    novoBtnNao.removeAttribute('style');
     btnNao.parentNode.replaceChild(novoBtnNao, btnNao);
-    
-    novoBtnSim.onclick = () => { 
-        modal.style.display = 'none'; 
+
+    novoBtnSim.onclick = () => {
+        modal.style.display = 'none';
         if (typeof callback === 'function') callback(); // Executa a ação confirmada
-    }; 
-    novoBtnNao.onclick = () => { 
-        modal.style.display = 'none'; 
+    };
+    novoBtnNao.onclick = () => {
+        modal.style.display = 'none';
         if (typeof cancelCallback === 'function') cancelCallback(); // Executa a ação de cancelamento
     };
-    
+
     modal.style.display = 'flex';
 }
 
@@ -729,14 +730,43 @@ function fecharModalConfig(idModal) {
 // ==========================================
 // 5. MODO ESCURO (THEME TOGGLE GLOBAL)
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Aplica o tema salvo na memória assim que o aplicativo abre
-    const temaSalvo = localStorage.getItem('theme');
-    if (temaSalvo === 'dark') {
-        document.body.classList.add('dark-mode');
+function obterChavePasseModoEscuroSaaS() {
+    const clube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId)
+        ? clubeAtivoId
+        : (localStorage.getItem('setpoint_jogador_clube_id') || 'default');
+    const idJog = localStorage.getItem('jogadorLogadoId') || 'anon';
+    return 'setpoint_darkmode_until_' + clube + '_' + idJog;
+}
+
+function temPasseModoEscuroAtivoSaaS() {
+    const chave = obterChavePasseModoEscuroSaaS();
+    const ateTs = parseInt(localStorage.getItem(chave) || '0', 10);
+    if (ateTs > Date.now()) {
+        return true;
+    }
+    if (ateTs > 0) {
+        localStorage.removeItem(chave);
+    }
+    return false;
+}
+
+function usuarioIsentoAnuncioModoEscuroSaaS() {
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    const ehGestorOuDev = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode;
+    if (ehGestorOuDev) return true;
+
+    const ehPro = (typeof perfilEhPro !== 'undefined' && perfilEhPro === true) ||
+                  (typeof verificarTrialProAtivoSaaS === 'function' && verificarTrialProAtivoSaaS());
+    if (ehPro) return true;
+
+    if (window.clubeExibeAnunciosSaaS === false || window.admobAtivoRemotoSaaS === false) {
+        return true;
     }
 
-    // 2. Configura a ação de clique se os botões existirem na tela
+    return temPasseModoEscuroAtivoSaaS();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
     const btnTemaSocio = document.getElementById('fab-toggle-tema');
     const btnTemaGestor = document.getElementById('btn-tema-gestor');
 
@@ -757,29 +787,62 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         if (btnTemaGestor) {
-            btnTemaGestor.textContent = isDark ? 'light_mode' : 'dark_mode'; 
+            btnTemaGestor.textContent = isDark ? 'light_mode' : 'dark_mode';
             btnTemaGestor.style.color = isDark ? '#f59e0b' : '';
         }
     };
 
-    // Ajusta os ícones iniciais de acordo com o cache da memória no primeiro boot
+    const aplicarTemaVisualSaaS = (ativarEscuro) => {
+        document.body.classList.toggle('dark-mode', !!ativarEscuro);
+        localStorage.setItem('theme', ativarEscuro ? 'dark' : 'light');
+        sincronizarIconesTema(!!ativarEscuro);
+    };
+
+    // 1. Aplica o tema salvo na memória ao abrir o aplicativo (validando se o passe 24h ainda vale)
+    let temaSalvo = localStorage.getItem('theme');
+    if (temaSalvo === 'dark' && !usuarioIsentoAnuncioModoEscuroSaaS()) {
+        temaSalvo = 'light';
+        localStorage.setItem('theme', 'light');
+    }
+    if (temaSalvo === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
     sincronizarIconesTema(temaSalvo === 'dark');
 
     // Motor unificado de inversão de tema mestre
     const alternarTemaMestre = () => {
-        // Vibração física sutil no celular
-        if (navigator.vibrate) navigator.vibrate(30); 
-        
-        // Alterna a classe global no <body>
-        document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
+        if (navigator.vibrate) navigator.vibrate(30);
 
-        // Salva a preferência atualizada e inverte os ícones visualmente
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        sincronizarIconesTema(isDark);
+        const estaNoEscuro = document.body.classList.contains('dark-mode');
+
+        // Voltar para o Modo Claro é sempre livre e imediato
+        if (estaNoEscuro) {
+            aplicarTemaVisualSaaS(false);
+            return;
+        }
+
+        // Ativar o Modo Escuro: libera direto para Gestor, PRO ou quem já tem passe 24h ativo
+        if (usuarioIsentoAnuncioModoEscuroSaaS()) {
+            aplicarTemaVisualSaaS(true);
+            return;
+        }
+
+        // Atleta Básico sem passe ativo: oferece Vídeo Premiado (24h) ou Assinar PRO
+        if (typeof solicitarVideoPremiadoAdMobSaaS === 'function') {
+            if (typeof fecharSheetPerfil === 'function') fecharSheetPerfil();
+
+            solicitarVideoPremiadoAdMobSaaS(() => {
+                const expiraEm = Date.now() + (24 * 60 * 60 * 1000);
+                localStorage.setItem(obterChavePasseModoEscuroSaaS(), String(expiraEm));
+                aplicarTemaVisualSaaS(true);
+                showToast('Modo Escuro liberado por 24 horas!', 'success', 3500);
+            }, 'Modo Escuro por 24 horas');
+        } else {
+            aplicarTemaVisualSaaS(true);
+        }
     };
 
-    // Vincula o evento de clique de forma independente (evita quebra se um deles não estiver na tela)
+    // Vincula o evento de clique de forma independente
     if (btnTemaSocio) btnTemaSocio.addEventListener('click', alternarTemaMestre);
     if (btnTemaGestor) btnTemaGestor.addEventListener('click', alternarTemaMestre);
 });
