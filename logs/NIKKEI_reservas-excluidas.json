@@ -446,5 +446,31 @@
         "hora": 6
       }
     ]
+  },
+  {
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "autor": "ADRIANO GOMES FEITOSA",
+    "clube": "NIKKEI",
+    "confirmacoes": {
+      "Adriano Feitosa": true
+    },
+    "data": "27-11-2026",
+    "dataLocal": "25/11/2026, 14:21:15",
+    "duracao": "1 Hora",
+    "horario": "06:00 - 07:00",
+    "jogadores": "Adriano Feitosa",
+    "jogadores_completo": "ADRIANO GOMES FEITOSA",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "organizadorDaReserva": "ADRIANO GOMES FEITOSA",
+    "origem": "manual",
+    "quadra": "Rafael Martins",
+    "slotsExcluidos": [
+      {
+        "dia": 5,
+        "hora": 6
+      }
+    ],
+    "statusNoMomentoDaExclusao": "confirmada",
+    "timestamp": "2026-11-25T17:21:15.514Z"
   }
 ]
