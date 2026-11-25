@@ -342,5 +342,31 @@
         "hora": 15
       }
     ]
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-25T17:03:35.039Z",
+    "dataLocal": "25/11/2026, 14:03:35",
+    "autor": "ALEX SOUZA",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "14:00 - 15:00",
+    "duracao": "1 Hora",
+    "data": "25-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALEX SOUZA",
+    "confirmacoes": {
+      "Alex": true
+    },
+    "jogadores": "Alex",
+    "jogadores_completo": "ALEX SOUZA",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 14
+      }
+    ]
   }
 ]
