@@ -472,5 +472,31 @@
     ],
     "statusNoMomentoDaExclusao": "confirmada",
     "timestamp": "2026-11-25T17:21:15.514Z"
+  },
+  {
+    "origem": "manual",
+    "timestamp": "2026-11-25T17:56:02.847Z",
+    "dataLocal": "25/11/2026, 14:56:02",
+    "autor": "ALESSANDRO ROMERO XAVIER",
+    "acao": "EXCLUSÃO_AGENDAMENTO",
+    "motivo": "Excluído via Painel pelo Usuário",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "16:00 - 17:00",
+    "duracao": "1 Hora",
+    "data": "25-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALESSANDRO ROMERO XAVIER",
+    "confirmacoes": {
+      "Alessandro Xavier": true
+    },
+    "jogadores": "Alessandro Xavier",
+    "jogadores_completo": "ALESSANDRO ROMERO XAVIER",
+    "slotsExcluidos": [
+      {
+        "dia": 3,
+        "hora": 16
+      }
+    ]
   }
 ]
