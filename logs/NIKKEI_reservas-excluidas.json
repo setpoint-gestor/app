@@ -498,5 +498,194 @@
         "hora": 16
       }
     ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-26T23:48:18.186Z",
+    "dataLocal": "26/11/2026, 20:48:18",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "16:00 - 17:00",
+    "duracao": "1 Hora",
+    "data": "24-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Rildo",
+    "confirmacoes": {
+      "Rildo": true
+    },
+    "jogadores": "Aula",
+    "jogadores_completo": "Aula",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 16
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-26T23:48:18.194Z",
+    "dataLocal": "26/11/2026, 20:48:18",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "17:00 - 18:00",
+    "duracao": "1 Hora",
+    "data": "24-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Rildo",
+    "confirmacoes": {
+      "Rildo": true
+    },
+    "jogadores": "Aula",
+    "jogadores_completo": "Aula",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 17
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-26T23:48:18.194Z",
+    "dataLocal": "26/11/2026, 20:48:18",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "18:00 - 19:00",
+    "duracao": "1 Hora",
+    "data": "24-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Rildo",
+    "confirmacoes": {
+      "Rildo": true
+    },
+    "jogadores": "Aula",
+    "jogadores_completo": "Aula",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 18
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-26T23:48:18.194Z",
+    "dataLocal": "26/11/2026, 20:48:18",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "21:00 - 22:00",
+    "duracao": "1 Hora",
+    "data": "24-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE DUCK",
+    "confirmacoes": {
+      "Alice Duck": true
+    },
+    "jogadores": "Alice Duck",
+    "jogadores_completo": "ALICE DUCK",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 21
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-26T23:48:18.194Z",
+    "dataLocal": "26/11/2026, 20:48:18",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "22:00 - 23:00",
+    "duracao": "1 Hora",
+    "data": "24-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "ALICE DUCK",
+    "confirmacoes": {
+      "Alice Duck": true
+    },
+    "jogadores": "Alice Duck",
+    "jogadores_completo": "ALICE DUCK",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 22
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-26T23:48:18.194Z",
+    "dataLocal": "26/11/2026, 20:48:18",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "06:00 - 07:00",
+    "duracao": "1 Hora",
+    "data": "24-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Erick",
+    "confirmacoes": {
+      "Erick": true
+    },
+    "jogadores": "💦 Manutenção",
+    "jogadores_completo": "💦 Manutenção",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 6
+      }
+    ]
+  },
+  {
+    "origem": "sistema",
+    "timestamp": "2026-11-26T23:48:18.194Z",
+    "dataLocal": "26/11/2026, 20:48:18",
+    "autor": "Rotina Automática de Sistema",
+    "acao": "EXCLUSÃO_HISTÓRICO",
+    "motivo": "Limpeza automática por decurso do prazo de exibição (1d)",
+    "clube": "NIKKEI",
+    "quadra": "Rafael Martins",
+    "horario": "07:00 - 08:00",
+    "duracao": "1 Hora",
+    "data": "24-11-2026",
+    "statusNoMomentoDaExclusao": "confirmada",
+    "organizadorDaReserva": "Erick",
+    "confirmacoes": {
+      "Erick": true
+    },
+    "jogadores": "💦 Manutenção",
+    "jogadores_completo": "💦 Manutenção",
+    "slotsExcluidos": [
+      {
+        "quadra": "Rafael Martins",
+        "dia": 2,
+        "hora": 7
+      }
+    ]
   }
 ]
