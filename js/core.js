@@ -77,6 +77,8 @@ let acervoHistoricoGlobalSaaS = null; // Espelho local do acervo de históricos 
 
 let convitesRankingGlobal = null; // Espelho local dos convites do ranking na memória RAM
 
+let infoClubeGlobal = {}; // Espelho local em tempo real dos dados cadastrais e plano B2B do clube
+
 // ==========================================
 // 2. LISTENERS GLOBAIS (Ouvintes de Eventos)
 // ========================================== 
@@ -276,13 +278,19 @@ function fecharAplicativoSaaS() {
 /**
  * Cria a caixa de confirmação (Prompt) vermelha/cinza padrão.
  */
-function showPrompt(titulo, msg, callback, cancelCallback = null) {
+function showPrompt(titulo, msg, callback, cancelCallback = null, extraOpcoes = null) {
     const modal = document.getElementById('modalPrompt');
     if (!modal) return;
 
     // 🎯 SOBREPOSIÇÃO ABSOLUTA MESTRE: Força o prompt a ficar acima de absolutamente tudo no App
     modal.style.setProperty('z-index', '999999', 'important');
     modal.style.setProperty('position', 'fixed', 'important');
+
+    // 🧹 Garante que qualquer opção extra de uma chamada anterior seja sempre removida antes de montar a nova
+    const linkExtraAnterior = document.getElementById('linkPromptDecidirDepois');
+    if (linkExtraAnterior) {
+        linkExtraAnterior.remove();
+    }
 
     document.getElementById('promptTitle').textContent = titulo;
     document.getElementById('promptMessage').innerHTML = msg;
@@ -301,14 +309,36 @@ function showPrompt(titulo, msg, callback, cancelCallback = null) {
     novoBtnNao.removeAttribute('style');
     btnNao.parentNode.replaceChild(novoBtnNao, btnNao);
 
-    novoBtnSim.onclick = () => {
+    const fecharPromptLimpo = () => {
+        const linkExtra = document.getElementById('linkPromptDecidirDepois');
+        if (linkExtra) linkExtra.remove();
         modal.style.display = 'none';
+    };
+
+    novoBtnSim.onclick = () => {
+        fecharPromptLimpo();
         if (typeof callback === 'function') callback(); // Executa a ação confirmada
     };
     novoBtnNao.onclick = () => {
-        modal.style.display = 'none';
+        fecharPromptLimpo();
         if (typeof cancelCallback === 'function') cancelCallback(); // Executa a ação de cancelamento
     };
+
+    if (extraOpcoes && extraOpcoes.texto) {
+        const linhaBotoes = novoBtnNao.parentElement || (novoBtnSim ? novoBtnSim.parentElement : null);
+        if (linhaBotoes) {
+            const btnDepois = document.createElement('button');
+            btnDepois.type = 'button';
+            btnDepois.id = 'linkPromptDecidirDepois';
+            btnDepois.textContent = extraOpcoes.texto;
+            btnDepois.style.cssText = 'background: transparent !important; border: none !important; box-shadow: none !important; color: #94a3b8 !important; font-size: 13px !important; font-weight: 700 !important; cursor: pointer !important; margin: 12px auto 0 auto !important; padding: 4px 10px !important; display: block !important; width: auto !important;';
+            btnDepois.onclick = () => {
+                fecharPromptLimpo();
+                if (typeof extraOpcoes.onClick === 'function') extraOpcoes.onClick();
+            };
+            linhaBotoes.insertAdjacentElement('afterend', btnDepois);
+        }
+    }
 
     modal.style.display = 'flex';
 }
@@ -863,9 +893,15 @@ function iniciarOuvinteMestreSaaS() {
     if (window.ouvinteMestreSaaSAtivo) return;
     window.ouvinteMestreSaaSAtivo = true; 
 
-    // 🛑 OUVINTE MESTRE DE LICENÇA (KILL SWITCH DO DESENVOLVEDOR)
-    database.ref(`Clubes/${clubeAtivoId}/info_clube/ativo`).on('value', (snapshot) => {
-        isLicencaAtivaGlobal = snapshot.val() !== false;
+    // 🛑 OUVINTE MESTRE DO CLUBE (LICENÇA / KILL SWITCH + PLANO B2B EM TEMPO REAL)
+    database.ref(`Clubes/${clubeAtivoId}/info_clube`).on('value', (snapshot) => {
+        infoClubeGlobal = snapshot.val() || {};
+        isLicencaAtivaGlobal = infoClubeGlobal.ativo !== false;
+		
+		if (typeof atualizarBannerPlanoGestorSaaS === 'function') {
+            atualizarBannerPlanoGestorSaaS();
+        }
+
         const isGodMode = !!localStorage.getItem('god_mode_clube');
         const telaManutencao = document.getElementById('tela-manutencao');
         const estaNaManutencao = telaManutencao && telaManutencao.classList.contains('ativa');
@@ -875,9 +911,14 @@ function iniciarOuvinteMestreSaaS() {
             avaliarEstadoManutencaoSaaS();
         }
 
+        // Repinta o Gerenciador de Quadras ao vivo se o plano ou passe 24h mudar no banco
+        const telaGerenciador = document.getElementById('tela-gerenciador-quadras');
+        if (telaGerenciador && telaGerenciador.classList.contains('ativa') && typeof forcarRepinturaGerenciadorQuadras === 'function') {
+            forcarRepinturaGerenciadorQuadras();
+        }
+
         if (!isLicencaAtivaGlobal && !isGodMode) {
             console.warn("🛑 [Kill Switch] Arena desativada pelo Desenvolvedor.");
-            // 🧹 Remove o carimbo de presença online do banco imediatamente
             if (typeof removerPresencaOnlineSaaS === 'function') {
                 removerPresencaOnlineSaaS();
             }
@@ -1115,6 +1156,14 @@ function iniciarOuvinteMestreSaaS() {
                 forcarRepinturaPlanilha();
             }
         }
+
+        // Se o Gerenciador de Quadras estiver aberto na tela, atualiza os cards na hora
+        const telaGerenciador = document.getElementById('tela-gerenciador-quadras');
+        if (telaGerenciador && telaGerenciador.classList.contains('ativa')) {
+            if (typeof forcarRepinturaGerenciadorQuadras === 'function') {
+                forcarRepinturaGerenciadorQuadras();
+            }
+        }
     });	
 	
 	
@@ -1337,10 +1386,223 @@ function iniciarOuvinteMestreSaaS() {
 
 }
 
+function atualizarInfoClubeNoBancoSaaS(dadosAtualizacao, clubeId = null) {
+    const idAlvo = clubeId || (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) || localStorage.getItem('setpoint_jogador_clube_id') || '';
+    if (!idAlvo || idAlvo === 'default' || !dadosAtualizacao || typeof dadosAtualizacao !== 'object') {
+        return Promise.resolve();
+    }
 
+    if (typeof infoClubeGlobal === 'object' && infoClubeGlobal !== null) {
+        Object.keys(dadosAtualizacao).forEach((chave) => {
+            if (dadosAtualizacao[chave] === null) {
+                delete infoClubeGlobal[chave];
+            } else {
+                infoClubeGlobal[chave] = dadosAtualizacao[chave];
+            }
+        });
+    }
 
+    return database.ref(`Clubes/${idAlvo}/info_clube`).update(dadosAtualizacao);
+}
 
+function atualizarBannerPlanoGestorSaaS() {
+    const wrap = document.getElementById('banner-plano-gestor-wrap');
+    const card = document.getElementById('banner-plano-gestor');
+    const iconBox = document.getElementById('banner-plano-icon');
+    const titulo = document.getElementById('banner-plano-titulo');
+    const sub = document.getElementById('banner-plano-sub');
+    const btn = document.getElementById('btn-banner-plano-acao');
 
+    if (!wrap || !card) return;
+
+    if (!isGestorLogado || !clubeAtivoId) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    const info = (typeof infoClubeGlobal === 'object' && infoClubeGlobal) ? infoClubeGlobal : {};
+    const estadoTrial = typeof obterEstadoTrialB2B === 'function'
+        ? obterEstadoTrialB2B(info, clubeAtivoId)
+        : { isPlanoPro: (info.plano_b2b || info.plano) === 'pro', etapa: 'expirado' };
+
+    wrap.style.display = 'block';
+
+    if (estadoTrial.isPlanoPro) {
+        card.classList.add('is-pro');
+        if (iconBox) iconBox.innerHTML = '<i class="material-icons">verified</i>';
+        if (titulo) titulo.textContent = 'Plano Arena PRO';
+        if (sub) sub.textContent = 'Quadras ilimitadas • Assinatura ativa';
+        if (btn) btn.textContent = 'Ver Plano';
+    } else {
+        card.classList.remove('is-pro');
+        if (iconBox) iconBox.innerHTML = '<i class="material-icons">workspace_premium</i>';
+
+        if (estadoTrial.etapa === 'semana_livre') {
+            const diasTxt = estadoTrial.diasRestantesSemanaLivre === 1 ? '1 dia restante' : `${estadoTrial.diasRestantesSemanaLivre} dias restantes`;
+            if (titulo) titulo.textContent = 'Plano Starter (Teste Grátis)';
+            if (sub) sub.textContent = `Múltiplas quadras liberadas • ${diasTxt}`;
+        } else if (estadoTrial.etapa === 'passe_24h_ativo') {
+            if (titulo) titulo.textContent = 'Plano Starter • Passe 24h';
+            if (sub) sub.textContent = `Múltiplas quadras liberadas • ~${estadoTrial.horasRestantesPasse}h restantes`;
+        } else {
+            if (titulo) titulo.textContent = 'Plano Starter';
+            if (sub) sub.textContent = '1 quadra gratuita • Recursos completos';
+        }
+
+        if (btn) btn.textContent = 'Seja PRO';
+    }
+}
+
+function abrirModalPlanoGestorSaaS() {
+    if (navigator.vibrate) navigator.vibrate(25);
+
+    const modal = document.getElementById('modal-plano-gestor');
+    const header = document.getElementById('modal-plano-gestor-header');
+    const icon = document.getElementById('modal-plano-gestor-icon');
+    const titulo = document.getElementById('modal-plano-gestor-titulo');
+    const sub = document.getElementById('modal-plano-gestor-sub');
+    const body = document.getElementById('modal-plano-gestor-body');
+
+    if (!modal || !body) return;
+
+    const info = (typeof infoClubeGlobal === 'object' && infoClubeGlobal) ? infoClubeGlobal : {};
+    const estadoTrial = typeof obterEstadoTrialB2B === 'function'
+        ? obterEstadoTrialB2B(info, clubeAtivoId)
+        : { isPlanoPro: (info.plano_b2b || info.plano) === 'pro', etapa: 'expirado', podeAtivarPasseVideo: false };
+
+    if (estadoTrial.isPlanoPro) {
+        if (header) header.classList.add('is-pro');
+        if (icon) icon.textContent = 'verified';
+        if (titulo) titulo.textContent = 'Plano Arena PRO';
+        if (sub) sub.textContent = `${info.nome || 'Sua Arena'} • Assinatura ativa`;
+
+        body.innerHTML = `
+            <div class="status-plano-box">
+                <b>Plano Atual:</b> Arena PRO<br>
+                <b>Quadras Liberadas:</b> Ilimitadas<br>
+                <b>Anúncios no App dos Atletas:</b> ${info.exibir_anuncios === false ? 'Desativados' : 'Ativos'}
+            </div>
+            <ul class="pro-beneficios">
+                <li><i class="material-icons">check_circle</i> Cadastro e gestão de múltiplas quadras</li>
+                <li><i class="material-icons">check_circle</i> Todos os módulos liberados (Ranking, IA e Logs)</li>
+                <li><i class="material-icons">check_circle</i> Remoção de anúncios para todos os seus sócios</li>
+            </ul>
+            <button type="button" class="btn-assinar-pro" style="background: #f1f5f9; color: #334155; box-shadow: none;" onclick="simularRetornoStarterGestorSaaS()">
+                Simular Retorno ao Plano Starter
+            </button>
+        `;
+    } else {
+        if (header) header.classList.remove('is-pro');
+        if (icon) icon.textContent = 'workspace_premium';
+        if (titulo) titulo.textContent = 'SetPoint Arena PRO';
+        if (sub) sub.textContent = 'Expanda sua arena sem limites';
+
+        let linhaStatusTeste = '<b>Teste de Múltiplas Quadras:</b> Período inicial concluído';
+        if (estadoTrial.etapa === 'semana_livre') {
+            const diasTxt = estadoTrial.diasRestantesSemanaLivre === 1 ? '1 dia restante' : `${estadoTrial.diasRestantesSemanaLivre} dias restantes`;
+            linhaStatusTeste = `<b>Teste Grátis (7 dias):</b> Ativo (${diasTxt})`;
+        } else if (estadoTrial.etapa === 'passe_24h_ativo') {
+            linhaStatusTeste = `<b>Passe de 24h:</b> Ativo (~${estadoTrial.horasRestantesPasse}h restantes)`;
+        } else if (estadoTrial.etapa === 'aguardando_video_24h') {
+            linhaStatusTeste = `<b>2ª Semana (Passes de 24h):</b> ${estadoTrial.passesRestantes} de ${estadoTrial.maxPasses} passes disponíveis`;
+        }
+
+        const botaoVideo24hHTML = estadoTrial.podeAtivarPasseVideo
+            ? `<button type="button" onclick="fecharModalConfig('modal-plano-gestor'); if(typeof ativarPasse24hVideoB2BSaaS === 'function') ativarPasse24hVideoB2BSaaS();" style="width: 100%; padding: 11px 14px; border-radius: 12px; border: 1.5px solid #8b5cf6; background: #f5f3ff; color: #6d28d9; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                   <i class="material-icons" style="font-size: 18px;">play_circle</i> Liberar Múltiplas Quadras por 24h (Ver Vídeo)
+               </button>`
+            : '';
+
+        body.innerHTML = `
+            <div class="status-plano-box">
+                <b>Plano Atual:</b> Starter (1 quadra gratuita incluída)<br>
+                ${linhaStatusTeste}
+            </div>
+            <ul class="pro-beneficios">
+                <li><i class="material-icons">check_circle</i> Libere múltiplas quadras na sua arena</li>
+                <li><i class="material-icons">check_circle</i> Remove anúncios de todos os atletas</li>
+                <li><i class="material-icons">check_circle</i> Suporte prioritário para a gestão do clube</li>
+            </ul>
+            <div class="pro-preco-box">
+                <div class="pro-preco-valor">R$ 89,90 <span class="pro-preco-periodo">/ mês</span></div>
+                <div class="pro-preco-periodo">Cancele quando quiser • Sem fidelidade</div>
+            </div>
+            <button type="button" id="btn-assinar-arena-pro-gestor" class="btn-assinar-pro" onclick="simularAssinaturaArenaProGestorSaaS()">
+                Assinar Arena PRO
+            </button>
+            ${botaoVideo24hHTML}
+        `;
+    }
+
+    modal.style.display = 'flex';
+}
+
+function simularAssinaturaArenaProGestorSaaS() {
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const btn = document.getElementById('btn-assinar-arena-pro-gestor');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Ativando Arena PRO...';
+    }
+
+    const dadosUpgrade = {
+        plano_b2b: 'pro',
+        limite_quadras: 999,
+        valor_mensal: 89.90,
+        status_pagamento: 'pago',
+        exibir_anuncios: false
+    };
+
+    atualizarInfoClubeNoBancoSaaS(dadosUpgrade)
+        .then(() => {
+            if (typeof fecharModalConfig === 'function') {
+                fecharModalConfig('modal-plano-gestor');
+            }
+            atualizarBannerPlanoGestorSaaS();
+            showToast('Bem-vindo ao SetPoint Arena PRO! Quadras ilimitadas liberadas.', 'success', 4000);
+        })
+        .catch((err) => {
+            console.error('Erro ao simular upgrade Arena PRO:', err);
+            showToast('Erro ao ativar plano PRO.', 'error');
+        })
+        .finally(() => {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Assinar Arena PRO';
+            }
+        });
+}
+
+function simularRetornoStarterGestorSaaS() {
+    if (typeof fecharModalConfig === 'function') {
+        fecharModalConfig('modal-plano-gestor');
+    }
+
+    showPrompt(
+        'Plano SetPoint Arena PRO',
+        'A assinatura Arena PRO está ativa. Deseja simular o retorno ao Plano Starter (1 quadra)?',
+        () => {
+            const dadosStarter = {
+                plano_b2b: 'starter',
+                limite_quadras: 1,
+                valor_mensal: 0,
+                status_pagamento: 'isento',
+                exibir_anuncios: true
+            };
+
+            atualizarInfoClubeNoBancoSaaS(dadosStarter)
+                .then(() => {
+                    atualizarBannerPlanoGestorSaaS();
+                    showToast('Plano Starter restaurado para testes.', 'info');
+                })
+                .catch((err) => {
+                    console.error('Erro ao restaurar Plano Starter:', err);
+                    showToast('Erro ao atualizar plano no banco.', 'error');
+                });
+        }
+    );
+}
 
 // ==========================================
 // 7. PROVEDOR GITHUB API (SaaS AUDITORIA EXTERNA)

@@ -6,6 +6,39 @@
 // agendamento, validações (quórum, monopólio, duplas) e gravação.
 // ====================================================================
 
+function verificarQuadraBloqueadaPorPlanoB2BSaaS(nomeOuChaveQuadra) {
+    if (typeof obterEstadoTrialB2B !== 'function') return false;
+
+    const infoClube = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
+    const idClube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) ? clubeAtivoId : null;
+    const estadoTrial = obterEstadoTrialB2B(infoClube, idClube);
+    const limiteEfetivo = parseInt(estadoTrial.limiteEfetivoQuadras, 10) || 1;
+
+    if (limiteEfetivo >= 999) return false;
+
+    const alvo = String(nomeOuChaveQuadra || (typeof quadraSelecionadaSaaS !== 'undefined' ? quadraSelecionadaSaaS : 'Quadra 1')).trim();
+    let numeroQuadra = null;
+
+    if (typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal && configQuadrasGlobal.nomes && configQuadrasGlobal.quantidade) {
+        const qtd = parseInt(configQuadrasGlobal.quantidade, 10) || 0;
+        for (let i = 1; i <= qtd; i++) {
+            const dadosQuadra = configQuadrasGlobal.nomes[i];
+            const nomeF = typeof dadosQuadra === 'object' ? (dadosQuadra.nome || `Quadra ${i}`) : (dadosQuadra || `Quadra ${i}`);
+            if (nomeF === alvo || `Quadra ${i}` === alvo || `Quadra - ${i}` === alvo) {
+                numeroQuadra = i;
+                break;
+            }
+        }
+    }
+
+    if (numeroQuadra === null) {
+        const match = alvo.match(/\d+/);
+        numeroQuadra = match ? parseInt(match[0], 10) : 1;
+    }
+
+    return numeroQuadra > limiteEfetivo;
+}
+
 function cliqueCelula(dia, hora) {
     // 🛡️ RECOLETA DE SEGURANÇA INTRA-DIA: Evita agendamentos passados se a pagina ficou aberta sem F5
     const linhaDatasTabela = document.getElementById('linha-datas-tabela');
@@ -44,6 +77,16 @@ function cliqueCelula(dia, hora) {
     // Interceptação Opção C: Bloqueia novas reservas se estiver interditada
     if (statusDaQuadraAtiva === 'interditada' || statusDaQuadraAtiva === 'interdita') {
         showToast("Aviso: Não é permitido realizar novas reservas em uma quadra interditada.", "error");
+        return;
+    }
+
+    // Interceptação B2B: Bloqueia novas reservas nas quadras excedentes após o fim do teste
+    if (verificarQuadraBloqueadaPorPlanoB2BSaaS(quadraSelecionadaSaaS)) {
+        if (typeof exibirAvisoLimitePlanoStarterSaaS === 'function' && typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+            exibirAvisoLimitePlanoStarterSaaS();
+        } else {
+            showToast("Quadra bloqueada no Plano Starter após o fim do período de teste.", "warning");
+        }
         return;
     }
 
@@ -91,6 +134,15 @@ function abrirAgendamentoSaaS(dia, hora) {
 
     if (statusDaQuadraAtiva === 'interditada' || statusDaQuadraAtiva === 'interdita') {
         showToast("Aviso: Não é permitido realizar novas reservas em uma quadra interditada.", "error");
+        return;
+    }
+
+    if (verificarQuadraBloqueadaPorPlanoB2BSaaS(quadraSelecionadaSaaS)) {
+        if (typeof exibirAvisoLimitePlanoStarterSaaS === 'function' && typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+            exibirAvisoLimitePlanoStarterSaaS();
+        } else {
+            showToast("Quadra bloqueada no Plano Starter após o fim do período de teste.", "warning");
+        }
         return;
     }
 	
@@ -1821,6 +1873,15 @@ function validarEAgendarPartidaSaas() {
     if (typeof quadraSelecionadaSaaS !== 'undefined' && quadraSelecionadaSaaS) {
         const match = quadraSelecionadaSaaS.match(/\d+/);
         pacote.quadraAlvo = match ? `Quadra - ${match[0]}` : quadraSelecionadaSaaS;
+    }
+
+    if (verificarQuadraBloqueadaPorPlanoB2BSaaS(pacote.quadraAlvo)) {
+        if (typeof exibirAvisoLimitePlanoStarterSaaS === 'function' && typeof isGestorLogado !== 'undefined' && isGestorLogado) {
+            exibirAvisoLimitePlanoStarterSaaS();
+        } else {
+            showToast("Quadra bloqueada no Plano Starter após o fim do período de teste.", "warning");
+        }
+        return;
     }
 
     const linhaDatasTabela = document.getElementById('linha-datas-tabela');

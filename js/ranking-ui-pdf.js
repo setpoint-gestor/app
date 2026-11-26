@@ -4955,7 +4955,23 @@ async function processarSaidaPDFSaaS(pdfWorkerOrDoc, nomeArquivo, tituloMensagem
     }
 }
 
-function exportarPDFContextualSaaS() {
+function usuarioIsentoVideoExportacaoRankingSaaS() {
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    const ehGestorOuDev = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode;
+    if (ehGestorOuDev) return true;
+
+    const ehPro = (typeof perfilEhPro !== 'undefined' && perfilEhPro === true) ||
+                  (typeof verificarTrialProAtivoSaaS === 'function' && verificarTrialProAtivoSaaS());
+    if (ehPro) return true;
+
+    if (window.clubeExibeAnunciosSaaS === false || window.admobAtivoRemotoSaaS === false) {
+        return true;
+    }
+
+    return false;
+}
+
+function executarExportacaoPdfCentralPorAbaSaaS() {
     if (abaVisaoLeaderboardSaaS === 'TORNEIO') {
         exportarLeaderboardPDFSaaS();
     } else if (abaVisaoLeaderboardSaaS === 'SUMULAS') {
@@ -4965,6 +4981,24 @@ function exportarPDFContextualSaaS() {
     } else {
         exportarLeaderboardPDFSaaS();
     }
+}
+
+function exportarPDFContextualSaaS() {
+    if (usuarioIsentoVideoExportacaoRankingSaaS() || typeof solicitarVideoPremiadoAdMobSaaS !== 'function') {
+        executarExportacaoPdfCentralPorAbaSaaS();
+        return;
+    }
+
+    const rotulosRecurso = {
+        TORNEIO: 'Exportar PDF da Classificação',
+        SUMULAS: 'Exportar PDF das Súmulas',
+        GERAL: 'Exportar PDF do Ranking Geral'
+    };
+    const tituloRecurso = rotulosRecurso[abaVisaoLeaderboardSaaS] || 'Exportar PDF do Ranking';
+
+    solicitarVideoPremiadoAdMobSaaS(() => {
+        executarExportacaoPdfCentralPorAbaSaaS();
+    }, tituloRecurso);
 }
 
 async function exportarRankingGeralPDFSaaS() {

@@ -461,7 +461,23 @@ function abrirPiramideAcervoSaaS(idEdicao) {
  * 📸 MOTOR DE EXPORTAÇÃO EM IMAGEM PNG (HTML2CANVAS)
  * ========================================================
  */
-async function exportarPiramidePNGSaaS() {
+function usuarioIsentoVideoPiramideSaaS() {
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    const ehGestorOuDev = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode;
+    if (ehGestorOuDev) return true;
+
+    const ehPro = (typeof perfilEhPro !== 'undefined' && perfilEhPro === true) ||
+                  (typeof verificarTrialProAtivoSaaS === 'function' && verificarTrialProAtivoSaaS());
+    if (ehPro) return true;
+
+    if (window.clubeExibeAnunciosSaaS === false || window.admobAtivoRemotoSaaS === false) {
+        return true;
+    }
+
+    return false;
+}
+
+async function executarExportacaoPiramidePNGSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
 
     const painelPiramide = document.getElementById('area-capture-piramide');
@@ -554,6 +570,17 @@ async function exportarPiramidePNGSaaS() {
         console.error("❌ Erro ao capturar imagem da pirâmide:", err);
         showToast("Erro ao gerar a imagem PNG da pirâmide.", "error");
     }
+}
+
+async function exportarPiramidePNGSaaS() {
+    if (usuarioIsentoVideoPiramideSaaS() || typeof solicitarVideoPremiadoAdMobSaaS !== 'function') {
+        await executarExportacaoPiramidePNGSaaS();
+        return;
+    }
+
+    solicitarVideoPremiadoAdMobSaaS(async () => {
+        await executarExportacaoPiramidePNGSaaS();
+    }, 'Exportar Imagem da Pirâmide');
 }
 
 function exibirTooltipNomePiramideSaaS(elemento, nomeCompleto) {

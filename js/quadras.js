@@ -10,6 +10,108 @@ let cacheQuadrasSaaS = {};
 // Estado Mestre Arquitetural: Preferências compartilhadas por todas as quadras
 let visibilidadeGlobalSaaS = { piso: true, vip: true, luz: true, arqui: true };
 
+// Constantes e helpers da Experimentação Progressiva B2B (Múltiplas Quadras)
+const DURACAO_TESTE_INICIAL_DIAS_B2B = 7;
+const MAX_PASSES_VIDEO_B2B = 7;
+const DURACAO_PASSE_VIDEO_MS_B2B = 24 * 60 * 60 * 1000;
+const MS_POR_DIA_B2B = 24 * 60 * 60 * 1000;
+
+function obterChaveTrialB2B(clubeId) {
+    const idClube = clubeId || (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) || localStorage.getItem('setpoint_jogador_clube_id') || 'default';
+    return `setpoint_b2b_trial_quadras_${idClube}`;
+}
+
+function obterEstadoTrialB2B(infoClube = {}, clubeId = null) {
+    const plano = (infoClube && (infoClube.plano_b2b || infoClube.plano)) || 'starter';
+    const limiteQuadrasPlano = parseInt(infoClube && infoClube.limite_quadras, 10) || 1;
+    const isPlanoPro = (plano === 'pro') || (limiteQuadrasPlano > 1);
+
+    const agora = Date.now();
+    const chaveLocal = obterChaveTrialB2B(clubeId);
+
+    let estadoSalvo = {};
+    try {
+        estadoSalvo = JSON.parse(localStorage.getItem(chaveLocal) || '{}') || {};
+    } catch (e) {
+        estadoSalvo = {};
+    }
+
+    const inicioTs = parseInt(
+        (infoClube && (infoClube.trial_inicio_ts || infoClube.criado_em)) ||
+        estadoSalvo.inicioTs ||
+        agora,
+        10
+    ) || agora;
+
+    if (!estadoSalvo.inicioTs) {
+        estadoSalvo.inicioTs = inicioTs;
+        try {
+            localStorage.setItem(chaveLocal, JSON.stringify(estadoSalvo));
+        } catch (e) {}
+    }
+
+    const diasDecorridos = Math.floor((agora - inicioTs) / MS_POR_DIA_B2B);
+    const dentroSemanaLivre = diasDecorridos < DURACAO_TESTE_INICIAL_DIAS_B2B;
+    const dentroJanelaEstendida = diasDecorridos >= DURACAO_TESTE_INICIAL_DIAS_B2B && diasDecorridos < (DURACAO_TESTE_INICIAL_DIAS_B2B + MAX_PASSES_VIDEO_B2B);
+
+    const passesUsados = parseInt(
+        (infoClube && infoClube.trial_passes_usados) !== undefined
+            ? infoClube.trial_passes_usados
+            : estadoSalvo.passesUsados,
+        10
+    ) || 0;
+
+    const passe24hAteTs = parseInt(
+        (infoClube && infoClube.trial_passe_24h_ate) !== undefined
+            ? infoClube.trial_passe_24h_ate
+            : estadoSalvo.passe24hAteTs,
+        10
+    ) || 0;
+
+    const passe24hAtivo = dentroJanelaEstendida && (passe24hAteTs > agora);
+    const passesRestantes = Math.max(0, MAX_PASSES_VIDEO_B2B - passesUsados);
+    const podeAtivarPasseVideo = dentroJanelaEstendida && !passe24hAtivo && (passesRestantes > 0);
+    const podeCriarMultiplasQuadras = isPlanoPro || dentroSemanaLivre || passe24hAtivo;
+
+    let etapa = 'expirado';
+    if (isPlanoPro) {
+        etapa = 'pro';
+    } else if (dentroSemanaLivre) {
+        etapa = 'semana_livre';
+    } else if (passe24hAtivo) {
+        etapa = 'passe_24h_ativo';
+    } else if (podeAtivarPasseVideo) {
+        etapa = 'aguardando_video_24h';
+    }
+
+    const diasRestantesSemanaLivre = Math.max(0, DURACAO_TESTE_INICIAL_DIAS_B2B - diasDecorridos);
+    const diasRestantesCicloTotal = Math.max(0, (DURACAO_TESTE_INICIAL_DIAS_B2B + MAX_PASSES_VIDEO_B2B) - diasDecorridos);
+    const horasRestantesPasse = passe24hAtivo ? Math.max(1, Math.ceil((passe24hAteTs - agora) / (60 * 60 * 1000))) : 0;
+
+    const limiteEfetivoQuadras = podeCriarMultiplasQuadras ? 999 : limiteQuadrasPlano;
+
+    return {
+        isPlanoPro,
+        etapa,
+        inicioTs,
+        diasDecorridos,
+        diasRestantesSemanaLivre,
+        diasRestantesCicloTotal,
+        dentroSemanaLivre,
+        dentroJanelaEstendida,
+        passesUsados,
+        passesRestantes,
+        maxPasses: MAX_PASSES_VIDEO_B2B,
+        passe24hAteTs,
+        passe24hAtivo,
+        horasRestantesPasse,
+        podeAtivarPasseVideo,
+        podeCriarMultiplasQuadras,
+        limiteEfetivoQuadras,
+        exibirBannerGestor: false
+    };
+}
+
 function atualizarBotaoInversaoUI() {
     const btn = document.getElementById('btn-inverter-ordem');
     if (btn) {
@@ -21,24 +123,42 @@ function atualizarBotaoInversaoUI() {
 // ==========================================================================
 // 2. MOTOR DE ENTRADA E CARREGAMENTO PRINCIPAL (CARREGA INFRA + PREFERÊNCIAS)
 // ==========================================================================
+function forcarRepinturaGerenciadorQuadras() {
+    const configQuadras = (typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal) ? configQuadrasGlobal : {};
+    const infoClube = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
+    const qtdSalva = parseInt(configQuadras.quantidade) || 0;
+    const nomesSalvos = configQuadras.nomes || {};
+
+    const estadoTrial = typeof obterEstadoTrialB2B === 'function'
+        ? obterEstadoTrialB2B(infoClube, clubeAtivoId)
+        : { limiteEfetivoQuadras: 999 };
+
+    visibilidadeGlobalSaaS = configQuadras.visibilidadeGlobal || { piso: true, vip: true, luz: true, arqui: true };
+
+    const chkPiso = document.getElementById('vis-global-piso');
+    const chkVip = document.getElementById('vis-global-vip');
+    const chkLuz = document.getElementById('vis-global-luz');
+    const chkArqui = document.getElementById('vis-global-arqui');
+
+    if (chkPiso) chkPiso.checked = visibilidadeGlobalSaaS.piso !== false;
+    if (chkVip) chkVip.checked = visibilidadeGlobalSaaS.vip !== false;
+    if (chkLuz) chkLuz.checked = visibilidadeGlobalSaaS.luz !== false;
+    if (chkArqui) chkArqui.checked = visibilidadeGlobalSaaS.arqui !== false;
+
+    renderizarCardsQuadrasDoBanco(qtdSalva, nomesSalvos, estadoTrial);
+}
+
 function abrirGerenciadorQuadras() {
-    navegarApp('tela-gerenciador-quadras'); 
-    
+    navegarApp('tela-gerenciador-quadras');
+
+    if (typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal && Object.keys(configQuadrasGlobal).length > 0) {
+        forcarRepinturaGerenciadorQuadras();
+        return;
+    }
+
     database.ref(`${raizBanco}/config/Quadras`).once('value').then((snapshot) => {
-        const configQuadras = snapshot.val() || {};
-        const qtdSalva = parseInt(configQuadras.quantidade) || 0; 
-        const nomesSalvos = configQuadras.nomes || {};
-
-        // Configuração de Engenharia: Puxa o painel de filtros globais salvos do clube
-        visibilidadeGlobalSaaS = configQuadras.visibilidadeGlobal || { piso: true, vip: true, luz: true, arqui: true };
-        
-        // Sincroniza visualmente as caixas da gaveta sanfona com o banco de dados
-        document.getElementById('vis-global-piso').checked = visibilidadeGlobalSaaS.piso !== false;
-        document.getElementById('vis-global-vip').checked = visibilidadeGlobalSaaS.vip !== false;
-        document.getElementById('vis-global-luz').checked = visibilidadeGlobalSaaS.luz !== false;
-        document.getElementById('vis-global-arqui').checked = visibilidadeGlobalSaaS.arqui !== false;
-
-        renderizarCardsQuadrasDoBanco(qtdSalva, nomesSalvos);
+        configQuadrasGlobal = snapshot.val() || {};
+        forcarRepinturaGerenciadorQuadras();
     }).catch(err => {
         console.error("Erro ao carregar quadras do banco:", err);
         showToast("Erro ao carregar configurações das quadras.", "error");
@@ -48,10 +168,15 @@ function abrirGerenciadorQuadras() {
 // ==========================================================================
 // 3. RENDERIZADOR DE CARDS FILTRADO PELA DIRETRIZ GLOBAL DO CLUBE
 // ==========================================================================
-function renderizarCardsQuadrasDoBanco(quantidade, nomesSalvos) {
+function renderizarCardsQuadrasDoBanco(quantidade, nomesSalvos, estadoTrial = null) {
     const container = document.getElementById('container-cards-quadras');
     const indicador = document.getElementById('indicador-qtd-quadras');
     if (!container) return;
+
+    const estadoAtual = estadoTrial || (typeof obterEstadoTrialB2B === 'function'
+        ? obterEstadoTrialB2B({}, clubeAtivoId)
+        : { limiteEfetivoQuadras: 999 });
+    const limiteEfetivo = parseInt(estadoAtual.limiteEfetivoQuadras, 10) || 1;
 
     container.innerHTML = '';
     atualizarBotaoInversaoUI();
@@ -74,6 +199,7 @@ function renderizarCardsQuadrasDoBanco(quantidade, nomesSalvos) {
         let dadosQuadra = nomesSalvos[i] || {};
         let nomeFantasia = typeof dadosQuadra === 'object' ? (dadosQuadra.nome || `Quadra ${i}`) : dadosQuadra;
         let statusBanco = nomesSalvos[`status_${i}`] || 'liberada';
+        const isBloqueadaPorPlano = i > limiteEfetivo;
         
         let piso = dadosQuadra.piso || '';
         let isVip = dadosQuadra.vip === true;
@@ -98,6 +224,11 @@ function renderizarCardsQuadrasDoBanco(quantidade, nomesSalvos) {
             colCirculo = '#f97316'; 
         }
 
+        if (isBloqueadaPorPlano) {
+            statusFormatado = 'Bloqueada (Plano)';
+            colCirculo = '#64748b';
+        }
+
         // 🧠 MATRIZ DE ESTADOS INTELIGENTE: Monta dinamicamente as ações cabíveis
         let botoesStatusHTML = '';
         if (statusBanco === 'liberada') {
@@ -118,6 +249,10 @@ function renderizarCardsQuadrasDoBanco(quantidade, nomesSalvos) {
 
         const card = document.createElement('div');
         card.className = 'quadra-card-premium';
+        if (isBloqueadaPorPlano) {
+            card.style.opacity = '0.78';
+            card.style.borderLeft = '4px solid #64748b';
+        }
         
         // Regra de Ouro: Pílulas fixas obedecem estritamente ao filtro global unificado
         let tagsFisicasHTML = '';
@@ -155,8 +290,8 @@ function renderizarCardsQuadrasDoBanco(quantidade, nomesSalvos) {
             </div>
             
             <div class="quadra-kebab-container">
-                <button class="quadra-btn-kebab" onclick="abrirMenuOpcoesQuadraSaaS(event, ${i})">
-                    <i class="material-icons">more_vert</i>
+                <button class="quadra-btn-kebab" onclick="${isBloqueadaPorPlano ? 'event.stopPropagation(); exibirAvisoLimitePlanoStarterSaaS();' : `abrirMenuOpcoesQuadraSaaS(event, ${i})`}">
+                    <i class="material-icons">${isBloqueadaPorPlano ? 'lock' : 'more_vert'}</i>
                 </button>
                 
                 <div id="dropdown-quadra-${i}" class="dropdown-saas-menu">
@@ -211,17 +346,136 @@ function salvarFiltrosGlobalSaaS() {
 // ==========================================================================
 // 5. FORMULÁRIO DE INFRAESTRUTURA INDIVIDUAL (TOTALMENTE LIMPO)
 // ==========================================================================
-function exibirAvisoLimitePlanoStarterSaaS() {
+function ativarPasse24hVideoB2BSaaS() {
+    const idClube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId)
+        ? clubeAtivoId
+        : (localStorage.getItem('setpoint_jogador_clube_id') || 'default');
+
+    const infoAtual = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
+    const estadoAtual = obterEstadoTrialB2B(infoAtual, idClube);
+
+    if (!estadoAtual.podeAtivarPasseVideo) {
+        if (estadoAtual.passe24hAtivo) {
+            showToast(`Seu passe de 24h já está ativo (restam ~${estadoAtual.horasRestantesPasse}h).`, 'info');
+        } else {
+            exibirAvisoLimitePlanoStarterSaaS(estadoAtual);
+        }
+        return;
+    }
+
+    const concluirAtivacaoPasse = () => {
+        const agora = Date.now();
+        const novoPassesUsados = estadoAtual.passesUsados + 1;
+        const novoPasse24hAteTs = agora + DURACAO_PASSE_VIDEO_MS_B2B;
+        const chaveLocal = obterChaveTrialB2B(idClube);
+
+        const payloadLocal = {
+            inicioTs: estadoAtual.inicioTs,
+            passesUsados: novoPassesUsados,
+            passe24hAteTs: novoPasse24hAteTs
+        };
+
+        try {
+            localStorage.setItem(chaveLocal, JSON.stringify(payloadLocal));
+        } catch (e) {}
+
+        if (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) {
+            infoClubeGlobal.trial_inicio_ts = estadoAtual.inicioTs;
+            infoClubeGlobal.trial_passes_usados = novoPassesUsados;
+            infoClubeGlobal.trial_passe_24h_ate = novoPasse24hAteTs;
+        }
+
+        const dadosTrialBanco = {
+            trial_inicio_ts: estadoAtual.inicioTs,
+            trial_passes_usados: novoPassesUsados,
+            trial_passe_24h_ate: novoPasse24hAteTs
+        };
+
+        if (typeof atualizarInfoClubeNoBancoSaaS === 'function') {
+            atualizarInfoClubeNoBancoSaaS(dadosTrialBanco, idClube).catch((err) => {
+                console.warn('[Trial B2B] Erro ao sincronizar passe 24h via Core:', err);
+            });
+        }
+		
+		if (typeof atualizarBannerPlanoGestorSaaS === 'function') {
+            atualizarBannerPlanoGestorSaaS();
+        }
+
+        const restantesDepois = Math.max(0, MAX_PASSES_VIDEO_B2B - novoPassesUsados);
+        showToast(
+            `Passe de 24h ativado! Todas as quadras estão liberadas (restam ${restantesDepois} de ${MAX_PASSES_VIDEO_B2B} passes na 2ª semana).`,
+            'success',
+            4500
+        );
+
+        const telaGerenciador = document.getElementById('tela-gerenciador-quadras');
+        if (telaGerenciador && telaGerenciador.classList.contains('ativa')) {
+            abrirGerenciadorQuadras();
+        }
+    };
+
+    if (typeof solicitarVideoPremiadoAdMobSaaS === 'function') {
+        solicitarVideoPremiadoAdMobSaaS(concluirAtivacaoPasse, 'Passe de 24h — Múltiplas Quadras', true);
+    } else {
+        concluirAtivacaoPasse();
+    }
+}
+
+
+function exibirAvisoLimitePlanoStarterSaaS(estadoTrial = null) {
+    const estado = estadoTrial || (typeof obterEstadoTrialB2B === 'function'
+        ? obterEstadoTrialB2B({}, clubeAtivoId)
+        : { etapa: 'expirado', passesRestantes: 0, maxPasses: 7, horasRestantesPasse: 0 });
+
+    let tituloModal = 'Limite do Plano Starter';
+    let detalheEtapaHTML =
+        'Seu período de teste de múltiplas quadras terminou.<br>' +
+        'Suas quadras cadastradas continuam salvas, mas apenas a <b>Quadra 1</b> fica liberada no Plano Starter.<br><br>' +
+        'Para liberar todas as quadras novamente e criar novas, faça upgrade para o <b style="color: #16a34a;">Plano Arena PRO</b>.<br>' +
+        '<span style="font-size: 12.5px; color: #64748b;">Clique em <b>Cancelar</b> apenas para fechar este aviso sem alterar seus cadastros.</span>';
+
+    let acaoConfirmar = function() {
+        if (typeof navegarApp === 'function' && document.getElementById('tela-planos-b2b')) {
+            navegarApp('tela-planos-b2b');
+        } else {
+            showToast('Acesse a área de planos no painel web para fazer upgrade para o Plano Arena PRO.', 'info');
+        }
+    };
+
+    if (estado.etapa === 'aguardando_video_24h') {
+        tituloModal = 'Liberar Passe de 24h';
+        const pluralPasses = estado.passesRestantes === 1 ? 'dia extra' : 'dias extras';
+        detalheEtapaHTML =
+            'Seu teste grátis de 7 dias terminou.<br>' +
+            'Você ainda pode liberar até <b style="color: #16a34a;">' +
+            estado.passesRestantes + ' ' + pluralPasses +
+            '</b> (1 vídeo por dia, válido por 24h cada).<br><br>' +
+            'Suas quadras atuais continuam salvas. Clique em <b>Confirmar</b> para assistir ao vídeo e liberar todas as quadras por 24h, ou em <b>Cancelar</b> apenas para fechar.';
+
+        acaoConfirmar = function() {
+            if (typeof ativarPasse24hVideoB2BSaaS === 'function') {
+                ativarPasse24hVideoB2BSaaS();
+            } else {
+                showToast('Fluxo de vídeo premiado (+24h) será conectado na etapa final.', 'info');
+            }
+        };
+    } else if (estado.etapa === 'passe_24h_ativo') {
+        tituloModal = 'Passe de 24h Ativo';
+        detalheEtapaHTML =
+            'Seu passe de 24h está ativo (resta cerca de <b style="color: #16a34a;">' +
+            estado.horasRestantesPasse + 'h</b>).<br>' +
+            'Para manter todas as quadras liberadas sem renovação diária, faça upgrade para o <b style="color: #16a34a;">Plano Arena PRO</b>.';
+    }
+
     const msgHTML =
         '<div style="text-align: left; font-size: 14px; line-height: 1.55;">' +
-            'Sua arena está operando no <b>Plano Starter (Grátis)</b>, que permite o cadastro de até <b style="color: #16a34a;">1 quadra</b>.<br><br>' +
-            'Para cadastrar múltiplas quadras sem limite e liberar navegação 100% sem anúncios para todos os seus atletas, solicite o upgrade para o <b style="color: #16a34a;">Plano Arena PRO</b>.' +
+            detalheEtapaHTML +
         '</div>';
 
     if (typeof showPrompt === 'function') {
-        showPrompt('Limite do Plano Starter', msgHTML, function() {});
+        showPrompt(tituloModal, msgHTML, acaoConfirmar);
     } else {
-        showToast('O Plano Starter (Grátis) permite apenas 1 quadra. Faça upgrade para o Plano Arena PRO.', 'warning');
+        showToast('Limite do Plano Starter atingido. Faça upgrade para o Plano Arena PRO.', 'warning');
     }
 }
 
@@ -236,34 +490,33 @@ function abrirModalCadastroQuadraSaaS(isEdicao, index = null) {
     document.querySelectorAll('#esportes-grid-quadra .pilula-check-saas').forEach(el => el.classList.remove('ativa'));
     
     if (!isEdicao) {
-        Promise.all([
-            database.ref(`${raizBanco}/config/Quadras/quantidade`).once('value'),
-            database.ref(`Clubes/${clubeAtivoId}/info_clube/plano_b2b`).once('value')
-        ]).then(([snapQtd, snapPlano]) => {
-            const qtdAtual = parseInt(snapQtd.val()) || 0;
-            const planoAtual = snapPlano.val() || 'starter';
+        const config = (typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal) ? configQuadrasGlobal : {};
+        const qtdAtual = parseInt(config.quantidade) || 0;
+        const infoClube = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
+        const estadoTrial = typeof obterEstadoTrialB2B === 'function'
+            ? obterEstadoTrialB2B(infoClube, clubeAtivoId)
+            : { podeCriarMultiplasQuadras: (infoClube.plano_b2b || infoClube.plano) === 'pro' };
 
-            if (planoAtual !== 'pro' && qtdAtual >= 1) {
-                exibirAvisoLimitePlanoStarterSaaS();
-                return;
-            }
+        if (!estadoTrial.podeCriarMultiplasQuadras && qtdAtual >= 1) {
+            exibirAvisoLimitePlanoStarterSaaS(estadoTrial);
+            return;
+        }
 
-            const proxima = qtdAtual + 1;
-            
-            chaveInput.value = ""; 
-            titulo.innerText = `Nova Quadra ${proxima}`;
-            faixa.className = "faixa-status faixa-verde";
-            
-            document.getElementById('inp-nome-quadra').value = `Quadra ${proxima}`;
-            document.getElementById('inp-piso-quadra').value = "Saibro";
-            document.getElementById('check-vip-quadra').checked = false;
-            document.getElementById('check-luz-quadra').checked = true;
-            document.getElementById('check-arquibancada-quadra').checked = false;
-            toggleCampoCapacidadeSaaS(false);
-            document.getElementById('inp-capacidade-quadra').value = "";
-            
-            modal.classList.add('visivel');
-        });
+        const proxima = qtdAtual + 1;
+
+        chaveInput.value = "";
+        titulo.innerText = `Nova Quadra ${proxima}`;
+        faixa.className = "faixa-status faixa-verde";
+
+        document.getElementById('inp-nome-quadra').value = `Quadra ${proxima}`;
+        document.getElementById('inp-piso-quadra').value = "Saibro";
+        document.getElementById('check-vip-quadra').checked = false;
+        document.getElementById('check-luz-quadra').checked = true;
+        document.getElementById('check-arquibancada-quadra').checked = false;
+        toggleCampoCapacidadeSaaS(false);
+        document.getElementById('inp-capacidade-quadra').value = "";
+
+        modal.classList.add('visivel');
     } else {
         chaveInput.value = index;
         
@@ -354,34 +607,32 @@ function salvarConfiguracaoRichQuadraSaaS() {
     };
 
     if (chaveEdicao === "") {
-        Promise.all([
-            database.ref(`${raizBanco}/config/Quadras`).once('value'),
-            database.ref(`Clubes/${clubeAtivoId}/info_clube/plano_b2b`).once('value')
-        ]).then(([snap, snapPlano]) => {
-            const config = snap.val() || {};
-            const qtdAtual = parseInt(config.quantidade) || 0;
-            const planoAtual = snapPlano.val() || 'starter';
+        const config = (typeof configQuadrasGlobal !== 'undefined' && configQuadrasGlobal) ? configQuadrasGlobal : {};
+        const qtdAtual = parseInt(config.quantidade) || 0;
+        const infoClube = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
+        const estadoTrial = typeof obterEstadoTrialB2B === 'function'
+            ? obterEstadoTrialB2B(infoClube, clubeAtivoId)
+            : { podeCriarMultiplasQuadras: (infoClube.plano_b2b || infoClube.plano) === 'pro' };
 
-            if (planoAtual !== 'pro' && qtdAtual >= 1) {
-                fecharModalCadastroQuadraSaaS();
-                exibirAvisoLimitePlanoStarterSaaS();
-                return;
-            }
+        if (!estadoTrial.podeCriarMultiplasQuadras && qtdAtual >= 1) {
+            fecharModalCadastroQuadraSaaS();
+            exibirAvisoLimitePlanoStarterSaaS(estadoTrial);
+            return;
+        }
 
-            const proximoIndex = qtdAtual + 1;
+        const proximoIndex = qtdAtual + 1;
 
-            const updates = {};
-            updates['quantidade'] = proximoIndex;
-            updates[`nomes/${proximoIndex}`] = payloadQuadra;
-            updates[`nomes/status_${proximoIndex}`] = 'liberada';
+        const updates = {};
+        updates['quantidade'] = proximoIndex;
+        updates[`nomes/${proximoIndex}`] = payloadQuadra;
+        updates[`nomes/status_${proximoIndex}`] = 'liberada';
 
-            database.ref(`${raizBanco}/config/Quadras`).update(updates).then(() => {
-                showToast(`${nomeInp} adicionada com sucesso!`, 'success');
-                document.getElementById('busca-quadra').value = '';
-                filtroPesquisaSaaS = '';
-                fecharModalCadastroQuadraSaaS();
-                abrirGerenciadorQuadras();
-            });
+        database.ref(`${raizBanco}/config/Quadras`).update(updates).then(() => {
+            showToast(`${nomeInp} adicionada com sucesso!`, 'success');
+            document.getElementById('busca-quadra').value = '';
+            filtroPesquisaSaaS = '';
+            fecharModalCadastroQuadraSaaS();
+            forcarRepinturaGerenciadorQuadras();
         });
     } else {
         const updates = {};
@@ -881,47 +1132,44 @@ function avancarPreviewOnboardingSaaS() {
         return;
     }
 
-    database.ref('Clubes/' + clubeAtivoId + '/info_clube/plano_b2b').once('value').then((snapPlano) => {
-        const planoAtual = snapPlano.val() || 'starter';
+    const infoClube = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
+    const estadoTrial = typeof obterEstadoTrialB2B === 'function'
+        ? obterEstadoTrialB2B(infoClube, clubeAtivoId)
+        : { podeCriarMultiplasQuadras: (infoClube.plano_b2b || infoClube.plano) === 'pro' };
 
-        // Trava comercial: Plano Starter (Grátis) limita a arena a 1 quadra
-        if (planoAtual !== 'pro' && qtd > 1) {
-            if (inputQtd) {
-                inputQtd.value = 1;
-            }
-            exibirAvisoLimitePlanoStarterSaaS();
-            return;
+    // Permite múltiplas quadras no plano PRO, durante os 7 dias livres ou com passe de 24h ativo
+    if (!estadoTrial.podeCriarMultiplasQuadras && qtd > 1) {
+        exibirAvisoLimitePlanoStarterSaaS(estadoTrial);
+        return;
+    }
+
+    if (navigator.vibrate) {
+        navigator.vibrate(30);
+    }
+
+    const textoPreviewDOM = document.getElementById('onboarding-texto-preview');
+    if (textoPreviewDOM) {
+        let resumoQuadras = "";
+        for (let i = 1; i <= Math.min(qtd, 5); i++) {
+            resumoQuadras += '• Quadra ' + i + '<br>';
         }
 
-        if (navigator.vibrate) {
-            navigator.vibrate(30);
+        if (qtd > 5) {
+            resumoQuadras += '• ... e mais ' + (qtd - 5) + ' quadras sequenciais.<br>';
         }
 
-        const textoPreviewDOM = document.getElementById('onboarding-texto-preview');
-        if (textoPreviewDOM) {
-            let resumoQuadras = "";
-            for (let i = 1; i <= Math.min(qtd, 5); i++) {
-                resumoQuadras += '• Quadra ' + i + '<br>';
-            }
+        const labelQuadra = qtd === 1 ? 'quadra' : 'quadras';
+        textoPreviewDOM.innerHTML =
+            '<b style="color: #1e293b; display: block; margin-bottom: 8px;">📋 Resumo da Estrutura a ser Criada:</b>' +
+            'Você está prestes a inicializar a arena com <b>' + qtd + ' ' + labelQuadra + '</b>.<br><br>' +
+            '<b style="color: #475569;">Nomes Iniciais Automáticos:</b><br>' +
+            resumoQuadras + '<br>' +
+            '<i style="color: #64748b; display: block; margin-top: 5px;">*Você poderá alterar o nome de cada uma delas de forma personalizada a qualquer momento dentro do Gerenciador.</i>';
+    }
 
-            if (qtd > 5) {
-                resumoQuadras += '• ... e mais ' + (qtd - 5) + ' quadras sequenciais.<br>';
-            }
-
-            const labelQuadra = qtd === 1 ? 'quadra' : 'quadras';
-            textoPreviewDOM.innerHTML =
-                '<b style="color: #1e293b; display: block; margin-bottom: 8px;">📋 Resumo da Estrutura a ser Criada:</b>' +
-                'Você está prestes a inicializar a arena com <b>' + qtd + ' ' + labelQuadra + '</b>.<br><br>' +
-                '<b style="color: #475569;">Nomes Iniciais Automáticos:</b><br>' +
-                resumoQuadras + '<br>' +
-                '<i style="color: #64748b; display: block; margin-top: 5px;">*Você poderá alterar o nome de cada uma delas de forma personalizada a qualquer momento dentro do Gerenciador.</i>';
-        }
-
-        document.getElementById('onboarding-etapa-input').style.display = 'none';
-        document.getElementById('onboarding-etapa-preview').style.display = 'block';
-    });
+    document.getElementById('onboarding-etapa-input').style.display = 'none';
+    document.getElementById('onboarding-etapa-preview').style.display = 'block';
 }
-
 
 /**
  * Retorna à primeira etapa para o gestor corrigir o número de quadras
@@ -943,42 +1191,40 @@ function confirmarECriarArenaSaaS() {
     const inputQtd = document.getElementById('input-onboarding-qtd');
     const qtd = inputQtd ? parseInt(inputQtd.value, 10) : 1;
 
-    database.ref('Clubes/' + clubeAtivoId + '/info_clube/plano_b2b').once('value').then((snapPlano) => {
-        const planoAtual = snapPlano.val() || 'starter';
+    const infoClube = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
+    const estadoTrial = typeof obterEstadoTrialB2B === 'function'
+        ? obterEstadoTrialB2B(infoClube, clubeAtivoId)
+        : { podeCriarMultiplasQuadras: (infoClube.plano_b2b || infoClube.plano) === 'pro' };
 
-        if (planoAtual !== 'pro' && qtd > 1) {
-            if (inputQtd) {
-                inputQtd.value = 1;
-            }
-            exibirAvisoLimitePlanoStarterSaaS();
-            return;
+    if (!estadoTrial.podeCriarMultiplasQuadras && qtd > 1) {
+        exibirAvisoLimitePlanoStarterSaaS(estadoTrial);
+        return;
+    }
+
+    showToast("Construindo infraestrutura da arena...", "info");
+
+    const nomesIniciais = {};
+    for (let i = 1; i <= qtd; i++) {
+        nomesIniciais[i] = 'Quadra ' + i;
+    }
+
+    const payloadOnboarding = {
+        quantidade: qtd,
+        nomes: nomesIniciais
+    };
+
+    database.ref(`${raizBanco}/config/Quadras`).set(payloadOnboarding).then(() => {
+        if (navigator.vibrate) {
+            navigator.vibrate([100, 50, 100]);
         }
 
-        showToast("Construindo infraestrutura da arena...", "info");
+        showToast("Arena inicializada com sucesso absoluto!", "success");
 
-        const nomesIniciais = {};
-        for (let i = 1; i <= qtd; i++) {
-            nomesIniciais[i] = 'Quadra ' + i;
-        }
-
-        const payloadOnboarding = {
-            quantidade: qtd,
-            nomes: nomesIniciais
-        };
-
-        database.ref(`${raizBanco}/config/Quadras`).set(payloadOnboarding).then(() => {
-            if (navigator.vibrate) {
-                navigator.vibrate([100, 50, 100]);
-            }
-
-            showToast("Arena inicializada com sucesso absoluto!", "success");
-
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        }).catch(err => {
-            console.error("Erro no deploy do onboarding:", err);
-            showToast("Erro técnico ao tentar inicializar a estrutura no servidor.", "error");
-        });
+        setTimeout(() => {
+            location.reload();
+        }, 1500);
+    }).catch(err => {
+        console.error("Erro no deploy do onboarding:", err);
+        showToast("Erro técnico ao tentar inicializar a estrutura no servidor.", "error");
     });
 }

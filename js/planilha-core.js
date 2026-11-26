@@ -2049,6 +2049,30 @@ async function gerenciarBannerAdMobNativoSaaS(deveExibir) {
     }
 }
 
+function obterChaveUltimoIntersticialSaaS() {
+    const clube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId)
+        ? clubeAtivoId
+        : (localStorage.getItem('setpoint_jogador_clube_id') || 'default');
+    const idJog = localStorage.getItem('jogadorLogadoId') || 'anon';
+    return 'setpoint_ultimo_intersticial_ts_' + clube + '_' + idJog;
+}
+
+async function garantirInicializacaoAdMobSaaS(AdMobPlugin) {
+    if (!AdMobPlugin || window.admobInicializadoSaaS) return;
+    if (!window.admobInitPromiseSaaS) {
+        window.admobInitPromiseSaaS = (async () => {
+            if (typeof AdMobPlugin.initialize === 'function') {
+                await AdMobPlugin.initialize({ initializeForTesting: false });
+            }
+            window.admobInicializadoSaaS = true;
+        })().catch((err) => {
+            window.admobInitPromiseSaaS = null;
+            throw err;
+        });
+    }
+    await window.admobInitPromiseSaaS;
+}
+
 async function exibirIntersticialAdMobSaaS() {
     const isNativo = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
     const clubeExibeAnuncios = (window.clubeExibeAnunciosSaaS !== false);
@@ -2059,9 +2083,10 @@ async function exibirIntersticialAdMobSaaS() {
         return;
     }
 
-    // Controle Anti-Fadiga (Frequency Capping) - Padrão 60 minutos
+    // Controle Anti-Fadiga isolado por usuário e clube (Frequency Capping - Padrão 60 minutos)
+    const chaveIntersticial = obterChaveUltimoIntersticialSaaS();
     const intervaloMinutos = window.admobIntervaloIntersticialSaaS || 60;
-    const ultimoDisparo = parseInt(localStorage.getItem('setpoint_ultimo_intersticial_ts') || '0', 10);
+    const ultimoDisparo = parseInt(localStorage.getItem(chaveIntersticial) || '0', 10);
     const agora = Date.now();
 
     if (agora - ultimoDisparo < (intervaloMinutos * 60 * 1000)) {
@@ -2071,27 +2096,34 @@ async function exibirIntersticialAdMobSaaS() {
 
     if (!isNativo) {
         console.log('[AdMob SaaS SIMULADOR] 📺 Intersticial de Tela Cheia exibido com sucesso no PC.');
-        localStorage.setItem('setpoint_ultimo_intersticial_ts', agora.toString());
+        localStorage.setItem(chaveIntersticial, agora.toString());
         return;
     }
 
     const AdMobPlugin = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins.AdMob : null;
     if (!AdMobPlugin) return;
 
-    try {
-        if (!window.admobInicializadoSaaS && typeof AdMobPlugin.initialize === 'function') {
-            await AdMobPlugin.initialize({ initializeForTesting: false });
-            window.admobInicializadoSaaS = true;
-        }
+    const adUnitId = window.admobInterstitialIdRemotoSaaS || 'ca-app-pub-3940256099942544/1033173712';
+    const isModoTeste = !window.admobInterstitialIdRemotoSaaS || adUnitId.includes('3940256099942544');
 
-        const adUnitId = window.admobInterstitialIdRemotoSaaS || 'ca-app-pub-3940256099942544/1033173712';
-
-        await AdMobPlugin.prepareInterstitial({ adId: adUnitId, isTesting: !window.admobInterstitialIdRemotoSaaS });
+    const prepararEExibir = async () => {
+        await garantirInicializacaoAdMobSaaS(AdMobPlugin);
+        await AdMobPlugin.prepareInterstitial({ adId: adUnitId, isTesting: isModoTeste });
         await AdMobPlugin.showInterstitial();
+    };
 
-        localStorage.setItem('setpoint_ultimo_intersticial_ts', agora.toString());
-    } catch (erro) {
-        console.warn('[AdMob SaaS] Erro ao exibir Intersticial:', erro);
+    try {
+        await prepararEExibir();
+        localStorage.setItem(chaveIntersticial, Date.now().toString());
+    } catch (erroPrimeiraTentativa) {
+        console.warn('[AdMob SaaS] Cold start no Intersticial, tentando novamente em 1.5s...', erroPrimeiraTentativa);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            await prepararEExibir();
+            localStorage.setItem(chaveIntersticial, Date.now().toString());
+        } catch (erroFinal) {
+            console.warn('[AdMob SaaS] Erro ao exibir Intersticial:', erroFinal);
+        }
     }
 }
 
@@ -2165,6 +2197,9 @@ async function solicitarVideoPremiadoAdMobSaaS(callbackSucesso, tituloRecurso = 
         () => {
             if (typeof fecharSheetPerfil === 'function') fecharSheetPerfil();
             if (typeof abrirModalConfig === 'function') abrirModalConfig('modal-seja-pro');
+        },
+        {
+            texto: 'Decidir Depois'
         }
     );
 

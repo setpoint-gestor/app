@@ -528,7 +528,23 @@ function renderizarVisaoMataMataSaaS(containerAlvo, chaveCatData, idLogado, part
     `; 
 }
 
-async function exportarMataMataPNGSaaS() {
+function usuarioIsentoVideoGruposMataMataSaaS() {
+    const isGodMode = !!localStorage.getItem('god_mode_clube');
+    const ehGestorOuDev = (typeof isGestorLogado !== 'undefined' && isGestorLogado) || isGodMode;
+    if (ehGestorOuDev) return true;
+
+    const ehPro = (typeof perfilEhPro !== 'undefined' && perfilEhPro === true) ||
+                  (typeof verificarTrialProAtivoSaaS === 'function' && verificarTrialProAtivoSaaS());
+    if (ehPro) return true;
+
+    if (window.clubeExibeAnunciosSaaS === false || window.admobAtivoRemotoSaaS === false) {
+        return true;
+    }
+
+    return false;
+}
+
+async function executarExportacaoMataMataPNGSaaS() {
     if (navigator.vibrate) navigator.vibrate(30);
 
     const areaCaptura = document.getElementById('area-capture-matamata');
@@ -1075,6 +1091,17 @@ async function exportarMataMataPNGSaaS() {
     }
 
     if (typeof showToast === 'function') {
-        showToast(trabalhosExportacao.length > 1 ? `Exportação dos ${trabalhosExportacao.length} arquivos concluída!` : "Chave exportada em PNG com sucesso!", "success");
+        showToast(trabalhosExportacao.length > 1 ? `Exportação dos ${trabalhosExportacao.length} arquivos concluída!` : "Chave exportada com sucesso!", "success");
     }
+}
+
+async function exportarMataMataPNGSaaS() {
+    if (usuarioIsentoVideoGruposMataMataSaaS() || typeof solicitarVideoPremiadoAdMobSaaS !== 'function') {
+        await executarExportacaoMataMataPNGSaaS();
+        return;
+    }
+
+    solicitarVideoPremiadoAdMobSaaS(async () => {
+        await executarExportacaoMataMataPNGSaaS();
+    }, 'Exportar Imagem das Chaves');
 }

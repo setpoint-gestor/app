@@ -1455,7 +1455,9 @@ function salvarSumulaSaaS() {
         .then(() => {
             const msgSucesso = isWO 
                 ? (ehArbitragemNeutra ? "W.O. confirmado e homologado!" : "W.O. registrado! Enviado para validação.")
-                : (ehArbitragemNeutra ? "Placar corrigido e homologado com sucesso!" : "Súmula enviada para validação do adversário!");
+                : (ehArbitragemNeutra 
+                    ? (ehContestado ? "Placar corrigido e homologado com sucesso!" : "Placar lançado e homologado com sucesso!") 
+                    : "Súmula enviada para validação do adversário!");
             
             showToast(msgSucesso, "success");
 
