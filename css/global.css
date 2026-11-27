@@ -1991,3 +1991,29 @@ body.dark-mode #modal-plano-gestor .aviso-nativo-plano {
     border-color: #333333 !important;
     color: #cbd5e1 !important;
 }
+
+/* ======================================================== */
+/* 18. PÍLULA INDICADORA DE VERSÃO BETA (GLOBAL / SAAS)     */
+/* ======================================================== */
+.pilula-beta-saas {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    line-height: 1.2;
+    vertical-align: middle;
+}
+
+body.dark-mode .pilula-beta-saas {
+    background: rgba(245, 158, 11, 0.18) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+}
