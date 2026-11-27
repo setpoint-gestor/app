@@ -521,10 +521,10 @@
 
     <!-- HERO SECTION -->
     <section class="hero">
-        <span class="badge-beta-hero">🚀 VERSÃO BETA ABERTA • ACESSO 100% GRATUITO</span>
+        <span id="site-badge-beta-hero" class="badge-beta-hero">🚀 VERSÃO BETA ABERTA • ACESSO 100% GRATUITO</span>
         <h1>O novo padrão em <span>Gestão de Arenas</span></h1>
-        <p>Automatize as reservas da sua quadra, organize rankings e conecte seus atletas. Aproveite a fase Beta com todos os recursos liberados gratuitamente!</p>
-        <a href="index.html?tela=tela-gestor-cadastro" class="btn-hero">
+        <p id="site-hero-subtitulo">Automatize as reservas da sua quadra, organize rankings e conecte seus atletas. Aproveite a fase Beta com todos os recursos liberados gratuitamente!</p>
+        <a id="site-hero-cta" href="index.html?tela=tela-gestor-cadastro" class="btn-hero">
             <i class="material-icons">rocket_launch</i> Testar Grátis Agora (Beta)
         </a>
     </section>
@@ -583,9 +583,9 @@
 
     <!-- SEÇÃO GESTORES E PLANOS (B2B) -->
     <section id="gestores" class="gestores">
-        <span class="badge-b2b">ACESSO ANTECIPADO • VERSÃO BETA GRATUITA</span>
-        <h2 class="section-title" style="margin-bottom: 15px;">Tudo liberado gratuitamente na fase Beta</h2>
-        <p style="color: #64748b; font-size: 17px; max-width: 640px; margin: 0 auto 40px auto; line-height: 1.6;">
+        <span id="site-b2b-badge" class="badge-b2b">ACESSO ANTECIPADO • VERSÃO BETA GRATUITA</span>
+        <h2 id="site-b2b-titulo" class="section-title" style="margin-bottom: 15px;">Tudo liberado gratuitamente na fase Beta</h2>
+        <p id="site-b2b-sub" style="color: #64748b; font-size: 17px; max-width: 640px; margin: 0 auto 40px auto; line-height: 1.6;">
             Cadastre sua arena agora sem custo e sem cartão de crédito. Aproveite a fase de lançamento para testar toda a plataforma na prática.
         </p>
 
@@ -607,8 +607,8 @@
 
             <div class="card" style="background: #ffffff; border: 2px solid var(--cor-primaria); text-align: left; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-                    <span class="badge-b2b">PLANO ARENA PRO • BETA</span>
-                    <h3 style="font-size: 24px; margin-bottom: 6px; color: var(--cor-primaria);">Grátis no Beta <span style="font-size: 14px; font-weight: 500; color: #64748b;">/ acesso antecipado</span></h3>
+                    <span id="site-pro-badge" class="badge-b2b">PLANO ARENA PRO • BETA</span>
+                    <h3 id="site-pro-preco" style="font-size: 24px; margin-bottom: 6px; color: var(--cor-primaria);">Grátis no Beta <span style="font-size: 14px; font-weight: 500; color: #64748b;">/ acesso antecipado</span></h3>
                     <p style="margin-bottom: 18px;">Para clubes e complexos esportivos que buscam operação multi-quadras e experiência VIP.</p>
                     <ul style="list-style: none; padding: 0; margin: 0 0 24px 0; font-size: 14px; color: #334155; line-height: 2;">
                         <li>✅ <b>Múltiplas quadras</b> liberadas sem custo</li>
@@ -617,7 +617,7 @@
                         <li>✅ Suporte direto com o desenvolvedor</li>
                     </ul>
                 </div>
-                <a href="index.html?tela=tela-gestor-cadastro" class="btn-loja" style="background: var(--cor-primaria); text-align: center;">Criar Arena Grátis no Beta</a>
+                <a id="site-pro-cta" href="index.html?tela=tela-gestor-cadastro" class="btn-loja" style="background: var(--cor-primaria); text-align: center;">Criar Arena Grátis no Beta</a>
             </div>
         </div>
     </section>
@@ -823,14 +823,61 @@
         firebase.database().ref('Clubes/SaaS_Config').on('value', (snapshot) => {
             if (!snapshot.exists()) return;
             const cfg = snapshot.val() || {};
+            const isBeta = cfg.fase_beta === true;
 
-            // 1. Atualiza a versão exibida no rodapé
-            const elVersao = document.getElementById('versao-site');
-            if (elVersao && cfg.versao_web) {
-                elVersao.textContent = "Versão " + cfg.versao_web + " • Beta Aberta (Acesso Gratuito)";
+            // 1. Alterna visualmente entre Fase Beta e Lançamento Oficial
+            document.title = isBeta
+                ? 'SetPoint - Gestão Inteligente de Arenas (Beta)'
+                : 'SetPoint - Gestão Inteligente de Arenas';
+
+            const badgeHero = document.getElementById('site-badge-beta-hero');
+            if (badgeHero) badgeHero.style.display = isBeta ? 'inline-block' : 'none';
+
+            const heroSub = document.getElementById('site-hero-subtitulo');
+            if (heroSub) {
+                heroSub.textContent = isBeta
+                    ? 'Automatize as reservas da sua quadra, organize rankings e conecte seus atletas. Aproveite a fase Beta com todos os recursos liberados gratuitamente!'
+                    : 'A plataforma definitiva para automatizar as reservas da sua quadra, organizar rankings e conectar seus jogadores.';
             }
 
-            // 2. Alterna dinamicamente o card Android entre APK Beta e Google Play
+            const heroCta = document.getElementById('site-hero-cta');
+            if (heroCta) {
+                heroCta.innerHTML = isBeta
+                    ? '<i class="material-icons">rocket_launch</i> Testar Grátis Agora (Beta)'
+                    : '<i class="material-icons">rocket_launch</i> Começar Agora Grátis';
+            }
+
+            const b2bBadge = document.getElementById('site-b2b-badge');
+            const b2bTitulo = document.getElementById('site-b2b-titulo');
+            const b2bSub = document.getElementById('site-b2b-sub');
+            const proBadge = document.getElementById('site-pro-badge');
+            const proPreco = document.getElementById('site-pro-preco');
+            const proCta = document.getElementById('site-pro-cta');
+
+            if (b2bBadge) b2bBadge.textContent = isBeta ? 'ACESSO ANTECIPADO • VERSÃO BETA GRATUITA' : 'PARA DONOS DE ARENAS';
+            if (b2bTitulo) b2bTitulo.textContent = isBeta ? 'Tudo liberado gratuitamente na fase Beta' : 'Planos transparentes para o seu Clube';
+            if (b2bSub) {
+                b2bSub.textContent = isBeta
+                    ? 'Cadastre sua arena agora sem custo e sem cartão de crédito. Aproveite a fase de lançamento para testar toda a plataforma na prática.'
+                    : 'Comece gratuitamente sem limite de tempo ou escale sua arena com recursos profissionais e navegação 100% livre de anúncios.';
+            }
+            if (proBadge) proBadge.textContent = isBeta ? 'PLANO ARENA PRO • BETA' : 'PLANO ARENA PRO';
+            if (proPreco) {
+                proPreco.innerHTML = isBeta
+                    ? 'Grátis no Beta <span style="font-size: 14px; font-weight: 500; color: #64748b;">/ acesso antecipado</span>'
+                    : 'R$ 89,90 <span style="font-size: 14px; font-weight: 500; color: #64748b;">/ mensal</span>';
+            }
+            if (proCta) proCta.textContent = isBeta ? 'Criar Arena Grátis no Beta' : 'Criar Arena PRO';
+
+            // 2. Atualiza a versão exibida no rodapé
+            const elVersao = document.getElementById('versao-site');
+            if (elVersao && cfg.versao_web) {
+                elVersao.textContent = isBeta
+                    ? 'Versão ' + cfg.versao_web + ' • Beta Aberta (Acesso Gratuito)'
+                    : 'Versão ' + cfg.versao_web;
+            }
+
+            // 3. Alterna dinamicamente o card Android entre APK Beta e Google Play
             const btnAndroid = document.getElementById('btn-download-android');
             const descAndroid = document.getElementById('desc-download-android');
             const canal = cfg.canal_distribuicao || 'APK_DIRETO';
@@ -841,8 +888,10 @@
                     btnAndroid.textContent = 'Disponível no Google Play';
                     btnAndroid.href = cfg.url_playstore || 'https://play.google.com/store/apps/details?id=com.ronaldo.setpoint';
                 } else {
-                    descAndroid.innerHTML = 'Instale a versão Beta para Android via pacote APK direto enquanto preparamos o lançamento na Google Play.';
-                    btnAndroid.textContent = 'Baixar App Beta (APK)';
+                    descAndroid.innerHTML = isBeta
+                        ? 'Instale a versão Beta para Android via pacote APK direto enquanto preparamos o lançamento na Google Play.'
+                        : 'Baixe o aplicativo para Android em arquivo APK oficial com instalação rápida e direta.';
+                    btnAndroid.textContent = isBeta ? 'Baixar App Beta (APK)' : 'Baixar Aplicativo (APK)';
                     btnAndroid.href = cfg.url_apk || 'https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq';
                 }
             }
