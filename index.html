@@ -46,7 +46,10 @@
 
     <div id="tela-boas-vindas" class="tela-app"> 
         <div class="container-central">
-            <h1>SetPoint Gestor</h1>
+            <h1 style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                <span>SetPoint Gestor</span>
+                <span class="pilula-beta-saas">BETA</span>
+            </h1>
             <p style="color: #666; margin-bottom: 30px;">O novo padrão em gestão de arenas.</p>
 			<button class="btn-app btn-jogador" onclick="abrirTelaBuscaClube()">Sou Jogador</button>
             <button class="btn-app btn-gestor" onclick="navegarApp('tela-gestor-login')">Sou Gestor / Dono</button>
@@ -150,6 +153,7 @@
                     <span>Painel de Controle do Gestor</span>
                     <span style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                         <span id="txt-versao-gestor" style="font-size: 11px; color: #64748b; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;"></span>
+                        <span class="pilula-beta-saas">BETA</span>
                         <button type="button" onclick="abrirManualGestorSaaS()" title="Abrir Manual do Gestor (PDF)" style="font-size: 11px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; line-height: 1.2;">
                             <i class="material-icons" style="font-size: 13px;">menu_book</i> Manual do Gestor
                         </button>
@@ -1779,7 +1783,10 @@
                 <!-- RODAPÉ REESTRUTURADO -->
                 <div class="perfil-rodape">
                     <button class="btn-link" style="color: #0284c7; font-weight: 700; text-decoration: none; font-size: 13.5px; padding: 4px;" onclick="deslogarJogadorSaaS()">Trocar de Usuário</button>
-                    <div id="sheet-versao-app" style="font-size: 11px; color: #64748b; font-weight: 500; margin-top: 4px;">SetPoint SaaS • Versão 2.0.6.5</div>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px;">
+                        <span id="sheet-versao-app" style="font-size: 11px; color: #64748b; font-weight: 500;">SetPoint SaaS • Versão 2.0.6.5</span>
+                        <span class="pilula-beta-saas">BETA</span>
+                    </div>
                 </div>
 
             </div>

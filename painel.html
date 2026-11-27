@@ -348,17 +348,28 @@
             border-color: var(--primary);
         }
 
+        .saas-global-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
         .saas-global-bar {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 16px 20px;
-            margin-bottom: 24px;
             display: flex;
+            flex-direction: column;
             justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .saas-global-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .kpi-grid-b2b {
@@ -503,22 +514,43 @@
 
             <!-- ABA 1: INFRAESTRUTURA & ARENAS -->
             <div id="console-view-arenas">
-                <!-- Controle Global de Distribuição (SaaS_Config) -->
-                <div class="saas-global-bar">
-                    <div>
-                        <div style="font-size: 13px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                            <i class="material-icons" style="font-size: 18px; color: var(--primary);">cloud_sync</i>
-                            Canal de Distribuição Android (Site & App)
-                            <span id="badge-versao-console-global" style="font-size: 11px; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 6px; color: var(--text-muted); font-weight: 600;">v--</span>
+                <!-- Controles Globais SaaS (SaaS_Config) -->
+                <div class="saas-global-grid">
+                    <!-- 1. Canal de Distribuição Android -->
+                    <div class="saas-global-bar">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <i class="material-icons" style="font-size: 18px; color: var(--primary);">cloud_sync</i>
+                                Canal de Distribuição Android
+                                <span id="badge-versao-console-global" style="font-size: 11px; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 6px; color: var(--text-muted); font-weight: 600;">v--</span>
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">
+                                Define se o site entrega o APK direto ou direciona para a Google Play Store.
+                            </span>
                         </div>
-                        <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 3px;">
-                            Define se o site entrega o APK direto para testes ou direciona para a Google Play Store.
-                        </span>
+                        <select id="select-canal-distribuicao" class="input-dev" style="margin: 0; width: 100%; padding: 10px 14px; font-size: 13px; font-weight: 700;" onchange="alterarCanalDistribuicaoSaaS(this.value)">
+                            <option value="APK_DIRETO">APK_DIRETO (Testes / Link Direto)</option>
+                            <option value="GOOGLE_PLAY">GOOGLE_PLAY (Produção Oficial Loja)</option>
+                        </select>
                     </div>
-                    <select id="select-canal-distribuicao" class="input-dev" style="margin: 0; width: auto; min-width: 240px; padding: 9px 14px; font-size: 13px; font-weight: 700;" onchange="alterarCanalDistribuicaoSaaS(this.value)">
-                        <option value="APK_DIRETO">APK_DIRETO (Testes / Link Direto)</option>
-                        <option value="GOOGLE_PLAY">GOOGLE_PLAY (Produção Oficial Loja)</option>
-                    </select>
+
+                    <!-- 2. Modo de Operação / Fase Beta Global -->
+                    <div class="saas-global-bar">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <i class="material-icons" style="font-size: 18px; color: var(--warning);">science</i>
+                                Modo de Operação (Site & App)
+                                <span id="badge-fase-beta-console" style="font-size: 10.5px; background: rgba(245, 158, 11, 0.16); border: 1px solid rgba(245, 158, 11, 0.4); padding: 2px 8px; border-radius: 6px; color: #fbbf24; font-weight: 800;">BETA ATIVA</span>
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">
+                                Controla os selos BETA e a comunicação de acesso antecipado gratuito em tempo real.
+                            </span>
+                        </div>
+                        <select id="select-fase-beta-saas" class="input-dev" style="margin: 0; width: 100%; padding: 10px 14px; font-size: 13px; font-weight: 700;" onchange="alterarFaseBetaSaaS(this.value)">
+                            <option value="true">BETA ATIVA (Acesso Antecipado Gratuito)</option>
+                            <option value="false">PRODUÇÃO OFICIAL (Encerrar Fase Beta)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="tabela-wrapper">
@@ -769,7 +801,7 @@
         }
 		
 		// ==========================================
-        // CONTROLE DE ABAS & CANAL DE DISTRIBUIÇÃO
+        // CONTROLE DE ABAS, CANAL & FASE BETA GLOBAL
         // ==========================================
         let cacheClubesConsole = {};
 
@@ -793,6 +825,78 @@
                 .catch(() => {
                     showToast('Erro ao atualizar canal de distribuição no Firebase.', 'error');
                 });
+        }
+
+        function atualizarBadgeFaseBetaConsole(isBeta) {
+            const selBeta = document.getElementById('select-fase-beta-saas');
+            const badgeBeta = document.getElementById('badge-fase-beta-console');
+            if (selBeta) selBeta.value = isBeta ? 'true' : 'false';
+            if (badgeBeta) {
+                if (isBeta) {
+                    badgeBeta.textContent = 'BETA ATIVA';
+                    badgeBeta.style.background = 'rgba(245, 158, 11, 0.16)';
+                    badgeBeta.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                    badgeBeta.style.color = '#fbbf24';
+                } else {
+                    badgeBeta.textContent = 'PRODUÇÃO';
+                    badgeBeta.style.background = 'rgba(16, 185, 129, 0.16)';
+                    badgeBeta.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                    badgeBeta.style.color = '#34d399';
+                }
+            }
+        }
+
+        function alterarFaseBetaSaaS(valorStr) {
+            const ativarBeta = (valorStr === 'true');
+            const estadoAnterior = !ativarBeta;
+            const modal = document.getElementById('modalConsoleConfirm');
+            const icon = document.getElementById('consoleModalIcon');
+            const title = document.getElementById('consoleModalTitle');
+            const msg = document.getElementById('consoleModalMsg');
+            const btnConfirm = document.getElementById('btnConsoleConfirm');
+            const btnCancel = document.getElementById('btnConsoleCancel');
+
+            if (!modal) {
+                db.ref('Clubes/SaaS_Config/fase_beta').set(ativarBeta);
+                return;
+            }
+
+            icon.textContent = ativarBeta ? 'science' : 'verified';
+            icon.style.color = ativarBeta ? '#f59e0b' : '#10b981';
+
+            title.textContent = ativarBeta ? 'Ativar Modo Beta Aberta' : 'Encerrar Fase Beta';
+            msg.innerHTML = ativarBeta
+                ? 'Deseja ativar os selos <b>BETA</b> e a comunicação de acesso gratuito no site e no aplicativo?'
+                : 'Deseja remover os selos <b>BETA</b> do site e do aplicativo e alternar para o modo comercial de <b>Produção Oficial</b>?';
+
+            btnConfirm.style.background = ativarBeta ? '#f59e0b' : '#10b981';
+            btnConfirm.style.color = '#000';
+            btnConfirm.textContent = ativarBeta ? 'Ativar Beta' : 'Confirmar Produção';
+
+            btnConfirm.onclick = () => {
+                modal.style.display = 'none';
+                db.ref('Clubes/SaaS_Config/fase_beta').set(ativarBeta)
+                    .then(() => {
+                        atualizarBadgeFaseBetaConsole(ativarBeta);
+                        showToast(
+                            ativarBeta
+                                ? 'Modo Beta ativado no site e no aplicativo!'
+                                : 'Fase Beta encerrada! Site e app em Produção Oficial.',
+                            'success'
+                        );
+                    })
+                    .catch(() => {
+                        atualizarBadgeFaseBetaConsole(estadoAnterior);
+                        showToast('Erro ao atualizar fase_beta no Firebase.', 'error');
+                    });
+            };
+
+            btnCancel.onclick = () => {
+                modal.style.display = 'none';
+                atualizarBadgeFaseBetaConsole(estadoAnterior);
+            };
+
+            modal.style.display = 'flex';
         }
 
         // 3. MOTOR DE DADOS, CANAL GLOBAL E FINANCEIRO B2B
@@ -825,6 +929,7 @@
                 const badgeVersao = document.getElementById('badge-versao-console-global');
                 if (selCanal) selCanal.value = saasCfg.canal_distribuicao || 'APK_DIRETO';
                 if (badgeVersao) badgeVersao.textContent = saasCfg.versao_web ? ('v' + saasCfg.versao_web) : 'v--';
+                atualizarBadgeFaseBetaConsole(saasCfg.fase_beta === true);
 
                 let htmlTabela = '';
                 let htmlFinanceiro = '';
