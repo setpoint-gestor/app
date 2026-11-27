@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SetPoint - Gestão Inteligente de Arenas</title>
+    <title>SetPoint - Gestão Inteligente de Arenas (Beta)</title>
     
     <!-- Fontes e Ícones -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -108,6 +108,19 @@
             text-align: center;
         }
 
+        .badge-beta-hero {
+            display: inline-block;
+            background: rgba(46, 139, 87, 0.22);
+            border: 1px solid rgba(74, 222, 128, 0.45);
+            color: #86efac;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            margin-bottom: 18px;
+        }
+
         .hero h1 {
             font-size: 46px;
             font-weight: 900;
@@ -122,7 +135,7 @@
         .hero p {
             font-size: 18px;
             color: #94a3b8;
-            max-width: 620px;
+            max-width: 640px;
             margin: 0 auto 35px auto;
             line-height: 1.6;
         }
@@ -427,15 +440,13 @@
         @media (max-width: 768px) {
             header { 
                 padding: 15px 5%; 
-                flex-wrap: wrap; /* Permite que o menu quebre para a linha de baixo */
+                flex-wrap: wrap;
             }
             
-            /* Mostra o botão do Menu */
             .btn-menu-mobile { 
                 display: block; 
             }
             
-            /* Transformação da navegação em gaveta */
             nav.menu-topo { 
                 display: flex;
                 flex-direction: column;
@@ -447,7 +458,6 @@
                 box-shadow: 0 10px 15px rgba(0,0,0,0.1);
                 overflow: hidden;
                 
-                /* Animação de gaveta suave */
                 max-height: 0;
                 opacity: 0;
                 transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
@@ -459,7 +469,6 @@
                 opacity: 1;
             }
 
-            /* Estilo dos links no mobile */
             nav.menu-topo a {
                 padding: 16px 5%;
                 border-bottom: 1px solid var(--cor-borda);
@@ -469,7 +478,7 @@
             }
 
             nav.menu-topo a:last-child {
-                border-bottom: none; /* Remove a linha do último item */
+                border-bottom: none;
             }
 
             nav.menu-topo a.btn-login {
@@ -478,7 +487,7 @@
                 text-align: center;
             }
 
-            /* Ajustes gerais de espaçamento para Mobile */
+            .badge-beta-hero { font-size: 11px; padding: 5px 12px; }
             .hero h1 { font-size: 34px; }
             .hero { padding: 60px 5%; }
             .card-recurso { padding: 25px 20px; }
@@ -512,10 +521,11 @@
 
     <!-- HERO SECTION -->
     <section class="hero">
+        <span class="badge-beta-hero">🚀 VERSÃO BETA ABERTA • ACESSO 100% GRATUITO</span>
         <h1>O novo padrão em <span>Gestão de Arenas</span></h1>
-        <p>A plataforma definitiva para automatizar as reservas da sua quadra, conectar seus jogadores e acabar com a dor de cabeça do WhatsApp.</p>
+        <p>Automatize as reservas da sua quadra, organize rankings e conecte seus atletas. Aproveite a fase Beta com todos os recursos liberados gratuitamente!</p>
         <a href="index.html?tela=tela-gestor-cadastro" class="btn-hero">
-            <i class="material-icons">rocket_launch</i> Começar Agora Grátis
+            <i class="material-icons">rocket_launch</i> Testar Grátis Agora (Beta)
         </a>
     </section>
 
@@ -548,24 +558,24 @@
     <!-- SEÇÃO DE DOWNLOADS DO APP -->
     <section id="downloads" class="downloads">
         <h2 class="section-title">Baixe o App para Jogadores</h2>
-        <p class="section-subtitle">Seus atletas acessam a grade das quadras em segundos de qualquer dispositivo.</p>
+        <p class="section-subtitle">Disponível gratuitamente durante a fase Beta para Android e iPhone.</p>
         
         <div class="cards-grid">
             <div class="card">
                 <i class="material-icons card-icone" style="color: #3DDC84;">android</i>
                 <h3>Android</h3>
-                <p id="desc-download-android">Baixe o aplicativo para Android em arquivo APK oficial com instalação rápida e direta.</p>
+                <p id="desc-download-android">Instale a versão Beta para Android via pacote APK direto enquanto preparamos o lançamento na Google Play.</p>
                 <a id="btn-download-android" href="https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq" class="btn-loja" target="_blank" onclick="baixarApkAndroid(event)">
-                    Baixar Aplicativo (APK)
+                    Baixar App Beta (APK)
                 </a>
             </div>
 
             <div class="card">
                 <i class="material-icons card-icone" style="color: #000000;">apple</i>
                 <h3>iPhone (iOS)</h3>
-                <p>Acesse o app pelo Safari e selecione <b>"Adicionar à Tela de Início"</b> para instalar como PWA leve.</p>
+                <p>Acesse a versão Beta pelo Safari e toque em <b>"Adicionar à Tela de Início"</b> para usar como aplicativo.</p>
                 <a href="index.html?tela=tela-boas-vindas&pwa=ios" class="btn-loja">
-                    Acessar Web App (PWA)
+                    Abrir Web App Beta (iOS)
                 </a>
             </div>
         </div>
@@ -573,10 +583,10 @@
 
     <!-- SEÇÃO GESTORES E PLANOS (B2B) -->
     <section id="gestores" class="gestores">
-        <span class="badge-b2b">PARA DONOS DE ARENAS</span>
-        <h2 class="section-title" style="margin-bottom: 15px;">Planos transparentes para o seu Clube</h2>
-        <p style="color: #64748b; font-size: 17px; max-width: 620px; margin: 0 auto 40px auto; line-height: 1.6;">
-            Comece gratuitamente sem limite de tempo ou escale sua arena com recursos profissionais e navegação 100% livre de anúncios.
+        <span class="badge-b2b">ACESSO ANTECIPADO • VERSÃO BETA GRATUITA</span>
+        <h2 class="section-title" style="margin-bottom: 15px;">Tudo liberado gratuitamente na fase Beta</h2>
+        <p style="color: #64748b; font-size: 17px; max-width: 640px; margin: 0 auto 40px auto; line-height: 1.6;">
+            Cadastre sua arena agora sem custo e sem cartão de crédito. Aproveite a fase de lançamento para testar toda a plataforma na prática.
         </p>
 
         <div class="cards-grid" style="max-width: 820px; margin-bottom: 35px;">
@@ -597,17 +607,17 @@
 
             <div class="card" style="background: #ffffff; border: 2px solid var(--cor-primaria); text-align: left; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-                    <span class="badge-b2b">PLANO ARENA PRO</span>
-                    <h3 style="font-size: 24px; margin-bottom: 6px; color: var(--cor-primaria);">Sob Medida <span style="font-size: 14px; font-weight: 500; color: #64748b;">/ mensal</span></h3>
+                    <span class="badge-b2b">PLANO ARENA PRO • BETA</span>
+                    <h3 style="font-size: 24px; margin-bottom: 6px; color: var(--cor-primaria);">Grátis no Beta <span style="font-size: 14px; font-weight: 500; color: #64748b;">/ acesso antecipado</span></h3>
                     <p style="margin-bottom: 18px;">Para clubes e complexos esportivos que buscam operação multi-quadras e experiência VIP.</p>
                     <ul style="list-style: none; padding: 0; margin: 0 0 24px 0; font-size: 14px; color: #334155; line-height: 2;">
-                        <li>✅ <b>Múltiplas quadras</b> sem limite</li>
+                        <li>✅ <b>Múltiplas quadras</b> liberadas sem custo</li>
                         <li>✅ <b>Zero anúncios</b> para todos os seus atletas</li>
                         <li>✅ Concierge IA e Push Notifications</li>
-                        <li>✅ Suporte prioritário via WhatsApp</li>
+                        <li>✅ Suporte direto com o desenvolvedor</li>
                     </ul>
                 </div>
-                <a href="https://wa.me/5541999176972?text=Ol%C3%A1!%20Tenho%20interesse%20no%20Plano%20Arena%20PRO%20do%20SetPoint." target="_blank" class="btn-loja" style="background: var(--cor-primaria); text-align: center;">Falar com Consultor</a>
+                <a href="index.html?tela=tela-gestor-cadastro" class="btn-loja" style="background: var(--cor-primaria); text-align: center;">Criar Arena Grátis no Beta</a>
             </div>
         </div>
     </section>
@@ -615,15 +625,15 @@
     <!-- SEÇÃO PERGUNTAS FREQUENTES (FAQ) -->
     <section id="faq" class="faq">
         <h2 class="section-title">Perguntas Frequentes</h2>
-        <p class="section-subtitle">Tire suas dúvidas sobre o funcionamento do SetPoint.</p>
+        <p class="section-subtitle">Tire suas dúvidas sobre o funcionamento do SetPoint e a fase Beta.</p>
 
         <div class="faq-item" onclick="toggleFaq(this)">
             <div class="faq-pergunta">
-                <span>Como funciona a instalação no iPhone (iOS)?</span>
+                <span>O que significa o SetPoint estar em versão Beta?</span>
                 <i class="material-icons faq-icone">expand_more</i>
             </div>
             <div class="faq-resposta">
-                No iPhone, o SetPoint utiliza a tecnologia PWA (Progressive Web App). Basta abrir o link do aplicativo no Safari, tocar no ícone de "Compartilhar" e selecionar "Adicionar à Tela de Início". O ícone ficará na sua tela inicial exatamente como um app da App Store!
+                Significa que o sistema já está completo e operando em arenas reais — com reservas online, regras anti-monopólio, ranking, súmulas digitais e notificações push — enquanto coletamos feedback das primeiras arenas parceiras antes do lançamento comercial na Google Play.
             </div>
         </div>
 
@@ -633,7 +643,17 @@
                 <i class="material-icons faq-icone">expand_more</i>
             </div>
             <div class="faq-resposta">
-                Você pode criar a conta da sua arena gratuitamente para testar todos os recursos do painel administrativo e configurar suas quadras sem compromisso.
+                Não! Durante a fase Beta atual, o cadastro e o uso da plataforma são 100% gratuitos para gestores e atletas, sem cobrança de mensalidade e sem necessidade de cartão de crédito.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-pergunta">
+                <span>Como funciona a instalação no iPhone (iOS)?</span>
+                <i class="material-icons faq-icone">expand_more</i>
+            </div>
+            <div class="faq-resposta">
+                No iPhone, o SetPoint utiliza a tecnologia PWA (Progressive Web App). Basta abrir o link do aplicativo no Safari, tocar no ícone de "Compartilhar" e selecionar "Adicionar à Tela de Início". O ícone ficará na sua tela inicial exatamente como um app da App Store!
             </div>
         </div>
 
@@ -687,7 +707,7 @@
                     <i class="material-icons">sports_tennis</i> SetPoint
                 </a>
                 <p style="font-size: 13px; line-height: 1.6; color: #94a3b8;">
-                    O novo padrão em automação e gestão de quadras esportivas.
+                    O novo padrão em automação e gestão de quadras esportivas. Versão Beta Aberta.
                 </p>
             </div>
 
@@ -722,13 +742,13 @@
         </div>
 
         <div class="footer-bottom">
-            &copy; 2026 SetPoint Gestor SaaS. Todos os direitos reservados. <br>
+            &copy; 2026 SetPoint Gestor SaaS • Fase Beta Gratuita. Todos os direitos reservados. <br>
             <span id="versao-site" style="color: #64748b; font-size: 11px;">Buscando versão...</span>
         </div>
     </footer>
 
     <!-- BOTÃO FLUTUANTE DO WHATSAPP -->
-    <a href="https://wa.me/5541999176972?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20SetPoint%20e%20gostaria%20de%20saber%20mais%20sobre%20o%20sistema." 
+    <a href="https://wa.me/5541999176972?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20SetPoint%20(Beta)%20e%20gostaria%20de%20saber%20mais%20sobre%20o%20sistema." 
        class="btn-whatsapp-flutuante" 
        target="_blank" 
        title="Falar com o Desenvolvedor">
@@ -761,13 +781,12 @@
             });
         });
 
-
         // Trava de APK no iPhone
         function baixarApkAndroid(event) {
             const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
             if (isIOS) {
                 event.preventDefault();
-                alert('📱 Você está navegando de um iPhone!\n\nEste botão é exclusivo para celulares Android.\n\nPara o seu iPhone, utilize o botão "Acessar Web App (PWA)" no card do iOS!');
+                alert('📱 Você está navegando de um iPhone!\n\nEste botão é exclusivo para celulares Android.\n\nPara o seu iPhone, utilize o botão "Abrir Web App Beta (iOS)" no card ao lado!');
             }
         }
 
@@ -775,12 +794,10 @@
         function toggleFaq(elemento) {
             const jaAtivo = elemento.classList.contains('ativo');
             
-            // Fecha todos os outros
             document.querySelectorAll('.faq-item').forEach(item => {
                 item.classList.remove('ativo');
             });
 
-            // Se não estava ativo, abre o clicado
             if (!jaAtivo) {
                 elemento.classList.add('ativo');
             }
@@ -810,10 +827,10 @@
             // 1. Atualiza a versão exibida no rodapé
             const elVersao = document.getElementById('versao-site');
             if (elVersao && cfg.versao_web) {
-                elVersao.textContent = "Versão " + cfg.versao_web;
+                elVersao.textContent = "Versão " + cfg.versao_web + " • Beta Aberta (Acesso Gratuito)";
             }
 
-            // 2. Alterna dinamicamente o card Android entre APK de testes e Google Play
+            // 2. Alterna dinamicamente o card Android entre APK Beta e Google Play
             const btnAndroid = document.getElementById('btn-download-android');
             const descAndroid = document.getElementById('desc-download-android');
             const canal = cfg.canal_distribuicao || 'APK_DIRETO';
@@ -824,8 +841,8 @@
                     btnAndroid.textContent = 'Disponível no Google Play';
                     btnAndroid.href = cfg.url_playstore || 'https://play.google.com/store/apps/details?id=com.ronaldo.setpoint';
                 } else {
-                    descAndroid.innerHTML = 'Baixe o aplicativo para Android em arquivo APK oficial com instalação rápida e direta.';
-                    btnAndroid.textContent = 'Baixar Aplicativo (APK)';
+                    descAndroid.innerHTML = 'Instale a versão Beta para Android via pacote APK direto enquanto preparamos o lançamento na Google Play.';
+                    btnAndroid.textContent = 'Baixar App Beta (APK)';
                     btnAndroid.href = cfg.url_apk || 'https://drive.google.com/uc?export=download&id=1D4tZ6sotRauUzwNZooTErLP0_66fB7jq';
                 }
             }
