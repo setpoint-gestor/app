@@ -10,11 +10,11 @@ let cacheQuadrasSaaS = {};
 // Estado Mestre Arquitetural: Preferências compartilhadas por todas as quadras
 let visibilidadeGlobalSaaS = { piso: true, vip: true, luz: true, arqui: true };
 
-// Constantes e helpers da Experimentação Progressiva B2B (Múltiplas Quadras)
-const DURACAO_TESTE_INICIAL_DIAS_B2B = 7;
-const MAX_PASSES_VIDEO_B2B = 7;
-const DURACAO_PASSE_VIDEO_MS_B2B = 24 * 60 * 60 * 1000;
-const MS_POR_DIA_B2B = 24 * 60 * 60 * 1000;
+// Constantes e helpers da Experimentação B2B Sob Demanda (Igual ao Modo Jogador)
+const DURACAO_TESTE_PRO_B2B_DIAS = 7;
+const DURACAO_TESTE_PRO_B2B_MS = DURACAO_TESTE_PRO_B2B_DIAS * 24 * 60 * 60 * 1000;
+const CARENCIA_TESTE_PRO_B2B_DIAS = 30;
+const CARENCIA_TESTE_PRO_B2B_MS = CARENCIA_TESTE_PRO_B2B_DIAS * 24 * 60 * 60 * 1000;
 
 function obterChaveTrialB2B(clubeId) {
     const idClube = clubeId || (typeof clubeAtivoId !== 'undefined' && clubeAtivoId) || localStorage.getItem('setpoint_jogador_clube_id') || 'default';
@@ -36,79 +36,50 @@ function obterEstadoTrialB2B(infoClube = {}, clubeId = null) {
         estadoSalvo = {};
     }
 
-    const inicioTs = parseInt(
-        (infoClube && (infoClube.trial_inicio_ts || infoClube.criado_em)) ||
-        estadoSalvo.inicioTs ||
-        agora,
-        10
-    ) || agora;
-
-    if (!estadoSalvo.inicioTs) {
-        estadoSalvo.inicioTs = inicioTs;
-        try {
-            localStorage.setItem(chaveLocal, JSON.stringify(estadoSalvo));
-        } catch (e) {}
-    }
-
-    const diasDecorridos = Math.floor((agora - inicioTs) / MS_POR_DIA_B2B);
-    const dentroSemanaLivre = diasDecorridos < DURACAO_TESTE_INICIAL_DIAS_B2B;
-    const dentroJanelaEstendida = diasDecorridos >= DURACAO_TESTE_INICIAL_DIAS_B2B && diasDecorridos < (DURACAO_TESTE_INICIAL_DIAS_B2B + MAX_PASSES_VIDEO_B2B);
-
-    const passesUsados = parseInt(
-        (infoClube && infoClube.trial_passes_usados) !== undefined
-            ? infoClube.trial_passes_usados
-            : estadoSalvo.passesUsados,
+    const trialAteTs = parseInt(
+        (infoClube && infoClube.trial_b2b_ate) !== undefined
+            ? infoClube.trial_b2b_ate
+            : estadoSalvo.trialAteTs,
         10
     ) || 0;
 
-    const passe24hAteTs = parseInt(
-        (infoClube && infoClube.trial_passe_24h_ate) !== undefined
-            ? infoClube.trial_passe_24h_ate
-            : estadoSalvo.passe24hAteTs,
+    const cooldownAteTs = parseInt(
+        (infoClube && infoClube.trial_b2b_cooldown_ate) !== undefined
+            ? infoClube.trial_b2b_cooldown_ate
+            : estadoSalvo.cooldownAteTs,
         10
     ) || 0;
 
-    const passe24hAtivo = dentroJanelaEstendida && (passe24hAteTs > agora);
-    const passesRestantes = Math.max(0, MAX_PASSES_VIDEO_B2B - passesUsados);
-    const podeAtivarPasseVideo = dentroJanelaEstendida && !passe24hAtivo && (passesRestantes > 0);
-    const podeCriarMultiplasQuadras = isPlanoPro || dentroSemanaLivre || passe24hAtivo;
+    const trialAtivo = !isPlanoPro && (trialAteTs > agora);
+    const emCooldown = !isPlanoPro && !trialAtivo && (cooldownAteTs > agora);
+    const podeAtivarTrial = !isPlanoPro && !trialAtivo && !emCooldown;
+    const podeCriarMultiplasQuadras = isPlanoPro || trialAtivo;
 
-    let etapa = 'expirado';
+    let etapa = 'starter';
     if (isPlanoPro) {
         etapa = 'pro';
-    } else if (dentroSemanaLivre) {
-        etapa = 'semana_livre';
-    } else if (passe24hAtivo) {
-        etapa = 'passe_24h_ativo';
-    } else if (podeAtivarPasseVideo) {
-        etapa = 'aguardando_video_24h';
+    } else if (trialAtivo) {
+        etapa = 'trial_ativo';
+    } else if (emCooldown) {
+        etapa = 'cooldown';
     }
 
-    const diasRestantesSemanaLivre = Math.max(0, DURACAO_TESTE_INICIAL_DIAS_B2B - diasDecorridos);
-    const diasRestantesCicloTotal = Math.max(0, (DURACAO_TESTE_INICIAL_DIAS_B2B + MAX_PASSES_VIDEO_B2B) - diasDecorridos);
-    const horasRestantesPasse = passe24hAtivo ? Math.max(1, Math.ceil((passe24hAteTs - agora) / (60 * 60 * 1000))) : 0;
-
+    const diasRestantesTrial = trialAtivo ? Math.max(1, Math.ceil((trialAteTs - agora) / (24 * 60 * 60 * 1000))) : 0;
+    const diasRestantesCooldown = emCooldown ? Math.max(1, Math.ceil((cooldownAteTs - agora) / (24 * 60 * 60 * 1000))) : 0;
     const limiteEfetivoQuadras = podeCriarMultiplasQuadras ? 999 : limiteQuadrasPlano;
 
     return {
         isPlanoPro,
         etapa,
-        inicioTs,
-        diasDecorridos,
-        diasRestantesSemanaLivre,
-        diasRestantesCicloTotal,
-        dentroSemanaLivre,
-        dentroJanelaEstendida,
-        passesUsados,
-        passesRestantes,
-        maxPasses: MAX_PASSES_VIDEO_B2B,
-        passe24hAteTs,
-        passe24hAtivo,
-        horasRestantesPasse,
-        podeAtivarPasseVideo,
+        trialAteTs,
+        cooldownAteTs,
+        trialAtivo,
+        emCooldown,
+        podeAtivarTrial,
+        diasRestantesTrial,
+        diasRestantesCooldown,
         podeCriarMultiplasQuadras,
-        limiteEfetivoQuadras,
-        exibirBannerGestor: false
+        limiteEfetivoQuadras
     };
 }
 
@@ -346,7 +317,9 @@ function salvarFiltrosGlobalSaaS() {
 // ==========================================================================
 // 5. FORMULÁRIO DE INFRAESTRUTURA INDIVIDUAL (TOTALMENTE LIMPO)
 // ==========================================================================
-function ativarPasse24hVideoB2BSaaS() {
+function iniciarDegustacaoArenaPro7DiasSaaS() {
+    if (navigator.vibrate) navigator.vibrate(25);
+
     const idClube = (typeof clubeAtivoId !== 'undefined' && clubeAtivoId)
         ? clubeAtivoId
         : (localStorage.getItem('setpoint_jogador_clube_id') || 'default');
@@ -354,59 +327,51 @@ function ativarPasse24hVideoB2BSaaS() {
     const infoAtual = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
     const estadoAtual = obterEstadoTrialB2B(infoAtual, idClube);
 
-    if (!estadoAtual.podeAtivarPasseVideo) {
-        if (estadoAtual.passe24hAtivo) {
-            showToast(`Seu passe de 24h já está ativo (restam ~${estadoAtual.horasRestantesPasse}h).`, 'info');
-        } else {
-            exibirAvisoLimitePlanoStarterSaaS(estadoAtual);
+    if (!estadoAtual.podeAtivarTrial) {
+        if (estadoAtual.trialAtivo) {
+            showToast(`Seu teste grátis de 7 dias já está ativo (restam ${estadoAtual.diasRestantesTrial} dia(s)).`, 'info');
+        } else if (estadoAtual.emCooldown) {
+            showToast(`Próximo teste grátis disponível em ${estadoAtual.diasRestantesCooldown} dia(s).`, 'info');
         }
         return;
     }
 
-    const concluirAtivacaoPasse = () => {
+    if (typeof fecharModalConfig === 'function') {
+        fecharModalConfig('modal-plano-gestor');
+    }
+
+    const concluirAtivacaoTrial7Dias = () => {
         const agora = Date.now();
-        const novoPassesUsados = estadoAtual.passesUsados + 1;
-        const novoPasse24hAteTs = agora + DURACAO_PASSE_VIDEO_MS_B2B;
+        const novoTrialAteTs = agora + DURACAO_TESTE_PRO_B2B_MS;
+        const novoCooldownAteTs = agora + CARENCIA_TESTE_PRO_B2B_MS;
         const chaveLocal = obterChaveTrialB2B(idClube);
 
-        const payloadLocal = {
-            inicioTs: estadoAtual.inicioTs,
-            passesUsados: novoPassesUsados,
-            passe24hAteTs: novoPasse24hAteTs
-        };
-
         try {
-            localStorage.setItem(chaveLocal, JSON.stringify(payloadLocal));
+            localStorage.setItem(chaveLocal, JSON.stringify({
+                trialAteTs: novoTrialAteTs,
+                cooldownAteTs: novoCooldownAteTs
+            }));
         } catch (e) {}
 
         if (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) {
-            infoClubeGlobal.trial_inicio_ts = estadoAtual.inicioTs;
-            infoClubeGlobal.trial_passes_usados = novoPassesUsados;
-            infoClubeGlobal.trial_passe_24h_ate = novoPasse24hAteTs;
+            infoClubeGlobal.trial_b2b_ate = novoTrialAteTs;
+            infoClubeGlobal.trial_b2b_cooldown_ate = novoCooldownAteTs;
         }
-
-        const dadosTrialBanco = {
-            trial_inicio_ts: estadoAtual.inicioTs,
-            trial_passes_usados: novoPassesUsados,
-            trial_passe_24h_ate: novoPasse24hAteTs
-        };
 
         if (typeof atualizarInfoClubeNoBancoSaaS === 'function') {
-            atualizarInfoClubeNoBancoSaaS(dadosTrialBanco, idClube).catch((err) => {
-                console.warn('[Trial B2B] Erro ao sincronizar passe 24h via Core:', err);
+            atualizarInfoClubeNoBancoSaaS({
+                trial_b2b_ate: novoTrialAteTs,
+                trial_b2b_cooldown_ate: novoCooldownAteTs
+            }, idClube).catch((err) => {
+                console.warn('[Trial B2B] Erro ao sincronizar teste 7 dias:', err);
             });
         }
-		
-		if (typeof atualizarBannerPlanoGestorSaaS === 'function') {
+
+        if (typeof atualizarBannerPlanoGestorSaaS === 'function') {
             atualizarBannerPlanoGestorSaaS();
         }
 
-        const restantesDepois = Math.max(0, MAX_PASSES_VIDEO_B2B - novoPassesUsados);
-        showToast(
-            `Passe de 24h ativado! Todas as quadras estão liberadas (restam ${restantesDepois} de ${MAX_PASSES_VIDEO_B2B} passes na 2ª semana).`,
-            'success',
-            4500
-        );
+        showToast('Teste grátis do Arena PRO ativado por 7 dias! Múltiplas quadras liberadas.', 'success', 4500);
 
         const telaGerenciador = document.getElementById('tela-gerenciador-quadras');
         if (telaGerenciador && telaGerenciador.classList.contains('ativa')) {
@@ -415,67 +380,37 @@ function ativarPasse24hVideoB2BSaaS() {
     };
 
     if (typeof solicitarVideoPremiadoAdMobSaaS === 'function') {
-        solicitarVideoPremiadoAdMobSaaS(concluirAtivacaoPasse, 'Passe de 24h — Múltiplas Quadras', true);
+        solicitarVideoPremiadoAdMobSaaS(concluirAtivacaoTrial7Dias, 'Degustação Arena PRO (7 dias)', true);
     } else {
-        concluirAtivacaoPasse();
+        concluirAtivacaoTrial7Dias();
     }
 }
 
-
 function exibirAvisoLimitePlanoStarterSaaS(estadoTrial = null) {
-    const estado = estadoTrial || (typeof obterEstadoTrialB2B === 'function'
-        ? obterEstadoTrialB2B({}, clubeAtivoId)
-        : { etapa: 'expirado', passesRestantes: 0, maxPasses: 7, horasRestantesPasse: 0 });
+    const infoAtual = (typeof infoClubeGlobal !== 'undefined' && infoClubeGlobal) ? infoClubeGlobal : {};
+    const estado = estadoTrial || obterEstadoTrialB2B(infoAtual, clubeAtivoId);
 
-    let tituloModal = 'Limite do Plano Starter';
-    let detalheEtapaHTML =
-        'Seu período de teste de múltiplas quadras terminou.<br>' +
-        'Suas quadras cadastradas continuam salvas, mas apenas a <b>Quadra 1</b> fica liberada no Plano Starter.<br><br>' +
-        'Para liberar todas as quadras novamente e criar novas, faça upgrade para o <b style="color: #16a34a;">Plano Arena PRO</b>.<br>' +
-        '<span style="font-size: 12.5px; color: #64748b;">Clique em <b>Cancelar</b> apenas para fechar este aviso sem alterar seus cadastros.</span>';
-
-    let acaoConfirmar = function() {
-        if (typeof navegarApp === 'function' && document.getElementById('tela-planos-b2b')) {
-            navegarApp('tela-planos-b2b');
-        } else {
-            showToast('Acesse a área de planos no painel web para fazer upgrade para o Plano Arena PRO.', 'info');
-        }
-    };
-
-    if (estado.etapa === 'aguardando_video_24h') {
-        tituloModal = 'Liberar Passe de 24h';
-        const pluralPasses = estado.passesRestantes === 1 ? 'dia extra' : 'dias extras';
-        detalheEtapaHTML =
-            'Seu teste grátis de 7 dias terminou.<br>' +
-            'Você ainda pode liberar até <b style="color: #16a34a;">' +
-            estado.passesRestantes + ' ' + pluralPasses +
-            '</b> (1 vídeo por dia, válido por 24h cada).<br><br>' +
-            'Suas quadras atuais continuam salvas. Clique em <b>Confirmar</b> para assistir ao vídeo e liberar todas as quadras por 24h, ou em <b>Cancelar</b> apenas para fechar.';
-
-        acaoConfirmar = function() {
-            if (typeof ativarPasse24hVideoB2BSaaS === 'function') {
-                ativarPasse24hVideoB2BSaaS();
-            } else {
-                showToast('Fluxo de vídeo premiado (+24h) será conectado na etapa final.', 'info');
-            }
-        };
-    } else if (estado.etapa === 'passe_24h_ativo') {
-        tituloModal = 'Passe de 24h Ativo';
-        detalheEtapaHTML =
-            'Seu passe de 24h está ativo (resta cerca de <b style="color: #16a34a;">' +
-            estado.horasRestantesPasse + 'h</b>).<br>' +
-            'Para manter todas as quadras liberadas sem renovação diária, faça upgrade para o <b style="color: #16a34a;">Plano Arena PRO</b>.';
-    }
+    const textoExtraTrial = estado.podeAtivarTrial
+        ? '<br><br>Você também pode ativar um <b style="color: #6d28d9;">teste grátis de 7 dias</b> assistindo a um vídeo rápido.'
+        : (estado.emCooldown
+            ? `<br><br><span style="font-size: 12.5px; color: #64748b;">Próximo teste grátis disponível em ${estado.diasRestantesCooldown} dia(s).</span>`
+            : '');
 
     const msgHTML =
         '<div style="text-align: left; font-size: 14px; line-height: 1.55;">' +
-            detalheEtapaHTML +
+            'O <b>Plano Starter</b> inclui <b>1 quadra gratuita</b>.<br>' +
+            'Para cadastrar ou operar múltiplas quadras, faça upgrade para o <b style="color: #16a34a;">Plano Arena PRO</b>.' +
+            textoExtraTrial +
         '</div>';
 
     if (typeof showPrompt === 'function') {
-        showPrompt(tituloModal, msgHTML, acaoConfirmar);
+        showPrompt('Limite do Plano Starter', msgHTML, () => {
+            if (typeof abrirModalPlanoGestorSaaS === 'function') {
+                abrirModalPlanoGestorSaaS();
+            }
+        });
     } else {
-        showToast('Limite do Plano Starter atingido. Faça upgrade para o Plano Arena PRO.', 'warning');
+        showToast('Limite de 1 quadra no Plano Starter. Faça upgrade para o Arena PRO.', 'warning');
     }
 }
 
