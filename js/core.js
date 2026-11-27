@@ -1423,7 +1423,7 @@ function atualizarBannerPlanoGestorSaaS() {
     const info = (typeof infoClubeGlobal === 'object' && infoClubeGlobal) ? infoClubeGlobal : {};
     const estadoTrial = typeof obterEstadoTrialB2B === 'function'
         ? obterEstadoTrialB2B(info, clubeAtivoId)
-        : { isPlanoPro: (info.plano_b2b || info.plano) === 'pro', etapa: 'expirado' };
+        : { isPlanoPro: (info.plano_b2b || info.plano) === 'pro', trialAtivo: false };
 
     wrap.style.display = 'block';
 
@@ -1433,22 +1433,18 @@ function atualizarBannerPlanoGestorSaaS() {
         if (titulo) titulo.textContent = 'Plano Arena PRO';
         if (sub) sub.textContent = 'Quadras ilimitadas • Assinatura ativa';
         if (btn) btn.textContent = 'Ver Plano';
+    } else if (estadoTrial.trialAtivo) {
+        card.classList.remove('is-pro');
+        if (iconBox) iconBox.innerHTML = '<i class="material-icons">workspace_premium</i>';
+        const diasTxt = estadoTrial.diasRestantesTrial === 1 ? '1 dia restante' : `${estadoTrial.diasRestantesTrial} dias restantes`;
+        if (titulo) titulo.textContent = 'Plano Starter • Teste PRO Ativo';
+        if (sub) sub.textContent = `Múltiplas quadras liberadas • ${diasTxt}`;
+        if (btn) btn.textContent = 'PRO';
     } else {
         card.classList.remove('is-pro');
         if (iconBox) iconBox.innerHTML = '<i class="material-icons">workspace_premium</i>';
-
-        if (estadoTrial.etapa === 'semana_livre') {
-            const diasTxt = estadoTrial.diasRestantesSemanaLivre === 1 ? '1 dia restante' : `${estadoTrial.diasRestantesSemanaLivre} dias restantes`;
-            if (titulo) titulo.textContent = 'Plano Starter (Teste Grátis)';
-            if (sub) sub.textContent = `Múltiplas quadras liberadas • ${diasTxt}`;
-        } else if (estadoTrial.etapa === 'passe_24h_ativo') {
-            if (titulo) titulo.textContent = 'Plano Starter • Passe 24h';
-            if (sub) sub.textContent = `Múltiplas quadras liberadas • ~${estadoTrial.horasRestantesPasse}h restantes`;
-        } else {
-            if (titulo) titulo.textContent = 'Plano Starter';
-            if (sub) sub.textContent = '1 quadra gratuita • Recursos completos';
-        }
-
+        if (titulo) titulo.textContent = 'Plano Starter';
+        if (sub) sub.textContent = '1 quadra gratuita • Recursos completos';
         if (btn) btn.textContent = 'Seja PRO';
     }
 }
@@ -1468,7 +1464,7 @@ function abrirModalPlanoGestorSaaS() {
     const info = (typeof infoClubeGlobal === 'object' && infoClubeGlobal) ? infoClubeGlobal : {};
     const estadoTrial = typeof obterEstadoTrialB2B === 'function'
         ? obterEstadoTrialB2B(info, clubeAtivoId)
-        : { isPlanoPro: (info.plano_b2b || info.plano) === 'pro', etapa: 'expirado', podeAtivarPasseVideo: false };
+        : { isPlanoPro: (info.plano_b2b || info.plano) === 'pro', trialAtivo: false, emCooldown: false, podeAtivarTrial: true };
 
     if (estadoTrial.isPlanoPro) {
         if (header) header.classList.add('is-pro');
@@ -1497,27 +1493,26 @@ function abrirModalPlanoGestorSaaS() {
         if (titulo) titulo.textContent = 'SetPoint Arena PRO';
         if (sub) sub.textContent = 'Expanda sua arena sem limites';
 
-        let linhaStatusTeste = '<b>Teste de Múltiplas Quadras:</b> Período inicial concluído';
-        if (estadoTrial.etapa === 'semana_livre') {
-            const diasTxt = estadoTrial.diasRestantesSemanaLivre === 1 ? '1 dia restante' : `${estadoTrial.diasRestantesSemanaLivre} dias restantes`;
-            linhaStatusTeste = `<b>Teste Grátis (7 dias):</b> Ativo (${diasTxt})`;
-        } else if (estadoTrial.etapa === 'passe_24h_ativo') {
-            linhaStatusTeste = `<b>Passe de 24h:</b> Ativo (~${estadoTrial.horasRestantesPasse}h restantes)`;
-        } else if (estadoTrial.etapa === 'aguardando_video_24h') {
-            linhaStatusTeste = `<b>2ª Semana (Passes de 24h):</b> ${estadoTrial.passesRestantes} de ${estadoTrial.maxPasses} passes disponíveis`;
+        let blocoTrialHTML = '';
+        if (estadoTrial.trialAtivo) {
+            const diasTxt = estadoTrial.diasRestantesTrial === 1 ? '1 dia restante' : `${estadoTrial.diasRestantesTrial} dias restantes`;
+            blocoTrialHTML = `
+                <button type="button" onclick="simularRetornoStarterGestorSaaS()" style="width: 100%; padding: 11px 14px; border-radius: 12px; border: 1.5px solid #8b5cf6; background: #f5f3ff; color: #6d28d9; font-size: 12.5px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="material-icons" style="font-size: 18px;">verified</i> Teste PRO Ativo (${diasTxt}) • Encerrar Teste
+                </button>`;
+        } else if (estadoTrial.emCooldown) {
+            blocoTrialHTML = `
+                <button type="button" disabled style="width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px dashed #cbd5e1; background: #f8fafc; color: #94a3b8; font-size: 12px; font-weight: 700; cursor: not-allowed; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="material-icons" style="font-size: 16px;">schedule</i> Próximo teste grátis disponível em ${estadoTrial.diasRestantesCooldown} dia(s)
+                </button>`;
+        } else {
+            blocoTrialHTML = `
+                <button type="button" onclick="if(typeof iniciarDegustacaoArenaPro7DiasSaaS === 'function') iniciarDegustacaoArenaPro7DiasSaaS();" style="width: 100%; padding: 11px 14px; border-radius: 12px; border: 1.5px solid #8b5cf6; background: #f5f3ff; color: #6d28d9; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="material-icons" style="font-size: 18px;">play_circle</i> Testar PRO por 7 dias (Ver Vídeo)
+                </button>`;
         }
 
-        const botaoVideo24hHTML = estadoTrial.podeAtivarPasseVideo
-            ? `<button type="button" onclick="fecharModalConfig('modal-plano-gestor'); if(typeof ativarPasse24hVideoB2BSaaS === 'function') ativarPasse24hVideoB2BSaaS();" style="width: 100%; padding: 11px 14px; border-radius: 12px; border: 1.5px solid #8b5cf6; background: #f5f3ff; color: #6d28d9; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                   <i class="material-icons" style="font-size: 18px;">play_circle</i> Liberar Múltiplas Quadras por 24h (Ver Vídeo)
-               </button>`
-            : '';
-
         body.innerHTML = `
-            <div class="status-plano-box">
-                <b>Plano Atual:</b> Starter (1 quadra gratuita incluída)<br>
-                ${linhaStatusTeste}
-            </div>
             <ul class="pro-beneficios">
                 <li><i class="material-icons">check_circle</i> Libere múltiplas quadras na sua arena</li>
                 <li><i class="material-icons">check_circle</i> Remove anúncios de todos os atletas</li>
@@ -1530,7 +1525,7 @@ function abrirModalPlanoGestorSaaS() {
             <button type="button" id="btn-assinar-arena-pro-gestor" class="btn-assinar-pro" onclick="simularAssinaturaArenaProGestorSaaS()">
                 Assinar Arena PRO
             </button>
-            ${botaoVideo24hHTML}
+            ${blocoTrialHTML}
         `;
     }
 
@@ -1581,14 +1576,19 @@ function simularRetornoStarterGestorSaaS() {
 
     showPrompt(
         'Plano SetPoint Arena PRO',
-        'A assinatura Arena PRO está ativa. Deseja simular o retorno ao Plano Starter (1 quadra)?',
+        'Deseja encerrar o plano/teste ativo e voltar ao Plano Starter (1 quadra gratuita)?',
         () => {
+            const idClube = clubeAtivoId || 'default';
+            localStorage.removeItem(`setpoint_b2b_trial_quadras_${idClube}`);
+
             const dadosStarter = {
                 plano_b2b: 'starter',
                 limite_quadras: 1,
                 valor_mensal: 0,
-                status_pagamento: 'isento',
-                exibir_anuncios: true
+                status_pagamento: 'isento', 
+                exibir_anuncios: true,
+                trial_b2b_ate: null,
+                trial_b2b_cooldown_ate: null
             };
 
             atualizarInfoClubeNoBancoSaaS(dadosStarter)
