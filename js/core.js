@@ -1428,10 +1428,11 @@ function atualizarBannerPlanoGestorSaaS() {
     wrap.style.display = 'block';
 
     if (estadoTrial.isPlanoPro) {
+        const isBetaIsento = (window.faseBetaAtivaSaaS === true) && ((info.status_pagamento === 'isento') || (Number(info.valor_mensal) === 0));
         card.classList.add('is-pro');
         if (iconBox) iconBox.innerHTML = '<i class="material-icons">verified</i>';
-        if (titulo) titulo.textContent = 'Plano Arena PRO';
-        if (sub) sub.textContent = 'Quadras ilimitadas • Assinatura ativa';
+        if (titulo) titulo.textContent = isBetaIsento ? 'Plano Arena PRO (Beta)' : 'Plano Arena PRO';
+        if (sub) sub.textContent = isBetaIsento ? 'Quadras ilimitadas • Acesso gratuito Beta' : 'Quadras ilimitadas • Assinatura ativa';
         if (btn) btn.textContent = 'Ver Plano';
     } else if (estadoTrial.trialAtivo) {
         card.classList.remove('is-pro');
@@ -1467,14 +1468,14 @@ function abrirModalPlanoGestorSaaS() {
         : { isPlanoPro: (info.plano_b2b || info.plano) === 'pro', trialAtivo: false, emCooldown: false, podeAtivarTrial: true };
 
     if (estadoTrial.isPlanoPro) {
+        const isBetaIsento = (window.faseBetaAtivaSaaS === true) && ((info.status_pagamento === 'isento') || (Number(info.valor_mensal) === 0));
         if (header) header.classList.add('is-pro');
         if (icon) icon.textContent = 'verified';
-        if (titulo) titulo.textContent = 'Plano Arena PRO';
-        if (sub) sub.textContent = `${info.nome || 'Sua Arena'} • Assinatura ativa`;
-
+        if (titulo) titulo.textContent = isBetaIsento ? 'Plano Arena PRO (Beta)' : 'Plano Arena PRO';
+        if (sub) sub.textContent = isBetaIsento ? `${info.nome || 'Sua Arena'} • Acesso gratuito Beta` : `${info.nome || 'Sua Arena'} • Assinatura ativa`;
         body.innerHTML = `
             <div class="status-plano-box">
-                <b>Plano Atual:</b> Arena PRO<br>
+                <b>Plano Atual:</b> ${isBetaIsento ? 'Arena PRO (Fase Beta Gratuita)' : 'Arena PRO'}<br>
                 <b>Quadras Liberadas:</b> Ilimitadas<br>
                 <b>Anúncios no App dos Atletas:</b> ${info.exibir_anuncios === false ? 'Desativados' : 'Ativos'}
             </div>
@@ -2299,6 +2300,26 @@ database.ref('Clubes/SaaS_Config/versao_web').on('value', (snapshot) => {
             verificarAtualizacaoDisponivelSaaS();
         }
     }
+});
+
+// ====================================================================
+// 10.1. OUVINTE GLOBAL: INTERRUPTOR REMOTO DA FASE BETA (SaaS_Config)
+// ====================================================================
+window.faseBetaAtivaSaaS = true;
+
+function aplicarEstadoFaseBetaUISaaS() {
+    const ativo = window.faseBetaAtivaSaaS === true;
+    document.querySelectorAll('.pilula-beta-saas').forEach((el) => {
+        el.style.display = ativo ? 'inline-flex' : 'none';
+    });
+    if (typeof atualizarBannerPlanoGestorSaaS === 'function') {
+        atualizarBannerPlanoGestorSaaS();
+    }
+}
+
+database.ref('Clubes/SaaS_Config/fase_beta').on('value', (snapshot) => {
+    window.faseBetaAtivaSaaS = snapshot.exists() ? (snapshot.val() === true) : false;
+    aplicarEstadoFaseBetaUISaaS();
 });
 
 

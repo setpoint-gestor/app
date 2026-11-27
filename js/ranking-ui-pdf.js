@@ -2957,8 +2957,8 @@ function renderizarHTMLBarragemAcervoSaaS() {
             const p = cat.replace('CLASSE_', '').split('_');
             const c = p[0] || 'B';
             const g = (p[1] || 'MASCULINO').toUpperCase();
-            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Feminino' : 'Masculino');
-            const label = ehClasseUnica ? `Classe ${c} ${gTxt}` : `${c} ${gTxt}`;
+            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Fem' : 'Masc');
+            const label = `${c} ${gTxt}`;
             const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
             const acaoClick = ehClasseUnica ? '' : `onclick="mudarCategoriaBarragemHistoricaSaaS('${cat}')"`;
 
@@ -3550,8 +3550,8 @@ function renderizarHTMLPodioAcervoSaaS() {
             const p = cat.replace('CLASSE_', '').split('_');
             const c = p[0] || 'B';
             const g = (p[1] || 'MASCULINO').toUpperCase();
-            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Feminino' : 'Masculino');
-            const label = ehClasseUnica ? `Classe ${c} ${gTxt}` : `${c} ${gTxt}`;
+            const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Fem' : 'Masc');
+            const label = `${c} ${gTxt}`;
             const estiloCursor = ehClasseUnica ? 'cursor: default; pointer-events: none;' : 'cursor: pointer;';
             const acaoClick = ehClasseUnica ? '' : `onclick="mudarCategoriaHistoricaSaaS('${cat}')"`;
 
@@ -4092,7 +4092,7 @@ function abrirSumulasAcervoSaaS(idEdicao) {
             const c = p[0] || 'B';
             const g = (p[1] || 'MASCULINO').toUpperCase();
             const gTxt = (g === 'UNIFICADO' || g === 'MISTO') ? 'Misto' : (g === 'FEMININO' ? 'Fem' : 'Masc');
-            const label = `Classe ${c} ${gTxt}`;
+            const label = `${c} ${gTxt}`;
 
             htmlPills += `
                 <button type="button" style="white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid #8b5cf6; background: #8b5cf6; color: #fff; cursor: default; pointer-events: none; transition: all 0.2s;">
